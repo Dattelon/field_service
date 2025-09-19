@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 import enum
 from datetime import datetime, time
+from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import (
@@ -223,12 +224,19 @@ class orders(Base):
     assigned_master_id: Mapped[Optional[int]] = mapped_column(ForeignKey("masters.id", ondelete="SET NULL"), nullable=True, index=True)
 
     total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0, server_default="0")
+    company_payment: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, server_default="0")
+    guarantee_source_order_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+    )
 
     created_by_staff_id: Mapped[Optional[int]] = mapped_column(ForeignKey("staff_users.id", ondelete="SET NULL"), index=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")  # optimistic lock
+
+    # Optional: relationship to the source order for guarantee cases
+    source_order: Mapped[Optional["orders"]] = relationship(remote_side="orders.id")
 
     __table_args__ = (
         CheckConstraint(
