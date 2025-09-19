@@ -1,0 +1,10 @@
+aiogram==3.10.0
+SQLAlchemy==2.0.32
+asyncpg==0.29.0
+alembic==1.13.2
+python-dotenv==1.0.1
+pydantic==2.8.2
+aiohttp==3.9.5
+rapidfuzz==3.6.1
+XlsxWriter==3.1.9
+tzdata==2024.1   # для zoneinfo на Windows
