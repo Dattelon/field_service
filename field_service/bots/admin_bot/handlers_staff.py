@@ -1,250 +1,275 @@
-# field_service/bots/admin_bot/handlers_staff.py
-from __future__ import annotations
+﻿from __future__ import annotations
 
-import random
-import string
-from typing import Optional
+from typing import Iterable, Optional
 
-from aiogram import Router, F
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, Message
-from sqlalchemy import select, and_, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram import F, Router
+from aiogram.filters import StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from field_service.db import models as m
-from field_service.db.session import SessionLocal
+from .dto import StaffAccessCode, StaffMember, StaffRole, StaffUser
+from .filters import StaffRoleFilter
+from .states import AccessCodeNewFSM, StaffCityEditFSM
+from .utils import get_service
 
-router = Router(name=__name__)
+router = Router(name="admin_staff_handlers")
 
-# ==== helpers ====
 
-def kb(rows: list[list[InlineKeyboardButton]]) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+def _staff_service(bot):
+    return get_service(bot, "staff_service")
 
-async def get_staff(session: AsyncSession, tg_user_id: int) -> Optional[m.staff_users]:
-    q = await session.execute(
-        select(m.staff_users).where(
-            and_(
-                m.staff_users.tg_user_id == tg_user_id,
-                m.staff_users.is_active == True,
-            )
-        )
-    )
-    return q.scalar_one_or_none()
 
-async def guard_staff(evt: Message | CallbackQuery) -> tuple[AsyncSession, m.staff_users]:
-    session = SessionLocal()
-    async with session as s:
-        tg_id = evt.from_user.id if hasattr(evt, "from_user") else (evt.message.from_user.id if hasattr(evt, "message") else None)
-        staff = await get_staff(s, tg_id)
-        if not staff:
-            text_err = "Доступ запрещён. Вас нет в staff_users или профиль неактивен."
-            if isinstance(evt, Message):
-                await evt.answer(text_err)
-            else:
-                await evt.message.answer(text_err)
-                await evt.answer()
-            raise PermissionError("staff required")
-        return s, staff
+def _orders_service(bot):
+    return get_service(bot, "orders_service")
 
-def _codes_menu() -> InlineKeyboardMarkup:
-    return kb([
-        [InlineKeyboardButton(text="Новый код — Админ", callback_data="adm:codes:new:ADMIN")],
-        [InlineKeyboardButton(text="Новый код — Логист", callback_data="adm:codes:new:LOGIST")],
-        [
-            InlineKeyboardButton(text="Активные", callback_data="adm:codes:list:active:1"),
-            InlineKeyboardButton(text="Использованные", callback_data="adm:codes:list:used:1"),
-        ],
-        [InlineKeyboardButton(text="Отозванные", callback_data="adm:codes:list:revoked:1")],
-        [InlineKeyboardButton(text="‹ Меню", callback_data="adm:start")],
-    ])
 
-def _staff_menu() -> InlineKeyboardMarkup:
-    return kb([
-        [InlineKeyboardButton(text="Список персонала", callback_data="adm:staff:list:1")],
-        [InlineKeyboardButton(text="‹ Меню", callback_data="adm:start")],
-    ])
+# ------------------------------- access codes ------------------------------
 
-# ==== root ====
 
-@router.callback_query(F.data == "adm:codes")
-async def codes_root(cb: CallbackQuery):
-    try:
-        _, _ = await guard_staff(cb)
-    except PermissionError:
+@router.callback_query(F.data == "adm:codes", StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def codes_root(cq: CallbackQuery) -> None:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="New code (GLOBAL)", callback_data="adm:codes:new:GLOBAL_ADMIN")
+    kb.button(text="New code (CITY)", callback_data="adm:codes:new:CITY_ADMIN")
+    kb.button(text="New code (LOGIST)", callback_data="adm:codes:new:LOGIST")
+    kb.button(text="Active", callback_data="adm:codes:list:active:1")
+    kb.button(text="Used", callback_data="adm:codes:list:used:1")
+    kb.button(text="Revoked", callback_data="adm:codes:list:revoked:1")
+    kb.button(text="Back", callback_data="adm:menu")
+    kb.adjust(1)
+    await cq.message.edit_text("Access codes:", reply_markup=kb.as_markup())
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("adm:codes:list:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def codes_list(cq: CallbackQuery) -> None:
+    _, _, _, kind, page_str = cq.data.split(":")
+    page = max(1, int(page_str))
+    service = _staff_service(cq.message.bot)
+    codes, has_next = await service.list_access_codes(state=kind, page=page, page_size=10)
+    if not codes:
+        kb = InlineKeyboardBuilder()
+        kb.button(text="Back", callback_data="adm:codes")
+        await cq.message.edit_text("No codes found.", reply_markup=kb.as_markup())
+        await cq.answer()
         return
-    await cb.message.edit_text("<b>Доступ / Коды</b>", reply_markup=_codes_menu())
-    await cb.answer()
-
-@router.callback_query(F.data == "adm:staff")
-async def staff_root(cb: CallbackQuery):
-    try:
-        _, _ = await guard_staff(cb)
-    except PermissionError:
-        return
-    await cb.message.edit_text("<b>Персонал</b>", reply_markup=_staff_menu())
-    await cb.answer()
-
-# ==== генерация кода ====
-
-def _gen_code(n: int = 8) -> str:
-    base = string.ascii_uppercase + string.digits
-    return "".join(random.choice(base) for _ in range(n))
-
-@router.callback_query(F.data.startswith("adm:codes:new:"))
-async def code_new_make(cb: CallbackQuery):
-    _, _, _, role = cb.data.split(":")  # ADMIN | LOGIST
-    try:
-        s, staff = await guard_staff(cb)
-    except PermissionError:
-        return
-
-    code = _gen_code()
-    async with s.begin():
-        await s.execute(text("""
-            INSERT INTO staff_access_codes (code, role, issued_by_staff_id, comment)
-            VALUES (:c, :r, (SELECT id FROM staff_users WHERE tg_user_id=:tg LIMIT 1), NULL)
-        """).bindparams(c=code, r=role, tg=cb.from_user.id))
-    await cb.message.edit_text(f"Код: <code>{code}</code>\nРоль: <b>{role}</b>", reply_markup=_codes_menu())
-    await cb.answer("Сгенерирован")
-
-# ==== списки кодов ====
-
-PAGE = 15
-
-async def _render_codes_list(cb: CallbackQuery, kind: str, page: int):
-    where = {
-        "active": "used_at IS NULL AND is_revoked=FALSE",
-        "used": "used_at IS NOT NULL",
-        "revoked": "is_revoked=TRUE",
-    }[kind]
-    offset = (page - 1) * PAGE
-    async with SessionLocal() as s:
-        rows = await s.execute(text(f"""
-            SELECT id, code, role, created_at, used_at, is_revoked
-              FROM staff_access_codes
-             WHERE {where}
-             ORDER BY created_at DESC
-             LIMIT :limit OFFSET :offset
-        """).bindparams(limit=PAGE, offset=offset))
-        items = rows.all()
-
-    nav = []
+    lines = [f"<b>Codes: {kind}</b>", ""]
+    kb = InlineKeyboardBuilder()
+    for code in codes:
+        lines.append(f"- {code.code} · {code.role.value} · cities {len(code.city_ids)}")
+        kb.button(text=code.code, callback_data=f"adm:codes:card:{code.id}")
+    kb.adjust(2)
+    nav = InlineKeyboardBuilder()
     if page > 1:
-        nav.append(InlineKeyboardButton(text="⇦", callback_data=f"adm:codes:list:{kind}:{page-1}"))
-    nav.append(InlineKeyboardButton(text=f"{page}", callback_data="adm:noop"))
-    if len(items) == PAGE:
-        nav.append(InlineKeyboardButton(text="⇨", callback_data=f"adm:codes:list:{kind}:{page+1}"))
+        nav.button(text="Prev", callback_data=f"adm:codes:list:{kind}:{page - 1}")
+    if has_next:
+        nav.button(text="Next", callback_data=f"adm:codes:list:{kind}:{page + 1}")
+    nav.button(text="Back", callback_data="adm:codes")
+    kb.attach(nav)
+    await cq.message.edit_text("\n".join(lines), reply_markup=kb.as_markup())
+    await cq.answer()
 
-    buttons = [[InlineKeyboardButton(
-        text=(f"{i.id}: {i.code} — {i.role} — " + ("Отозван" if i.is_revoked else ("Использован" if i.used_at else "Активен"))),
-        callback_data=f"adm:codes:card:{i.id}"
-    )] for i in items]
-    buttons += [nav] if nav else []
-    buttons += [[InlineKeyboardButton(text="‹ Меню", callback_data="adm:codes")]]
-    await cb.message.edit_text(f"<b>Коды / {kind}</b>", reply_markup=kb(buttons))
-    await cb.answer()
 
-@router.callback_query(F.data.startswith("adm:codes:list:"))
-async def codes_list(cb: CallbackQuery):
-    _, _, _, kind, page = cb.data.split(":")
-    await _render_codes_list(cb, kind, int(page))
-
-@router.callback_query(F.data.startswith("adm:codes:card:"))
-async def code_card(cb: CallbackQuery):
-    cid = int(cb.data.split(":")[-1])
-    async with SessionLocal() as s:
-        row = await s.execute(text("""
-            SELECT id, code, role, created_at, used_at, is_revoked
-              FROM staff_access_codes WHERE id=:i
-        """).bindparams(i=cid))
-        r = row.first()
-    if not r:
-        await cb.answer("Код не найден.", show_alert=True); return
-
-    _id, code, role, created_at, used_at, revoked = r
-    rows = []
-    if not revoked and not used_at:
-        rows.append([InlineKeyboardButton(text="🚫 Отозвать", callback_data=f"adm:codes:revoke:{_id}")])
-    rows.append([InlineKeyboardButton(text="‹ К списку", callback_data="adm:codes:list:active:1")])
-    txt = (f"<b>Код</b>: <code>{code}</code>\nРоль: <b>{role}</b>\nСоздан: {created_at:%Y-%m-%d %H:%M}\n"
-           f"Статус: {'Отозван' if revoked else ('Использован' if used_at else 'Активен')}")
-    await cb.message.edit_text(txt, reply_markup=kb(rows)); await cb.answer()
-
-@router.callback_query(F.data.startswith("adm:codes:revoke:"))
-async def code_revoke(cb: CallbackQuery):
-    cid = int(cb.data.split(":")[-1])
-    async with SessionLocal() as s:
-        upd = await s.execute(text("""
-            UPDATE staff_access_codes
-               SET is_revoked=TRUE
-             WHERE id=:i AND used_at IS NULL AND is_revoked=FALSE
-             RETURNING id
-        """).bindparams(i=cid))
-        ok = upd.first()
-        if ok: await s.commit()
-    await cb.answer("Готово" if ok else "Нельзя отозвать (уже использован/отозван).", show_alert=not ok)
-    await _render_codes_list(cb, "active", 1)
-
-# ==== персонал (краткий каркас) ====
-
-@router.callback_query(F.data.startswith("adm:staff:list:"))
-async def staff_list(cb: CallbackQuery):
-    _, _, _, page = cb.data.split(":")
-    page = int(page); PAGE = 15; offset = (page-1)*PAGE
-    async with SessionLocal() as s:
-        rows = await s.execute(text("""
-            SELECT id, tg_user_id, role, is_active, created_at
-              FROM staff_users
-             ORDER BY created_at DESC
-             LIMIT :lim OFFSET :off
-        """).bindparams(lim=PAGE, off=offset))
-        items = rows.all()
-
-    nav = []
-    if page > 1:
-        nav.append(InlineKeyboardButton(text="⇦", callback_data=f"adm:staff:list:{page-1}"))
-    if len(items) == PAGE:
-        nav.append(InlineKeyboardButton(text="⇨", callback_data=f"adm:staff:list:{page+1}"))
-
-    btns = [[InlineKeyboardButton(
-        text=f"{i.id} · {i.role} · {'ON' if i.is_active else 'OFF'}",
-        callback_data=f"adm:staff:card:{i.id}"
-    )] for i in items]
-    if nav: btns.append(nav)
-    btns.append([InlineKeyboardButton(text="‹ Меню", callback_data="adm:staff")])
-    await cb.message.edit_text("<b>Персонал</b>", reply_markup=kb(btns)); await cb.answer()
-
-@router.callback_query(F.data.startswith("adm:staff:card:"))
-async def staff_card(cb: CallbackQuery):
-    sid = int(cb.data.split(":")[-1])
-    async with SessionLocal() as s:
-        row = await s.execute(text("""
-            SELECT id, tg_user_id, role, is_active, created_at
-              FROM staff_users WHERE id=:i
-        """).bindparams(i=sid))
-        r = row.first()
-    if not r:
-        await cb.answer("Не найдено.", show_alert=True); return
-    _id, tgid, role, active, created = r
-    rows = [
-        [InlineKeyboardButton(text=("🔓 Активировать" if not active else "🚫 Деактивировать"), callback_data=f"adm:staff:toggle:{_id}")],
-        [InlineKeyboardButton(text="‹ К списку", callback_data="adm:staff:list:1")],
+@router.callback_query(F.data.startswith("adm:codes:card:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def codes_card(cq: CallbackQuery) -> None:
+    code_id = int(cq.data.split(":")[3])
+    service = _staff_service(cq.message.bot)
+    code: Optional[StaffAccessCode] = await service.get_access_code(code_id)
+    if not code:
+        await cq.answer("Code not found", show_alert=True)
+        return
+    lines = [
+        f"<b>{code.code}</b>",
+        f"Role: {code.role.value}",
+        f"Cities: {', '.join(map(str, code.city_ids)) or '—'}",
+        f"Created at: {code.created_at:%Y-%m-%d %H:%M}",
+        f"Used at: {code.used_at:%Y-%m-%d %H:%M if code.used_at else '—'}",
+        f"Status: {'revoked' if code.is_revoked else ('used' if code.used_at else 'active')}",
     ]
-    await cb.message.edit_text(
-        f"<b>Сотрудник</b> #{_id}\nTG: <code>{tgid}</code>\nРоль: <b>{role}</b>\nСтатус: {'ON' if active else 'OFF'}\nСоздан: {created:%Y-%m-%d %H:%M}",
-        reply_markup=kb(rows)
-    )
-    await cb.answer()
+    kb = InlineKeyboardBuilder()
+    if not code.is_revoked and not code.used_at:
+        kb.button(text="Revoke", callback_data=f"adm:codes:revoke:{code.id}")
+    kb.button(text="Back", callback_data="adm:codes")
+    await cq.message.edit_text("\n".join(lines), reply_markup=kb.as_markup())
+    await cq.answer()
 
-@router.callback_query(F.data.startswith("adm:staff:toggle:"))
-async def staff_toggle(cb: CallbackQuery):
-    sid = int(cb.data.split(":")[-1])
-    async with SessionLocal() as s:
-        upd = await s.execute(text("""
-            UPDATE staff_users SET is_active = NOT is_active
-             WHERE id=:i
-             RETURNING is_active
-        """).bindparams(i=sid))
-        row = upd.first()
-        if row: await s.commit()
-    await cb.answer("Готово"); await staff_card(cb)
+
+@router.callback_query(F.data.startswith("adm:codes:revoke:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def codes_revoke(cq: CallbackQuery) -> None:
+    code_id = int(cq.data.split(":")[3])
+    service = _staff_service(cq.message.bot)
+    ok = await service.revoke_access_code(code_id)
+    await cq.answer("Revoked" if ok else "Cannot revoke", show_alert=not ok)
+    await codes_root(cq)
+
+
+@router.callback_query(F.data.startswith("adm:codes:new:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def codes_new_start(cq: CallbackQuery, state: FSMContext) -> None:
+    role_token = cq.data.split(":")[3]
+    await state.set_state(AccessCodeNewFSM.city_select)
+    await state.update_data(role=role_token)
+    orders_service = _orders_service(cq.message.bot)
+    cities = await orders_service.list_cities(limit=80)
+    info = "\n".join(f"{city.id}: {city.name}" for city in cities)
+    text = (
+        f"Role: {role_token}\n"
+        "Send city IDs separated by commas (or '-' for none).\n"
+        "Available cities:\n" + info
+    )
+    await cq.message.edit_text(text)
+    await cq.answer()
+
+
+@router.message(StateFilter(AccessCodeNewFSM.city_select), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def codes_new_cities(msg: Message, state: FSMContext, staff: StaffUser) -> None:
+    raw = msg.text.replace(" ", "")
+    if not raw or raw == "-":
+        city_ids: Iterable[int] = []
+    else:
+        try:
+            city_ids = [int(part) for part in raw.split(",") if part]
+        except ValueError:
+            await msg.answer("Cannot parse list. Use comma separated numbers or '-'.")
+            return
+    data = await state.get_data()
+    role_token = data.get("role")
+    try:
+        role = StaffRole(role_token)
+    except ValueError:
+        await state.clear()
+        await msg.answer("Unknown role, try again from the menu.")
+        return
+    service = _staff_service(msg.bot)
+    code = await service.create_access_code(
+        role=role,
+        city_ids=city_ids,
+        issued_by_staff_id=staff.id,
+        expires_at=None,
+        comment=None,
+    )
+    await state.clear()
+    await msg.answer(f"Generated code: {code.code}")
+
+
+# ------------------------------- staff list -------------------------------
+
+
+@router.callback_query(F.data == "adm:staff:menu", StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def staff_menu(cq: CallbackQuery) -> None:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Global", callback_data="adm:staff:list:GLOBAL_ADMIN:1")
+    kb.button(text="City admins", callback_data="adm:staff:list:CITY_ADMIN:1")
+    kb.button(text="Logists", callback_data="adm:staff:list:LOGIST:1")
+    kb.button(text="Back", callback_data="adm:menu")
+    kb.adjust(1)
+    await cq.message.edit_text("Staff members:", reply_markup=kb.as_markup())
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("adm:staff:list:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def staff_list(cq: CallbackQuery) -> None:
+    _, _, _, role_token, page_str = cq.data.split(":")
+    page = max(1, int(page_str))
+    try:
+        role = StaffRole(role_token)
+    except ValueError:
+        await cq.answer("Unknown role", show_alert=True)
+        return
+    service = _staff_service(cq.message.bot)
+    members, has_next = await service.list_staff(role=role, page=page, page_size=10)
+    if not members:
+        kb = InlineKeyboardBuilder()
+        kb.button(text="Back", callback_data="adm:staff:menu")
+        await cq.message.edit_text("No staff found.", reply_markup=kb.as_markup())
+        await cq.answer()
+        return
+    lines = [f"<b>{role.value}</b>", ""]
+    kb = InlineKeyboardBuilder()
+    for member in members:
+        status = "active" if member.is_active else "inactive"
+        lines.append(f"- #{member.id} {member.full_name} · {status}")
+        kb.button(text=str(member.id), callback_data=f"adm:staff:card:{member.id}")
+    kb.adjust(3)
+    nav = InlineKeyboardBuilder()
+    if page > 1:
+        nav.button(text="Prev", callback_data=f"adm:staff:list:{role_token}:{page - 1}")
+    if has_next:
+        nav.button(text="Next", callback_data=f"adm:staff:list:{role_token}:{page + 1}")
+    nav.button(text="Back", callback_data="adm:staff:menu")
+    kb.attach(nav)
+    await cq.message.edit_text("\n".join(lines), reply_markup=kb.as_markup())
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("adm:staff:card:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def staff_card(cq: CallbackQuery) -> None:
+    staff_id = int(cq.data.split(":")[3])
+    service = _staff_service(cq.message.bot)
+    member: Optional[StaffMember] = await service.get_staff_member(staff_id)
+    if not member:
+        await cq.answer("Staff member not found", show_alert=True)
+        return
+    cities = ", ".join(map(str, member.city_ids)) or "—"
+    status = "active" if member.is_active else "inactive"
+    lines = [
+        f"<b>#{member.id} {member.full_name}</b>",
+        f"Role: {member.role.value}",
+        f"Phone: {member.phone or '—'}",
+        f"Telegram ID: {member.tg_id or '—'}",
+        f"Status: {status}",
+        f"Cities: {cities}",
+    ]
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Toggle active", callback_data=f"adm:staff:toggle:{member.id}")
+    kb.button(text="Edit cities", callback_data=f"adm:staff:cities:{member.id}")
+    kb.button(text="Back", callback_data="adm:staff:menu")
+    await cq.message.edit_text("\n".join(lines), reply_markup=kb.as_markup())
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("adm:staff:toggle:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def staff_toggle(cq: CallbackQuery) -> None:
+    staff_id = int(cq.data.split(":")[3])
+    service = _staff_service(cq.message.bot)
+    member = await service.get_staff_member(staff_id)
+    if not member:
+        await cq.answer("Staff member not found", show_alert=True)
+        return
+    await service.set_staff_active(staff_id, is_active=not member.is_active)
+    await cq.answer("Updated")
+    await staff_card(cq)
+
+
+@router.callback_query(F.data.startswith("adm:staff:cities:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def staff_edit_cities(cq: CallbackQuery, state: FSMContext) -> None:
+    staff_id = int(cq.data.split(":")[3])
+    await state.set_state(StaffCityEditFSM.action)
+    await state.update_data(edit_staff_id=staff_id)
+    await cq.message.edit_text("Send city IDs separated by commas (or '-' to clear).")
+    await cq.answer()
+
+
+@router.message(StateFilter(StaffCityEditFSM.action), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
+async def staff_edit_cities_input(msg: Message, state: FSMContext) -> None:
+    raw = msg.text.replace(" ", "")
+    if not raw or raw == "-":
+        city_ids: Iterable[int] = []
+    else:
+        try:
+            city_ids = [int(part) for part in raw.split(",") if part]
+        except ValueError:
+            await msg.answer("Cannot parse list. Use comma separated numbers or '-'.")
+            return
+    data = await state.get_data()
+    staff_id = data.get("edit_staff_id")
+    if staff_id is None:
+        await state.clear()
+        await msg.answer("State lost. Try again from the menu.")
+        return
+    service = _staff_service(msg.bot)
+    await service.set_staff_cities(int(staff_id), city_ids)
+    await state.clear()
+    await msg.answer("Cities updated.")
+
+

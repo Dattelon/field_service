@@ -15,11 +15,15 @@ async def main() -> int:
     print("== Smoke: imports ==")
     try:
         from field_service.db.session import SessionLocal
-        from field_service.db.pg_enums import commission_status_param as cs_param, staff_role_param as sr_param
+        from field_service.db.pg_enums import (
+            commission_status_param as cs_param,
+            staff_role_param as sr_param,
+        )
         from field_service.services import settings_service as ss
         import field_service.bots.admin_bot.handlers as adm_handlers
         import field_service.bots.admin_bot.handlers_staff as adm_staff
         import field_service.bots.master_bot.handlers as master_handlers
+
         print("imports: OK")
     except Exception as e:
         print("imports: FAIL:", repr(e))
@@ -55,7 +59,9 @@ async def main() -> int:
         return 1
 
     print("\n== Smoke: staff_access_codes insert/delete ==")
-    code = "T" + "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(7))
+    code = "T" + "".join(
+        random.choice(string.ascii_uppercase + string.digits) for _ in range(7)
+    )
     try:
         async with SessionLocal() as s:
             await s.execute(
@@ -66,7 +72,9 @@ async def main() -> int:
                     """
                 ).bindparams(sr_param("r", "ADMIN"), c=code, tg=0)
             )
-            await s.execute(text("DELETE FROM staff_access_codes WHERE code=:c").bindparams(c=code))
+            await s.execute(
+                text("DELETE FROM staff_access_codes WHERE code=:c").bindparams(c=code)
+            )
             await s.commit()
         print("codes: OK")
     except Exception as e:
@@ -82,12 +90,12 @@ async def main() -> int:
         print("settings: FAIL:", repr(e))
         return 1
 
-    print("\n== Smoke: TZ ==")
+    print("\n== Smoke: timezone ==")
     try:
-        tz = getattr(adm_handlers, "TZ", None)
-        print("TZ:", tz)
+        tz = ss.get_timezone()
+        print("zone:", tz)
     except Exception as e:
-        print("TZ: FAIL:", repr(e))
+        print("timezone: FAIL:", repr(e))
         return 1
 
     print("\nAll smoke checks passed at", datetime.now())

@@ -5,10 +5,16 @@ OUTPUT_FILE = "project_snapshot.txt"
 # Какие файлы включать
 INCLUDE_EXT = {".py", ".md", ".txt", ".yml", ".yaml", ".env", ".json", ".csv"}
 
+
 def should_include_file(filename: str) -> bool:
     """Фильтр по расширениям и важным именам."""
     _, ext = os.path.splitext(filename)
-    return ext in INCLUDE_EXT or filename in (".env", "requirements.txt", "docker-compose.yml")
+    return ext in INCLUDE_EXT or filename in (
+        ".env",
+        "requirements.txt",
+        "docker-compose.yml",
+    )
+
 
 def write_tree(root_dir: str, out):
     """Печать структуры директорий как дерево."""
@@ -22,7 +28,11 @@ def write_tree(root_dir: str, out):
 
         level = dirpath.replace(root_dir, "").count(os.sep)
         indent = "    " * level
-        dirname = os.path.basename(dirpath) if dirpath != root_dir else os.path.basename(root_dir)
+        dirname = (
+            os.path.basename(dirpath)
+            if dirpath != root_dir
+            else os.path.basename(root_dir)
+        )
         out.write(f"{indent}{dirname}/\n")
 
         subindent = "    " * (level + 1)
@@ -30,6 +40,7 @@ def write_tree(root_dir: str, out):
             out.write(f"{subindent}{fname}\n")
 
     out.write("\n\n")
+
 
 def collect_files(root_dir: str):
     with open(OUTPUT_FILE, "w", encoding="utf-8") as out:
@@ -47,7 +58,9 @@ def collect_files(root_dir: str):
                     full_path = os.path.join(dirpath, fname)
                     rel_path = os.path.relpath(full_path, root_dir)
                     try:
-                        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+                        with open(
+                            full_path, "r", encoding="utf-8", errors="ignore"
+                        ) as f:
                             content = f.read()
                     except Exception as e:
                         content = f"<<Не удалось прочитать файл: {e}>>"
@@ -57,6 +70,7 @@ def collect_files(root_dir: str):
                     out.write(f"{'='*80}\n")
                     out.write(content)
                     out.write("\n\n")
+
 
 if __name__ == "__main__":
     project_root = os.path.dirname(os.path.abspath(__file__))

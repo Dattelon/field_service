@@ -16,11 +16,20 @@ DATABASE_URL = os.getenv(
 OVERPASS_URL = os.getenv("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
 
 # Минимальный набор highway для улиц
-HW_TAGS = ["residential","unclassified","tertiary","secondary","primary","living_street","service"]
+HW_TAGS = [
+    "residential",
+    "unclassified",
+    "tertiary",
+    "secondary",
+    "primary",
+    "living_street",
+    "service",
+]
 
 # ---- SQLAlchemy session (как в field_service.db.session, но standalone) ----
 engine = create_async_engine(DATABASE_URL, future=True)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
 
 # ---- Helpers ----
 def chunked(it: Iterable[Any], size: int):
@@ -28,14 +37,17 @@ def chunked(it: Iterable[Any], size: int):
     for x in it:
         buf.append(x)
         if len(buf) >= size:
-            yield buf; buf = []
+            yield buf
+            buf = []
     if buf:
         yield buf
+
 
 async def overpass_query(session: aiohttp.ClientSession, q: str) -> dict:
     async with session.post(OVERPASS_URL, data={"data": q}, timeout=120) as resp:
         resp.raise_for_status()
         return await resp.json()
+
 
 def build_query_city_area(city_name: str) -> str:
     # Ищем "area" соответствующую городу; затем районы и улицы внутри неё.
@@ -51,20 +63,25 @@ def build_query_city_area(city_name: str) -> str:
     out tags;
     """
 
+
 def normalize_name(s: Optional[str]) -> Optional[str]:
-    if not s: return None
+    if not s:
+        return None
     s = s.strip()
     # Без точек на концах, двойных пробелов и т.п.
     while "  " in s:
         s = s.replace("  ", " ")
     return s
 
+
 # ---- Main logic ----
 async def seed_city(city_name: str):
     print(f"== Город: {city_name}")
     async with SessionLocal() as db, aiohttp.ClientSession() as http:
         # 1) Получим city_id
-        row = await db.execute(text("SELECT id FROM cities WHERE name=:n"), {"n": city_name})
+        row = await db.execute(
+            text("SELECT id FROM cities WHERE name=:n"), {"n": city_name}
+        )
         c = row.first()
         if not c:
             print(f"  !! Город не найден в БД: {city_name} — пропуск.")
@@ -87,48 +104,71 @@ async def seed_city(city_name: str):
 
             if t == "relation":  # district candidate
                 # не берём сам город, только вложенные
-                if name and name != city_name and tags.get("boundary") == "administrative":
+                if (
+                    name
+                    and name != city_name
+                    and tags.get("boundary") == "administrative"
+                ):
                     districts.append(name)
 
             elif t == "way":  # street candidate
                 if name and tags.get("highway") in HW_TAGS:
                     # Попытка достать подсказку района
-                    d_guess = normalize_name(tags.get("addr:district") or tags.get("addr:suburb"))
+                    d_guess = normalize_name(
+                        tags.get("addr:district") or tags.get("addr:suburb")
+                    )
                     streets.append((name, d_guess))
 
         # 4) Записываем районы (idempotent)
         inserted_district_ids: dict[str, int] = {}
         for batch in chunked(sorted(set(districts)), 200):
             for dname in batch:
-                await db.execute(text("""
+                await db.execute(
+                    text(
+                        """
                     INSERT INTO districts(city_id, name)
                     VALUES (:cid, :name)
                     ON CONFLICT (city_id, name) DO NOTHING
-                """), {"cid": city_id, "name": dname})
+                """
+                    ),
+                    {"cid": city_id, "name": dname},
+                )
 
         # смапим названия->id
-        rows = await db.execute(text("SELECT id, name FROM districts WHERE city_id=:cid"), {"cid": city_id})
+        rows = await db.execute(
+            text("SELECT id, name FROM districts WHERE city_id=:cid"), {"cid": city_id}
+        )
         for did, dname in rows.all():
             inserted_district_ids[dname] = did
 
         # 5) Записываем улицы (idempotent + попытка связать с районом по имени)
         #    У нас уникальность (city_id, district_id, name); если район не распознан — пишем с NULL district_id.
-        for nm, d_guess in chunked(streets, 5000):  # типизация подсказки для IDE не критична
+        for nm, d_guess in chunked(
+            streets, 5000
+        ):  # типизация подсказки для IDE не критична
             pass  # это трюк, чтобы рендер не завис – фактические вставки ниже циклом
 
         added = 0
         for sname, d_guess in streets:
             d_id = inserted_district_ids.get(d_guess) if d_guess else None
-            await db.execute(text("""
+            await db.execute(
+                text(
+                    """
                 INSERT INTO streets(city_id, district_id, name)
                 VALUES (:cid, :did, :name)
                 ON CONFLICT (city_id, district_id, name) DO NOTHING
-            """), {"cid": city_id, "did": d_id, "name": sname})
+            """
+                ),
+                {"cid": city_id, "did": d_id, "name": sname},
+            )
             added += 1
 
         await db.commit()
-        print(f"  ✓ Районов (кандидатов): {len(districts)} | в БД теперь: {len(inserted_district_ids)}")
+        print(
+            f"  ✓ Районов (кандидатов): {len(districts)} | в БД теперь: {len(inserted_district_ids)}"
+        )
         print(f"  ✓ Улиц обработано: {len(streets)} (вставки были идемпотентны)")
+
 
 async def main():
     # Если передан FS_CITY="Москва" — ограничим одним городом.
@@ -137,7 +177,9 @@ async def main():
     limit = int(os.getenv("FS_CITY_LIMIT", "0"))
 
     async with SessionLocal() as db:
-        q = await db.execute(text("SELECT name FROM cities WHERE is_active = TRUE ORDER BY name"))
+        q = await db.execute(
+            text("SELECT name FROM cities WHERE is_active = TRUE ORDER BY name")
+        )
         city_names = [r[0] for r in q.fetchall()]
 
     if only_city:
@@ -153,6 +195,7 @@ async def main():
             await asyncio.sleep(1.2)
         except Exception as e:
             print(f"  !! Ошибка города {name}: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

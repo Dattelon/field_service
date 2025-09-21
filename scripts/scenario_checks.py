@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import random
@@ -16,7 +16,9 @@ from field_service.db.pg_enums import (
 
 
 def rnd(n: int = 6) -> str:
-    return "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(n))
+    return "".join(
+        random.choice(string.ascii_uppercase + string.digits) for _ in range(n)
+    )
 
 
 async def ensure_city(session) -> int:
@@ -24,12 +26,18 @@ async def ensure_city(session) -> int:
     row = q.first()
     if row:
         return int(row[0])
-    ins = await session.execute(text("INSERT INTO cities(name) VALUES (:n) RETURNING id").bindparams(n="SCN-CITY"))
+    ins = await session.execute(
+        text("INSERT INTO cities(name) VALUES (:n) RETURNING id").bindparams(
+            n="SCN-CITY"
+        )
+    )
     return int(ins.scalar_one())
 
 
 async def ensure_staff_admin(session, tg: int) -> int:
-    q = await session.execute(text("SELECT id FROM staff_users WHERE tg_user_id=:tg").bindparams(tg=tg))
+    q = await session.execute(
+        text("SELECT id FROM staff_users WHERE tg_user_id=:tg").bindparams(tg=tg)
+    )
     r = q.first()
     if r:
         return int(r[0])
@@ -46,7 +54,9 @@ async def ensure_staff_admin(session, tg: int) -> int:
 
 
 async def ensure_master(session, tg: int, city_id: int) -> int:
-    q = await session.execute(text("SELECT id FROM masters WHERE tg_user_id=:tg").bindparams(tg=tg))
+    q = await session.execute(
+        text("SELECT id FROM masters WHERE tg_user_id=:tg").bindparams(tg=tg)
+    )
     r = q.first()
     if r:
         mid = int(r[0])
@@ -64,7 +74,9 @@ async def ensure_master(session, tg: int, city_id: int) -> int:
     return mid
 
 
-async def create_order(session, city_id: int, status: str, master_id: int | None = None) -> int:
+async def create_order(
+    session, city_id: int, status: str, master_id: int | None = None
+) -> int:
     ins = await session.execute(
         text(
             """
@@ -77,16 +89,20 @@ async def create_order(session, city_id: int, status: str, master_id: int | None
     return int(ins.scalar_one())
 
 
-async def create_commission(session, order_id: int, master_id: int, status: str, due_in_hours: int) -> int:
+async def create_commission(
+    session, order_id: int, master_id: int, status: str, due_in_hours: int
+) -> int:
     due = datetime.now(timezone.utc) + timedelta(hours=due_in_hours)
     ins = await session.execute(
         text(
             """
-            INSERT INTO commissions(order_id, master_id, amount, status, due_at)
+            INSERT INTO commissions(order_id, master_id, amount, status, deadline_at)
             VALUES (:oid, :mid, :amt, :st, :due)
             RETURNING id
             """
-        ).bindparams(cs_param("st", status), oid=order_id, mid=master_id, amt=100.00, due=due)
+        ).bindparams(
+            cs_param("st", status), oid=order_id, mid=master_id, amt=100.00, due=due
+        )
     )
     return int(ins.scalar_one())
 
@@ -98,8 +114,14 @@ async def scenario_finance() -> None:
         admin_id = await ensure_staff_admin(s, tg=777000)
         master = await ensure_master(s, tg=888000, city_id=city)
         # Clean previous SCN orders/commissions for this master
-        await s.execute(text("DELETE FROM commissions WHERE master_id=:m").bindparams(m=master))
-        await s.execute(text("DELETE FROM orders WHERE assigned_master_id=:m OR preferred_master_id=:m").bindparams(m=master))
+        await s.execute(
+            text("DELETE FROM commissions WHERE master_id=:m").bindparams(m=master)
+        )
+        await s.execute(
+            text(
+                "DELETE FROM orders WHERE assigned_master_id=:m OR preferred_master_id=:m"
+            ).bindparams(m=master)
+        )
         # Create orders + commissions
         oid_p1 = await create_order(s, city, "ASSIGNED", master)
         await create_commission(s, oid_p1, master, "PENDING", due_in_hours=+1)
@@ -116,10 +138,10 @@ async def scenario_finance() -> None:
             rows = await s.execute(
                 text(
                     """
-                    SELECT c.id, c.order_id, c.master_id, c.amount, c.due_at, c.status
+                    SELECT c.id, c.order_id, c.master_id, c.amount, c.deadline_at, c.status
                       FROM commissions c
                      WHERE c.status = :st
-                     ORDER BY (CASE WHEN c.status = 'WAIT_PAY' THEN c.due_at END) ASC NULLS LAST,
+                     ORDER BY (CASE WHEN c.status = 'WAIT_PAY' THEN c.deadline_at END) ASC NULLS LAST,
                               c.created_at DESC
                      LIMIT 50
                     """
@@ -130,11 +152,13 @@ async def scenario_finance() -> None:
         # Check ordering for pending
         rows = await s.execute(
             text(
-                "SELECT due_at FROM commissions WHERE status='WAIT_PAY' ORDER BY due_at ASC"
+                "SELECT deadline_at FROM commissions WHERE status='WAIT_PAY' ORDER BY deadline_at ASC"
             )
         )
         dues = [r[0] for r in rows.all()]
-        assert dues == sorted(dues), "PENDING commissions should be ordered by due_at ASC"
+        assert dues == sorted(
+            dues
+        ), "PENDING commissions should be ordered by deadline_at ASC"
         print("  ordering: OK")
 
 
@@ -150,12 +174,20 @@ async def scenario_requisites() -> None:
                    SET commission_requisites = coalesce(commission_requisites, '{}'::jsonb) || CAST(:patch AS jsonb)
                  WHERE id = :i
                 """
-            ).bindparams(i=admin_id, patch='{"CARD":"4000000000000002","SBP":"+79991234567"}')
+            ).bindparams(
+                i=admin_id, patch='{"CARD":"4000000000000002","SBP":"+79991234567"}'
+            )
         )
         await s.commit()
-        row = await s.execute(text("SELECT commission_requisites FROM staff_users WHERE id=:i").bindparams(i=admin_id))
+        row = await s.execute(
+            text(
+                "SELECT commission_requisites FROM staff_users WHERE id=:i"
+            ).bindparams(i=admin_id)
+        )
         data = row.scalar_one()
-        assert data.get("CARD") and data.get("SBP"), "Requisites should contain CARD and SBP"
+        assert data.get("CARD") and data.get(
+            "SBP"
+        ), "Requisites should contain CARD and SBP"
         print("  update+read: OK")
 
 
@@ -175,7 +207,9 @@ async def scenario_orders_limit() -> None:
             )
         )
         # Create two active orders
-        await s.execute(text("DELETE FROM orders WHERE assigned_master_id=:m").bindparams(m=master))
+        await s.execute(
+            text("DELETE FROM orders WHERE assigned_master_id=:m").bindparams(m=master)
+        )
         await create_order(s, city, "ASSIGNED", master)
         await create_order(s, city, "SCHEDULED", master)
         await s.commit()
@@ -207,8 +241,14 @@ async def scenario_codes() -> None:
                 """
             ).bindparams(sr_param("r", "LOGIST"), c=code)
         )
-        await s.execute(text("UPDATE staff_access_codes SET is_revoked=TRUE WHERE code=:c").bindparams(c=code))
-        await s.execute(text("DELETE FROM staff_access_codes WHERE code=:c").bindparams(c=code))
+        await s.execute(
+            text(
+                "UPDATE staff_access_codes SET is_revoked=TRUE WHERE code=:c"
+            ).bindparams(c=code)
+        )
+        await s.execute(
+            text("DELETE FROM staff_access_codes WHERE code=:c").bindparams(c=code)
+        )
         await s.commit()
         print("  create/revoke/delete: OK")
 
@@ -224,4 +264,3 @@ async def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(asyncio.run(main()))
-

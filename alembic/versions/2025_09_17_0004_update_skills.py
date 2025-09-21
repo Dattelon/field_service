@@ -3,6 +3,7 @@ Revision ID: 2025_09_17_0004
 Revises: 2025_09_17_0003
 Create Date: 2025-09-17 19:05:00.000000
 """
+
 from alembic import op
 
 # revision identifiers, used by Alembic.

@@ -64,7 +64,10 @@ def parse_names(js: dict) -> list[str]:
         if not nm:
             continue
         low = nm.lower()
-        if any(x in low for x in ("микрорай", "мкр", "квартал", "кв-", "жк ", "жилой комплекс")):
+        if any(
+            x in low
+            for x in ("микрорай", "мкр", "квартал", "кв-", "жк ", "жилой комплекс")
+        ):
             continue
         names.append(nm)
     # unique case-insensitively
@@ -110,7 +113,9 @@ async def upsert_districts(session, city_id: int, names: Iterable[str]) -> int:
 async def seed_one_city(session, city_name: str) -> None:
     cid = await ensure_city(session, city_name)
     try:
-        js = await asyncio.to_thread(_overpass_fetch, build_osm_districts_query(city_name))
+        js = await asyncio.to_thread(
+            _overpass_fetch, build_osm_districts_query(city_name)
+        )
         names = parse_names(js)
     except Exception as e:
         print(f"[{city_name}] Overpass error: {e}")
@@ -129,7 +134,9 @@ async def main():
         if only_city:
             city_names = [only_city]
         else:
-            rows = await session.execute(text("SELECT name FROM cities WHERE is_active = TRUE ORDER BY name"))
+            rows = await session.execute(
+                text("SELECT name FROM cities WHERE is_active = TRUE ORDER BY name")
+            )
             city_names = [r[0] for r in rows.fetchall()]
             if limit > 0:
                 city_names = city_names[:limit]
@@ -140,5 +147,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
