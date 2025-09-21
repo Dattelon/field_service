@@ -50,6 +50,12 @@ class FinanceActionFSM(StatesGroup):
     reject_reason = State()
 
 
+
+
+class QueueFiltersFSM(StatesGroup):
+    master = State()
+    date = State()
+
 class MasterActionFSM(StatesGroup):
     master_id = State()
     reject_reason = State()
@@ -58,6 +64,7 @@ class MasterActionFSM(StatesGroup):
 
 
 __all__ = [
+    "QueueFiltersFSM",
     "AccessCodeNewFSM",
     "FinanceActionFSM",
     "MasterActionFSM",

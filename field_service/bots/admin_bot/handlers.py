@@ -48,7 +48,6 @@ from .keyboards import (
     new_order_street_manual_keyboard,
     new_order_street_mode_keyboard,
     order_card_keyboard,
-    queue_list_keyboard,
 )
 from .states import (FinanceActionFSM, NewOrderFSM, OwnerPayEditFSM, SettingsEditFSM)
 from .texts import (
