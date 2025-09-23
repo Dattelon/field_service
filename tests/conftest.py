@@ -30,6 +30,8 @@ TABLES = [
     m.master_invite_codes.__table__,
     m.orders.__table__,
     m.commissions.__table__,
+    m.order_status_history.__table__,
+    m.settings.__table__,
 ]
 
 
@@ -41,7 +43,20 @@ async def async_session() -> AsyncIterator[AsyncSession]:
     async with engine.begin() as conn:
         await conn.run_sync(
             lambda sync_conn: sync_conn.execute(
-                sa.text("CREATE TABLE staff_users (id INTEGER PRIMARY KEY)")
+                sa.text("""
+                CREATE TABLE IF NOT EXISTS staff_users (
+                    id INTEGER PRIMARY KEY,
+                    tg_user_id BIGINT,
+                    username VARCHAR(64),
+                    full_name VARCHAR(160),
+                    phone VARCHAR(32),
+                    role VARCHAR(10) NOT NULL,
+                    is_active BOOLEAN DEFAULT 1 NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    commission_requisites TEXT DEFAULT '{}'
+                )
+                """)
             )
         )
         await conn.run_sync(

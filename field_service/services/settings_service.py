@@ -7,6 +7,7 @@ from typing import Iterable, Mapping, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.dialects.postgresql import insert
 from field_service.db.session import SessionLocal
 from field_service.db import models as m
@@ -30,9 +31,12 @@ _TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
 
 async def get_raw(key: str) -> Optional[Tuple[str, str]]:
     async with SessionLocal() as session:
-        q = await session.execute(
-            select(m.settings.value, m.settings.value_type).where(m.settings.key == key)
-        )
+        try:
+            q = await session.execute(
+                select(m.settings.value, m.settings.value_type).where(m.settings.key == key)
+            )
+        except OperationalError:
+            return None
         row = q.first()
         return (row[0], row[1]) if row else None
 

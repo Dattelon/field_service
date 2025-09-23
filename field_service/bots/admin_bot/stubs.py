@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Optional, Sequence
 
+from .services_db import AutoAssignResult
 
 @dataclass(slots=True)
 class StubStaffUser:
@@ -25,6 +26,10 @@ class StubOrdersService:
         city_ids: Optional[Iterable[int]],
         page: int,
         page_size: int,
+        status_filter: Optional[object] = None,
+        category: Optional[str] = None,
+        master_id: Optional[int] = None,
+        scheduled_date: Optional[object] = None,
     ) -> tuple[list[object], bool]:
         return [], False
 
@@ -71,8 +76,8 @@ class StubOrdersService:
 
 
 class StubDistributionService:
-    async def assign_auto(self, order_id: int, by_staff_id: int) -> tuple[bool, str]:
-        return False, "service is not configured"
+    async def assign_auto(self, order_id: int, by_staff_id: int) -> tuple[bool, AutoAssignResult]:
+        return False, AutoAssignResult("service is not configured", code="not_configured")
 
 
 class StubFinanceService:
@@ -100,10 +105,10 @@ class StubFinanceService:
 
 
 class StubSettingsService:
-    async def get_owner_pay_snapshot(self) -> dict[str, object]:
+    async def get_owner_pay_requisites(self, *, staff_id: int | None = None) -> dict[str, object]:
         return {}
 
-    async def update_owner_pay_snapshot(self, **kwargs: object) -> None:
+    async def update_owner_pay_requisites(self, staff_id: int, payload: dict[str, object]) -> None:
         return None
 
     async def get_channel_settings(self) -> dict[str, Optional[int]]:

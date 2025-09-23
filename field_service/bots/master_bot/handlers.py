@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from field_service.config import settings
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
-from field_service.services.commission_service import create_commission_for_order
+from field_service.services.commission_service import CommissionService
 from field_service.services import settings_service
 
 router = Router(name=__name__)
@@ -239,6 +239,8 @@ async def render_offer_card(cb: CallbackQuery, master: m.masters, order_id: int,
     lines = [
         f"<b>Заявка #{order.id}</b>",
     ]
+    if getattr(order, "order_type", None) == m.OrderType.GUARANTEE:
+        lines.append("<b>ЗАЯВКА ПО ГАРАНТИИ</b>")
     addr = format_address(city_name, district_name)
     if addr:
         lines.append(escape(addr))
@@ -311,6 +313,8 @@ async def render_active_order(
         return
     order, city_name, district_name, street_name = row
     lines: list[str] = [f"<b>Заказ #{order.id}</b>"]
+    if getattr(order, "order_type", None) == m.OrderType.GUARANTEE:
+        lines.append("<b>ЗАЯВКА ПО ГАРАНТИИ</b>")
     lines.append(f"Статус: <b>{order.status.value}</b>")
     address_parts: list[str] = []
     if city_name:
@@ -369,6 +373,40 @@ async def render_active_order(
 
 COMMISSIONS_PAGE_SIZE = 5
 
+PAYMENT_METHOD_LABELS = {
+    "card": "Карта",
+    "sbp": "СБП",
+    "cash": "Наличные",
+}
+
+COMMISSION_STATUS_LABELS = {
+    m.CommissionStatus.WAIT_PAY: "Ожидает оплаты",
+    m.CommissionStatus.REPORTED: "На проверке",
+    m.CommissionStatus.APPROVED: "Оплачена",
+    m.CommissionStatus.OVERDUE: "Просрочена",
+}
+
+ORDER_TYPE_LABELS = {
+    m.OrderType.GUARANTEE: "Гарантия",
+    m.OrderType.NORMAL: "Обычный",
+}
+
+def _commission_status_label(status: m.CommissionStatus | str | None) -> str:
+    if status is None:
+        return "—"
+    if isinstance(status, m.CommissionStatus):
+        return COMMISSION_STATUS_LABELS.get(status, status.value)
+    if isinstance(status, str):
+        try:
+            enum_value = m.CommissionStatus(status)
+        except ValueError:
+            try:
+                enum_value = m.CommissionStatus[status]
+            except KeyError:
+                return status
+        return COMMISSION_STATUS_LABELS.get(enum_value, enum_value.value)
+    return str(status)
+
 FIN_MODES = {
     "aw": ("Ожидают оплаты", (m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED)),
     "pd": ("Оплаченные", (m.CommissionStatus.APPROVED,)),
@@ -378,21 +416,51 @@ FIN_MODES = {
 FINANCE_MODE_ORDER = ("aw", "pd", "ov")
 
 def format_pay_snapshot(snapshot: Optional[dict]) -> str:
-    if not snapshot:
-        return "Реквизиты отсутствуют."
+    if not snapshot or not isinstance(snapshot, dict):
+        return ""
+
     lines: list[str] = []
-    methods = snapshot.get("methods") if isinstance(snapshot, dict) else None
+
+    methods = snapshot.get("methods")
     if isinstance(methods, (list, tuple)):
-        lines.append("Способы: " + ", ".join(methods))
-    for key, value in snapshot.items():
-        if key == "methods":
-            continue
-        if isinstance(value, dict):
-            for sub_key, sub_value in value.items():
-                lines.append(f"{key}.{sub_key}: {sub_value}")
-        else:
-            lines.append(f"{key}: {value}")
-    return "\n".join(lines) if lines else "Реквизиты отсутствуют."
+        method_titles = [PAYMENT_METHOD_LABELS.get(str(item), str(item)) for item in methods if str(item)]
+        if method_titles:
+            lines.append("Способы оплаты: " + ", ".join(method_titles))
+
+    card_last4 = snapshot.get("card_number_last4")
+    if card_last4:
+        card_line = f"Карта: ••••{card_last4}"
+        details: list[str] = []
+        card_holder = snapshot.get("card_holder")
+        if card_holder:
+            details.append(str(card_holder))
+        card_bank = snapshot.get("card_bank")
+        if card_bank:
+            details.append(str(card_bank))
+        if details:
+            card_line += " (" + ", ".join(details) + ")"
+        lines.append(card_line)
+
+    sbp_phone = snapshot.get("sbp_phone_masked")
+    if sbp_phone:
+        sbp_line = f"СБП: {sbp_phone}"
+        sbp_bank = snapshot.get("sbp_bank")
+        if sbp_bank:
+            sbp_line += f" ({sbp_bank})"
+        lines.append(sbp_line)
+
+    if snapshot.get("sbp_qr_file_id"):
+        lines.append("QR-код: отправим отдельным сообщением.")
+
+    other_text = snapshot.get("other_text")
+    if other_text:
+        lines.append(str(other_text))
+
+    comment = snapshot.get("comment")
+    if comment:
+        lines.append(f"Комментарий к платежу: {comment}")
+
+    return "\n".join(lines)
 
 
 async def load_commissions(
@@ -449,7 +517,7 @@ async def render_commission_list(
             if commission.deadline_at:
                 summary += f" • до {commission.deadline_at.strftime('%d.%m %H:%M')}"
             lines.append(summary)
-            lines.append(f"Статус: {commission.status.value}")
+            lines.append(f"Статус: {_commission_status_label(commission.status)}")
             lines.append("")
             buttons.append([
                 InlineKeyboardButton(
@@ -506,36 +574,47 @@ async def render_commission_card(
     if not result:
         await target.answer("Комиссия не найдена.")
         return
+
     commission, order_type, order_id, order_total = result
-    lines: list[str] = [f"<b>Комиссия #{commission.id}</b>"]
-    order_type_value = order_type.value if order_type else ""
+    status_label = _commission_status_label(commission.status)
+
+    order_line = f"Заказ #{order_id}"
+    order_type_value = order_type.value if hasattr(order_type, "value") else str(order_type or "")
     if order_type_value:
-        lines.append(f"Заказ #{order_id} • {order_type_value}")
-    else:
-        lines.append(f"Заказ #{order_id}")
+        order_line += f" · {ORDER_TYPE_LABELS.get(order_type, order_type_value)}"
+
+    lines: list[str] = [f"<b>Комиссия #{commission.id}</b>", order_line, f"Статус: {status_label}"]
     lines.append(f"Сумма комиссии: {commission.amount:.2f} ₽")
+    if order_total is not None:
+        total_dec = Decimal(str(order_total))
+        lines.append(f"Сумма заказа: {total_dec:.2f} ₽")
+
     rate_raw = commission.rate or getattr(commission, "percent", None)
     if rate_raw is not None:
-        rate_dec = Decimal(rate_raw)
+        rate_dec = Decimal(str(rate_raw))
         rate_percent = rate_dec * 100 if rate_dec <= 1 else rate_dec
         rate_str = f"{rate_percent:.2f}".rstrip('0').rstrip('.')
         lines.append(f"Ставка: {rate_str}%")
+
     if commission.deadline_at:
         lines.append(f"Дедлайн: {commission.deadline_at.strftime('%d.%m %H:%M')}")
-    lines.append(f"Статус: {commission.status.value}")
     if commission.paid_reported_at:
-        lines.append(f"Отчёт об оплате: {commission.paid_reported_at.strftime('%d.%m %H:%M')}")
+        lines.append(
+            f"Отмечено мастером: {commission.paid_reported_at.strftime('%d.%m %H:%M')}"
+        )
     if commission.paid_approved_at:
-        lines.append(f"Подтверждено: {commission.paid_approved_at.strftime('%d.%m %H:%M')}")
-    if order_total:
-        lines.append(f"Сумма заказа: {order_total:.2f} ₽")
-    ctx = (await state.get_data()).get("fin_ctx", {"mode": "aw", "page": 1})
-    buttons: list[list[InlineKeyboardButton]] = []
-    snapshot = commission.pay_to_snapshot or {}
-    if snapshot:
-        buttons.append([
-            InlineKeyboardButton(text="💳 Реквизиты", callback_data=f"m:fin:cm:pt:{commission.id}")
-        ])
+        lines.append(
+            f"Подтверждено админом: {commission.paid_approved_at.strftime('%d.%m %H:%M')}"
+        )
+    if commission.paid_amount is not None:
+        paid_amount = Decimal(str(commission.paid_amount))
+        lines.append(f"Фактически оплачено: {paid_amount:.2f} ₽")
+
+    lines.append(f"Чеки: {'загружены' if commission.has_checks else 'нет'}")
+
+    buttons: list[list[InlineKeyboardButton]] = [[
+        InlineKeyboardButton(text="💳 Реквизиты", callback_data=f"m:fin:cm:pt:{commission.id}")
+    ]]
     buttons.append([
         InlineKeyboardButton(text="📎 Отправить чек", callback_data=f"m:fin:cm:chk:{commission.id}")
     ])
@@ -543,9 +622,15 @@ async def render_commission_card(
         buttons.append([
             InlineKeyboardButton(text="✅ Я оплатил", callback_data=f"m:fin:cm:ip:{commission.id}")
         ])
+    ctx = (await state.get_data()).get("fin_ctx", {"mode": "aw", "page": 1})
     buttons.append([
-        InlineKeyboardButton(text="⬅️ Назад", callback_data=f"m:fin:{ctx.get('mode', 'aw')}:{ctx.get('page', 1)}")
+        InlineKeyboardButton(
+            text="⬅️ Назад",
+            callback_data=f"m:fin:{ctx.get('mode', 'aw')}:{ctx.get('page', 1)}",
+        )
     ])
+
+    markup = kb_inline(buttons)
     markup = kb_inline(buttons)
     text_out = "\n".join(lines)
     try:
@@ -555,9 +640,6 @@ async def render_commission_card(
             await target.answer(text_out, reply_markup=markup, parse_mode=ParseMode.HTML)
     except TelegramBadRequest:
         await target.answer(text_out, reply_markup=markup, parse_mode=ParseMode.HTML)
-
-# ======================= Districts: pagination & search =======================
-PAGE_SIZE = 10
 
 
 async def render_referral_dashboard(
@@ -1267,8 +1349,20 @@ async def finances_show_payto(cb: CallbackQuery) -> None:
     if not commission or commission.master is None or commission.master.tg_user_id != cb.from_user.id:
         await cb.answer("Комиссия не найдена.", show_alert=True)
         return
-    snapshot_text = format_pay_snapshot(commission.pay_to_snapshot or {})
-    await cb.message.answer(snapshot_text or "Реквизиты отсутствуют.")
+    snapshot = commission.pay_to_snapshot or {}
+    snapshot_text = format_pay_snapshot(snapshot)
+    if snapshot_text:
+        await cb.message.answer(snapshot_text)
+    else:
+        await cb.message.answer("Реквизиты отсутствуют.")
+
+    qr_id = snapshot.get("sbp_qr_file_id")
+    if qr_id:
+        try:
+            await cb.message.answer_photo(qr_id, caption="QR-код для оплаты")
+        except TelegramBadRequest:
+            await cb.message.answer("Не удалось отправить QR-код, обратитесь в поддержку.")
+
     await cb.answer()
 
 
@@ -1428,7 +1522,9 @@ async def offer_accept(cb: CallbackQuery) -> None:
                 and_(
                     m.orders.id == order_id,
                     m.orders.assigned_master_id.is_(None),
-                    m.orders.status.in_((m.OrderStatus.CREATED, m.OrderStatus.SEARCHING)),
+                    m.orders.status.in_(
+                        (m.OrderStatus.CREATED, m.OrderStatus.SEARCHING, m.OrderStatus.GUARANTEE)
+                    ),
                 )
             )
             .values(
@@ -1498,7 +1594,14 @@ async def order_finish(cb: CallbackQuery, state: FSMContext) -> None:
             await cb.answer("Закрыть можно только заказ в статусе WORKING.", show_alert=True)
             return
         master_id = master.id
+        is_guarantee = getattr(order, "order_type", None) == m.OrderType.GUARANTEE
     await state.update_data(order_id=order_id, master_id=master_id)
+    if is_guarantee:
+        await state.update_data(sum="0")
+        await cb.message.answer("Это гарантийная заявка. Приложите акт (фото или PDF).")
+        await state.set_state(State("m:act:act"))
+        await cb.answer()
+        return
     await cb.message.answer("Укажите сумму к получению (пример: 2490.00).")
     await state.set_state(State("m:act:sum"))
     await cb.answer()
@@ -1515,7 +1618,7 @@ async def close_order_sum(msg: Message, state: FSMContext) -> None:
 async def close_order_act(msg: Message, state: FSMContext) -> None:
     data = await state.get_data()
     order_id = int(data["order_id"])
-    amount = Decimal(data["sum"])
+    amount = Decimal(data.get("sum", "0"))
     master_id = data.get("master_id")
     if master_id is None:
         async with SessionLocal() as session:
@@ -1546,27 +1649,44 @@ async def close_order_act(msg: Message, state: FSMContext) -> None:
                 file_id=file_id,
             )
         )
-        order.total_price = amount
-        order.status = m.OrderStatus.PAYMENT
+        await session.flush()
+        is_guarantee = getattr(order, "order_type", None) == m.OrderType.GUARANTEE
         order.updated_at = func.now()
         order.version += 1
-        await session.execute(
-            insert(m.order_status_history).values(
-                order_id=order_id,
-                from_status=m.OrderStatus.WORKING,
-                to_status=m.OrderStatus.PAYMENT,
-                changed_by_master_id=master.id,
-                reason="master_uploaded_act",
+        if is_guarantee:
+            order.total_price = Decimal("0")
+            order.status = m.OrderStatus.CLOSED
+            await session.execute(
+                insert(m.order_status_history).values(
+                    order_id=order_id,
+                    from_status=m.OrderStatus.WORKING,
+                    to_status=m.OrderStatus.CLOSED,
+                    changed_by_master_id=master.id,
+                    reason="guarantee_completed",
+                )
             )
-        )
-        await session.flush()
-        await create_commission_for_order(session, order, master)
+        else:
+            order.total_price = amount
+            order.status = m.OrderStatus.PAYMENT
+            await session.execute(
+                insert(m.order_status_history).values(
+                    order_id=order_id,
+                    from_status=m.OrderStatus.WORKING,
+                    to_status=m.OrderStatus.PAYMENT,
+                    changed_by_master_id=master.id,
+                    reason="master_uploaded_act",
+                )
+            )
+            await CommissionService(session).create_for_order(order.id)
         await session.commit()
-    amount_str = f"{amount:.2f}"
     await state.clear()
-    await msg.answer(
-        f"Заказ #{order_id}: акт получен, сумма {amount_str}. Комиссия сформирована.",
-    )
+    if getattr(order, "order_type", None) == m.OrderType.GUARANTEE:
+        await msg.answer("Заказ #{order_id}: акт получен. Гарантийная заявка закрыта без комиссии.")
+    else:
+        amount_str = f"{amount:.2f}"
+        await msg.answer(
+            f"Заказ #{order_id}: акт получен, сумма {amount_str}. Комиссия сформирована.",
+        )
     await render_active_order(msg, master_id, order_id=order_id)
 
 
@@ -1590,32 +1710,9 @@ async def watchdog_breaks(_bot: Bot):
             if changed:
                 await session.commit()
         await asyncio.sleep(30)
-async def watchdog_commissions_block(_bot: Bot):
-    while True:
-        async with SessionLocal() as session:
-            q = await session.execute(
-                select(m.commissions.master_id).where(
-                    and_(m.commissions.status == m.CommissionStatus.WAIT_PAY, m.commissions.due_at < func.now(), m.commissions.blocked_applied == False)
-                )
-            )
-            mids = [row[0] for row in q.all()]
-            if mids:
-                await session.execute(
-                    update(m.masters)
-                    .where(m.masters.id.in_(mids))
-                    .values(is_blocked=True, blocked_at=func.now(), blocked_reason="Просрочка оплаты комиссии > 3 часа")
-                )
-                await session.execute(
-                    update(m.commissions)
-                    .where(and_(m.commissions.master_id.in_(mids), m.commissions.status == m.CommissionStatus.WAIT_PAY))
-                    .values(status=m.CommissionStatus.OVERDUE, blocked_applied=True, blocked_at=func.now())
-                )
-                await session.commit()
-        await asyncio.sleep(60)
 @router.startup()
 async def on_startup(bot: Bot):
     asyncio.create_task(watchdog_breaks(bot))
-    asyncio.create_task(watchdog_commissions_block(bot))
 
 
 

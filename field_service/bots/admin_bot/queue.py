@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Iterable, Optional
+import html
+from datetime import datetime, date
+from typing import Iterable, Optional, Sequence
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -12,15 +13,97 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from field_service.db.models import OrderStatus
 
-from .dto import CityRef, StaffRole, StaffUser
+from .dto import CityRef, OrderAttachment, OrderDetail, OrderListItem, OrderStatusHistoryItem, OrderType, StaffRole, StaffUser
 from .filters import StaffRoleFilter
-from .keyboards import main_menu
-from .states import QueueFiltersFSM
+from .keyboards import (
+    assign_menu_keyboard,
+    manual_candidates_keyboard,
+    manual_confirm_keyboard,
+    main_menu,
+    order_card_keyboard,
+    queue_cancel_keyboard,
+    queue_list_keyboard,
+)
+from .states import QueueActionFSM, QueueFiltersFSM
+from .texts import master_brief_line
 from .utils import get_service
 
 queue_router = Router(name="admin_queue")
 
 _ALLOWED_ROLES = {StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}
+
+QUEUE_PAGE_SIZE = 10
+MANUAL_PAGE_SIZE = 5
+ORDER_CARD_HISTORY_LIMIT = 5
+
+
+def _resolve_city_filter(staff: StaffUser, city_id: Optional[int]) -> Optional[list[int]]:
+    if staff.role is StaffRole.GLOBAL_ADMIN:
+        if city_id:
+            return [city_id]
+        return None
+    allowed = sorted(staff.city_ids)
+    if city_id:
+        return [city_id] if city_id in staff.city_ids else []
+    return allowed
+
+
+def _format_order_line(order: OrderListItem) -> str:
+    address_parts = [order.city_name] if order.city_name else []
+    if order.district_name:
+        address_parts.append(order.district_name)
+    street_parts: list[str] = []
+    if order.street_name:
+        street_parts.append(order.street_name)
+    if order.house:
+        street_parts.append(str(order.house))
+    if street_parts:
+        address_parts.append(' '.join(street_parts))
+    address = ', '.join(address_parts) if address_parts else '-'
+    category = order.category or '-'
+    status = order.status or '-'
+    if order.order_type is OrderType.GUARANTEE:
+        status = f"{status} · гарантия"
+    slot = order.timeslot_local or '-'
+    if order.master_name:
+        master_label = order.master_name
+    elif order.master_id:
+        master_label = f"мастер #{order.master_id}"
+    else:
+        master_label = 'в поиске'
+    return (
+        f"#{order.id} - {html.escape(address, quote=False)} | "
+        f"{html.escape(category, quote=False)} | "
+        f"{html.escape(status, quote=False)} | "
+        f"{html.escape(slot, quote=False)} | "
+        f"{html.escape(master_label, quote=False)}"
+    )
+
+
+
+
+def _manual_candidates_text(order: OrderCard, masters: Sequence[MasterBrief], page: int) -> str:
+    address_parts: list[str] = []
+    if order.city_name:
+        address_parts.append(order.city_name)
+    if order.district_name:
+        address_parts.append(order.district_name)
+    address_label = " / ".join(address_parts) if address_parts else "-"
+    lines = [
+        f"Заявка #{order.id}",
+        f"Адрес: {address_label}",
+        f"Страница {page}",
+        "Выберите мастера для отправки оффера:",
+    ]
+    if masters:
+        lines.append("")
+        lines.extend(master_brief_line(m) for m in masters)
+    else:
+        lines.append("")
+        lines.append("Подходящих мастеров не найдено.")
+    return "\n".join(lines)
+
+
 
 CATEGORY_CHOICES: tuple[tuple[str, str], ...] = (
     ("ELECTRICS", "Электрика"),
@@ -36,6 +119,143 @@ FILTER_DATA_KEY = "queue_filters"
 FILTER_MSG_CHAT_KEY = "queue_filters_chat_id"
 FILTER_MSG_ID_KEY = "queue_filters_message_id"
 _MAX_CITIES = 120
+
+
+CANCEL_ORDER_KEY = "queue_cancel_order_id"
+CANCEL_CHAT_KEY = "queue_cancel_chat_id"
+CANCEL_MESSAGE_KEY = "queue_cancel_message_id"
+CANCEL_REASON_MIN = 3
+CANCEL_REASON_MAX = 200
+
+
+def _format_order_card_text(
+    order: OrderDetail,
+    history: Sequence[OrderStatusHistoryItem],
+) -> str:
+    address_parts: list[str] = []
+    if order.city_name:
+        address_parts.append(order.city_name)
+    if order.district_name:
+        address_parts.append(order.district_name)
+    street_segments: list[str] = []
+    if order.street_name:
+        street_segments.append(order.street_name)
+    if order.house:
+        street_segments.append(str(order.house))
+    if street_segments:
+        address_parts.append(" ".join(street_segments))
+    address = ", ".join(address_parts) if address_parts else "-"
+
+    client_bits: list[str] = []
+    if order.client_name:
+        client_bits.append(html.escape(order.client_name))
+    if order.client_phone:
+        client_bits.append(html.escape(order.client_phone))
+    client_line = " / ".join(client_bits) if client_bits else "-"
+
+    master_bits: list[str] = []
+    if order.master_name:
+        master_bits.append(html.escape(order.master_name))
+    elif order.master_id:
+        master_bits.append(f"мастер #{order.master_id}")
+    if order.master_phone:
+        master_bits.append(html.escape(order.master_phone))
+    master_line = " / ".join(master_bits) if master_bits else "пока не назначен"
+
+    description = order.description.strip() if order.description else ""
+    description_line = html.escape(description) if description else "-"
+
+    is_guarantee = order.order_type is OrderType.GUARANTEE
+    type_label = order.type if not is_guarantee else f"{order.type} · гарантия"
+    lines_out = [
+        f"<b>Заявка #{order.id}</b>",
+        f"Статус: {html.escape(order.status)}",
+        f"Тип: {html.escape(type_label)}",
+        f"Категория: {html.escape(order.category) if order.category else '-'}",
+        f"Слот: {html.escape(order.timeslot_local) if order.timeslot_local else '-'}",
+        f"Адрес: {html.escape(address)}",
+    ]
+    if is_guarantee:
+        lines_out.append("<b>ЗАЯВКА ПО ГАРАНТИИ</b>")
+    lines_out.append(f"Вложения: {len(order.attachments)}")
+    lines_out.append("")
+    lines_out.append("<b>Контакты</b>")
+    lines_out.append(f"Клиент: {client_line}")
+    lines_out.append(f"Мастер: {master_line}")
+    lines_out.append("")
+    lines_out.append("<b>Описание</b>")
+    lines_out.append(description_line)
+    lines_out.append("")
+    lines_out.append("<b>История статусов</b>")
+    if history:
+        for item in history:
+            when = item.changed_at_local or "-"
+            transition = item.to_status
+            if item.from_status:
+                transition = f"{item.from_status} → {item.to_status}"
+            actors: list[str] = []
+            if item.changed_by_staff_id:
+                actors.append(f"staff #{item.changed_by_staff_id}")
+            if item.changed_by_master_id:
+                actors.append(f"master #{item.changed_by_master_id}")
+            actor_part = f" ({', '.join(actors)})" if actors else ""
+            reason_part = f" — {item.reason}" if item.reason else ""
+            lines_out.append(f"• {when} — {transition}{actor_part}{reason_part}")
+    else:
+        lines_out.append("— нет записей —")
+    return chr(10).join(lines_out)
+
+
+
+def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False) -> InlineKeyboardMarkup:
+    status = (order.status or '').upper()
+    allow_return = status not in {'CANCELED', 'CLOSED'}
+    allow_cancel = status not in {'CANCELED', 'CLOSED'}
+    return order_card_keyboard(
+        order.id,
+        attachments=order.attachments,
+        allow_return=allow_return,
+        allow_cancel=allow_cancel,
+        show_guarantee=show_guarantee,
+    )
+
+
+async def _should_show_guarantee_button(order: OrderDetail, orders_service) -> bool:
+    if (order.status or "").upper() != 'CLOSED':
+        return False
+    if order.order_type is OrderType.GUARANTEE:
+        return False
+    if not order.master_id:
+        return False
+    return not await orders_service.has_active_guarantee(order.id)
+
+
+async def _render_order_card(
+    message: Message,
+    order: OrderDetail,
+    history: Sequence[OrderStatusHistoryItem],
+    *,
+    show_guarantee: bool = False,
+) -> None:
+    text = _format_order_card_text(order, history)
+    markup = _order_card_markup(order, show_guarantee=show_guarantee)
+    try:
+        await message.edit_text(text, reply_markup=markup)
+    except TelegramBadRequest as exc:
+        if exc.message == "Message is not modified":
+            return
+        await message.answer(text, reply_markup=markup)
+
+
+async def _clear_cancel_state(state: FSMContext) -> None:
+    current_state = await state.get_state()
+    if current_state == QueueActionFSM.cancel_reason.state:
+        await state.set_state(None)
+    data = await state.get_data()
+    data.pop(CANCEL_ORDER_KEY, None)
+    data.pop(CANCEL_CHAT_KEY, None)
+    data.pop(CANCEL_MESSAGE_KEY, None)
+    await state.set_data(data)
 
 
 def _default_filters() -> dict[str, Optional[str | int]]:
@@ -162,8 +382,7 @@ async def _format_filters_text(
             f"Дата: {date_value}",
         ]
     )
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 
 async def _edit_or_reply(message: Message, text: str, markup: InlineKeyboardMarkup, state: FSMContext) -> None:
@@ -229,14 +448,60 @@ async def _render_choice(
 async def _render_queue_list(message: Message, staff: StaffUser, state: FSMContext, page: int) -> None:
     orders_service = get_service(message.bot, "orders_service")
     filters = await _load_filters(state)
-    filters_text = await _format_filters_text(staff, filters, orders_service, include_header=False)
-    builder = InlineKeyboardBuilder()
-    builder.button(text="Назад", callback_data="adm:q:flt")
-    builder.adjust(1)
-    text = f"<b>Список (WIP)</b>
-{filters_text}
-Страница: {page}"
-    await _edit_or_reply(message, text, builder.as_markup(), state)
+    page = max(page, 1)
+
+    city_filter = _resolve_city_filter(staff, filters.get("city_id"))
+
+    status_value = filters.get("status")
+    status_filter: Optional[OrderStatus] = None
+    if status_value:
+        try:
+            status_filter = OrderStatus(status_value)
+        except ValueError:
+            status_filter = None
+
+    category_filter = filters.get("category")
+    master_filter = filters.get("master_id")
+    scheduled_date: Optional[date] = None
+    date_value = filters.get("date")
+    if date_value:
+        try:
+            scheduled_date = date.fromisoformat(date_value)
+        except ValueError:
+            scheduled_date = None
+
+    items: list[OrderListItem]
+    has_next = False
+    if city_filter == []:
+        items = []
+    else:
+        items, has_next = await orders_service.list_queue(
+            city_ids=city_filter,
+            page=page,
+            page_size=QUEUE_PAGE_SIZE,
+            status_filter=status_filter,
+            category=category_filter,
+            master_id=master_filter,
+            scheduled_date=scheduled_date,
+        )
+
+    filters_text = await _format_filters_text(
+        staff, filters, orders_service, include_header=False
+    )
+    lines = ["<b>Очередь заказов</b>", filters_text]
+    if items:
+        lines.append("")
+        lines.extend(_format_order_line(item) for item in items)
+    else:
+        lines.append("")
+        lines.append("Список пуст. Измените фильтры или проверьте позже.")
+    lines.append("")
+    lines.append(f"Страница: {page}")
+    text = "\n".join(lines)
+
+    markup = queue_list_keyboard(items, page=page, has_next=has_next)
+    await _edit_or_reply(message, text, markup, state)
+
 
 
 @queue_router.callback_query(
@@ -461,14 +726,624 @@ async def cb_queue_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    parts = cq.data.split(':')
     try:
-        order_id = int(cq.data.split(":")[3])
+        order_id = int(parts[3])
     except (IndexError, ValueError):
-        await cq.answer("Некорректная заявка", show_alert=True)
+        await cq.answer('Некорректный идентификатор заявки', show_alert=True)
         return
-    await _render_filters_menu(cq.message, staff, state)
-    await cq.answer(f"Карточка (WIP), id={order_id}", show_alert=True)
+    orders_service = get_service(cq.message.bot, 'orders_service')
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer('Заявка не найдена', show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer('Нет доступа к заявке', show_alert=True)
+        return
+    history = await orders_service.list_status_history(order_id, limit=ORDER_CARD_HISTORY_LIMIT)
+    show_guarantee = await _should_show_guarantee_button(order, orders_service)
+    await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee)
+    await cq.answer()
 
+@queue_router.callback_query(
+    F.data.regexp(r'^adm:q:as:\d+$'),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_assign_menu(cq: CallbackQuery, staff: StaffUser) -> None:
+    order_id = int(cq.data.split(':')[3])
+    orders_service = get_service(cq.message.bot, 'orders_service')
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer('Заявка не найдена', show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer('Нет доступа к заявке', show_alert=True)
+        return
+    address_bits = [bit for bit in (order.city_name, order.district_name, order.street_name) if bit]
+    if order.house:
+        address_bits.append(str(order.house))
+    address_label = ', '.join(address_bits) if address_bits else '-'
+    text = (
+        f"Заявка #{order.id}\n"
+        f"Адрес: {address_label}\n"
+        "Выберите способ назначения."
+    )
+    markup = assign_menu_keyboard(order.id)
+    try:
+        await cq.message.edit_text(text, reply_markup=markup)
+    except TelegramBadRequest as exc:
+        if exc.message == 'Message is not modified':
+            await cq.answer()
+            return
+        await cq.message.answer(text, reply_markup=markup)
+    await cq.answer()
+
+
+
+
+
+
+
+
+@queue_router.callback_query(
+    F.data.startswith("adm:q:as:auto:"),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
+    parts = cq.data.split(":")
+    try:
+        order_id = int(parts[4])
+    except (IndexError, ValueError):
+        await cq.answer("Некорректные параметры", show_alert=True)
+        return
+
+    orders_service = get_service(cq.message.bot, "orders_service")
+    distribution_service = get_service(cq.message.bot, "distribution_service")
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer("Заявка не найдена", show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer("Нет доступа к заявке", show_alert=True)
+        return
+
+    ok, result = await distribution_service.assign_auto(order_id, staff.id)
+
+    lines: list[str] = [f"Заявка #{order.id}"]
+    lines.append("Автораспределение запущено." if ok else "Автораспределение завершено.")
+    lines.append("")
+    lines.append(result.message)
+    if not ok and result.code == "no_candidates":
+        lines.append("")
+        lines.append("Заявка передана логисту. Попробуйте назначить мастера вручную.")
+
+    text_body = "\n".join(lines)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📄 Карточка", callback_data=f"adm:q:card:{order_id}")
+    builder.button(text="◀️ Назад", callback_data=f"adm:q:as:{order_id}")
+    builder.adjust(1)
+
+    try:
+        await cq.message.edit_text(text_body, reply_markup=builder.as_markup())
+    except TelegramBadRequest as exc:
+        if exc.message != "Message is not modified":
+            await cq.message.answer(text_body, reply_markup=builder.as_markup())
+
+    if ok:
+        await cq.answer("Оффер отправлен", show_alert=False)
+    else:
+        alert_codes = {"no_district", "no_category", "forbidden", "not_found", "offer_conflict"}
+        await cq.answer(result.message, show_alert=result.code in alert_codes)
+
+
+@queue_router.callback_query(
+    F.data.startswith("adm:q:as:man:"),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_assign_manual_list(
+    cq: CallbackQuery,
+    staff: StaffUser,
+) -> None:
+    parts = cq.data.split(":")
+    try:
+        order_id = int(parts[4])
+        page = int(parts[5])
+    except (IndexError, ValueError):
+        await cq.answer("Некорректные параметры", show_alert=True)
+        return
+
+    orders_service = get_service(cq.message.bot, "orders_service")
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer("Заявка не найдена", show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer("Нет доступа к заявке", show_alert=True)
+        return
+
+    masters, has_next = await orders_service.manual_candidates(
+        order_id,
+        page=page,
+        page_size=MANUAL_PAGE_SIZE,
+    )
+    text = _manual_candidates_text(order, masters, page)
+    markup = manual_candidates_keyboard(order.id, masters, page=page, has_next=has_next)
+    try:
+        await cq.message.edit_text(
+            text,
+            reply_markup=markup,
+            disable_web_page_preview=True,
+        )
+    except TelegramBadRequest as exc:
+        if exc.message != "Message is not modified":
+            await cq.message.answer(
+                text,
+                reply_markup=markup,
+                disable_web_page_preview=True,
+            )
+    await cq.answer()
+
+
+@queue_router.callback_query(
+    F.data.startswith("adm:q:as:check:"),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_assign_manual_check(
+    cq: CallbackQuery,
+    staff: StaffUser,
+) -> None:
+    parts = cq.data.split(":")
+    try:
+        order_id = int(parts[4])
+        page = int(parts[5])
+        master_id = int(parts[6])
+    except (IndexError, ValueError):
+        await cq.answer("Некорректные параметры", show_alert=True)
+        return
+
+    orders_service = get_service(cq.message.bot, "orders_service")
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer("Заявка не найдена", show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer("Нет доступа к заявке", show_alert=True)
+        return
+
+    masters, _ = await orders_service.manual_candidates(
+        order_id,
+        page=page,
+        page_size=MANUAL_PAGE_SIZE,
+    )
+    candidate = next((m for m in masters if m.id == master_id), None)
+    if candidate is None:
+        await cq.answer("Мастер не найден в списке. Обновите список.", show_alert=True)
+        return
+
+    reasons: list[str] = []
+    available = candidate.is_on_shift and not candidate.on_break
+    if not candidate.is_on_shift:
+        reasons.append("мастер вне смены")
+    elif candidate.on_break:
+        reasons.append("мастер на перерыве")
+    at_limit = (
+        candidate.max_active_orders > 0
+        and candidate.active_orders >= candidate.max_active_orders
+    )
+    if at_limit:
+        reasons.append(
+            f"лимит {candidate.active_orders}/{candidate.max_active_orders}"
+        )
+
+    if available and not at_limit:
+        distribution_service = get_service(cq.message.bot, "distribution_service")
+        ok, message = await distribution_service.send_manual_offer(
+            order_id,
+            master_id,
+            staff.id,
+        )
+        if not ok:
+            await cq.answer(message, show_alert=True)
+            return
+
+        builder = InlineKeyboardBuilder()
+        builder.button(text="📄 Карточка", callback_data=f"adm:q:card:{order_id}")
+        builder.button(
+            text="⬅️ Список",
+            callback_data=f"adm:q:as:man:{order_id}:{page}",
+        )
+        builder.adjust(1)
+        text_lines = [
+            f"Заявка #{order.id}",
+            master_brief_line(candidate),
+            "",
+            "Оффер отправлен мастеру.",
+        ]
+        try:
+            await cq.message.edit_text(
+                "\n".join(text_lines),
+                reply_markup=builder.as_markup(),
+            )
+        except TelegramBadRequest as exc:
+            if exc.message != "Message is not modified":
+                await cq.message.answer(
+                    "\n".join(text_lines),
+                    reply_markup=builder.as_markup(),
+                )
+        await cq.answer("Оффер отправлен")
+        return
+
+    text_lines = [
+        f"Заявка #{order.id}",
+        master_brief_line(candidate),
+        "",
+    ]
+    if reasons:
+        text_lines.append("Требуется подтверждение: " + "; ".join(reasons))
+        text_lines.append("")
+    text_lines.append("Отправить оффер этому мастеру?")
+    markup = manual_confirm_keyboard(order.id, master_id, page)
+    try:
+        await cq.message.edit_text(
+            "\n".join(text_lines),
+            reply_markup=markup,
+            disable_web_page_preview=True,
+        )
+    except TelegramBadRequest as exc:
+        if exc.message != "Message is not modified":
+            await cq.message.answer(
+                "\n".join(text_lines),
+                reply_markup=markup,
+                disable_web_page_preview=True,
+            )
+    await cq.answer()
+
+
+@queue_router.callback_query(
+    F.data.startswith("adm:q:as:pick:"),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_assign_manual_pick(
+    cq: CallbackQuery,
+    staff: StaffUser,
+) -> None:
+    parts = cq.data.split(":")
+    try:
+        order_id = int(parts[4])
+        page = int(parts[5])
+        master_id = int(parts[6])
+    except (IndexError, ValueError):
+        await cq.answer("Некорректные параметры", show_alert=True)
+        return
+
+    orders_service = get_service(cq.message.bot, "orders_service")
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer("Заявка не найдена", show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer("Нет доступа к заявке", show_alert=True)
+        return
+
+    distribution_service = get_service(cq.message.bot, "distribution_service")
+    ok, message = await distribution_service.send_manual_offer(
+        order_id,
+        master_id,
+        staff.id,
+    )
+    if not ok:
+        await cq.answer(message, show_alert=True)
+        return
+
+    masters, _ = await orders_service.manual_candidates(
+        order_id,
+        page=page,
+        page_size=MANUAL_PAGE_SIZE,
+    )
+    candidate = next((m for m in masters if m.id == master_id), None)
+    summary = master_brief_line(candidate) if candidate else f"Мастер #{master_id}"
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📄 Карточка", callback_data=f"adm:q:card:{order_id}")
+    builder.button(
+        text="⬅️ Список",
+        callback_data=f"adm:q:as:man:{order_id}:{page}",
+    )
+    builder.adjust(1)
+    text_lines = [
+        f"Заявка #{order.id}",
+        summary,
+        "",
+        "Оффер отправлен мастеру.",
+    ]
+    try:
+        await cq.message.edit_text(
+            "\n".join(text_lines),
+            reply_markup=builder.as_markup(),
+        )
+    except TelegramBadRequest as exc:
+        if exc.message != "Message is not modified":
+            await cq.message.answer(
+                "\n".join(text_lines),
+                reply_markup=builder.as_markup(),
+            )
+    await cq.answer("Оффер отправлен")
+
+
+
+
+@queue_router.callback_query(
+    F.data.startswith("adm:q:gar:"),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_guarantee(cq: CallbackQuery, staff: StaffUser) -> None:
+    parts = cq.data.split(":")
+    try:
+        order_id = int(parts[3])
+    except (IndexError, ValueError):
+        await cq.answer("Некорректный идентификатор заявки", show_alert=True)
+        return
+
+    orders_service = get_service(cq.message.bot, "orders_service")
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer("Заявка не найдена", show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer("Нет доступа к заявке", show_alert=True)
+        return
+
+    status = (order.status or "").upper()
+    if status != "CLOSED":
+        await cq.answer("Создать гарантию можно только из закрытой заявки", show_alert=True)
+        return
+    if order.order_type is OrderType.GUARANTEE:
+        await cq.answer("Это уже гарантийная заявка", show_alert=True)
+        return
+    if not order.master_id:
+        await cq.answer("У заявки нет исходного мастера", show_alert=True)
+        return
+    if await orders_service.has_active_guarantee(order.id):
+        await cq.answer("Активная гарантия уже существует", show_alert=True)
+        return
+
+    try:
+        new_order_id = await orders_service.create_guarantee_order(order.id, staff.id)
+    except GuaranteeError as exc:
+        await cq.answer(str(exc), show_alert=True)
+        return
+
+    updated = await orders_service.get_card(order_id)
+    history = await orders_service.list_status_history(order_id, limit=ORDER_CARD_HISTORY_LIMIT)
+    await _render_order_card(cq.message, updated or order, history, show_guarantee=False)
+
+    await cq.message.answer(
+        f"Гарантийная заявка #{new_order_id} создана и отправлена в распределение."
+    )
+    await cq.answer()
+
+
+@queue_router.callback_query(
+    F.data.startswith("adm:q:ret:"),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_return(cq: CallbackQuery, staff: StaffUser) -> None:
+    parts = cq.data.split(":")
+    try:
+        order_id = int(parts[3])
+    except (IndexError, ValueError):
+        await cq.answer("Некорректный идентификатор заявки", show_alert=True)
+        return
+    orders_service = get_service(cq.message.bot, "orders_service")
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer("Заявка не найдена", show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer("Нет доступа к заявке", show_alert=True)
+        return
+    ok = await orders_service.return_to_search(order_id, staff.id)
+    if not ok:
+        await cq.answer("Не удалось вернуть заявку в поиск", show_alert=True)
+        return
+    updated = await orders_service.get_card(order_id)
+    if not updated:
+        await cq.answer("Заявка не найдена", show_alert=True)
+        return
+    history = await orders_service.list_status_history(order_id, limit=ORDER_CARD_HISTORY_LIMIT)
+    show_guarantee = await _should_show_guarantee_button(updated, orders_service)
+    await _render_order_card(cq.message, updated, history, show_guarantee=show_guarantee)
+    await cq.answer("Заявка возвращена в поиск")
+
+
+@queue_router.callback_query(
+    F.data.startswith("adm:q:cnl:"),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_cancel_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    parts = cq.data.split(":")
+    try:
+        order_id = int(parts[3])
+    except (IndexError, ValueError):
+        await cq.answer("Некорректный идентификатор заявки", show_alert=True)
+        return
+    orders_service = get_service(cq.message.bot, "orders_service")
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer("Заявка не найдена", show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer("Нет доступа к заявке", show_alert=True)
+        return
+    await state.set_state(QueueActionFSM.cancel_reason)
+    await state.update_data(
+        {
+            CANCEL_ORDER_KEY: order_id,
+            CANCEL_CHAT_KEY: cq.message.chat.id,
+            CANCEL_MESSAGE_KEY: cq.message.message_id,
+        }
+    )
+    await cq.message.edit_text(
+        "Введите причину отмены (от 3 до 200 символов). Отправьте /cancel для выхода.",
+        reply_markup=queue_cancel_keyboard(order_id),
+    )
+    await cq.answer()
+
+
+@queue_router.callback_query(
+    F.data.startswith("adm:q:cnl:bk:"),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_cancel_back(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    parts = cq.data.split(":")
+    try:
+        order_id = int(parts[4])
+    except (IndexError, ValueError):
+        await cq.answer("Некорректные параметры", show_alert=True)
+        return
+    orders_service = get_service(cq.message.bot, "orders_service")
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await _clear_cancel_state(state)
+        await cq.answer("Заявка не найдена", show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await _clear_cancel_state(state)
+        await cq.answer("Нет доступа к заявке", show_alert=True)
+        return
+    history = await orders_service.list_status_history(order_id, limit=ORDER_CARD_HISTORY_LIMIT)
+    show_guarantee = await _should_show_guarantee_button(order, orders_service)
+    await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee)
+    await _clear_cancel_state(state)
+    await cq.answer()
+
+
+@queue_router.message(
+    StateFilter(QueueActionFSM.cancel_reason),
+    StaffRoleFilter(_ALLOWED_ROLES),
+    F.text == "/cancel",
+)
+async def queue_cancel_abort(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+    data = await state.get_data()
+    order_id = data.get(CANCEL_ORDER_KEY)
+    chat_id = data.get(CANCEL_CHAT_KEY)
+    message_id = data.get(CANCEL_MESSAGE_KEY)
+    await _clear_cancel_state(state)
+    await msg.answer("Отмена действия.")
+    if not order_id or not chat_id or not message_id:
+        return
+    orders_service = get_service(msg.bot, "orders_service")
+    order = await orders_service.get_card(int(order_id))
+    if not order:
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        return
+    history = await orders_service.list_status_history(int(order_id), limit=ORDER_CARD_HISTORY_LIMIT)
+    text_body = _format_order_card_text(order, history)
+    markup = _order_card_markup(order, show_guarantee=show_guarantee)
+    try:
+        await msg.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=text_body,
+            reply_markup=markup,
+        )
+    except TelegramBadRequest as exc:
+        if exc.message != "Message is not modified":
+            await msg.bot.send_message(chat_id, text_body, reply_markup=markup)
+
+
+@queue_router.message(
+    StateFilter(QueueActionFSM.cancel_reason),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+    reason = (msg.text or "").strip()
+    if not reason:
+        await msg.answer("Причина отмены должна быть текстом.")
+        return
+    if len(reason) < CANCEL_REASON_MIN or len(reason) > CANCEL_REASON_MAX:
+        await msg.answer(
+            f"Причина должна содержать от {CANCEL_REASON_MIN} до {CANCEL_REASON_MAX} символов."
+        )
+        return
+    data = await state.get_data()
+    order_id = data.get(CANCEL_ORDER_KEY)
+    chat_id = data.get(CANCEL_CHAT_KEY)
+    message_id = data.get(CANCEL_MESSAGE_KEY)
+    if not order_id or not chat_id or not message_id:
+        await _clear_cancel_state(state)
+        await msg.answer("Не удалось определить заявку. Откройте карточку снова.")
+        return
+    orders_service = get_service(msg.bot, "orders_service")
+    order = await orders_service.get_card(int(order_id))
+    if not order:
+        await _clear_cancel_state(state)
+        await msg.answer("Заявка не найдена.")
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await _clear_cancel_state(state)
+        await msg.answer("Нет доступа к заявке.")
+        return
+    ok = await orders_service.cancel(int(order_id), reason=reason, by_staff_id=staff.id)
+    if ok:
+        await msg.answer("Заявка отменена.")
+    else:
+        await msg.answer("Не удалось отменить заявку.")
+    updated = await orders_service.get_card(int(order_id))
+    if updated:
+        history = await orders_service.list_status_history(int(order_id), limit=ORDER_CARD_HISTORY_LIMIT)
+        text_body = _format_order_card_text(updated, history)
+        markup = _order_card_markup(updated)
+        try:
+            await msg.bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=text_body,
+                reply_markup=markup,
+            )
+        except TelegramBadRequest as exc:
+            if exc.message != "Message is not modified":
+                await msg.bot.send_message(chat_id, text_body, reply_markup=markup)
+    await _clear_cancel_state(state)
+
+
+@queue_router.callback_query(
+    F.data.startswith('adm:q:att:'),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_attachment(cq: CallbackQuery, staff: StaffUser) -> None:
+    parts = cq.data.split(':')
+    try:
+        order_id = int(parts[3])
+        attachment_id = int(parts[4])
+    except (IndexError, ValueError):
+        await cq.answer('Некорректный файл', show_alert=True)
+        return
+    orders_service = get_service(cq.message.bot, 'orders_service')
+    order = await orders_service.get_card(order_id)
+    if not order:
+        await cq.answer('Заявка не найдена', show_alert=True)
+        return
+    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
+        await cq.answer('Нет доступа к заявке', show_alert=True)
+        return
+    attachment = await orders_service.get_order_attachment(order_id, attachment_id)
+    if not attachment:
+        await cq.answer('Файл не найден', show_alert=True)
+        return
+    caption = attachment.caption or None
+    file_type = (attachment.file_type or '').upper()
+    try:
+        if file_type.endswith('PHOTO'):
+            await cq.message.answer_photo(attachment.file_id, caption=caption)
+        else:
+            await cq.message.answer_document(attachment.file_id, caption=caption)
+    except TelegramBadRequest as exc:
+        await cq.answer(f'Не удалось отправить файл: {exc.message}', show_alert=True)
+        return
+    await cq.answer()
 
 @queue_router.callback_query(
     F.data == "adm:q:bk",

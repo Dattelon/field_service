@@ -13,6 +13,7 @@ from sqlalchemy.sql import func
 
 from field_service.db.session import SessionLocal
 from field_service.db import models as m
+from field_service.services import live_log
 from field_service.services.settings_service import get_timezone, get_working_window
 
 UTC = timezone.utc
@@ -292,16 +293,22 @@ async def autoblock_guarantee_timeouts(session: AsyncSession) -> int:
              AND ofr.master_id = o.preferred_master_id
              AND m.is_blocked = FALSE
         )
-        UPDATE masters SET is_blocked=TRUE, blocked_at=NOW(), blocked_reason='guarantee_timeout'
+        UPDATE masters SET is_blocked=TRUE, blocked_at=NOW(), blocked_reason='guarantee_refusal'
          WHERE id IN (SELECT mid FROM timed)
          RETURNING id
         """
         )
     )
     changed = rows.fetchall()
-    if changed:
-        print(f"[dist] autoblock_guarantee_timeouts count={len(changed)}")
-    return len(changed)
+    master_ids = [int(row[0]) for row in changed]
+    for mid in master_ids:
+        message = f"guarantee_autoblock mid={mid} reason=timeout"
+        print(f"[dist] {message}")
+        try:
+            live_log.push("dist", message, level="WARN")
+        except Exception:
+            pass
+    return len(master_ids)
 
 
 async def autoblock_guarantee_declines(session: AsyncSession) -> int:
@@ -323,16 +330,22 @@ async def autoblock_guarantee_declines(session: AsyncSession) -> int:
         UPDATE masters
            SET is_blocked = TRUE,
                blocked_at = NOW(),
-               blocked_reason = 'guarantee_decline'
+               blocked_reason = 'guarantee_refusal'
          WHERE id IN (SELECT mid FROM declined)
          RETURNING id
         """
         )
     )
     changed = rows.fetchall()
-    if changed:
-        print(f"[dist] autoblock_guarantee_declines count={len(changed)}")
-    return len(changed)
+    master_ids = [int(row[0]) for row in changed]
+    for mid in master_ids:
+        message = f"guarantee_autoblock mid={mid} reason=decline"
+        print(f"[dist] {message}")
+        try:
+            live_log.push("dist", message, level="WARN")
+        except Exception:
+            pass
+    return len(master_ids)
 
 
 async def expire_sent_offers(session: AsyncSession, now: datetime) -> int:

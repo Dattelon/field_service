@@ -12,7 +12,8 @@ from field_service.db import models as m
 from field_service.services import distribution_worker as dw
 from field_service.services.commission_service import (
     apply_overdue_commissions,
-    create_commission_for_order,
+    CommissionOverdueEvent,
+    CommissionService,
 )
 from field_service.services.onboarding_service import (
     ensure_master,
@@ -146,6 +147,26 @@ async def test_onboarding_validations(async_session) -> None:
 
 @pytest.mark.asyncio
 async def test_commission_creation_and_overdue_block(async_session) -> None:
+    owner = m.staff_users(
+        tg_user_id=500,
+        role=m.StaffRole.ADMIN,
+        full_name='Owner',
+        phone='+70000000000',
+        commission_requisites={
+            'methods': ['card'],
+            'card_number': '4000123412341234',
+            'card_holder': 'Owner',
+            'card_bank': 'Test Bank',
+            'sbp_phone': '',
+            'sbp_bank': '',
+            'sbp_qr_file_id': '',
+            'other_text': '',
+            'comment_template': 'Komissiya #<order_id>',
+        },
+    )
+    async_session.add(owner)
+    await async_session.flush()
+
     city = m.cities(name="Test City")
     async_session.add(city)
     await async_session.flush()
@@ -174,7 +195,7 @@ async def test_commission_creation_and_overdue_block(async_session) -> None:
     async_session.add(order)
     await async_session.flush()
 
-    commission = await create_commission_for_order(async_session, order, master)
+    commission = await CommissionService(async_session).create_for_order(order.id)
     assert commission is not None
     assert commission.status == m.CommissionStatus.WAIT_PAY
     assert commission.amount == Decimal("1500.00")
@@ -184,10 +205,11 @@ async def test_commission_creation_and_overdue_block(async_session) -> None:
     commission.deadline_at = datetime.now(UTC) - timedelta(hours=4)
     await async_session.flush()
 
-    blocked = await apply_overdue_commissions(async_session, now=datetime.now(UTC))
+    events = await apply_overdue_commissions(async_session, now=datetime.now(UTC))
     await async_session.commit()
 
-    assert blocked == [master_id]
+    assert [event.master_id for event in events] == [master_id]
+    assert [event.commission_id for event in events] == [commission_id]
 
     async_session.expire_all()
     updated_commission = (

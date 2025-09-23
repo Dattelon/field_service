@@ -1,7 +1,7 @@
 ﻿from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, time, timezone
+from datetime import date, datetime, time, timezone, timedelta
 from decimal import Decimal
 import json
 import secrets
@@ -9,6 +9,7 @@ import string
 from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
 
 from sqlalchemy import and_, delete, func, insert, select, text, update
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rapidfuzz import fuzz, process
@@ -17,7 +18,11 @@ from field_service.config import settings
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import distribution_worker as dw
+from field_service.services import live_log
 from field_service.services import settings_service as settings_store
+from field_service.services import owner_requisites_service as owner_reqs
+from field_service.services import guarantee_service
+from field_service.services.guarantee_service import GuaranteeError
 
 from .dto import (
     CityRef,
@@ -33,6 +38,7 @@ from .dto import (
     NewOrderData,
     OrderAttachment,
     OrderDetail,
+    OrderStatusHistoryItem,
     OrderListItem,
     OrderType,
     StaffAccessCode,
@@ -41,9 +47,16 @@ from .dto import (
     StaffUser,
     StreetRef,
     TimeslotOption,
+    WaitPayRecipient,
 )
 
 UTC = timezone.utc
+PAYMENT_METHOD_LABELS = {
+    'card': 'Карта',
+    'sbp': 'СБП',
+    'cash': 'Наличные',
+}
+
 LOCAL_TZ = settings_store.get_timezone()
 
 def _format_datetime_local(value: Optional[datetime]) -> Optional[str]:
@@ -136,7 +149,7 @@ def _prepare_setting_value(value: object, value_type: str) -> str:
     return "" if value is None else str(value)
 
 
-_format_created_at(dt: Optional[datetime]) -> str:
+def _format_created_at(dt: Optional[datetime]) -> str:
     if not dt:
         return ""
     if dt.tzinfo is None:
@@ -465,6 +478,32 @@ class DBStaffService:
                 )
             return items, has_next
 
+    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
+        async with self._session_factory() as session:
+            rows = await session.execute(
+                select(
+                    m.masters.id,
+                    m.masters.tg_user_id,
+                    m.masters.full_name,
+                )
+                .join(m.commissions, m.commissions.master_id == m.masters.id)
+                .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
+                .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
+                .order_by(m.masters.id)
+            )
+            recipients: list[WaitPayRecipient] = []
+            for master_id, tg_user_id, full_name in rows.all():
+                if tg_user_id is None:
+                    continue
+                recipients.append(
+                    WaitPayRecipient(
+                        master_id=int(master_id),
+                        tg_user_id=int(tg_user_id),
+                        full_name=full_name or f'Master {master_id}',
+                    )
+                )
+        return recipients
+
     async def get_access_code(self, code_id: int) -> Optional[StaffAccessCode]:
         async with self._session_factory() as session:
             row = await session.execute(
@@ -659,8 +698,14 @@ class DBOrdersService:
         city_ids: Optional[Iterable[int]],
         page: int,
         page_size: int,
+        status_filter: Optional[OrderStatus] = None,
+        category: Optional[str] = None,
+        master_id: Optional[int] = None,
+        scheduled_date: Optional[date] = None,
     ) -> tuple[list[OrderListItem], bool]:
         offset = max(page - 1, 0) * page_size
+        city_filter = list(city_ids) if city_ids else None
+        allowed_statuses = [status.value for status in QUEUE_STATUSES]
         async with self._session_factory() as session:
             stmt = (
                 select(
@@ -707,8 +752,21 @@ class DBOrdersService:
                     & (m.attachments.entity_id == m.orders.id),
                     isouter=True,
                 )
-                .where(m.orders.status.in_([status.value for status in QUEUE_STATUSES]))
-                .group_by(
+            )
+            if status_filter:
+                stmt = stmt.where(m.orders.status == status_filter.value)
+            else:
+                stmt = stmt.where(m.orders.status.in_(allowed_statuses))
+            if city_filter:
+                stmt = stmt.where(m.orders.city_id.in_(city_filter))
+            if category:
+                stmt = stmt.where(m.orders.category == category)
+            if master_id:
+                stmt = stmt.where(m.orders.assigned_master_id == master_id)
+            if scheduled_date:
+                stmt = stmt.where(m.orders.scheduled_date == scheduled_date)
+            stmt = (
+                stmt.group_by(
                     m.orders.id,
                     m.orders.city_id,
                     m.cities.name,
@@ -732,8 +790,6 @@ class DBOrdersService:
                 .offset(offset)
                 .limit(page_size + 1)
             )
-            if city_ids:
-                stmt = stmt.where(m.orders.city_id.in_(list(city_ids)))
             rows = await session.execute(stmt)
             fetched = rows.all()
         has_next = len(fetched) > page_size
@@ -767,6 +823,32 @@ class DBOrdersService:
                 )
             )
         return items, has_next
+
+    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
+        async with self._session_factory() as session:
+            rows = await session.execute(
+                select(
+                    m.masters.id,
+                    m.masters.tg_user_id,
+                    m.masters.full_name,
+                )
+                .join(m.commissions, m.commissions.master_id == m.masters.id)
+                .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
+                .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
+                .order_by(m.masters.id)
+            )
+            recipients: list[WaitPayRecipient] = []
+            for master_id, tg_user_id, full_name in rows.all():
+                if tg_user_id is None:
+                    continue
+                recipients.append(
+                    WaitPayRecipient(
+                        master_id=int(master_id),
+                        tg_user_id=int(tg_user_id),
+                        full_name=full_name or f'Master {master_id}',
+                    )
+                )
+        return recipients
 
     async def get_card(self, order_id: int) -> Optional[OrderDetail]:
         async with self._session_factory() as session:
@@ -842,6 +924,72 @@ class DBOrdersService:
                 attachments=attachments,
             )
 
+    async def list_status_history(
+        self, order_id: int, *, limit: int = 5
+    ) -> tuple[OrderStatusHistoryItem, ...]:
+        async with self._session_factory() as session:
+            limited = max(1, limit)
+            rows = await session.execute(
+                select(
+                    m.order_status_history.id,
+                    m.order_status_history.from_status,
+                    m.order_status_history.to_status,
+                    m.order_status_history.reason,
+                    m.order_status_history.changed_by_staff_id,
+                    m.order_status_history.changed_by_master_id,
+                    m.order_status_history.created_at,
+                )
+                .where(m.order_status_history.order_id == order_id)
+                .order_by(m.order_status_history.created_at.desc())
+                .limit(limited)
+            )
+            items: list[OrderStatusHistoryItem] = []
+            for row in rows:
+                items.append(
+                    OrderStatusHistoryItem(
+                        id=row.id,
+                        from_status=row.from_status.value if row.from_status else None,
+                        to_status=row.to_status.value if row.to_status else None,
+                        reason=row.reason,
+                        changed_by_staff_id=row.changed_by_staff_id,
+                        changed_by_master_id=row.changed_by_master_id,
+                        changed_at_local=_format_created_at(row.created_at) or "",
+                    )
+                )
+            return tuple(items)
+
+    async def get_order_attachment(
+        self, order_id: int, attachment_id: int
+    ) -> Optional[OrderAttachment]:
+        async with self._session_factory() as session:
+            row = await session.execute(
+                select(
+                    m.attachments.id,
+                    m.attachments.file_type,
+                    m.attachments.file_id,
+                    m.attachments.file_name,
+                    m.attachments.caption,
+                )
+                .where(
+                    and_(
+                        m.attachments.entity_type == m.AttachmentEntity.ORDER,
+                        m.attachments.entity_id == order_id,
+                        m.attachments.id == attachment_id,
+                    )
+                )
+                .limit(1)
+            )
+            data = row.first()
+            if not data:
+                return None
+            return OrderAttachment(
+                id=data.id,
+                file_type=str(data.file_type),
+                file_id=data.file_id,
+                file_name=data.file_name,
+                caption=data.caption,
+            )
+
     async def _load_attachments(
         self, session: AsyncSession, order_id: int
     ) -> tuple[OrderAttachment, ...]:
@@ -877,8 +1025,8 @@ class DBOrdersService:
             async with session.begin():
                 now_local = datetime.now(LOCAL_TZ)
                 current_time = now_local.time()
-                initial_status = m.OrderStatus.SEARCHING
-                if current_time >= WORKDAY_END:
+                initial_status = data.initial_status or m.OrderStatus.SEARCHING
+                if data.initial_status is None and current_time >= WORKDAY_END:
                     initial_status = m.OrderStatus.DEFERRED
                 order = m.orders(
                     city_id=data.city_id,
@@ -898,6 +1046,8 @@ class DBOrdersService:
                     slot_label=data.slot_label,
                     latitude=data.latitude,
                     longitude=data.longitude,
+                    preferred_master_id=data.preferred_master_id,
+                    guarantee_source_order_id=data.guarantee_source_order_id,
                     company_payment=Decimal(data.company_payment or 0),
                     total_price=Decimal(data.total_price or 0),
                     created_by_staff_id=data.created_by_staff_id,
@@ -930,6 +1080,64 @@ class DBOrdersService:
                     )
                 )
             return order.id
+
+    async def has_active_guarantee(self, source_order_id: int) -> bool:
+        async with self._session_factory() as session:
+            row = await session.execute(
+                select(1)
+                .where(m.orders.guarantee_source_order_id == source_order_id)
+                .where(~m.orders.status.in_([m.OrderStatus.CANCELED, m.OrderStatus.CLOSED]))
+                .limit(1)
+            )
+            return row.first() is not None
+
+    async def create_guarantee_order(self, source_order_id: int, by_staff_id: int) -> int:
+        async with self._session_factory() as session:
+            async with session.begin():
+                src_query = await session.execute(
+                    select(m.orders)
+                    .where(m.orders.id == source_order_id)
+                    .with_for_update()
+                )
+                source = src_query.scalar_one_or_none()
+                if source is None:
+                    raise GuaranteeError("source order not found")
+
+                staff = await _load_staff_access(session, by_staff_id or None)
+                if not _staff_can_access_city(staff, source.city_id):
+                    raise GuaranteeError("no access to city")
+
+                status_val = getattr(source, "status", None)
+                if isinstance(status_val, m.OrderStatus):
+                    status_is_closed = status_val == m.OrderStatus.CLOSED
+                else:
+                    status_is_closed = str(status_val).upper() == m.OrderStatus.CLOSED.value
+                if not status_is_closed:
+                    raise GuaranteeError("source order must be CLOSED")
+
+                if getattr(source, "order_type", None) == m.OrderType.GUARANTEE:
+                    raise GuaranteeError("source order already guarantee")
+
+                if not source.assigned_master_id:
+                    raise GuaranteeError("source order has no assigned master")
+
+                existing = await session.execute(
+                    select(m.orders.id)
+                    .where(m.orders.guarantee_source_order_id == source_order_id)
+                    .where(~m.orders.status.in_([m.OrderStatus.CANCELED, m.OrderStatus.CLOSED]))
+                    .limit(1)
+                )
+                if existing.first():
+                    raise GuaranteeError("guarantee already exists")
+
+                created = await guarantee_service.create_from_closed_order(
+                    session,
+                    source_order_id,
+                    source=source,
+                    created_by_staff_id=staff.id if staff else None,
+                )
+                return created.id
+
     async def return_to_search(self, order_id: int, by_staff_id: int) -> bool:
         async with self._session_factory() as session:
             async with session.begin():
@@ -948,7 +1156,11 @@ class DBOrdersService:
                     return False
                 prev_status = order.status
                 order.assigned_master_id = None
-                order.status = m.OrderStatus.SEARCHING
+                order.status = (
+                    m.OrderStatus.GUARANTEE
+                    if getattr(order, "order_type", None) == m.OrderType.GUARANTEE
+                    else m.OrderStatus.SEARCHING
+                )
                 order.updated_at = datetime.now(UTC)
                 order.version = (order.version or 0) + 1
                 order.cancel_reason = None
@@ -960,6 +1172,22 @@ class DBOrdersService:
                         reason="manual_return",
                         changed_by_staff_id=staff.id if staff else None,
                     )
+                )
+                await session.execute(
+                    update(m.offers)
+                    .where(
+                        (m.offers.order_id == order.id)
+                        & (
+                            m.offers.state.in_(
+                                [
+                                    m.OfferState.SENT,
+                                    m.OfferState.VIEWED,
+                                    m.OfferState.ACCEPTED,
+                                ]
+                            )
+                        )
+                    )
+                    .values(state=m.OfferState.CANCELED, responded_at=func.now())
                 )
         return True
 
@@ -980,6 +1208,7 @@ class DBOrdersService:
                 if order.status == m.OrderStatus.CANCELED:
                     return True
                 prev_status = order.status
+                order.assigned_master_id = None
                 order.status = m.OrderStatus.CANCELED
                 order.updated_at = datetime.now(UTC)
                 order.version = (order.version or 0) + 1
@@ -992,6 +1221,22 @@ class DBOrdersService:
                         reason=reason,
                         changed_by_staff_id=staff.id if staff else None,
                     )
+                )
+                await session.execute(
+                    update(m.offers)
+                    .where(
+                        (m.offers.order_id == order.id)
+                        & (
+                            m.offers.state.in_(
+                                [
+                                    m.OfferState.SENT,
+                                    m.OfferState.VIEWED,
+                                    m.OfferState.ACCEPTED,
+                                ]
+                            )
+                        )
+                    )
+                    .values(state=m.OfferState.CANCELED, responded_at=func.now())
                 )
         return True
 
@@ -1059,11 +1304,47 @@ class DBOrdersService:
                 )
         return True
 
+
+
+@dataclass(frozen=True)
+class AutoAssignResult:
+    message: str
+    master_id: Optional[int] = None
+    deadline: Optional[datetime] = None
+    code: str = "ok"
+
+
+
+
+def _push_dist_log(message: str, *, level: str = "INFO") -> None:
+    try:
+        live_log.push("dist", message, level=level)
+    except Exception:
+        pass
+    print(message)
+
+
+def _coerce_order_status(value: Any) -> m.OrderStatus:
+    if isinstance(value, m.OrderStatus):
+        return value
+    if value is None:
+        return m.OrderStatus.SEARCHING
+    try:
+        return m.OrderStatus(str(value))
+    except ValueError:
+        return m.OrderStatus.SEARCHING
+
+
 class DBDistributionService:
     def __init__(self, session_factory=SessionLocal) -> None:
         self._session_factory = session_factory
 
-    async def assign_auto(self, order_id: int, by_staff_id: int) -> tuple[bool, str]:
+
+    async def assign_auto(
+        self,
+        order_id: int,
+        by_staff_id: int,
+    ) -> tuple[bool, AutoAssignResult]:
         async with self._session_factory() as session:
             async with session.begin():
                 order_q = await session.execute(
@@ -1075,34 +1356,82 @@ class DBDistributionService:
                         m.orders.category,
                         m.orders.status,
                         m.orders.order_type,
-                    ).where(m.orders.id == order_id)
+                        m.orders.dist_escalated_logist_at,
+                        m.orders.dist_escalated_admin_at,
+                    )
+                    .where(m.orders.id == order_id)
+                    .with_for_update()
                 )
                 data = order_q.first()
                 if not data:
-                    return False, "Заявка не найдена"
+                    return False, AutoAssignResult(
+                        "Заявка не найдена",
+                        code="not_found",
+                    )
+
                 staff = await _load_staff_access(session, by_staff_id or None)
                 if not _staff_can_access_city(staff, data.city_id):
-                    return False, "Недостаточно прав для города"
+                    return False, AutoAssignResult(
+                        "Недостаточно прав для города",
+                        code="forbidden",
+                    )
+
+                status_enum = _coerce_order_status(getattr(data, "status", None))
+                logistic_mark = getattr(data, "dist_escalated_logist_at", None)
+
                 if data.district_id is None:
-                    return False, "Для заявки не выбран район"
+                    if logistic_mark is None:
+                        await session.execute(
+                            update(m.orders)
+                            .where(m.orders.id == order_id)
+                            .values(
+                                dist_escalated_logist_at=func.now(),
+                                dist_escalated_admin_at=None,
+                            )
+                        )
+                        await session.execute(
+                            insert(m.order_status_history).values(
+                                order_id=order_id,
+                                from_status=status_enum,
+                                to_status=status_enum,
+                                reason=f"{dw.ESC_REASON_LOGIST}:no_district",
+                            )
+                        )
+                    message = dw.log_skip_no_district(order_id)
+                    _push_dist_log(message, level="WARN")
+                    return False, AutoAssignResult(
+                        "Нельзя запустить авто: не выбран район. Заявка передана логисту.",
+                        code="no_district",
+                    )
+
                 category = getattr(data, "category", None)
                 skill_code = dw._skill_code_for_category(category)
                 if skill_code is None:
-                    return False, "Категория заказа не поддерживается для автоназначения"
-                status = getattr(data, "status", None)
+                    message = dw.log_skip_no_category(order_id, category)
+                    _push_dist_log(message, level="WARN")
+                    return False, AutoAssignResult(
+                        "Категория заказа не поддерживается для автоназначения",
+                        code="no_category",
+                    )
+
                 order_type = getattr(data, "order_type", None)
                 is_guarantee = False
-                if status is not None and str(status) == m.OrderStatus.GUARANTEE.value:
+                if status_enum is m.OrderStatus.GUARANTEE:
                     is_guarantee = True
-                if not is_guarantee and order_type is not None:
+                elif order_type is not None:
                     try:
                         is_guarantee = str(order_type) == m.OrderType.GUARANTEE.value
                     except AttributeError:
-                        is_guarantee = str(order_type).upper() == 'GUARANTEE'
+                        is_guarantee = str(order_type).upper() == "GUARANTEE"
+
                 cfg = await dw._load_config(session)  # type: ignore[attr-defined]
                 current_round = await dw.current_round(session, order_id)
                 if current_round >= cfg.rounds:
-                    return False, "Лимит автоматических попыток исчерпан"
+                    return False, AutoAssignResult(
+                        "Лимит автоматических попыток исчерпан",
+                        code="rounds_exhausted",
+                    )
+
                 candidates = await dw.candidate_rows(
                     session=session,
                     order_id=order_id,
@@ -1113,20 +1442,238 @@ class DBDistributionService:
                     limit=50,
                     force_preferred_first=is_guarantee,
                 )
-                if not candidates:
-                    return False, "Нет доступных мастеров"
-                next_round = current_round + 1
-                top = candidates[0]
-                ok = await dw.send_offer(
+
+                header = dw.log_tick_header(
+                    data,
+                    current_round + 1,
+                    cfg.rounds,
+                    cfg.sla_seconds,
+                    len(candidates),
+                )
+                _push_dist_log(header)
+
+                if is_guarantee and data.preferred_master_id and candidates:
+                    try:
+                        pref_id = int(data.preferred_master_id)
+                    except (TypeError, ValueError):
+                        pref_id = None
+                    if pref_id is not None and int(candidates[0]["mid"]) == pref_id:
+                        _push_dist_log(dw.log_force_first(pref_id))
+
+                if candidates:
+                    top_limit = min(len(candidates), 10)
+                    ranked_items = ", ".join(
+                        dw.fmt_rank_item(
+                            {
+                                "mid": row.get("mid"),
+                                "car": row.get("car"),
+                                "avg_week": float(row.get("avg_week") or 0),
+                                "rating": float(row.get("rating") or 0),
+                                "rnd": float(row.get("rnd") or 0),
+                                "shift": row.get("shift", True),
+                            }
+                        )
+                        for row in candidates[:top_limit]
+                    )
+                    if ranked_items:
+                        _push_dist_log("ranked=[\n  " + ranked_items + "\n]")
+
+                    master_id = int(candidates[0]["mid"])
+                    next_round = current_round + 1
+                    sent = await dw.send_offer(
+                        session,
+                        order_id,
+                        master_id,
+                        next_round,
+                        cfg.sla_seconds,
+                    )
+                    if not sent:
+                        conflict = (
+                            f"[dist] order={order_id} race_conflict: offer exists for mid={master_id}"
+                        )
+                        _push_dist_log(conflict, level="WARN")
+                        return False, AutoAssignResult(
+                            "Не удалось отправить оффер мастеру",
+                            code="offer_conflict",
+                        )
+
+                    await session.execute(
+                        update(m.orders)
+                        .where(m.orders.id == order_id)
+                        .values(
+                            dist_escalated_logist_at=None,
+                            dist_escalated_admin_at=None,
+                        )
+                    )
+
+                    deadline = datetime.now(timezone.utc) + timedelta(seconds=cfg.sla_seconds)
+                    _push_dist_log(dw.log_decision_offer(master_id, deadline))
+                    return True, AutoAssignResult(
+                        message=(
+                            f"Оффер отправлен мастеру {master_id} до {deadline.isoformat()}"
+                        ),
+                        master_id=master_id,
+                        deadline=deadline,
+                        code="offer_sent",
+                    )
+
+                if logistic_mark is None:
+                    await session.execute(
+                        update(m.orders)
+                        .where(m.orders.id == order_id)
+                        .values(
+                            dist_escalated_logist_at=func.now(),
+                            dist_escalated_admin_at=None,
+                        )
+                    )
+                    await session.execute(
+                        insert(m.order_status_history).values(
+                            order_id=order_id,
+                            from_status=status_enum,
+                            to_status=status_enum,
+                            reason=f"{dw.ESC_REASON_LOGIST}:no_candidates",
+                        )
+                    )
+
+                _push_dist_log(dw.log_escalate(order_id), level="WARN")
+                return False, AutoAssignResult(
+                    "Кандидатов нет — эскалация",
+                    code="no_candidates",
+                )
+
+
+
+    async def send_manual_offer(
+        self,
+        order_id: int,
+        master_id: int,
+        by_staff_id: int,
+    ) -> tuple[bool, str]:
+        async with self._session_factory() as session:
+            async with session.begin():
+                order_row = await session.execute(
+                    select(
+                        m.orders.id,
+                        m.orders.city_id,
+                        m.orders.district_id,
+                        m.orders.category,
+                        m.orders.status,
+                        m.orders.order_type,
+                    )
+                    .where(m.orders.id == order_id)
+                    .with_for_update()
+                )
+                order = order_row.first()
+                if not order:
+                    return False, "Заявка не найдена"
+
+                staff = await _load_staff_access(session, by_staff_id or None)
+                if not _staff_can_access_city(staff, order.city_id):
+                    return False, "Нет доступа к городу"
+
+                status = getattr(order, "status", None)
+                allowed_statuses = {
+                    m.OrderStatus.SEARCHING,
+                    m.OrderStatus.GUARANTEE,
+                }
+                status_enum = (
+                    status if isinstance(status, m.OrderStatus) else m.OrderStatus(str(status))
+                    if status is not None
+                    else m.OrderStatus.SEARCHING
+                )
+                if status_enum not in allowed_statuses:
+                    return False, "Заявка не в поиске"
+
+                category = getattr(order, "category", None)
+                skill_code = dw._skill_code_for_category(category)
+                if skill_code is None:
+                    return False, "Категория заявки не поддерживается"
+
+                master_row = await session.execute(
+                    select(
+                        m.masters.id,
+                        m.masters.city_id,
+                        m.masters.is_active,
+                        m.masters.is_blocked,
+                        m.masters.verified,
+                    ).where(m.masters.id == master_id)
+                )
+                master = master_row.first()
+                if not master:
+                    return False, "Мастер не найден"
+                if master.city_id != order.city_id:
+                    return False, "Мастер работает в другом городе"
+                if not master.is_active or master.is_blocked or not master.verified:
+                    return False, "Мастер недоступен"
+
+                if order.district_id:
+                    district_row = await session.execute(
+                        select(m.master_districts)
+                        .where(
+                            (m.master_districts.master_id == master_id)
+                            & (m.master_districts.district_id == order.district_id)
+                        )
+                        .limit(1)
+                    )
+                    if district_row.first() is None:
+                        return False, "Мастер не обслуживает район"
+
+                skill_row = await session.execute(
+                    select(m.master_skills.id)
+                    .join(m.skills, m.master_skills.skill_id == m.skills.id)
+                    .where(
+                        (m.master_skills.master_id == master_id)
+                        & (m.skills.code == skill_code)
+                        & (m.skills.is_active == True)
+                    )
+                    .limit(1)
+                )
+                if skill_row.first() is None:
+                    return False, "У мастера нет нужного навыка"
+
+                existing_offer = await session.execute(
+                    select(m.offers.id)
+                    .where(
+                        (m.offers.order_id == order_id)
+                        & (m.offers.master_id == master_id)
+                        & (
+                            m.offers.state.in_(
+                                [
+                                    m.OfferState.SENT,
+                                    m.OfferState.VIEWED,
+                                    m.OfferState.ACCEPTED,
+                                ]
+                            )
+                        )
+                    )
+                    .limit(1)
+                )
+                if existing_offer.first() is not None:
+                    return False, "Оффер уже отправлен этому мастеру"
+
+                cfg = await dw._load_config(session)
+                current_round = await dw.current_round(session, order_id)
+                round_number = (current_round or 0) + 1
+                sent = await dw.send_offer(
                     session,
                     order_id,
-                    int(top["mid"]),
-                    next_round,
+                    master_id,
+                    round_number,
                     cfg.sla_seconds,
                 )
-                if not ok:
-                    return False, "Не удалось отправить оффер мастеру"
+                if not sent:
+                    return False, "Не удалось отправить оффер"
+
+                await session.execute(
+                    update(m.orders)
+                    .where(m.orders.id == order_id)
+                    .values(
+                        dist_escalated_logist_at=None,
+                        dist_escalated_admin_at=None,
+                    )
+                )
         return True, "Оффер отправлен"
+
 
 
 class DBMastersService:
@@ -1211,6 +1758,32 @@ class DBMastersService:
                 )
             )
         return items, has_next
+
+    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
+        async with self._session_factory() as session:
+            rows = await session.execute(
+                select(
+                    m.masters.id,
+                    m.masters.tg_user_id,
+                    m.masters.full_name,
+                )
+                .join(m.commissions, m.commissions.master_id == m.masters.id)
+                .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
+                .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
+                .order_by(m.masters.id)
+            )
+            recipients: list[WaitPayRecipient] = []
+            for master_id, tg_user_id, full_name in rows.all():
+                if tg_user_id is None:
+                    continue
+                recipients.append(
+                    WaitPayRecipient(
+                        master_id=int(master_id),
+                        tg_user_id=int(tg_user_id),
+                        full_name=full_name or f'Master {master_id}',
+                    )
+                )
+        return recipients
 
     async def get_master_detail(self, master_id: int) -> Optional[MasterDetail]:
         async with self._session_factory() as session:
@@ -1320,6 +1893,7 @@ class DBMastersService:
                 documents=documents,
             )
 
+
     async def manual_candidates(
         self,
         order_id: int,
@@ -1327,6 +1901,9 @@ class DBMastersService:
         page: int,
         page_size: int,
     ) -> tuple[list[MasterBrief], bool]:
+        page = max(page, 1)
+        offset = (page - 1) * page_size
+        limit = page_size + 1
         async with self._session_factory() as session:
             order_q = await session.execute(
                 select(
@@ -1345,65 +1922,138 @@ class DBMastersService:
             skill_code = dw._skill_code_for_category(category)
             if skill_code is None:
                 return [], False
-            status = getattr(order_row, "status", None)
-            order_type = getattr(order_row, "order_type", None)
-            is_guarantee = False
-            if status is not None and str(status) == m.OrderStatus.GUARANTEE.value:
-                is_guarantee = True
-            if not is_guarantee and order_type is not None:
-                try:
-                    is_guarantee = str(order_type) == m.OrderType.GUARANTEE.value
-                except AttributeError:
-                    is_guarantee = str(order_type).upper() == 'GUARANTEE'
-            candidates = await dw.candidate_rows(
-                session=session,
-                order_id=order_id,
-                city_id=order_row.city_id,
-                district_id=order_row.district_id,
-                preferred_master_id=order_row.preferred_master_id,
-                skill_code=skill_code,
-                limit=50,
-                force_preferred_first=is_guarantee,
+
+            global_limit = await dw._max_active_limit_for(session)
+            now = datetime.now(UTC)
+            rows = await session.execute(
+                text(
+                    """
+WITH active_cnt AS (
+  SELECT assigned_master_id AS mid, COUNT(*) AS cnt
+    FROM orders
+   WHERE assigned_master_id IS NOT NULL
+     AND status IN ('ASSIGNED','EN_ROUTE','WORKING','PAYMENT')
+   GROUP BY assigned_master_id
+),
+avg7 AS (
+  SELECT assigned_master_id AS mid, AVG(total_price)::numeric(10,2) AS avg_check
+    FROM orders
+   WHERE assigned_master_id IS NOT NULL
+     AND status IN ('PAYMENT','CLOSED')
+     AND created_at >= NOW() - INTERVAL '7 days'
+   GROUP BY assigned_master_id
+)
+SELECT
+    m.id AS mid,
+    m.full_name,
+    m.city_id,
+    m.has_vehicle,
+    m.rating,
+    m.is_on_shift,
+    m.break_until,
+    m.is_active,
+    m.verified,
+    COALESCE(ac.cnt, 0)      AS active_cnt,
+    COALESCE(m.max_active_orders_override, :gmax) AS max_limit,
+    COALESCE(a.avg_check, 0) AS avg_week
+FROM masters m
+JOIN master_districts md
+  ON md.master_id = m.id
+ AND md.district_id = :did
+JOIN master_skills ms
+  ON ms.master_id = m.id
+JOIN skills s
+  ON s.id = ms.skill_id
+ AND s.code = :skill_code
+ AND s.is_active = TRUE
+LEFT JOIN active_cnt ac ON ac.mid = m.id
+LEFT JOIN avg7 a ON a.mid = m.id
+WHERE m.city_id = :cid
+  AND m.is_blocked = FALSE
+  AND m.verified = TRUE
+  AND m.is_active = TRUE
+  AND NOT EXISTS (
+    SELECT 1
+      FROM offers o
+     WHERE o.order_id = :oid
+       AND o.master_id = m.id
+       AND o.state IN ('SENT','VIEWED','ACCEPTED')
+  )
+ORDER BY
+  CASE WHEN m.is_on_shift = TRUE AND (m.break_until IS NULL OR m.break_until <= :now) THEN 1 ELSE 0 END DESC,
+  CASE WHEN m.has_vehicle THEN 1 ELSE 0 END DESC,
+  a.avg_check DESC NULLS LAST,
+  m.rating DESC NULLS LAST
+OFFSET :offset
+LIMIT :limit
+                    """
+                ).bindparams(
+                    cid=order_row.city_id,
+                    did=order_row.district_id,
+                    oid=order_id,
+                    skill_code=skill_code,
+                    offset=offset,
+                    limit=limit,
+                    gmax=global_limit,
+                    now=now,
+                )
             )
-            subset = candidates[start : start + page_size]
-            has_next = len(candidates) > start + page_size
-            ids = [int(c["mid"]) for c in subset]
-            if not ids:
-                return [], False
-            masters_q = await session.execute(
-                select(
-                    m.masters.id,
-                    m.masters.full_name,
-                    m.masters.city_id,
-                    m.masters.has_vehicle,
-                    m.masters.rating,
-                    m.masters.is_on_shift,
-                    m.masters.is_active,
-                    m.masters.verified,
-                ).where(m.masters.id.in_(ids))
-            )
-            master_map = {row.id: row for row in masters_q}
+            fetched = rows.mappings().all()
+        has_next = len(fetched) > page_size
+        result_rows = fetched[:page_size]
         briefs: list[MasterBrief] = []
-        for cand in subset:
-            mid = int(cand["mid"])
-            info = master_map.get(mid)
-            if not info:
-                continue
+        for row in result_rows:
+            data = dict(row)
+            mid = int(data["mid"])
+            max_limit = int(data["max_limit"] or global_limit)
+            active_cnt = int(data["active_cnt"] or 0)
+            break_until = data.get("break_until")
+            on_break = bool(break_until and break_until > now)
             briefs.append(
                 MasterBrief(
                     id=mid,
-                    full_name=info.full_name or f"Мастер #{mid}",
-                    city_id=info.city_id,
-                    has_car=bool(info.has_vehicle),
-                    avg_week_check=float(cand.get("avg_week") or 0),
-                    rating_avg=float(info.rating or 0),
-                    is_on_shift=bool(info.is_on_shift),
-                    is_active=bool(info.is_active),
-                    verified=bool(info.verified),
+                    full_name=data.get("full_name") or f"Мастер #{mid}",
+                    city_id=int(data.get("city_id") or 0),
+                    has_car=bool(data.get("has_vehicle")),
+                    avg_week_check=float(data.get("avg_week") or 0),
+                    rating_avg=float(data.get("rating") or 0),
+                    is_on_shift=bool(data.get("is_on_shift")),
+                    is_active=bool(data.get("is_active")),
+                    verified=bool(data.get("verified")),
                     in_district=True,
+                    active_orders=active_cnt,
+                    max_active_orders=max_limit,
+                    on_break=on_break,
                 )
             )
         return briefs, has_next
+
+
+    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
+        async with self._session_factory() as session:
+            rows = await session.execute(
+                select(
+                    m.masters.id,
+                    m.masters.tg_user_id,
+                    m.masters.full_name,
+                )
+                .join(m.commissions, m.commissions.master_id == m.masters.id)
+                .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
+                .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
+                .order_by(m.masters.id)
+            )
+            recipients: list[WaitPayRecipient] = []
+            for master_id, tg_user_id, full_name in rows.all():
+                if tg_user_id is None:
+                    continue
+                recipients.append(
+                    WaitPayRecipient(
+                        master_id=int(master_id),
+                        tg_user_id=int(tg_user_id),
+                        full_name=full_name or f"Мастер #{int(master_id)}",
+                    )
+                )
+        return recipients
 
     async def approve_master(self, master_id: int, by_staff_id: int) -> bool:
         async with self._session_factory() as session:
@@ -1569,6 +2219,32 @@ class DBFinanceService:
             )
         return items, has_next
 
+    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
+        async with self._session_factory() as session:
+            rows = await session.execute(
+                select(
+                    m.masters.id,
+                    m.masters.tg_user_id,
+                    m.masters.full_name,
+                )
+                .join(m.commissions, m.commissions.master_id == m.masters.id)
+                .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
+                .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
+                .order_by(m.masters.id)
+            )
+            recipients: list[WaitPayRecipient] = []
+            for master_id, tg_user_id, full_name in rows.all():
+                if tg_user_id is None:
+                    continue
+                recipients.append(
+                    WaitPayRecipient(
+                        master_id=int(master_id),
+                        tg_user_id=int(tg_user_id),
+                        full_name=full_name or f'Master {master_id}',
+                    )
+                )
+        return recipients
+
     async def get_commission_detail(
         self, commission_id: int
     ) -> Optional[CommissionDetail]:
@@ -1603,7 +2279,7 @@ class DBFinanceService:
             attachments = tuple(
                 CommissionAttachment(
                     id=int(att.id),
-                    file_type=str(att.file_type),
+                    file_type=str(getattr(att.file_type, 'value', att.file_type)),
                     file_id=att.file_id,
                     file_name=att.file_name,
                     caption=att.caption,
@@ -1615,21 +2291,24 @@ class DBFinanceService:
             paid_reported = _format_created_at(commission.paid_reported_at)
             paid_approved = _format_created_at(commission.paid_approved_at)
             snapshot = commission.pay_to_snapshot or {}
-            methods = tuple(str(meth) for meth in snapshot.get("methods", []))
+            methods = tuple(
+                PAYMENT_METHOD_LABELS.get(str(meth), str(meth))
+                for meth in snapshot.get("methods", [])
+                if str(meth)
+            )
             snapshot_map: dict[str, Optional[str]] = {
-                key: snapshot.get(key)
-                for key in (
-                    "card_number",
-                    "card_holder",
-                    "card_bank",
-                    "sbp_phone",
-                    "sbp_bank",
-                    "sbp_comment",
-                    "other_text",
-                )
+                "card_last4": snapshot.get("card_number_last4"),
+                "card_holder": snapshot.get("card_holder"),
+                "card_bank": snapshot.get("card_bank"),
+                "sbp_phone": snapshot.get("sbp_phone_masked"),
+                "sbp_bank": snapshot.get("sbp_bank"),
+                "other_text": snapshot.get("other_text"),
+                "comment": snapshot.get("comment"),
+                "qr_file_id": snapshot.get("sbp_qr_file_id"),
             }
             master_phone = getattr(master, "phone", None) if master else None
             return CommissionDetail(
+
                 id=commission.id,
                 order_id=commission.order_id,
                 master_id=commission.master_id,
@@ -1653,18 +2332,50 @@ class DBFinanceService:
                 attachments=attachments,
             )
 
-    async def approve(self, commission_id: int, by_staff_id: int) -> bool:
+    async def approve(self, commission_id: int, *, paid_amount: Decimal, by_staff_id: int) -> bool:
+        paid_amount = Decimal(str(paid_amount)).quantize(Decimal('0.01'))
         async with self._session_factory() as session:
             async with session.begin():
+                row = await session.execute(
+                    select(m.commissions, m.orders)
+                    .join(m.orders, m.orders.id == m.commissions.order_id)
+                    .where(m.commissions.id == commission_id)
+                    .with_for_update()
+                )
+                result = row.first()
+                if not result:
+                    return False
+                commission_row, order_row = result
                 await session.execute(
                     update(m.commissions)
                     .where(m.commissions.id == commission_id)
                     .values(
                         status=m.CommissionStatus.APPROVED,
                         is_paid=True,
+                        paid_amount=paid_amount,
                         paid_approved_at=datetime.now(UTC),
+                        payment_reference=None,
                     )
                 )
+                if order_row.status != m.OrderStatus.CLOSED:
+                    await session.execute(
+                        update(m.orders)
+                        .where(m.orders.id == order_row.id)
+                        .values(
+                            status=m.OrderStatus.CLOSED,
+                            updated_at=func.now(),
+                            version=order_row.version + 1,
+                        )
+                    )
+                    await session.execute(
+                        insert(m.order_status_history).values(
+                            order_id=order_row.id,
+                            from_status=order_row.status,
+                            to_status=m.OrderStatus.CLOSED,
+                            changed_by_staff_id=by_staff_id,
+                            reason='commission_paid',
+                        )
+                    )
         return True
 
     async def reject(
@@ -1679,6 +2390,8 @@ class DBFinanceService:
                         status=m.CommissionStatus.WAIT_PAY,
                         is_paid=False,
                         paid_approved_at=None,
+                        paid_reported_at=None,
+                        paid_amount=None,
                         payment_reference=reason,
                     )
                 )
@@ -1694,8 +2407,10 @@ class DBFinanceService:
                     .where(m.masters.id == master_id)
                     .values(
                         is_blocked=True,
+                        is_active=False,
                         blocked_at=datetime.now(UTC),
                         blocked_reason="manual_block_from_finance",
+                        updated_at=func.now(),
                     )
                 )
         return True
@@ -1730,24 +2445,73 @@ class DBSettingsService:
             )
             return {row[0]: (row[1], row[2]) for row in rows}
 
+
+
+
     async def set_value(self, key: str, value: object, *, value_type: str = "STR") -> None:
-        await settings_store.set_value(key, value, value_type=value_type)
+        normalized = settings_store._normalize_value_type(value_type)
+        payload = settings_store._serialize_value(value, normalized)
 
+        async def _apply(session: AsyncSession) -> None:
+            stmt = insert(m.settings).values(key=key, value=payload, value_type=normalized)
+            if hasattr(stmt, "on_conflict_do_update"):
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=[m.settings.key],
+                    set_={"value": payload, "value_type": normalized},
+                )
+                await session.execute(stmt)
+            else:
+                existing = await session.execute(
+                    select(m.settings).where(m.settings.key == key)
+                )
+                if existing.scalar_one_or_none():
+                    await session.execute(
+                        update(m.settings)
+                        .where(m.settings.key == key)
+                        .values(value=payload, value_type=normalized)
+                    )
+                else:
+                    await session.execute(
+                        insert(m.settings).values(
+                            key=key,
+                            value=payload,
+                            value_type=normalized,
+                        )
+                    )
 
-    async def get_owner_pay_snapshot(self) -> dict[str, object]:
         async with self._session_factory() as session:
-            row = await session.execute(
-                select(m.settings.value).where(m.settings.key == "owner_pay_snapshot")
-            )
-            snap = row.scalar_one_or_none()
-            return snap or {}
+            for attempt in range(2):
+                try:
+                    if session.in_transaction():
+                        await _apply(session)
+                    else:
+                        async with session.begin():
+                            await _apply(session)
+                except OperationalError as exc:
+                    message = str(exc).lower()
+                    if "no such table" in message and "settings" in message and attempt == 0:
+                        await session.run_sync(
+                            lambda sync_session: m.settings.__table__.create(
+                                sync_session.connection(), checkfirst=True
+                            )
+                        )
+                        continue
+                    raise
+                else:
+                    break
+        settings_store.invalidate_working_window_cache()
 
-    async def update_owner_pay_snapshot(self, **kwargs: object) -> None:
+
+    async def get_owner_pay_requisites(self, *, staff_id: int | None = None) -> dict[str, Any]:
+        async with self._session_factory() as session:
+            if staff_id is not None:
+                data = await owner_reqs.fetch_for_staff(session, staff_id)
+                if not owner_reqs.is_default(data):
+                    return data
+            return await owner_reqs.fetch_effective(session)
+
+    async def update_owner_pay_requisites(self, staff_id: int, payload: dict[str, Any]) -> None:
         async with self._session_factory() as session:
             async with session.begin():
-                await session.execute(
-                    update(m.settings)
-                    .where(m.settings.key == "owner_pay_snapshot")
-                    .values(value=kwargs, value_type="json")
-                )
+                await owner_reqs.update_for_staff(session, staff_id, payload)
 

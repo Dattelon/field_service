@@ -6,14 +6,19 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from .dto import (
+    CommissionDetail,
     CommissionListItem,
     MasterBrief,
     MasterDetail,
     MasterListItem,
+    OrderAttachment,
     OrderListItem,
     StaffRole,
     StaffUser,
 )
+from .texts import master_brief_line
+
+
 
 
 def main_menu(staff: StaffUser) -> InlineKeyboardMarkup:
@@ -45,34 +50,78 @@ def queue_list_keyboard(
     kb = InlineKeyboardBuilder()
     for order in items:
         kb.button(text=f"#{order.id}", callback_data=f"adm:q:card:{order.id}")
-    kb.adjust(3)
+    if items:
+        kb.adjust(1)
     nav = InlineKeyboardBuilder()
+    nav_count = 0
     if page > 1:
-        nav.button(text="⬅️", callback_data=f"adm:q:list:{page - 1}")
+        nav.button(text="⬅️ Назад", callback_data=f"adm:q:list:{page - 1}")
+        nav_count += 1
     if has_next:
-        nav.button(text="➡️", callback_data=f"adm:q:list:{page + 1}")
-    nav.button(text="◀️", callback_data="adm:menu")
-    kb.attach(nav)
+        nav.button(text="➡️ Далее", callback_data=f"adm:q:list:{page + 1}")
+        nav_count += 1
+    if nav_count:
+        nav.adjust(nav_count)
+        kb.attach(nav)
+    controls = InlineKeyboardBuilder()
+    controls.button(text="Фильтры", callback_data="adm:q:flt")
+    controls.button(text="Главное меню", callback_data="adm:menu")
+    controls.adjust(2)
+    kb.attach(controls)
     return kb.as_markup()
 
 
 def order_card_keyboard(
     order_id: int,
+    attachments: Sequence[OrderAttachment] = (),
     *,
-    allow_auto: bool = True,
     allow_return: bool = True,
+    allow_cancel: bool = True,
+    show_guarantee: bool = False,
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    if allow_auto:
-        kb.button(text="🤖 Автоназначение", callback_data=f"adm:q:as:auto:{order_id}")
-    kb.button(text="🙋 Выбрать мастера", callback_data=f"adm:q:as:man:{order_id}:1")
+    for attachment in attachments:
+        title = attachment.file_name or f'Файл #{attachment.id}'
+        kb.button(
+            text=f'📎 {title}',
+            callback_data=f'adm:q:att:{order_id}:{attachment.id}',
+        )
+    if attachments:
+        kb.adjust(1)
+    actions = InlineKeyboardBuilder()
+    if show_guarantee:
+        actions.button(text='🔁 Гарантийный выезд', callback_data=f'adm:q:gar:{order_id}')
+    actions.button(text=f'👷 Назначить', callback_data=f'adm:q:as:{order_id}')
     if allow_return:
-        kb.button(text="🔄 Вернуть в поиск", callback_data=f"adm:q:ret:{order_id}")
-    kb.button(text="🚫 Отменить", callback_data=f"adm:q:cnl:{order_id}")
-    kb.button(text="◀️ К списку", callback_data="adm:q:list:1")
-    kb.adjust(1)
+        actions.button(text=f'↩️ Вернуть в поиск', callback_data=f'adm:q:ret:{order_id}')
+    if allow_cancel:
+        actions.button(text=f'❌ Отменить', callback_data=f'adm:q:cnl:{order_id}')
+    actions.button(text=f'◀️ Назад', callback_data='adm:q:list:1')
+    actions.adjust(1)
+    kb.attach(actions)
     return kb.as_markup()
 
+
+
+
+
+
+
+
+
+def queue_cancel_keyboard(order_id: int) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text='◀️ Назад', callback_data=f'adm:q:cnl:bk:{order_id}')
+    return kb.as_markup()
+
+
+def assign_menu_keyboard(order_id: int) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=f'🤖 Автоматически', callback_data=f'adm:q:as:auto:{order_id}')
+    kb.button(text=f'🖐️ Вручную', callback_data=f'adm:q:as:man:{order_id}:1')
+    kb.button(text='◀️ Назад', callback_data=f'adm:q:card:{order_id}')
+    kb.adjust(1)
+    return kb.as_markup()
 
 def manual_candidates_keyboard(
     order_id: int,
@@ -84,8 +133,8 @@ def manual_candidates_keyboard(
     kb = InlineKeyboardBuilder()
     for master in masters:
         kb.button(
-            text=f"Назначить #{master.id}",
-            callback_data=f"adm:q:as:check:{order_id}:{master.id}"
+            text=master_brief_line(master),
+            callback_data=f"adm:q:as:check:{order_id}:{page}:{master.id}"
         )
     kb.adjust(1)
     nav = InlineKeyboardBuilder()
@@ -98,10 +147,10 @@ def manual_candidates_keyboard(
     return kb.as_markup()
 
 
-def manual_confirm_keyboard(order_id: int, master_id: int) -> InlineKeyboardMarkup:
+def manual_confirm_keyboard(order_id: int, master_id: int, page: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="✅ Назначить", callback_data=f"adm:q:as:pick:{order_id}:{master_id}")
-    kb.button(text="◀️ Назад", callback_data=f"adm:q:card:{order_id}")
+    kb.button(text="✅ Отправить оффер", callback_data=f"adm:q:as:pick:{order_id}:{page}:{master_id}")
+    kb.button(text="◀️ Назад", callback_data=f"adm:q:as:man:{order_id}:{page}")
     return kb.as_markup()
 
 
@@ -128,12 +177,18 @@ def finance_segment_keyboard(seg: str, page: int, has_next: bool) -> InlineKeybo
     return kb.as_markup()
 
 
-def finance_card_actions(commission_id: int) -> InlineKeyboardMarkup:
+def finance_card_actions(detail: CommissionDetail, segment: str, page: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="✅ Подтвердить", callback_data=f"adm:f:cm:ok:{commission_id}")
-    kb.button(text="❌ Отклонить", callback_data=f"adm:f:cm:rej:{commission_id}")
-    kb.button(text="🚫 Блок мастера", callback_data=f"adm:f:cm:blk:{commission_id}")
-    kb.button(text="◀️ Список", callback_data="adm:f")
+    kb.button(text="👁️ Чеки", callback_data=f"adm:f:cm:open:{detail.id}")
+
+    status = (detail.status or "").upper()
+    if status in {"WAIT_PAY", "REPORTED", "OVERDUE"}:
+        kb.button(text="✅ Подтвердить", callback_data=f"adm:f:cm:ok:{detail.id}")
+    if status in {"WAIT_PAY", "REPORTED"}:
+        kb.button(text="❌ Отклонить", callback_data=f"adm:f:cm:rej:{detail.id}")
+    if detail.master_id is not None:
+        kb.button(text="🚫 Блок мастера", callback_data=f"adm:f:cm:blk:{detail.id}")
+    kb.button(text="◀️ К списку", callback_data=f"adm:f:{segment}:{page}")
     kb.adjust(1)
     return kb.as_markup()
 

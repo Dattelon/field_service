@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import select, text
+from sqlalchemy import insert, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db import models as m
@@ -12,13 +13,21 @@ from field_service.config import settings
 
 UTC = timezone.utc
 
+DEFAULT_GUARANTEE_LABEL = ''.join(chr(code) for code in (1047, 1040, 1071, 1042, 1050, 1040, 32, 1055, 1054, 32, 1043, 1040, 1056, 1040, 1053, 1058, 1048, 1048))
+
 
 class GuaranteeError(Exception):
     pass
 
 
 async def create_from_closed_order(
-    session: AsyncSession, source_order_id: int, company_payment: Optional[float] = None
+    session: AsyncSession,
+    source_order_id: int,
+    company_payment: Optional[float] = None,
+    *,
+    source: Optional[m.orders] = None,
+    created_by_staff_id: Optional[int] = None,
+    description_prefix: str = DEFAULT_GUARANTEE_LABEL,
 ) -> m.orders:
     """Create a GUARANTEE order from a CLOSED source order.
 
@@ -35,22 +44,45 @@ async def create_from_closed_order(
       orders.preferred_master_id = source.assigned_master_id
       orders.guarantee_source_order_id = source.id
     """
+    cp_value: Decimal
     if company_payment is None:
         try:
-            cp = float(getattr(settings, "guarantee_company_payment"))
+            cp_value = Decimal(str(getattr(settings, "guarantee_company_payment")))
         except Exception:
-            cp = 2500.0
+            cp_value = Decimal("2500")
     else:
-        cp = float(company_payment)
+        cp_value = Decimal(str(company_payment))
 
-    src = await session.execute(select(m.orders).where(m.orders.id == source_order_id))
-    source = src.scalar_one_or_none()
+    if source is None:
+        src = await session.execute(select(m.orders).where(m.orders.id == source_order_id))
+        source = src.scalar_one_or_none()
     if source is None:
         raise GuaranteeError(f"source order #{source_order_id} not found")
-    if str(source.status) != "CLOSED":
+    status_val = getattr(source, "status", None)
+    if isinstance(status_val, m.OrderStatus):
+        status_is_closed = status_val == m.OrderStatus.CLOSED
+    else:
+        status_is_closed = str(status_val).upper() == "CLOSED"
+    if not status_is_closed:
         raise GuaranteeError("source order must be CLOSED")
+    if getattr(source, "order_type", None) == m.OrderType.GUARANTEE:
+        raise GuaranteeError("source order is already guarantee")
+    if not source.assigned_master_id:
+        raise GuaranteeError("source order has no assigned master")
 
-    # insert new order
+    description_prefix = description_prefix.strip()
+    source_description = (source.description or "").strip()
+    if description_prefix:
+        if source_description:
+            if not source_description.startswith(description_prefix):
+                description = f"{description_prefix}\n{source_description}"
+            else:
+                description = source_description
+        else:
+            description = description_prefix
+    else:
+        description = source_description
+
     new_order = m.orders(
         city_id=source.city_id,
         district_id=source.district_id,
@@ -60,28 +92,36 @@ async def create_from_closed_order(
         address_comment=source.address_comment,
         client_name=source.client_name,
         client_phone=source.client_phone,
+        category=source.category,
+        description=description,
         status=m.OrderStatus.GUARANTEE if hasattr(m, "OrderStatus") else "GUARANTEE",
+        order_type=m.OrderType.GUARANTEE if hasattr(m, "OrderType") else "GUARANTEE",
         scheduled_date=None,
         time_slot_start=None,
         time_slot_end=None,
         slot_label=None,
         preferred_master_id=source.assigned_master_id,
         assigned_master_id=None,
-        total_price=0,
-        company_payment=cp,
+        total_price=Decimal("0"),
+        company_payment=cp_value,
         guarantee_source_order_id=source.id,
+        created_by_staff_id=created_by_staff_id,
+        latitude=getattr(source, "latitude", None),
+        longitude=getattr(source, "longitude", None),
     )
     session.add(new_order)
     await session.flush()
 
-    # status history
     await session.execute(
-        text(
-            """
-        INSERT INTO order_status_history(order_id, from_status, to_status, created_at)
-        VALUES (:oid, NULL, 'GUARANTEE', NOW())
-        """
-        ).bindparams(oid=new_order.id)
+        insert(m.order_status_history).values(
+            order_id=new_order.id,
+            from_status=None,
+            to_status=m.OrderStatus.GUARANTEE,
+            reason="guarantee_created",
+            changed_by_staff_id=created_by_staff_id,
+            created_at=datetime.now(UTC),
+        )
     )
 
     return new_order
+

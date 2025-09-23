@@ -1,18 +1,27 @@
 from __future__ import annotations
 
-import html\nimport json
+import html
+import json
 import re
-from dataclasses import dataclass\nfrom datetime import date, datetime, time, timedelta
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any, Optional, Sequence
 
-from aiogram import F, Router
+from aiogram import F, Router, Bot
 from aiogram.filters import CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import BufferedInputFile, CallbackQuery, Message, InlineKeyboardMarkup
+from aiogram.types import BufferedInputFile, CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
 
-from field_service.config import settings as env_settings\nfrom field_service.services import export_service, live_log
+from field_service.config import settings as env_settings
+from field_service.services import export_service, live_log
 from field_service.services.settings_service import get_timezone
+
+FINANCE_SEGMENT_TITLES = {
+    'aw': 'Ожидают оплаты',
+    'pd': 'Оплаченные',
+    'ov': 'Просроченные',
+}
 
 from .dto import (
     CityRef,
@@ -63,6 +72,25 @@ from .queue import queue_router
 
 router = Router(name="admin_handlers")
 router.include_router(queue_router)
+
+
+
+class _MessageEditProxy:
+    __slots__ = ("bot", "chat_id", "message_id")
+
+    def __init__(self, bot: Bot, chat_id: int, message_id: int) -> None:
+        self.bot = bot
+        self.chat_id = chat_id
+        self.message_id = message_id
+
+    async def edit_text(self, text: str, *, reply_markup=None, disable_web_page_preview=None) -> None:
+        await self.bot.edit_message_text(
+            text=text,
+            chat_id=self.chat_id,
+            message_id=self.message_id,
+            reply_markup=reply_markup,
+            disable_web_page_preview=disable_web_page_preview,
+        )
 
 LOCAL_TZ = get_timezone()
 PHONE_RE = re.compile(r"^(?:\+7|8)\d{10}$")
@@ -594,8 +622,9 @@ async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     F.data == "adm:f",
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
-async def cb_finance_root(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.message.edit_text("�������:", reply_markup=finance_menu(staff))
+async def cb_finance_root(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    await state.clear()
+    await cq.message.edit_text("Выберите раздел:", reply_markup=finance_menu(staff))
     await cq.answer()
 
 
@@ -604,6 +633,7 @@ async def _render_finance_segment(
     staff: StaffUser,
     segment: str,
     page: int,
+    state: FSMContext,
 ) -> None:
     finance_service = _finance_service(message.bot)
     rows, has_next = await finance_service.list_commissions(
@@ -612,17 +642,36 @@ async def _render_finance_segment(
         page_size=10,
         city_ids=_city_filter(staff),
     )
+
+    await state.update_data(fin_segment=segment, fin_page=page)
+
+    title = FINANCE_SEGMENT_TITLES.get(segment, segment.upper())
     if not rows:
-        text = "�������� �� �������."
+        text = f"<b>{title}</b>\nКомиссии не найдены."
     else:
-        lines = [f"<b>��������: {segment.upper()}</b>", ""]
+        lines = [f"<b>{title}</b>", ""]
         for row in rows:
             if isinstance(row, CommissionListItem):
-                lines.append(f"� {finance_list_line(row)}")
+                lines.append(f"• {html.escape(finance_list_line(row))}")
             else:
-                lines.append(f"� {row}")
+                lines.append(f"• {html.escape(str(row))}")
         text = "\n".join(lines)
-    markup = finance_segment_keyboard(segment, page=page, has_next=has_next)
+
+    button_rows: list[list[InlineKeyboardButton]] = []
+    for row in rows:
+        if isinstance(row, CommissionListItem):
+            label = f"#{row.id} · {row.amount:.0f} ₽"
+            button_rows.append([
+                InlineKeyboardButton(
+                    text=label,
+                    callback_data=f"adm:f:cm:card:{row.id}",
+                )
+            ])
+
+    nav_markup = finance_segment_keyboard(segment, page=page, has_next=has_next)
+    button_rows.extend(nav_markup.inline_keyboard)
+    markup = InlineKeyboardMarkup(inline_keyboard=button_rows)
+
     await message.edit_text(text, reply_markup=markup)
 
 
@@ -630,9 +679,9 @@ async def _render_finance_segment(
     F.data.startswith("adm:f:aw:"),
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
-async def cb_finance_aw(cq: CallbackQuery, staff: StaffUser) -> None:
+async def cb_finance_aw(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     page = int(cq.data.split(":")[2])
-    await _render_finance_segment(cq.message, staff, "aw", page)
+    await _render_finance_segment(cq.message, staff, "aw", page, state)
     await cq.answer()
 
 
@@ -640,9 +689,9 @@ async def cb_finance_aw(cq: CallbackQuery, staff: StaffUser) -> None:
     F.data.startswith("adm:f:pd:"),
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
-async def cb_finance_pd(cq: CallbackQuery, staff: StaffUser) -> None:
+async def cb_finance_pd(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     page = int(cq.data.split(":")[2])
-    await _render_finance_segment(cq.message, staff, "pd", page)
+    await _render_finance_segment(cq.message, staff, "pd", page, state)
     await cq.answer()
 
 
@@ -650,9 +699,9 @@ async def cb_finance_pd(cq: CallbackQuery, staff: StaffUser) -> None:
     F.data.startswith("adm:f:ov:"),
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
-async def cb_finance_ov(cq: CallbackQuery, staff: StaffUser) -> None:
+async def cb_finance_ov(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     page = int(cq.data.split(":")[2])
-    await _render_finance_segment(cq.message, staff, "ov", page)
+    await _render_finance_segment(cq.message, staff, "ov", page, state)
     await cq.answer()
 
 
@@ -667,52 +716,172 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
     finance_service = _finance_service(cq.message.bot)
     detail = await finance_service.get_commission_detail(commission_id)
     if not detail:
-        await cq.answer("�������� �� �������", show_alert=True)
+        await cq.answer("Комиссия не найдена.", show_alert=True)
         return
-    text = format_commission_detail(detail)
+
+    data = await state.get_data()
+    segment = data.get("fin_segment", "aw")
+    page = int(data.get("fin_page", 1))
+
+    text_body = format_commission_detail(detail)
+
     if action == "card":
-        markup = finance_card_actions(commission_id)
-        await cq.message.edit_text(text, reply_markup=markup, disable_web_page_preview=True)
+        await state.set_state(None)
+        markup = finance_card_actions(detail, segment, page)
+        await cq.message.edit_text(
+            text_body,
+            reply_markup=markup,
+            disable_web_page_preview=True,
+        )
         await cq.answer()
         return
+
+    if action == "open":
+        if not detail.attachments:
+            await cq.answer("Чеки отсутствуют.", show_alert=True)
+            return
+        for attachment in detail.attachments:
+            try:
+                file_type = (attachment.file_type or "").upper()
+                if file_type == "PHOTO":
+                    await cq.message.answer_photo(attachment.file_id, caption=attachment.caption)
+                else:
+                    await cq.message.answer_document(attachment.file_id, caption=attachment.caption)
+            except TelegramBadRequest:
+                await cq.message.answer("Не удалось показать вложение чека.")
+        await cq.answer()
+        return
+
     if action == "ok":
-        ok = await finance_service.approve(commission_id, by_staff_id=staff.id)
-        await cq.answer("������������" if ok else "�� �������", show_alert=not ok)
-        await _render_finance_segment(cq.message, staff, "aw", page=1)
+        await state.set_state(FinanceActionFSM.approve_amount)
+        await state.update_data(
+            commission_id=commission_id,
+            segment=segment,
+            page=page,
+            default_amount=f"{detail.amount:.2f}",
+            source_chat_id=cq.message.chat.id,
+            source_message_id=cq.message.message_id,
+        )
+        prompt = (
+            "Введите фактическую сумму оплаты (по умолчанию {amount:.2f}).\n"
+            "Отправьте /skip, чтобы оставить значение без изменений."
+        ).format(amount=detail.amount)
+        await cq.message.edit_text(
+            f"{text_body}\n\n{prompt}",
+            reply_markup=finance_reject_cancel_keyboard(commission_id),
+            disable_web_page_preview=True,
+        )
+        await cq.answer()
         return
+
     if action == "blk":
-        ok = await finance_service.block_master_for_overdue(detail.master_id or 0, by_staff_id=staff.id)
-        await cq.answer("������ ������������" if ok else "�� �������", show_alert=not ok)
-        await _render_finance_segment(cq.message, staff, "ov", page=1)
+        ok = await finance_service.block_master_for_overdue(
+            detail.master_id or 0,
+            by_staff_id=staff.id,
+        )
+        await cq.answer(
+            "Мастер заблокирован." if ok else "Не удалось заблокировать мастера.",
+            show_alert=not ok,
+        )
+        proxy = _MessageEditProxy(cq.message.bot, cq.message.chat.id, cq.message.message_id)
+        await _render_finance_segment(proxy, staff, "ov", page=1, state=state)
+        if ok:
+            live_log.push("finance", f"commission#{commission_id} blocked by staff {staff.id}")
         return
+
     if action == "rej":
         await state.set_state(FinanceActionFSM.reject_reason)
-        await state.update_data(commission_id=commission_id)
+        await state.update_data(
+            commission_id=commission_id,
+            segment=segment,
+            page=page,
+            source_chat_id=cq.message.chat.id,
+            source_message_id=cq.message.message_id,
+        )
         await cq.message.edit_text(
-            "������� ������� ���������� ������ (�����), ��� ��������� /cancel.",
+            "Укажите причину отклонения платежа (текстом) или нажмите «Назад».",
             reply_markup=finance_reject_cancel_keyboard(commission_id),
         )
         await cq.answer()
         return
 
-
+    await cq.answer()
 @router.message(StateFilter(FinanceActionFSM.reject_reason))
-async def finance_reject_reason(msg: Message, state: FSMContext, staff: StaffUser) -> None:
-    reason = msg.text.strip()
+async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+    reason = (msg.text or "").strip()
     if len(reason) < 3:
-        await msg.answer("������� ������ ���� �� ������ ��� ��������. ���������� �����.")
+        await msg.answer("Текст должен содержать не менее 3 символов.")
         return
+
+    data = await state.get_data()
+    commission_id = data.get("commission_id")
+    segment = data.get("segment", "aw")
+    page = int(data.get("page", 1))
+    source_chat_id = data.get("source_chat_id")
+    source_message_id = data.get("source_message_id")
+
+    if not commission_id:
+        await state.clear()
+        await msg.answer("Сессия истекла. Откройте карточку комиссии заново.")
+        return
+
+    finance_service = _finance_service(msg.bot)
+    ok = await finance_service.reject(int(commission_id), reason=reason, by_staff_id=staff.id)
+    await state.clear()
+    if ok:
+        live_log.push("finance", f"commission#{commission_id} rejected by staff {staff.id}")
+        await msg.answer("Отправлено мастеру на доработку.")
+    else:
+        await msg.answer("Не удалось отклонить оплату.")
+        return
+
+    if source_chat_id and source_message_id:
+        proxy = _MessageEditProxy(msg.bot, source_chat_id, source_message_id)
+        await _render_finance_segment(proxy, staff, segment, page, state)
+@router.message(StateFilter(FinanceActionFSM.approve_amount))
+async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMContext) -> None:
     data = await state.get_data()
     commission_id = data.get("commission_id")
     if not commission_id:
         await state.clear()
-        await msg.answer("��������� ��������, ������� ������ ����� �������.")
+        await msg.answer("Сессия подтверждения истекла. Откройте комиссию заново.")
         return
-    finance_service = _finance_service(msg.bot)
-    ok = await finance_service.reject(int(commission_id), reason=reason, by_staff_id=staff.id)
-    await state.clear()
-    await msg.answer("�������� �� ���������." if ok else "�� ������� ���������.")
 
+    segment = data.get("segment", "aw")
+    page = int(data.get("page", 1))
+    source_chat_id = data.get("source_chat_id")
+    source_message_id = data.get("source_message_id")
+    default_amount = Decimal(data.get("default_amount", "0"))
+
+    text_value = (msg.text or "").strip()
+    if text_value.lower() == "/cancel":
+        await state.clear()
+        if source_chat_id and source_message_id:
+            proxy = _MessageEditProxy(msg.bot, source_chat_id, source_message_id)
+            await _render_finance_segment(proxy, staff, segment, page, state)
+        await msg.answer("Подтверждение отменено.")
+        return
+
+    if text_value.lower() in {"/skip", "skip", "пропустить", ""}:
+        amount = default_amount
+    else:
+        normalized = text_value.replace(",", ".")
+        if not re.fullmatch(r"^\d{1,7}(?:\.\d{1,2})?$", normalized):
+            await msg.answer("Введите сумму в формате 3500 или 4999.99, либо отправьте /skip.")
+            return
+        amount = Decimal(normalized)
+
+    finance_service = _finance_service(msg.bot)
+    ok = await finance_service.approve(int(commission_id), paid_amount=amount, by_staff_id=staff.id)
+    await state.clear()
+    if ok:
+        live_log.push("finance", f"commission#{commission_id} approved by staff {staff.id} amount={amount}")
+        await msg.answer("Комиссия подтверждена.")
+        if source_chat_id and source_message_id:
+            proxy = _MessageEditProxy(msg.bot, source_chat_id, source_message_id)
+            await _render_finance_segment(proxy, staff, segment, page, state)
+    else:
+        await msg.answer("Не удалось подтвердить оплату.")
 
 @router.callback_query(
     F.data == "adm:f:set",
