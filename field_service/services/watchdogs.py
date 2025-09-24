@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import logging
@@ -11,6 +11,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from field_service.db.session import SessionLocal
 from field_service.services import live_log
 from field_service.services.commission_service import CommissionOverdueEvent, apply_overdue_commissions
+from field_service.infra.logging_utils import send_alert
 
 UTC = timezone.utc
 logger = logging.getLogger("watchdogs")
@@ -22,6 +23,7 @@ async def watchdog_commissions_overdue(
     interval_seconds: int = 600,
 ) -> None:
     """Periodically block overdue commissions and notify admins."""
+    sleep_for = max(60, int(interval_seconds) if interval_seconds else 600)
     while True:
         try:
             async with SessionLocal() as session:
@@ -50,24 +52,26 @@ async def watchdog_commissions_overdue(
             logger.exception("watchdog_commissions_overdue error")
             live_log.push("watchdog", f"watchdog_commissions_overdue error: {exc}", level="ERROR")
 
-        await asyncio.sleep(interval_seconds)
+        await asyncio.sleep(sleep_for)
 
 
 async def _notify_overdue_commission(bot: Bot, chat_id: int, event: CommissionOverdueEvent) -> None:
-    name = event.master_full_name or "Без ФИО"
+    name = event.master_full_name or "неизвестный мастер"
     message = (
         f"🚫 Просрочка комиссии #{event.commission_id} (заказ #{event.order_id}). "
         f"Мастер {name}, id={event.master_id} заблокирован."
     )
     keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[
-            InlineKeyboardButton(
-                text="Открыть комиссию", callback_data=f"adm:f:cm:{event.commission_id}"
-            )
-        ]]
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Открыть комиссию", callback_data=f"adm:f:cm:{event.commission_id}"
+                )
+            ]
+        ]
     )
     try:
-        await bot.send_message(chat_id, message, reply_markup=keyboard)
+        await send_alert(bot, message, chat_id=chat_id, reply_markup=keyboard)
     except Exception:
         logger.warning("watchdog notification failed", exc_info=True)
         live_log.push("watchdog", "notification send failed", level="WARN")

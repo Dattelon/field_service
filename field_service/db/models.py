@@ -159,13 +159,7 @@ class districts(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "commission_id",
-            "level",
-            name="uq_referral_rewards__commission_level",
-        ),
-        Index("ix_ref_rewards__referrer_status", "referrer_id", "status"),
-        Index("ix_ref_rewards__referrer_created", "referrer_id", "created_at"),
+        UniqueConstraint("city_id", "name", name="uq_districts__city_name"),
     )
 
 
@@ -677,12 +671,12 @@ class referral_rewards(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "referrer_id",
             "commission_id",
             "level",
-            name="uq_referral_rewards__once_per_level",
+            name="uq_referral_rewards__commission_level",
         ),
         Index("ix_ref_rewards__referrer_status", "referrer_id", "status"),
+        Index("ix_ref_rewards__referrer_created", "referrer_id", "created_at"),
     )
 
 

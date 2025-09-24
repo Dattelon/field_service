@@ -7,6 +7,8 @@ from aiogram.types import CallbackQuery, Message, TelegramObject
 
 from field_service.config import settings
 
+SUPERUSER_IDS = frozenset(set(settings.admin_bot_superusers) | set(settings.global_admins_tg_ids))
+
 from .dto import StaffRole, StaffUser
 from .utils import get_service
 
@@ -30,11 +32,20 @@ class StaffRoleFilter(BaseFilter):
         self._roles = set(roles) if roles else None
 
     async def __call__(self, event: TelegramObject, bot, **kwargs):
+        preloaded = kwargs.get("staff")
+        if isinstance(preloaded, StaffUser):
+            if not preloaded.is_active:
+                return False
+            if self._roles and preloaded.role not in self._roles:
+                return False
+            return {"staff": preloaded}
+
         tg_id = _extract_user_id(event)
         if tg_id is None:
             return False
 
-        if tg_id in settings.admin_bot_superusers:
+        staff: Optional[StaffUser]
+        if tg_id in SUPERUSER_IDS:
             staff = StaffUser(
                 id=0,
                 tg_id=tg_id,
@@ -44,12 +55,12 @@ class StaffRoleFilter(BaseFilter):
                 full_name="Superuser",
                 phone="",
             )
-            return {"staff": staff}
+        else:
+            staff_service = get_service(bot, "staff_service", required=False)
+            if staff_service is None:
+                return False
+            staff = await staff_service.get_by_tg_id(tg_id)
 
-        staff_service = get_service(bot, "staff_service", required=False)
-        if staff_service is None:
-            return False
-        staff = await staff_service.get_by_tg_id(tg_id)
         if not staff or not staff.is_active:
             return False
         if self._roles and staff.role not in self._roles:

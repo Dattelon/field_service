@@ -29,6 +29,13 @@ from field_service.services import settings_service
 
 router = Router(name=__name__)
 TZ = timezone.utc
+LOCAL_TZ = settings_service.get_timezone()
+REFERRAL_STATUS_LABELS = {
+    m.ReferralRewardStatus.ACCRUED.value: "начислено",
+    m.ReferralRewardStatus.PAID.value: "выплачено",
+    m.ReferralRewardStatus.CANCELED.value: "отменено",
+}
+
 # ======================= FSM =======================
 class Onboarding(StatesGroup):
     access_code = State()
@@ -63,6 +70,15 @@ async def delete_message_silent(bot: Bot, chat_id: int, message_id: int) -> None
         await bot.delete_message(chat_id, message_id)
     except Exception:
         pass
+
+
+def _format_local_dt(value: datetime | None) -> str:
+    if not value:
+        return '-'
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=TZ)
+    return value.astimezone(LOCAL_TZ).strftime('%d.%m %H:%M')
+
 async def push_step_from_message(msg: Message, state: FSMContext, text: str, reply_markup=None) -> Message:
     """Отправляет новый шаг, удаляет предыдущий шаг этого онбординга."""
     data = await state.get_data()
@@ -651,7 +667,8 @@ async def render_referral_dashboard(
         master = await ensure_master(session, tg_user_id)
         master_id = master.id
         referral_code = (master.referral_code or "").strip()
-        result = await session.execute(
+
+        totals_result = await session.execute(
             select(
                 m.referral_rewards.level,
                 func.count(),
@@ -663,13 +680,32 @@ async def render_referral_dashboard(
             )
             .group_by(m.referral_rewards.level)
         )
-        rows = result.all()
+        totals_rows = totals_result.all()
 
-    stats = {
+        latest_result = await session.execute(
+            select(
+                m.referral_rewards.level,
+                m.referral_rewards.amount,
+                m.referral_rewards.created_at,
+                m.referral_rewards.status,
+                m.referral_rewards.commission_id,
+                m.commissions.order_id,
+            )
+            .join(m.commissions, m.commissions.id == m.referral_rewards.commission_id)
+            .where(
+                m.referral_rewards.referrer_id == master_id,
+                m.referral_rewards.status != m.ReferralRewardStatus.CANCELED,
+            )
+            .order_by(m.referral_rewards.created_at.desc())
+            .limit(5)
+        )
+        latest_rows = latest_result.all()
+
+    stats: dict[int, dict[str, Decimal]] = {
         1: {"count": 0, "amount": Decimal("0")},
         2: {"count": 0, "amount": Decimal("0")},
     }
-    for level, cnt, total in rows:
+    for level, cnt, total in totals_rows:
         try:
             level_idx = int(level or 0)
         except (TypeError, ValueError):
@@ -695,7 +731,28 @@ async def render_referral_dashboard(
     lines.append("")
     lines.append(f"Всего начислено: <b>{total_amount:.2f} ₽</b>")
 
-    text_out = "\n".join(lines)
+    if latest_rows:
+        lines.append("")
+        lines.append("<b>Последние начисления</b>")
+        for level, amount, created_at, status_value, commission_id, order_id in latest_rows:
+            dt_local = _format_local_dt(created_at)
+            amount_value = Decimal(amount if amount is not None else 0)
+            status_key = getattr(status_value, 'value', status_value)
+            if not isinstance(status_key, str):
+                status_key = str(status_key)
+            status_label = REFERRAL_STATUS_LABELS.get(status_key, 'начислено')
+            order_hint = f"комиссия #{commission_id}"
+            if order_id is not None:
+                order_hint += f", заказ #{order_id}"
+            lines.append(
+                f"{dt_local} • L{int(level)} • {amount_value:.2f} ₽ • {status_label} ({order_hint})"
+            )
+    else:
+        lines.append("")
+        lines.append("Начислений ещё не было.")
+
+    text_out = "
+".join(lines)
     markup = kb_inline([[InlineKeyboardButton(text="⬅️ Меню", callback_data="m:menu")]])
     target = extract_target_message(event)
     try:
@@ -705,6 +762,7 @@ async def render_referral_dashboard(
             await target.answer(text_out, reply_markup=markup, parse_mode=ParseMode.HTML)
     except TelegramBadRequest:
         await target.answer(text_out, reply_markup=markup, parse_mode=ParseMode.HTML)
+
 
 
 async def render_support_info(

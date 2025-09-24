@@ -26,10 +26,18 @@ if not hasattr(SQLiteTypeCompiler, "visit_JSONB"):
 
 TABLES = [
     m.cities.__table__,
+    m.districts.__table__,
+    m.streets.__table__,
+    m.staff_cities.__table__,
+    m.staff_access_codes.__table__,
+    m.staff_access_code_cities.__table__,
     m.masters.__table__,
     m.master_invite_codes.__table__,
     m.orders.__table__,
+    m.attachments.__table__,
     m.commissions.__table__,
+    m.referrals.__table__,
+    m.referral_rewards.__table__,
     m.order_status_history.__table__,
     m.settings.__table__,
 ]

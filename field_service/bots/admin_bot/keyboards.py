@@ -285,6 +285,15 @@ def new_order_slot_keyboard(options: Sequence[tuple[str, str]]) -> InlineKeyboar
     return kb.as_markup()
 
 
+def new_order_asap_late_keyboard() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="??", callback_data="adm:new:slot:lateok")
+    kb.button(text="??????? ?????? ????", callback_data="adm:new:slot:reslot")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+
 def new_order_confirm_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text="✅ Создать", callback_data="adm:new:confirm")
@@ -292,6 +301,16 @@ def new_order_confirm_keyboard() -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
+
+
+def reports_menu_keyboard() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📄 Заказы", callback_data="adm:r:o")
+    kb.button(text="💳 Комиссии", callback_data="adm:r:c")
+    kb.button(text="🤝 Реферальные", callback_data="adm:r:rr")
+    kb.button(text="◀️ В меню", callback_data="adm:menu")
+    kb.adjust(1)
+    return kb.as_markup()
 
 def settings_menu_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
@@ -347,8 +366,11 @@ __all__ = [
     "new_order_street_manual_keyboard",
     "new_order_street_mode_keyboard",
     "order_card_keyboard",
+    "reports_menu_keyboard",
     "queue_list_keyboard",
     "settings_menu_keyboard",
     "settings_group_keyboard",
     "logs_menu_keyboard",
 ]
+
+

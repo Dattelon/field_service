@@ -1,7 +1,8 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone, timedelta
+from zoneinfo import ZoneInfo
 from decimal import Decimal
 import json
 import secrets
@@ -19,10 +20,12 @@ from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import distribution_worker as dw
 from field_service.services import live_log
+from field_service.services import time_service
 from field_service.services import settings_service as settings_store
 from field_service.services import owner_requisites_service as owner_reqs
 from field_service.services import guarantee_service
 from field_service.services.guarantee_service import GuaranteeError
+from field_service.services.referral_service import apply_rewards_for_commission
 
 from .dto import (
     CityRef,
@@ -52,9 +55,9 @@ from .dto import (
 
 UTC = timezone.utc
 PAYMENT_METHOD_LABELS = {
-    'card': 'Карта',
-    'sbp': 'СБП',
-    'cash': 'Наличные',
+    'card': 'РљР°СЂС‚Р°',
+    'sbp': 'РЎР‘Рџ',
+    'cash': 'РќР°Р»РёС‡РЅС‹Рµ',
 }
 
 LOCAL_TZ = settings_store.get_timezone()
@@ -76,9 +79,20 @@ def _parse_env_time(value: str, fallback: time) -> time:
         return fallback
 
 
-WORKDAY_START = _parse_env_time(settings.working_hours_start, time(10, 0))
-WORKDAY_END = _parse_env_time(settings.working_hours_end, time(20, 0))
-LATE_ASAP_THRESHOLD = time(19, 30)
+WORKDAY_START_DEFAULT = time_service.parse_time_string(settings.workday_start, default=time(10, 0))
+WORKDAY_END_DEFAULT = time_service.parse_time_string(settings.workday_end, default=time(20, 0))
+LATE_ASAP_THRESHOLD = time_service.parse_time_string(settings.asap_late_threshold, default=time(19, 30))
+
+def _zone_storage_value(tz: ZoneInfo) -> str:
+    return getattr(tz, 'key', str(tz))
+
+
+async def _workday_window() -> tuple[time, time]:
+    try:
+        return await settings_store.get_working_window()
+    except Exception:
+        return WORKDAY_START_DEFAULT, WORKDAY_END_DEFAULT
+
 
 QUEUE_STATUSES = {
     m.OrderStatus.SEARCHING,
@@ -121,20 +135,23 @@ async def _load_staff_access(
     )
 
 
+def _visible_city_ids_for_staff(staff: Optional[_StaffAccess]) -> Optional[frozenset[int]]:
+    if staff is None:
+        return None
+    if staff.role == m.StaffRole.ADMIN:
+        return None
+    return staff.city_ids
+
+
 def _staff_can_access_city(
     staff: Optional[_StaffAccess], city_id: Optional[int]
 ) -> bool:
     if city_id is None:
         return False
-    if staff is None:
+    visible = _visible_city_ids_for_staff(staff)
+    if visible is None:
         return True
-    if staff.role == m.StaffRole.ADMIN:
-        return True
-    if hasattr(m.StaffRole, "CITY_ADMIN") and staff.role == getattr(
-        m.StaffRole, "CITY_ADMIN"
-    ):
-        return city_id in staff.city_ids
-    return city_id in staff.city_ids
+    return city_id in visible
 
 def _prepare_setting_value(value: object, value_type: str) -> str:
     vt = value_type.upper()
@@ -229,6 +246,12 @@ async def _collect_code_cities(
     return links
 
 
+class AccessCodeError(RuntimeError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
 def _order_type_from_db(value: Optional[str]) -> OrderType:
     if not value:
         return OrderType.NORMAL
@@ -261,8 +284,33 @@ def _generate_staff_code() -> str:
 
 
 class DBStaffService:
-    def __init__(self, session_factory=SessionLocal) -> None:
+    def __init__(self, session_factory=SessionLocal, *, access_code_ttl_hours: int | None = None) -> None:
         self._session_factory = session_factory
+        if access_code_ttl_hours is None:
+            access_code_ttl_hours = settings.access_code_ttl_hours
+        self._access_code_ttl_hours = int(access_code_ttl_hours) if access_code_ttl_hours is not None else 0
+
+    async def seed_global_admins(self, tg_ids: Sequence[int]) -> int:
+        unique_ids = sorted({int(tg) for tg in tg_ids if tg})
+        if not unique_ids:
+            return 0
+        async with self._session_factory() as session:
+            payload = [
+                {
+                    "tg_user_id": tg_id,
+                    "role": m.StaffRole.ADMIN,
+                    "is_active": True,
+                }
+                for tg_id in unique_ids
+            ]
+            if not payload:
+                return 0
+            async with session.begin():
+                total = await session.scalar(select(func.count()).select_from(m.staff_users))
+                if total and int(total) > 0:
+                    return 0
+                await session.execute(insert(m.staff_users), payload)
+            return len(payload)
 
     async def get_by_tg_id(self, tg_id: int) -> Optional[StaffUser]:
         if tg_id is None:
@@ -381,6 +429,21 @@ class DBStaffService:
                     .values(is_active=is_active)
                 )
 
+    async def update_staff_profile(
+        self, staff_id: int, *, full_name: str, phone: str, username: Optional[str] | None = None
+    ) -> None:
+        values: dict[str, Any] = {"full_name": full_name, "phone": phone}
+        if username is not None:
+            values["username"] = username
+        async with self._session_factory() as session:
+            async with session.begin():
+                await session.execute(
+                    update(m.staff_users)
+                    .where(m.staff_users.id == staff_id)
+                    .values(**values)
+                )
+
+
     async def create_access_code(
         self,
         *,
@@ -391,6 +454,10 @@ class DBStaffService:
         comment: Optional[str],
     ) -> StaffAccessCode:
         unique_cities = _sorted_city_tuple(city_ids)
+        expires_at_value = expires_at
+        ttl_hours = max(0, self._access_code_ttl_hours)
+        if expires_at_value is None and ttl_hours > 0:
+            expires_at_value = datetime.now(UTC) + timedelta(hours=ttl_hours)
         async with self._session_factory() as session:
             async with session.begin():
                 code_value = await self._generate_unique_code(session)
@@ -401,7 +468,7 @@ class DBStaffService:
                     role=db_role,
                     city_id=city_column,
                     issued_by_staff_id=issued_by_staff_id,
-                    expires_at=expires_at,
+                    expires_at=expires_at_value,
                     comment=comment,
                 )
                 session.add(code_row)
@@ -412,6 +479,8 @@ class DBStaffService:
                     )
                     for cid in unique_cities
                 )
+                cities_label = "".join(str(cid) for cid in unique_cities) or '-'
+                live_log.push("staff", f"access_code issued code={code_value} role={role.value} cities={cities_label}")
             return StaffAccessCode(
                 id=code_row.id,
                 code=code_row.code,
@@ -426,6 +495,127 @@ class DBStaffService:
                 created_at=code_row.created_at,
             )
 
+    async def validate_access_code_value(self, code_value: str) -> Optional[StaffAccessCode]:
+        normalized = (code_value or "").strip().upper()
+        if not normalized:
+            return None
+        now = datetime.now(UTC)
+        async with self._session_factory() as session:
+            row = await session.execute(
+                select(m.staff_access_codes).where(m.staff_access_codes.code == normalized)
+            )
+            code_row = row.scalar_one_or_none()
+            if not code_row:
+                return None
+            if bool(code_row.is_revoked):
+                return None
+            if code_row.used_at is not None:
+                return None
+            expires_at = code_row.expires_at
+            if expires_at and expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=UTC)
+            if expires_at and expires_at < now:
+                return None
+            link_map = await _collect_code_cities(session, [code_row.id])
+            cities = _sorted_city_tuple(
+                link_map.get(code_row.id) or ([code_row.city_id] if code_row.city_id else [])
+            )
+            role = _map_staff_role(code_row.role)
+            if role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST) and not cities:
+                return None
+            return StaffAccessCode(
+                id=code_row.id,
+                code=code_row.code,
+                role=role,
+                city_ids=cities,
+                issued_by_staff_id=code_row.issued_by_staff_id,
+                used_by_staff_id=code_row.used_by_staff_id,
+                expires_at=code_row.expires_at,
+                used_at=code_row.used_at,
+                is_revoked=bool(code_row.is_revoked),
+                comment=code_row.comment,
+                created_at=code_row.created_at,
+            )
+
+
+    async def register_staff_user_from_code(
+        self,
+        *,
+        code_value: str,
+        tg_user_id: int,
+        username: Optional[str],
+        full_name: str,
+        phone: str,
+    ) -> StaffUser:
+        normalized = (code_value or "").strip().upper()
+        if not normalized:
+            raise AccessCodeError("invalid_code")
+        now = datetime.now(UTC)
+        async with self._session_factory() as session:
+            async with session.begin():
+                code_stmt = (
+                    select(m.staff_access_codes)
+                    .where(
+                        m.staff_access_codes.code == normalized,
+                        m.staff_access_codes.is_revoked == False,
+                        m.staff_access_codes.used_at.is_(None),
+                    )
+                    .with_for_update()
+                )
+                code_row = (await session.execute(code_stmt)).scalar_one_or_none()
+                if not code_row:
+                    raise AccessCodeError("invalid_code")
+                expires_at = code_row.expires_at
+                if expires_at and expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=UTC)
+                if expires_at and expires_at < now:
+                    raise AccessCodeError("expired")
+                link_map = await _collect_code_cities(session, [code_row.id])
+                city_ids = _sorted_city_tuple(
+                    link_map.get(code_row.id) or ([code_row.city_id] if code_row.city_id else [])
+                )
+                role = _map_staff_role(code_row.role)
+                if role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST) and not city_ids:
+                    raise AccessCodeError("no_cities")
+                existing = await session.execute(
+                    select(m.staff_users).where(m.staff_users.tg_user_id == tg_user_id)
+                )
+                if existing.scalar_one_or_none():
+                    raise AccessCodeError("already_staff")
+                staff_row = m.staff_users(
+                    tg_user_id=tg_user_id,
+                    username=username,
+                    full_name=full_name,
+                    phone=phone,
+                    role=_map_staff_role_to_db(role),
+                    is_active=True,
+                )
+                session.add(staff_row)
+                await session.flush()
+                session.add_all(
+                    m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
+                    for cid in city_ids
+                )
+                await session.execute(
+                    update(m.staff_access_codes)
+                    .where(m.staff_access_codes.id == code_row.id)
+                    .values(
+                        used_by_staff_id=staff_row.id,
+                        used_at=now,
+                    )
+                )
+                live_log.push("staff", f"access_code used code={code_row.code} staff={staff_row.id}")
+            return StaffUser(
+                id=staff_row.id,
+                tg_id=tg_user_id,
+                role=role,
+                is_active=True,
+                city_ids=frozenset(city_ids),
+                full_name=staff_row.full_name or "",
+                phone=staff_row.phone or "",
+            )
+
+
     async def list_access_codes(
         self,
         *,
@@ -434,6 +624,7 @@ class DBStaffService:
         page_size: int,
     ) -> tuple[list[StaffAccessCode], bool]:
         offset = max(page - 1, 0) * page_size
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             stmt = select(m.staff_access_codes).order_by(
                 m.staff_access_codes.created_at.desc()
@@ -442,6 +633,10 @@ class DBStaffService:
                 stmt = stmt.where(
                     (m.staff_access_codes.is_revoked == False)  # noqa: E712
                     & (m.staff_access_codes.used_at.is_(None))
+                    & (
+                        (m.staff_access_codes.expires_at.is_(None))
+                        | (m.staff_access_codes.expires_at >= now)
+                    )
                 )
             elif state == "used":
                 stmt = stmt.where(m.staff_access_codes.used_at.is_not(None))
@@ -530,7 +725,9 @@ class DBStaffService:
                 created_at=code.created_at,
             )
 
-    async def revoke_access_code(self, code_id: int) -> bool:
+    async def revoke_access_code(
+        self, code_id: int, *, by_staff_id: Optional[int] = None
+    ) -> bool:
         async with self._session_factory() as session:
             async with session.begin():
                 result = await session.execute(
@@ -541,10 +738,14 @@ class DBStaffService:
                         & (m.staff_access_codes.is_revoked == False)  # noqa: E712
                     )
                     .values(is_revoked=True)
-                    .returning(m.staff_access_codes.id)
+                    .returning(m.staff_access_codes.id, m.staff_access_codes.code)
                 )
                 row = result.first()
-                return row is not None
+                if not row:
+                    return False
+                revoked_code = row.code
+            live_log.push("staff", f"access_code revoked code={revoked_code} by={by_staff_id}")
+        return True
 
     async def _generate_unique_code(self, session: AsyncSession) -> str:
         for _ in range(50):
@@ -562,6 +763,23 @@ class DBStaffService:
 class DBOrdersService:
     def __init__(self, session_factory=SessionLocal) -> None:
         self._session_factory = session_factory
+
+async def _city_timezone(self, session: AsyncSession, city_id: Optional[int]) -> ZoneInfo:
+    if not city_id:
+        return time_service.resolve_timezone(settings.timezone)
+    if hasattr(m.cities, "timezone"):
+        row = await session.execute(
+            select(m.cities.timezone).where(m.cities.id == int(city_id))
+        )
+        value = row.scalar_one_or_none()
+        if value:
+            return time_service.resolve_timezone(str(value))
+    return time_service.resolve_timezone(settings.timezone)
+
+async def get_city_timezone(self, city_id: Optional[int]) -> str:
+    async with self._session_factory() as session:
+        tz = await self._city_timezone(session, city_id)
+        return _zone_storage_value(tz)
 
     async def list_cities(
         self, *, query: Optional[str] = None, limit: int = 20
@@ -704,7 +922,11 @@ class DBOrdersService:
         scheduled_date: Optional[date] = None,
     ) -> tuple[list[OrderListItem], bool]:
         offset = max(page - 1, 0) * page_size
-        city_filter = list(city_ids) if city_ids else None
+        city_filter: Optional[list[int]] = None
+        if city_ids is not None:
+            city_filter = [int(cid) for cid in city_ids]
+            if not city_filter:
+                return [], False
         allowed_statuses = [status.value for status in QUEUE_STATUSES]
         async with self._session_factory() as session:
             stmt = (
@@ -757,7 +979,7 @@ class DBOrdersService:
                 stmt = stmt.where(m.orders.status == status_filter.value)
             else:
                 stmt = stmt.where(m.orders.status.in_(allowed_statuses))
-            if city_filter:
+            if city_filter is not None:
                 stmt = stmt.where(m.orders.city_id.in_(city_filter))
             if category:
                 stmt = stmt.where(m.orders.category == category)
@@ -1023,10 +1245,14 @@ class DBOrdersService:
     async def create_order(self, data: NewOrderData) -> int:
         async with self._session_factory() as session:
             async with session.begin():
-                now_local = datetime.now(LOCAL_TZ)
-                current_time = now_local.time()
+                tz = await self._city_timezone(session, data.city_id)
+                _, workday_end = await _workday_window()
+                now_local = datetime.now(timezone.utc).astimezone(tz)
+                current_time = now_local.timetz()
+                if current_time.tzinfo is not None:
+                    current_time = current_time.replace(tzinfo=None)
                 initial_status = data.initial_status or m.OrderStatus.SEARCHING
-                if data.initial_status is None and current_time >= WORKDAY_END:
+                if data.initial_status is None and current_time >= workday_end:
                     initial_status = m.OrderStatus.DEFERRED
                 order = m.orders(
                     city_id=data.city_id,
@@ -1365,14 +1591,14 @@ class DBDistributionService:
                 data = order_q.first()
                 if not data:
                     return False, AutoAssignResult(
-                        "Заявка не найдена",
+                        "Р—Р°СЏРІРєР° РЅРµ РЅР°Р№РґРµРЅР°",
                         code="not_found",
                     )
 
                 staff = await _load_staff_access(session, by_staff_id or None)
                 if not _staff_can_access_city(staff, data.city_id):
                     return False, AutoAssignResult(
-                        "Недостаточно прав для города",
+                        "РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РїСЂР°РІ РґР»СЏ РіРѕСЂРѕРґР°",
                         code="forbidden",
                     )
 
@@ -1400,7 +1626,7 @@ class DBDistributionService:
                     message = dw.log_skip_no_district(order_id)
                     _push_dist_log(message, level="WARN")
                     return False, AutoAssignResult(
-                        "Нельзя запустить авто: не выбран район. Заявка передана логисту.",
+                        "РќРµР»СЊР·СЏ Р·Р°РїСѓСЃС‚РёС‚СЊ Р°РІС‚Рѕ: РЅРµ РІС‹Р±СЂР°РЅ СЂР°Р№РѕРЅ. Р—Р°СЏРІРєР° РїРµСЂРµРґР°РЅР° Р»РѕРіРёСЃС‚Сѓ.",
                         code="no_district",
                     )
 
@@ -1410,7 +1636,7 @@ class DBDistributionService:
                     message = dw.log_skip_no_category(order_id, category)
                     _push_dist_log(message, level="WARN")
                     return False, AutoAssignResult(
-                        "Категория заказа не поддерживается для автоназначения",
+                        "РљР°С‚РµРіРѕСЂРёСЏ Р·Р°РєР°Р·Р° РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ РґР»СЏ Р°РІС‚РѕРЅР°Р·РЅР°С‡РµРЅРёСЏ",
                         code="no_category",
                     )
 
@@ -1428,7 +1654,7 @@ class DBDistributionService:
                 current_round = await dw.current_round(session, order_id)
                 if current_round >= cfg.rounds:
                     return False, AutoAssignResult(
-                        "Лимит автоматических попыток исчерпан",
+                        "Р›РёРјРёС‚ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёС… РїРѕРїС‹С‚РѕРє РёСЃС‡РµСЂРїР°РЅ",
                         code="rounds_exhausted",
                     )
 
@@ -1493,7 +1719,7 @@ class DBDistributionService:
                         )
                         _push_dist_log(conflict, level="WARN")
                         return False, AutoAssignResult(
-                            "Не удалось отправить оффер мастеру",
+                            "РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ РѕС„С„РµСЂ РјР°СЃС‚РµСЂСѓ",
                             code="offer_conflict",
                         )
 
@@ -1510,7 +1736,7 @@ class DBDistributionService:
                     _push_dist_log(dw.log_decision_offer(master_id, deadline))
                     return True, AutoAssignResult(
                         message=(
-                            f"Оффер отправлен мастеру {master_id} до {deadline.isoformat()}"
+                            f"РћС„С„РµСЂ РѕС‚РїСЂР°РІР»РµРЅ РјР°СЃС‚РµСЂСѓ {master_id} РґРѕ {deadline.isoformat()}"
                         ),
                         master_id=master_id,
                         deadline=deadline,
@@ -1537,7 +1763,7 @@ class DBDistributionService:
 
                 _push_dist_log(dw.log_escalate(order_id), level="WARN")
                 return False, AutoAssignResult(
-                    "Кандидатов нет — эскалация",
+                    "РљР°РЅРґРёРґР°С‚РѕРІ РЅРµС‚ вЂ” СЌСЃРєР°Р»Р°С†РёСЏ",
                     code="no_candidates",
                 )
 
@@ -1565,11 +1791,11 @@ class DBDistributionService:
                 )
                 order = order_row.first()
                 if not order:
-                    return False, "Заявка не найдена"
+                    return False, "Р—Р°СЏРІРєР° РЅРµ РЅР°Р№РґРµРЅР°"
 
                 staff = await _load_staff_access(session, by_staff_id or None)
                 if not _staff_can_access_city(staff, order.city_id):
-                    return False, "Нет доступа к городу"
+                    return False, "РќРµС‚ РґРѕСЃС‚СѓРїР° Рє РіРѕСЂРѕРґСѓ"
 
                 status = getattr(order, "status", None)
                 allowed_statuses = {
@@ -1582,12 +1808,12 @@ class DBDistributionService:
                     else m.OrderStatus.SEARCHING
                 )
                 if status_enum not in allowed_statuses:
-                    return False, "Заявка не в поиске"
+                    return False, "Р—Р°СЏРІРєР° РЅРµ РІ РїРѕРёСЃРєРµ"
 
                 category = getattr(order, "category", None)
                 skill_code = dw._skill_code_for_category(category)
                 if skill_code is None:
-                    return False, "Категория заявки не поддерживается"
+                    return False, "РљР°С‚РµРіРѕСЂРёСЏ Р·Р°СЏРІРєРё РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ"
 
                 master_row = await session.execute(
                     select(
@@ -1600,11 +1826,11 @@ class DBDistributionService:
                 )
                 master = master_row.first()
                 if not master:
-                    return False, "Мастер не найден"
+                    return False, "РњР°СЃС‚РµСЂ РЅРµ РЅР°Р№РґРµРЅ"
                 if master.city_id != order.city_id:
-                    return False, "Мастер работает в другом городе"
+                    return False, "РњР°СЃС‚РµСЂ СЂР°Р±РѕС‚Р°РµС‚ РІ РґСЂСѓРіРѕРј РіРѕСЂРѕРґРµ"
                 if not master.is_active or master.is_blocked or not master.verified:
-                    return False, "Мастер недоступен"
+                    return False, "РњР°СЃС‚РµСЂ РЅРµРґРѕСЃС‚СѓРїРµРЅ"
 
                 if order.district_id:
                     district_row = await session.execute(
@@ -1616,7 +1842,7 @@ class DBDistributionService:
                         .limit(1)
                     )
                     if district_row.first() is None:
-                        return False, "Мастер не обслуживает район"
+                        return False, "РњР°СЃС‚РµСЂ РЅРµ РѕР±СЃР»СѓР¶РёРІР°РµС‚ СЂР°Р№РѕРЅ"
 
                 skill_row = await session.execute(
                     select(m.master_skills.id)
@@ -1629,7 +1855,7 @@ class DBDistributionService:
                     .limit(1)
                 )
                 if skill_row.first() is None:
-                    return False, "У мастера нет нужного навыка"
+                    return False, "РЈ РјР°СЃС‚РµСЂР° РЅРµС‚ РЅСѓР¶РЅРѕРіРѕ РЅР°РІС‹РєР°"
 
                 existing_offer = await session.execute(
                     select(m.offers.id)
@@ -1649,7 +1875,7 @@ class DBDistributionService:
                     .limit(1)
                 )
                 if existing_offer.first() is not None:
-                    return False, "Оффер уже отправлен этому мастеру"
+                    return False, "РћС„С„РµСЂ СѓР¶Рµ РѕС‚РїСЂР°РІР»РµРЅ СЌС‚РѕРјСѓ РјР°СЃС‚РµСЂСѓ"
 
                 cfg = await dw._load_config(session)
                 current_round = await dw.current_round(session, order_id)
@@ -1662,7 +1888,7 @@ class DBDistributionService:
                     cfg.sla_seconds,
                 )
                 if not sent:
-                    return False, "Не удалось отправить оффер"
+                    return False, "РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ РѕС„С„РµСЂ"
 
                 await session.execute(
                     update(m.orders)
@@ -1672,7 +1898,7 @@ class DBDistributionService:
                         dist_escalated_admin_at=None,
                     )
                 )
-        return True, "Оффер отправлен"
+        return True, "РћС„С„РµСЂ РѕС‚РїСЂР°РІР»РµРЅ"
 
 
 
@@ -1747,7 +1973,7 @@ class DBMastersService:
             items.append(
                 MasterListItem(
                     id=int(row.id),
-                    full_name=row.full_name or f"Мастер #{row.id}",
+                    full_name=row.full_name or f"РњР°СЃС‚РµСЂ #{row.id}",
                     phone=row.phone,
                     city_name=row.city_name,
                     moderation_status=moderation_status,
@@ -2012,7 +2238,7 @@ LIMIT :limit
             briefs.append(
                 MasterBrief(
                     id=mid,
-                    full_name=data.get("full_name") or f"Мастер #{mid}",
+                    full_name=data.get("full_name") or f"РњР°СЃС‚РµСЂ #{mid}",
                     city_id=int(data.get("city_id") or 0),
                     has_car=bool(data.get("has_vehicle")),
                     avg_week_check=float(data.get("avg_week") or 0),
@@ -2050,7 +2276,7 @@ LIMIT :limit
                     WaitPayRecipient(
                         master_id=int(master_id),
                         tg_user_id=int(tg_user_id),
-                        full_name=full_name or f"Мастер #{int(master_id)}",
+                        full_name=full_name or f"РњР°СЃС‚РµСЂ #{int(master_id)}",
                     )
                 )
         return recipients
@@ -2198,8 +2424,11 @@ class DBFinanceService:
                 .offset(offset)
                 .limit(page_size + 1)
             )
-            if city_ids:
-                stmt = stmt.where(m.orders.city_id.in_(list(city_ids)))
+            if city_ids is not None:
+                ids = [int(cid) for cid in city_ids]
+                if not ids:
+                    return [], False
+                stmt = stmt.where(m.orders.city_id.in_(ids))
             rows = await session.execute(stmt)
             fetched = rows.all()
         has_next = len(fetched) > page_size
@@ -2376,6 +2605,13 @@ class DBFinanceService:
                             reason='commission_paid',
                         )
                     )
+
+            await apply_rewards_for_commission(
+                session,
+                commission_id=commission_id,
+                master_id=commission_row.master_id,
+                base_amount=paid_amount,
+            )
         return True
 
     async def reject(

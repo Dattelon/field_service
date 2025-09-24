@@ -16,6 +16,7 @@ from field_service.bots.admin_bot.services_db import (
 from field_service.db import models as m
 from field_service.services import distribution_worker as dw, live_log
 from field_service.services.guarantee_service import GuaranteeError
+from field_service.services.referral_service import apply_rewards_for_commission
 
 UTC = timezone.utc
 
@@ -526,3 +527,183 @@ async def test_distribution_assign_auto_success(async_session, monkeypatch) -> N
     entries = live_log.snapshot(10)
     assert any("decision=offer" in entry.message for entry in entries)
     assert not any("skip_auto" in entry.message for entry in entries)
+
+
+@pytest.mark.asyncio
+async def test_apply_rewards_for_commission(async_session) -> None:
+    await _ensure_tables(
+        async_session,
+        _tables(
+            m.masters.__table__,
+            m.commissions.__table__,
+            m.referrals.__table__,
+            m.referral_rewards.__table__,
+        ),
+    )
+
+    ref_l2 = m.masters(
+        tg_user_id=701,
+        full_name="Ref L2",
+        phone="+79990000701",
+        city_id=None,
+        is_active=True,
+        verified=True,
+    )
+    ref_l1 = m.masters(
+        tg_user_id=702,
+        full_name="Ref L1",
+        phone="+79990000702",
+        city_id=None,
+        is_active=True,
+        verified=True,
+    )
+    payer = m.masters(
+        tg_user_id=703,
+        full_name="Payer",
+        phone="+79990000703",
+        city_id=None,
+        is_active=True,
+        verified=True,
+    )
+    async_session.add_all([ref_l2, ref_l1, payer])
+    await async_session.flush()
+
+    async_session.add_all(
+        [
+            m.referrals(master_id=payer.id, referrer_id=ref_l1.id),
+            m.referrals(master_id=ref_l1.id, referrer_id=ref_l2.id),
+        ]
+    )
+
+    commission = m.commissions(
+        order_id=1,
+        master_id=payer.id,
+        amount=Decimal("1000.00"),
+        deadline_at=datetime.now(UTC),
+        status=m.CommissionStatus.APPROVED,
+        is_paid=True,
+    )
+    async_session.add(commission)
+    await async_session.flush()
+
+    await apply_rewards_for_commission(
+        async_session,
+        commission_id=commission.id,
+        master_id=payer.id,
+        base_amount=Decimal("1000.00"),
+    )
+
+    # idempotency check
+    await apply_rewards_for_commission(
+        async_session,
+        commission_id=commission.id,
+        master_id=payer.id,
+        base_amount=Decimal("1000.00"),
+    )
+
+    rows = await async_session.execute(
+        select(m.referral_rewards).order_by(m.referral_rewards.level)
+    )
+    rewards = rows.scalars().all()
+    assert [r.level for r in rewards] == [1, 2]
+    assert [r.referrer_id for r in rewards] == [ref_l1.id, ref_l2.id]
+    assert [r.referred_master_id for r in rewards] == [payer.id, payer.id]
+    assert [Decimal(r.amount) for r in rewards] == [Decimal("100.00"), Decimal("50.00")]
+    assert [Decimal(r.percent) for r in rewards] == [Decimal("10.00"), Decimal("5.00")]
+
+
+@pytest.mark.asyncio
+async def test_finance_approve_creates_referral_rewards(async_session) -> None:
+    await _ensure_tables(
+        async_session,
+        _tables(
+            m.cities.__table__,
+            m.masters.__table__,
+            m.orders.__table__,
+            m.commissions.__table__,
+            m.order_status_history.__table__,
+            m.referrals.__table__,
+            m.referral_rewards.__table__,
+        ),
+    )
+
+    city = m.cities(name="Referral City")
+    async_session.add(city)
+    await async_session.flush()
+
+    ref_l2 = m.masters(
+        tg_user_id=710,
+        full_name="Ref L2",
+        phone="+79990000710",
+        city_id=city.id,
+        is_active=True,
+        verified=True,
+    )
+    ref_l1 = m.masters(
+        tg_user_id=711,
+        full_name="Ref L1",
+        phone="+79990000711",
+        city_id=city.id,
+        is_active=True,
+        verified=True,
+    )
+    payer = m.masters(
+        tg_user_id=712,
+        full_name="Payer",
+        phone="+79990000712",
+        city_id=city.id,
+        is_active=True,
+        verified=True,
+    )
+    async_session.add_all([ref_l2, ref_l1, payer])
+    await async_session.flush()
+
+    async_session.add_all(
+        [
+            m.referrals(master_id=payer.id, referrer_id=ref_l1.id),
+            m.referrals(master_id=ref_l1.id, referrer_id=ref_l2.id),
+        ]
+    )
+
+    order = m.orders(
+        city_id=city.id,
+        status=m.OrderStatus.PAYMENT,
+        order_type=m.OrderType.NORMAL,
+        assigned_master_id=payer.id,
+        total_price=Decimal("1500.00"),
+        client_name="Client",
+        client_phone="+79990000999",
+    )
+    async_session.add(order)
+    await async_session.flush()
+
+    commission = m.commissions(
+        order_id=order.id,
+        master_id=payer.id,
+        amount=Decimal("800.00"),
+        deadline_at=datetime.now(UTC) + timedelta(hours=3),
+        status=m.CommissionStatus.WAIT_PAY,
+        is_paid=False,
+    )
+    async_session.add(commission)
+    await async_session.flush()
+
+    await async_session.commit()
+
+    finance_service = DBFinanceService(session_factory=lambda: existing_session(async_session))
+
+    result = await finance_service.approve(
+        commission.id, paid_amount=Decimal("750.50"), by_staff_id=1
+    )
+    assert result is True
+
+    rows = await async_session.execute(
+        select(m.referral_rewards).order_by(m.referral_rewards.level)
+    )
+    rewards = rows.scalars().all()
+    assert len(rewards) == 2
+    amounts = [Decimal(r.amount) for r in rewards]
+    assert amounts == [Decimal("75.05"), Decimal("37.53")]
+    assert [Decimal(r.percent) for r in rewards] == [Decimal("10.00"), Decimal("5.00")]
+    assert [r.referrer_id for r in rewards] == [ref_l1.id, ref_l2.id]
+    assert [r.referred_master_id for r in rewards] == [payer.id, payer.id]

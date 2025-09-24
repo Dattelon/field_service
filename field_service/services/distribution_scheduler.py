@@ -1,26 +1,29 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Optional
 
-from sqlalchemy import insert, text
+from aiogram import Bot
+from sqlalchemy import insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.config import settings as env_settings
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
-from field_service.services import live_log
+from field_service.services import live_log, time_service, settings_service as settings_store
+from field_service.infra.logging_utils import send_alert
 from field_service.services.settings_service import (
     get_int,
-    get_working_window,
-    get_timezone,
 )
 
 logger = logging.getLogger("distribution")
 ADVISORY_LOCK_KEY = 982734
+DEFERRED_LOGGED: set[int] = set()
+WORKDAY_START_DEFAULT = time_service.parse_time_string(env_settings.workday_start, default=time(10, 0))
+WORKDAY_END_DEFAULT = time_service.parse_time_string(env_settings.workday_end, default=time(20, 0))
 
 def _dist_log(message: str, *, level: str = "INFO") -> None:
     try:
@@ -36,6 +39,18 @@ class DistConfig:
     rounds: int
     top_log_n: int
     to_admin_after_min: int
+
+
+
+@dataclass
+class OrderForDistribution:
+    id: int
+    city_id: int
+    city_name: str
+    district_id: Optional[int]
+    preferred_master_id: Optional[int]
+    escalated_logist_at: Optional[datetime]
+    escalated_admin_at: Optional[datetime]
 
 
 async def _load_config() -> DistConfig:
@@ -61,15 +76,22 @@ async def _db_now(session: AsyncSession):
     return row.scalar()
 
 
+
 async def _fetch_orders_for_distribution(
     session: AsyncSession,
-) -> list[tuple[int, int, Optional[int], Optional[int]]]:
-    # Возвращаем (id, city_id, district_id, preferred_master_id)
-    q = await session.execute(
+) -> list[OrderForDistribution]:
+    result = await session.execute(
         text(
             """
-        SELECT o.id, o.city_id, o.district_id, o.preferred_master_id
+        SELECT o.id,
+               o.city_id,
+               c.name AS city_name,
+               o.district_id,
+               o.preferred_master_id,
+               o.dist_escalated_logist_at,
+               o.dist_escalated_admin_at
           FROM orders o
+          JOIN cities c ON c.id = o.city_id
          WHERE o.status IN ('SEARCHING','GUARANTEE')
            AND o.assigned_master_id IS NULL
          ORDER BY o.created_at
@@ -78,11 +100,26 @@ async def _fetch_orders_for_distribution(
         """
         )
     )
-    return [(r[0], r[1], r[2], r[3]) for r in q.all()]
+    rows = result.mappings().all()
+    orders: list[OrderForDistribution] = []
+    for row in rows:
+        orders.append(
+            OrderForDistribution(
+                id=int(row["id"]),
+                city_id=int(row["city_id"]),
+                city_name=str(row["city_name"]),
+                district_id=row["district_id"],
+                preferred_master_id=row["preferred_master_id"],
+                escalated_logist_at=row["dist_escalated_logist_at"],
+                escalated_admin_at=row["dist_escalated_admin_at"],
+            )
+        )
+    return orders
+
 
 
 async def _expire_overdue_offer(session: AsyncSession, order_id: int) -> Optional[int]:
-    """Если есть SENT и он протух — EXPIRED, вернуть master_id для лога timeout; иначе None."""
+    """Р•СЃР»Рё РµСЃС‚СЊ SENT Рё РѕРЅ РїСЂРѕС‚СѓС… вЂ” EXPIRED, РІРµСЂРЅСѓС‚СЊ master_id РґР»СЏ Р»РѕРіР° timeout; РёРЅР°С‡Рµ None."""
     row = await session.execute(
         text(
             """
@@ -151,32 +188,89 @@ async def _transition_orders(
     return len(order_ids)
 
 
-async def _sync_working_window(
+async def _workday_window() -> tuple[time, time]:
+    try:
+        return await settings_store.get_working_window()
+    except Exception:
+        return WORKDAY_START_DEFAULT, WORKDAY_END_DEFAULT
+
+
+async def _city_timezone(session: AsyncSession, city_id: Optional[int]) -> ZoneInfo:
+    if not city_id:
+        return time_service.resolve_timezone(env_settings.timezone)
+    if hasattr(m.cities, "timezone"):
+        row = await session.execute(
+            select(m.cities.timezone).where(m.cities.id == int(city_id))
+        )
+        value = row.scalar_one_or_none()
+        if value:
+            return time_service.resolve_timezone(str(value))
+    return time_service.resolve_timezone(env_settings.timezone)
+
+
+async def _wake_deferred_orders(
     session: AsyncSession,
     *,
-    now_local: datetime,
-    work_start: time,
-    work_end: time,
-) -> tuple[int, int]:
-    local_time = now_local.timetz()
-    if local_time.tzinfo is not None:
-        local_time = local_time.replace(tzinfo=None)
-    reopened = deferred = 0
-    if work_start <= local_time < work_end:
-        reopened = await _transition_orders(
-            session,
-            old_status=m.OrderStatus.DEFERRED.value,
-            new_status=m.OrderStatus.SEARCHING.value,
-            reason="working_window_open",
+    now_utc: datetime,
+) -> list[tuple[int, datetime]]:
+    rows = await session.execute(
+        select(m.orders.id, m.orders.city_id, m.orders.scheduled_date).where(
+            m.orders.status == m.OrderStatus.DEFERRED
         )
-    else:
-        deferred = await _transition_orders(
-            session,
-            old_status=m.OrderStatus.SEARCHING.value,
-            new_status=m.OrderStatus.DEFERRED.value,
-            reason="working_window_closed",
+    )
+    records = rows.all()
+    if not records:
+        return []
+    workday_start, _ = await _workday_window()
+    awakened: list[tuple[int, ZoneInfo, date]] = []
+    tz_cache: dict[int, ZoneInfo] = {}
+    for order_id, city_id, scheduled_date in records:
+        if city_id in tz_cache:
+            tz = tz_cache[city_id]
+        else:
+            tz = await _city_timezone(session, city_id)
+            tz_cache[city_id] = tz
+        local_now = now_utc.astimezone(tz)
+        target_date = scheduled_date or local_now.date()
+        if local_now.date() < target_date:
+            continue
+        local_time = local_now.timetz()
+        if local_time.tzinfo is not None:
+            local_time = local_time.replace(tzinfo=None)
+        if local_now.date() == target_date and local_time < workday_start:
+            if order_id not in DEFERRED_LOGGED:
+                target_local = datetime.combine(target_date, workday_start, tzinfo=tz)
+                message = f"[dist] order={order_id} deferred until {target_local.isoformat()}"
+                logger.info(message)
+                _dist_log(message)
+                DEFERRED_LOGGED.add(order_id)
+            continue
+        await session.execute(
+            update(m.orders)
+            .where(m.orders.id == order_id)
+            .values(
+                status=m.OrderStatus.SEARCHING,
+                updated_at=now_utc,
+                dist_escalated_logist_at=None,
+                dist_escalated_admin_at=None,
+            )
         )
-    return reopened, deferred
+        await session.execute(
+            insert(m.order_status_history).values(
+                order_id=order_id,
+                from_status=m.OrderStatus.DEFERRED,
+                to_status=m.OrderStatus.SEARCHING,
+                reason='deferred_wakeup',
+                changed_by_staff_id=None,
+                changed_by_master_id=None,
+            )
+        )
+        DEFERRED_LOGGED.discard(order_id)
+        target_local = datetime.combine(target_date, workday_start, tzinfo=tz)
+        awakened.append((order_id, target_local))
+    return awakened
+
+
 
 
 async def _candidates(
@@ -188,9 +282,9 @@ async def _candidates(
     round_number: int,
     preferred_mid: Optional[int],
 ) -> list[dict]:
-    # активные лимиты (per-master override -> settings.max_active_orders)
-    # средний чек за 7 дней
-    # фильтры смены, блокировки и т.д.
+    # Р°РєС‚РёРІРЅС‹Рµ Р»РёРјРёС‚С‹ (per-master override -> settings.max_active_orders)
+    # СЃСЂРµРґРЅРёР№ С‡РµРє Р·Р° 7 РґРЅРµР№
+    # С„РёР»СЊС‚СЂС‹ СЃРјРµРЅС‹, Р±Р»РѕРєРёСЂРѕРІРєРё Рё С‚.Рґ.
     sql = text(
         """
     WITH lim AS (
@@ -218,7 +312,7 @@ async def _candidates(
            RANDOM()              AS rnd
       FROM masters m
       JOIN master_districts md ON md.master_id=m.id AND md.district_id=:did
-      -- JOIN master_skills ms  ON ms.master_id=m.id AND ms.skill_id=:skill_id   -- TODO после миграции orders.skill_id
+      -- JOIN master_skills ms  ON ms.master_id=m.id AND ms.skill_id=:skill_id   -- TODO РїРѕСЃР»Рµ РјРёРіСЂР°С†РёРё orders.skill_id
       JOIN lim ON lim.master_id=m.id
       LEFT JOIN avg7 a ON a.mid=m.id
      WHERE m.city_id=:cid
@@ -232,7 +326,7 @@ async def _candidates(
              WHERE ofr.order_id=:oid AND ofr.round_number=:r
        )
      ORDER BY
-       (CASE WHEN m.id = :pref THEN 1 ELSE 0 END) DESC,   -- force_first для гарантии
+       (CASE WHEN m.id = :pref THEN 1 ELSE 0 END) DESC,   -- force_first РґР»СЏ РіР°СЂР°РЅС‚РёРё
        m.has_vehicle DESC,
        COALESCE(a.avg_week_check,0) DESC,
        COALESCE(m.rating,0) DESC,
@@ -315,12 +409,8 @@ async def _log_ranked(
             "}"
         )
     if top_lines:
-        parts.append("ranked=[
-" + "
-".join(top_lines) + "
-]")
-    logger.info("
-".join(parts))
+        parts.append("ranked=[\n" + "\n".join(top_lines) + "\n]")
+    logger.info("\n".join(parts))
 
     district_label = district_id if district_id is not None else "null"
     summary = (
@@ -334,99 +424,191 @@ async def _log_ranked(
     _dist_log(summary)
 
 
+async def _set_logist_escalation(
+    session: AsyncSession,
+    order: OrderForDistribution,
+) -> datetime | None:
+    row = await session.execute(
+        text(
+            """
+        UPDATE orders
+           SET dist_escalated_logist_at = NOW(),
+               dist_escalated_admin_at = NULL
+         WHERE id = :oid
+           AND dist_escalated_logist_at IS NULL
+        RETURNING dist_escalated_logist_at
+        """
+        ).bindparams(oid=order.id)
+    )
+    value = row.scalar()
+    if value is not None:
+        order.escalated_logist_at = value
+        order.escalated_admin_at = None
+    return value
+
+
+async def _set_admin_escalation(
+    session: AsyncSession,
+    order: OrderForDistribution,
+) -> datetime | None:
+    row = await session.execute(
+        text(
+            """
+        UPDATE orders
+           SET dist_escalated_admin_at = NOW()
+         WHERE id = :oid
+           AND dist_escalated_admin_at IS NULL
+        RETURNING dist_escalated_admin_at
+        """
+        ).bindparams(oid=order.id)
+    )
+    value = row.scalar()
+    if value is not None:
+        order.escalated_admin_at = value
+    return value
+
+
+async def _reset_escalations(
+    session: AsyncSession,
+    order: OrderForDistribution,
+) -> None:
+    if order.escalated_logist_at is None and order.escalated_admin_at is None:
+        return
+    await session.execute(
+        text(
+            """
+        UPDATE orders
+           SET dist_escalated_logist_at = NULL,
+               dist_escalated_admin_at = NULL
+         WHERE id = :oid
+        """
+        ).bindparams(oid=order.id)
+    )
+    order.escalated_logist_at = None
+    order.escalated_admin_at = None
+
+
 async def _escalate_logist(order_id: int):
     message = f"[dist] order={order_id} escalate=logist"
     logger.warning(message)
     _dist_log(message, level="WARN")
 
 
-async def tick_once(cfg: DistConfig) -> None:
+async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optional[int]) -> None:
     async with SessionLocal() as session:
         if not await _try_advisory_lock(session):
             return
 
         now = await _db_now(session)
-        tz = get_timezone()
-        now_local = now.astimezone(tz)
-        work_start, work_end = await get_working_window()
-        reopened, deferred = await _sync_working_window(
-            session,
-            now_local=now_local,
-            work_start=work_start,
-            work_end=work_end,
-        )
-        if reopened:
-            message = f"[dist] window_open reopened={reopened} at {now_local.isoformat()}"
+        awakened = await _wake_deferred_orders(session, now_utc=now)
+        for order_id, target_local in awakened:
+            message = f"[dist] deferred->searching order={order_id} at {target_local.isoformat()}"
             logger.info(message)
             _dist_log(message)
-        if deferred:
-            message = f"[dist] window_closed deferred={deferred} at {now_local.isoformat()}"
-            logger.info(message)
-            _dist_log(message)
+
 
         orders = await _fetch_orders_for_distribution(session)
 
-        for oid, city_id, district_id, preferred_mid in orders:
-            if district_id is None:
+        for order in orders:
+            if (
+                order.escalated_logist_at is not None
+                and order.escalated_admin_at is None
+                and now - order.escalated_logist_at >= timedelta(minutes=cfg.to_admin_after_min)
+            ):
+                admin_marked = await _set_admin_escalation(session, order)
+                if admin_marked:
+                    admin_message = f"[dist] order={order.id} escalate=admin"
+                    logger.warning(admin_message)
+                    _dist_log(admin_message, level="WARN")
+                    await send_alert(
+                        bot,
+                        f"вЏ± Р—Р°СЏРІРєР° #{order.id} РЅРµ СЂР°СЃРїСЂРµРґРµР»РµРЅР° Р»РѕРіРёСЃС‚РѕРј 10 РјРёРЅ. Р­СЃРєР°Р»Р°С†РёСЏ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂСѓ.",
+                        chat_id=alerts_chat_id,
+                    )
+
+            if order.district_id is None:
                 message = (
-                    f"[dist] order={oid} city={city_id} district=null skip_auto: no_district -> escalate=logist_now"
+                    f"[dist] order={order.id} city={order.city_id} district=null skip_auto: no_district -> escalate=logist_now"
                 )
                 logger.info(message)
                 _dist_log(message)
-                await _escalate_logist(oid)
+                if order.escalated_logist_at is None:
+                    marked = await _set_logist_escalation(session, order)
+                    if marked:
+                        await send_alert(
+                            bot,
+                            f"вљ пёЏ Р—Р°СЏРІРєР° #{order.id} Р±РµР· СЂР°Р№РѕРЅР° РІ РіРѕСЂРѕРґРµ {order.city_name}. РўСЂРµР±СѓРµС‚СЃСЏ СЂСѓС‡РЅРѕРµ РЅР°Р·РЅР°С‡РµРЅРёРµ.",
+                            chat_id=alerts_chat_id,
+                        )
+                await _escalate_logist(order.id)
                 continue
 
-            timed_out_mid = await _expire_overdue_offer(session, oid)
+            timed_out_mid = await _expire_overdue_offer(session, order.id)
             if timed_out_mid:
-                message = f"[dist] order={oid} timeout mid={timed_out_mid}"
+                message = f"[dist] order={order.id} timeout mid={timed_out_mid}"
                 logger.info(message)
                 _dist_log(message)
 
             row = await session.execute(
                 text(
                     "SELECT 1 FROM offers WHERE order_id=:oid AND state='SENT' LIMIT 1"
-                ).bindparams(oid=oid)
+                ).bindparams(oid=order.id)
             )
             if row.first():
+                await _reset_escalations(session, order)
                 continue
 
-            current_round = await _current_round(session, oid)
+            current_round = await _current_round(session, order.id)
 
             ranked = await _candidates(
                 session,
-                oid=oid,
-                city_id=city_id,
-                district_id=district_id,
+                oid=order.id,
+                city_id=order.city_id,
+                district_id=order.district_id,
                 round_number=current_round,
-                preferred_mid=preferred_mid,
+                preferred_mid=order.preferred_master_id,
             )
             await _log_ranked(
-                oid,
-                city_id,
-                district_id,
+                order.id,
+                order.city_id,
+                order.district_id,
                 None,
-                "GUARANTEE" if preferred_mid else "NORMAL",
+                "GUARANTEE" if order.preferred_master_id else "NORMAL",
                 current_round,
                 cfg.rounds,
                 cfg.sla_seconds,
                 ranked,
-                preferred_mid,
+                order.preferred_master_id,
                 cfg.top_log_n,
             )
 
             if not ranked:
                 if current_round < cfg.rounds:
-                    message = f"[dist] order={oid} round={current_round} -> next_round"
+                    message = f"[dist] order={order.id} round={current_round} -> next_round"
                     logger.info(message)
                     _dist_log(message)
                 else:
-                    await _escalate_logist(oid)
+                    message = f"[dist] order={order.id} round={current_round} no_candidates -> escalate=logist"
+                    logger.info(message)
+                    _dist_log(message)
+                    newly_marked = False
+                    if order.escalated_logist_at is None:
+                        marked = await _set_logist_escalation(session, order)
+                        newly_marked = marked is not None
+                    await _escalate_logist(order.id)
+                    if newly_marked:
+                        await send_alert(
+                            bot,
+                            f"вљ пёЏ РќРµС‚ СЃРІРѕР±РѕРґРЅС‹С… РјР°СЃС‚РµСЂРѕРІ РІ РіРѕСЂРѕРґРµ {order.city_name} РїРѕ Р·Р°СЏРІРєРµ #{order.id}. Р­СЃРєР°Р»Р°С†РёСЏ Р»РѕРіРёСЃС‚Сѓ.",
+                            chat_id=alerts_chat_id,
+                        )
                 continue
 
             first_mid = ranked[0]["mid"]
+            await _reset_escalations(session, order)
             ok = await _send_offer(
                 session,
-                oid=oid,
+                oid=order.id,
                 mid=first_mid,
                 round_number=current_round,
                 sla_seconds=cfg.sla_seconds,
@@ -438,21 +620,22 @@ async def tick_once(cfg: DistConfig) -> None:
                     )
                 )
                 until = until_row.scalar()
-                message = f"[dist] order={oid} decision=offer mid={first_mid} until={until.isoformat()}"
+                message = f"[dist] order={order.id} decision=offer mid={first_mid} until={until.isoformat()}"
                 logger.info(message)
                 _dist_log(message)
+
 
         await session.commit()
 
 
-async def run_scheduler() -> None:
+async def run_scheduler(bot: Bot | None = None, *, alerts_chat_id: Optional[int] = None) -> None:
     logging.basicConfig(level=logging.INFO)
     sleep_for = 30
     while True:
         try:
             cfg = await _load_config()
             sleep_for = max(1, cfg.tick_seconds)
-            await tick_once(cfg)
+            await tick_once(cfg, bot=bot, alerts_chat_id=alerts_chat_id)
         except Exception as exc:
             logger.exception("[dist] exception: %s", exc)
             _dist_log(f"[dist] exception: {exc}", level="ERROR")

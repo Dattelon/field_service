@@ -46,5 +46,10 @@ docker run --name fs-pg -e POSTGRES_PASSWORD=fs_password -e POSTGRES_USER=fs_use
 - [x] README — раздел «БД и миграции», сценарии запуска/отката.  
 
 ---
+## OPS Backups
 
+- Linux: schedule `ops/backup_db.sh` via cron, e.g. `0 2 * * * /bin/bash /app/ops/backup_db.sh`.
+- Windows: use `ops/backup_db.ps1`, run from Task Scheduler with `powershell.exe -File ops/backup_db.ps1`.
+- All dumps are written to `backups/` (or `$BACKUP_DIR`). Files older than 7 days are pruned automatically.
+- Ensure `DATABASE_URL` is set for both scripts; set `BACKUP_DIR` when backups must live elsewhere.
 

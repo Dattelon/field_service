@@ -34,15 +34,18 @@ class SettingsEditFSM(StatesGroup):
 
 
 class StaffCityEditFSM(StatesGroup):
-    staff_id = State()
     action = State()
 
 
 class AccessCodeNewFSM(StatesGroup):
-    role = State()
     city_select = State()
-    comment = State()
-    confirm = State()
+
+
+class StaffAccessFSM(StatesGroup):
+    code = State()
+    pdn = State()
+    full_name = State()
+    phone = State()
 
 
 class FinanceActionFSM(StatesGroup):
@@ -69,6 +72,12 @@ class MasterActionFSM(StatesGroup):
     limit_value = State()
 
 
+
+
+class ReportsExportFSM(StatesGroup):
+    awaiting_period = State()
+
+
 __all__ = [
     "QueueFiltersFSM",
     "QueueActionFSM",
@@ -79,4 +88,6 @@ __all__ = [
     "OwnerPayEditFSM",
     "SettingsEditFSM",
     "StaffCityEditFSM",
+    "StaffAccessFSM",
+    "ReportsExportFSM",
 ]

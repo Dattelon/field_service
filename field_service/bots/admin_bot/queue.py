@@ -13,6 +13,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from field_service.db.models import OrderStatus
 
+from .access import visible_city_ids_for
 from .dto import CityRef, OrderAttachment, OrderDetail, OrderListItem, OrderStatusHistoryItem, OrderType, StaffRole, StaffUser
 from .filters import StaffRoleFilter
 from .keyboards import (
@@ -38,14 +39,15 @@ ORDER_CARD_HISTORY_LIMIT = 5
 
 
 def _resolve_city_filter(staff: StaffUser, city_id: Optional[int]) -> Optional[list[int]]:
-    if staff.role is StaffRole.GLOBAL_ADMIN:
+    allowed = visible_city_ids_for(staff)
+    if allowed is None:
         if city_id:
             return [city_id]
         return None
-    allowed = sorted(staff.city_ids)
+    allowed_set = set(allowed)
     if city_id:
-        return [city_id] if city_id in staff.city_ids else []
-    return allowed
+        return [city_id] if city_id in allowed_set else []
+    return list(allowed)
 
 
 def _format_order_line(order: OrderListItem) -> str:
