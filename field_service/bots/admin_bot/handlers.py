@@ -337,13 +337,13 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
 
 SETTING_FIELD_BY_KEY: dict[str, SettingFieldDef] = {
     field.key: field
-    for group in SETTINGS_GROUPS.values()
+    for group in SETTING_GROUPS.values()
     for field in group.fields
 }
 
 SETTING_FIELD_GROUP: dict[str, str] = {
     field.key: group.key
-    for group in SETTINGS_GROUPS.values()
+    for group in SETTING_GROUPS.values()
     for field in group.fields
 }
 
