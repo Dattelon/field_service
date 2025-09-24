@@ -751,8 +751,7 @@ async def render_referral_dashboard(
         lines.append("")
         lines.append("Начислений ещё не было.")
 
-    text_out = "
-".join(lines)
+    text_out = "\n".join(lines)
     markup = kb_inline([[InlineKeyboardButton(text="⬅️ Меню", callback_data="m:menu")]])
     target = extract_target_message(event)
     try:

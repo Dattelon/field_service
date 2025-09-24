@@ -187,8 +187,7 @@ async def staff_list(cq: CallbackQuery, state: FSMContext) -> None:
     nav.button(text="Menu", callback_data="adm:staff:menu")
     nav.adjust(len(nav.buttons))
     kb.attach(nav)
-    await cq.message.edit_text("
-".join(lines), reply_markup=kb.as_markup())
+    await cq.message.edit_text("\n".join(lines), reply_markup=kb.as_markup())
     await cq.answer()
 
 
@@ -213,8 +212,7 @@ async def _render_staff_card(cq: CallbackQuery, member: StaffMember, city_names:
     page = data.get("staff_list_page", 1)
     kb.button(text="Back", callback_data=f"adm:staff:list:{role_token}:{page}")
     kb.adjust(1)
-    await cq.message.edit_text("
-".join(lines), reply_markup=kb.as_markup())
+    await cq.message.edit_text("\n".join(lines), reply_markup=kb.as_markup())
 
 
 @router.callback_query(F.data.startswith("adm:staff:edit:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
@@ -310,8 +308,7 @@ async def _show_code_card(cq: CallbackQuery, code: StaffAccessCode) -> None:
         kb.button(text="Revoke", callback_data=f"adm:staff:revoke:{code.id}")
     kb.button(text="Menu", callback_data="adm:staff:menu")
     kb.adjust(1)
-    await cq.message.edit_text("
-".join(lines), reply_markup=kb.as_markup())
+    await cq.message.edit_text("\n".join(lines), reply_markup=kb.as_markup())
 
 
 @router.callback_query(
