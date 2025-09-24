@@ -6,6 +6,7 @@ from contextlib import suppress
 
 from aiogram import Bot, Dispatcher, exceptions
 from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from aiogram.types import ErrorEvent
 
 from field_service.config import settings
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 async def main() -> int:
     bot = Bot(
         settings.master_bot_token,
-        default=DefaultBotProperties(parse_mode="HTML"),
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
     dp.include_router(master_router)
