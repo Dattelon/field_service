@@ -4,8 +4,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # привяжите к последней у вас версии; если есть 0009, ставим её
-revision = "2025_09_19_0011"
-down_revision = "2025_09_18_0009"
+revision = "2025_09_19_0011b"
+down_revision = "2025_09_19_0010"
 branch_labels = None
 depends_on = None
 
@@ -26,11 +26,15 @@ def upgrade() -> None:
     )
     op.create_index("ix_master_invite_codes__code", "master_invite_codes", ["code"], unique=True)
     # Удобный частичный индекс «доступные» (не обязателен, но полезен)
-    op.execute("""
+    # NOTE: PostgreSQL requires IMMUTABLE functions in index predicates; NOW() is not allowed.
+    # Use a stable predicate without time dependency; application code should validate expiry.
+    op.execute(
+        """
         CREATE UNIQUE INDEX IF NOT EXISTS ix_master_invite_codes__available
         ON master_invite_codes (code)
-        WHERE used_by_master_id IS NULL AND is_revoked = FALSE AND (expires_at IS NULL OR expires_at >= NOW())
-    """)
+        WHERE used_by_master_id IS NULL AND is_revoked = FALSE AND expires_at IS NULL
+        """
+    )
 
 def downgrade() -> None:
     op.drop_index("ix_master_invite_codes__available", table_name=None)  # raw SQL индекс

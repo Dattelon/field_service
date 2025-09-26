@@ -76,7 +76,8 @@ async def run(
                 tz_cache[city_id] = tz
         local_now = now_utc.astimezone(tz)
         if start_utc is not None:
-            target_local = start_utc.astimezone(tz)
+            su = start_utc if getattr(start_utc, "tzinfo", None) is not None else start_utc.replace(tzinfo=UTC)
+            target_local = su.astimezone(tz)
         else:
             target_local = datetime.combine(local_now.date(), workday_start, tzinfo=tz)
         if target_local > local_now:

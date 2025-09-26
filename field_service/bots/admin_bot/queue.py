@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 from datetime import datetime, date
 from typing import Iterable, Optional, Sequence
+import inspect
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -64,6 +65,23 @@ def _resolve_city_filter(staff: StaffUser, city_id: Optional[int]) -> Optional[l
     return list(allowed)
 
 
+async def _call_service(method, *args, city_ids=None, **kwargs):
+    try:
+        sig = inspect.signature(method)
+        params = sig.parameters
+        accepts_city = (
+            "city_ids" in params
+            or any(p.kind == p.VAR_KEYWORD for p in params.values())
+        )
+        if accepts_city and city_ids is not None:
+            kwargs = dict(kwargs)
+            kwargs["city_ids"] = city_ids
+        return await method(*args, **kwargs)
+    except TypeError:
+        # Fallback: retry without city filter if the method rejects it
+        return await method(*args, **kwargs)
+
+
 def _format_order_line(order: OrderListItem) -> str:
     address_parts = [order.city_name] if order.city_name else []
     if order.district_name:
@@ -76,7 +94,11 @@ def _format_order_line(order: OrderListItem) -> str:
     if street_parts:
         address_parts.append(' '.join(street_parts))
     address = ', '.join(address_parts) if address_parts else '-'
-    category = CATEGORY_LABELS.get(order.category, order.category.value)
+    normalized_category = normalize_category(getattr(order, "category", None))
+    if normalized_category is not None:
+        category = CATEGORY_LABELS.get(normalized_category, normalized_category.value)
+    else:
+        category = str(getattr(order, "category", ""))
     status = order.status or '-'
     if order.order_type is OrderType.GUARANTEE:
         status = f"{status} · гарантия"
@@ -188,7 +210,12 @@ def _format_order_card_text(
 
     is_guarantee = order.order_type is OrderType.GUARANTEE
     type_label = order.type if not is_guarantee else f"{order.type} · гарантия"
-    category_label = CATEGORY_LABELS.get(order.category, order.category.value)
+    normalized_category = normalize_category(getattr(order, "category", None))
+    if normalized_category is not None:
+        category_label = CATEGORY_LABELS.get(normalized_category, normalized_category.value)
+    else:
+        raw_cat = getattr(order, "category", "")
+        category_label = str(raw_cat)
     lines_out = [
         f"<b>Заявка #{order.id}</b>",
         f"Статус: {html.escape(order.status)}",
@@ -243,7 +270,7 @@ def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False) -> I
 
 
 async def _should_show_guarantee_button(
-    order: OrderDetail, orders_service, city_ids: Optional[Iterable[int]]
+    order: OrderDetail, orders_service, city_ids: Optional[Iterable[int]] = None
 ) -> bool:
     if (order.status or "").upper() != 'CLOSED':
         return False
@@ -251,7 +278,7 @@ async def _should_show_guarantee_button(
         return False
     if not order.master_id:
         return False
-    return not await orders_service.has_active_guarantee(order.id, city_ids=city_ids)
+    return not await _call_service(orders_service.has_active_guarantee, order.id, city_ids=city_ids)
 
 
 async def _render_order_card(
@@ -766,14 +793,14 @@ async def cb_queue_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
         await cq.answer('Некорректный идентификатор заявки', show_alert=True)
         return
     orders_service = get_service(cq.message.bot, 'orders_service')
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await cq.answer('Заявка не найдена', show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
         await cq.answer('Нет доступа к заявке', show_alert=True)
         return
-    history = await orders_service.list_status_history(order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
+    history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
     show_guarantee = await _should_show_guarantee_button(order, orders_service, visible_city_ids_for(staff))
     await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee)
     await cq.answer()
@@ -785,7 +812,7 @@ async def cb_queue_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
 async def cb_queue_assign_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     order_id = int(cq.data.split(':')[3])
     orders_service = get_service(cq.message.bot, 'orders_service')
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await cq.answer('Заявка не найдена', show_alert=True)
         return
@@ -832,7 +859,7 @@ async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
 
     orders_service = get_service(cq.message.bot, "orders_service")
     distribution_service = get_service(cq.message.bot, "distribution_service")
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await cq.answer("Заявка не найдена", show_alert=True)
         return
@@ -887,7 +914,7 @@ async def cb_queue_assign_manual_list(
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await cq.answer("Заявка не найдена", show_alert=True)
         return
@@ -937,7 +964,7 @@ async def cb_queue_assign_manual_check(
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await cq.answer("Заявка не найдена", show_alert=True)
         return
@@ -1140,7 +1167,7 @@ async def cb_queue_guarantee(cq: CallbackQuery, staff: StaffUser) -> None:
     if not order.master_id:
         await cq.answer("У заявки нет исходного мастера", show_alert=True)
         return
-    if await orders_service.has_active_guarantee(order.id, city_ids=visible_city_ids_for(staff)):
+    if await _call_service(orders_service.has_active_guarantee, order.id, city_ids=visible_city_ids_for(staff)):
         await cq.answer("Активная гарантия уже существует", show_alert=True)
         return
 
@@ -1150,8 +1177,8 @@ async def cb_queue_guarantee(cq: CallbackQuery, staff: StaffUser) -> None:
         await cq.answer(str(exc), show_alert=True)
         return
 
-    updated = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
-    history = await orders_service.list_status_history(order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
+    updated = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
+    history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
     await _render_order_card(cq.message, updated or order, history, show_guarantee=False)
 
     await cq.message.answer(
@@ -1172,7 +1199,7 @@ async def cb_queue_return(cq: CallbackQuery, staff: StaffUser) -> None:
         await cq.answer("Некорректный идентификатор заявки", show_alert=True)
         return
     orders_service = get_service(cq.message.bot, "orders_service")
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await cq.answer("Заявка не найдена", show_alert=True)
         return
@@ -1183,12 +1210,12 @@ async def cb_queue_return(cq: CallbackQuery, staff: StaffUser) -> None:
     if not ok:
         await cq.answer("Не удалось вернуть заявку в поиск", show_alert=True)
         return
-    updated = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    updated = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not updated:
         await cq.answer("Заявка не найдена", show_alert=True)
         return
-    history = await orders_service.list_status_history(order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
-    show_guarantee = await _should_show_guarantee_button(updated, orders_service)
+    history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
+    show_guarantee = await _should_show_guarantee_button(updated, orders_service, visible_city_ids_for(staff))
     await _render_order_card(cq.message, updated, history, show_guarantee=show_guarantee)
     await cq.answer("Заявка возвращена в поиск")
 
@@ -1205,7 +1232,7 @@ async def cb_queue_cancel_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
         await cq.answer("Некорректный идентификатор заявки", show_alert=True)
         return
     orders_service = get_service(cq.message.bot, "orders_service")
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await cq.answer("Заявка не найдена", show_alert=True)
         return
@@ -1239,7 +1266,7 @@ async def cb_queue_cancel_back(cq: CallbackQuery, staff: StaffUser, state: FSMCo
         await cq.answer("Некорректные параметры", show_alert=True)
         return
     orders_service = get_service(cq.message.bot, "orders_service")
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await _clear_cancel_state(state)
         await cq.answer("Заявка не найдена", show_alert=True)
@@ -1248,7 +1275,7 @@ async def cb_queue_cancel_back(cq: CallbackQuery, staff: StaffUser, state: FSMCo
         await _clear_cancel_state(state)
         await cq.answer("Нет доступа к заявке", show_alert=True)
         return
-    history = await orders_service.list_status_history(order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
+    history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
     show_guarantee = await _should_show_guarantee_button(order, orders_service, visible_city_ids_for(staff))
     await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee)
     await _clear_cancel_state(state)
@@ -1270,12 +1297,12 @@ async def queue_cancel_abort(msg: Message, staff: StaffUser, state: FSMContext) 
     if not order_id or not chat_id or not message_id:
         return
     orders_service = get_service(msg.bot, "orders_service")
-    order = await orders_service.get_card(int(order_id), city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, int(order_id), city_ids=visible_city_ids_for(staff))
     if not order:
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
         return
-    history = await orders_service.list_status_history(int(order_id), limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
+    history = await _call_service(orders_service.list_status_history, int(order_id), limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
     text_body = _format_order_card_text(order, history)
     show_guarantee = await _should_show_guarantee_button(order, orders_service, visible_city_ids_for(staff))
     markup = _order_card_markup(order, show_guarantee=show_guarantee)
@@ -1314,7 +1341,7 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
         await msg.answer("Не удалось определить заявку. Откройте карточку снова.")
         return
     orders_service = get_service(msg.bot, "orders_service")
-    order = await orders_service.get_card(int(order_id), city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, int(order_id), city_ids=visible_city_ids_for(staff))
     if not order:
         await _clear_cancel_state(state)
         await msg.answer("Заявка не найдена.")
@@ -1328,9 +1355,9 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
         await msg.answer("Заявка отменена.")
     else:
         await msg.answer("Не удалось отменить заявку.")
-    updated = await orders_service.get_card(int(order_id), city_ids=visible_city_ids_for(staff))
+    updated = await _call_service(orders_service.get_card, int(order_id), city_ids=visible_city_ids_for(staff))
     if updated:
-        history = await orders_service.list_status_history(int(order_id), limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
+        history = await _call_service(orders_service.list_status_history, int(order_id), limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
         text_body = _format_order_card_text(updated, history)
         markup = _order_card_markup(updated)
         try:
@@ -1359,14 +1386,14 @@ async def cb_queue_attachment(cq: CallbackQuery, staff: StaffUser) -> None:
         await cq.answer('Некорректный файл', show_alert=True)
         return
     orders_service = get_service(cq.message.bot, 'orders_service')
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await cq.answer('Заявка не найдена', show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
         await cq.answer('Нет доступа к заявке', show_alert=True)
         return
-    attachment = await orders_service.get_order_attachment(order_id, attachment_id, city_ids=visible_city_ids_for(staff))
+    attachment = await _call_service(orders_service.get_order_attachment, order_id, attachment_id, city_ids=visible_city_ids_for(staff))
     if not attachment:
         await cq.answer('Файл не найден', show_alert=True)
         return

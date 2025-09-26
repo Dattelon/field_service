@@ -48,6 +48,7 @@ class StaffAccessCode:
     used_by_staff_id: Optional[int]
     expires_at: Optional[datetime]
     used_at: Optional[datetime]
+    revoked_at: Optional[datetime]
     is_revoked: bool
     comment: Optional[str]
     created_at: datetime

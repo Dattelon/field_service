@@ -464,7 +464,8 @@ class DBStaffService:
         *,
         role: StaffRole,
         city_ids: Iterable[int],
-        issued_by_staff_id: Optional[int],
+        issued_by_staff_id: Optional[int] = None,
+        created_by_staff_id: Optional[int] = None,
         expires_at: Optional[datetime],
         comment: Optional[str],
     ) -> StaffAccessCode:
@@ -478,11 +479,12 @@ class DBStaffService:
                 code_value = await self._generate_unique_code(session)
                 db_role = _map_staff_role_to_db(role)
                 city_column = unique_cities[0] if len(unique_cities) == 1 else None
+                issuer_id = issued_by_staff_id if issued_by_staff_id is not None else created_by_staff_id
                 code_row = m.staff_access_codes(
                     code=code_value,
                     role=db_role,
                     city_id=city_column,
-                    issued_by_staff_id=issued_by_staff_id,
+                    issued_by_staff_id=issuer_id,
                     expires_at=expires_at_value,
                     comment=comment,
                 )
@@ -505,6 +507,7 @@ class DBStaffService:
                 used_by_staff_id=code_row.used_by_staff_id,
                 expires_at=code_row.expires_at,
                 used_at=code_row.used_at,
+                revoked_at=None,
                 is_revoked=bool(code_row.is_revoked),
                 comment=code_row.comment,
                 created_at=code_row.created_at,
@@ -547,6 +550,7 @@ class DBStaffService:
                 used_by_staff_id=code_row.used_by_staff_id,
                 expires_at=code_row.expires_at,
                 used_at=code_row.used_at,
+                revoked_at=None,
                 is_revoked=bool(code_row.is_revoked),
                 comment=code_row.comment,
                 created_at=code_row.created_at,
@@ -1087,7 +1091,7 @@ class DBOrdersService:
                     )
             return recipients
 
-    async def get_card(self, order_id: int) -> Optional[OrderDetail]:
+    async def get_card(self, order_id: int, *, city_ids: Optional[Iterable[int]] = None) -> Optional[OrderDetail]:
             async with self._session_factory() as session:
                 stmt = (
                     select(
@@ -1117,6 +1121,11 @@ class DBOrdersService:
                     )
                     .where(m.orders.id == order_id)
                 )
+                if city_ids is not None:
+                    allowed = tuple(int(c) for c in city_ids)
+                    if not allowed:
+                        return None
+                    stmt = stmt.where(m.orders.city_id.in_(allowed))
                 row = await session.execute(stmt)
                 data = row.first()
                 if not data:
@@ -1160,11 +1169,11 @@ class DBOrdersService:
                 )
 
     async def list_status_history(
-            self, order_id: int, *, limit: int = 5
+            self, order_id: int, *, limit: int = 5, city_ids: Optional[Iterable[int]] = None
         ) -> tuple[OrderStatusHistoryItem, ...]:
             async with self._session_factory() as session:
                 limited = max(1, limit)
-                rows = await session.execute(
+                stmt = (
                     select(
                         m.order_status_history.id,
                         m.order_status_history.from_status,
@@ -1174,10 +1183,17 @@ class DBOrdersService:
                         m.order_status_history.changed_by_master_id,
                         m.order_status_history.created_at,
                     )
+                    .join(m.orders, m.orders.id == m.order_status_history.order_id)
                     .where(m.order_status_history.order_id == order_id)
                     .order_by(m.order_status_history.created_at.desc())
                     .limit(limited)
                 )
+                if city_ids is not None:
+                    allowed = tuple(int(c) for c in city_ids)
+                    if not allowed:
+                        return tuple()
+                    stmt = stmt.where(m.orders.city_id.in_(allowed))
+                rows = await session.execute(stmt)
                 items: list[OrderStatusHistoryItem] = []
                 for row in rows:
                     items.append(
@@ -1194,16 +1210,24 @@ class DBOrdersService:
                 return tuple(items)
 
     async def get_order_attachment(
-            self, order_id: int, attachment_id: int
+            self, order_id: int, attachment_id: int, *, city_ids: Optional[Iterable[int]] = None
         ) -> Optional[OrderAttachment]:
             async with self._session_factory() as session:
-                row = await session.execute(
+                stmt = (
                     select(
                         m.attachments.id,
                         m.attachments.file_type,
                         m.attachments.file_id,
                         m.attachments.file_name,
                         m.attachments.caption,
+                    )
+                    .select_from(m.attachments)
+                    .join(
+                        m.orders,
+                        and_(
+                            m.attachments.entity_type == m.AttachmentEntity.ORDER,
+                            m.attachments.entity_id == m.orders.id,
+                        ),
                     )
                     .where(
                         and_(
@@ -1214,6 +1238,12 @@ class DBOrdersService:
                     )
                     .limit(1)
                 )
+                if city_ids is not None:
+                    allowed = tuple(int(c) for c in city_ids)
+                    if not allowed:
+                        return None
+                    stmt = stmt.where(m.orders.city_id.in_(allowed))
+                row = await session.execute(stmt)
                 data = row.first()
                 if not data:
                     return None
@@ -1321,14 +1351,20 @@ class DBOrdersService:
                     )
                 return order.id
 
-    async def has_active_guarantee(self, source_order_id: int) -> bool:
+    async def has_active_guarantee(self, source_order_id: int, *, city_ids: Optional[Iterable[int]] = None) -> bool:
             async with self._session_factory() as session:
-                row = await session.execute(
+                stmt = (
                     select(1)
                     .where(m.orders.guarantee_source_order_id == source_order_id)
                     .where(~m.orders.status.in_([m.OrderStatus.CANCELED, m.OrderStatus.CLOSED]))
                     .limit(1)
                 )
+                if city_ids is not None:
+                    allowed = tuple(int(c) for c in city_ids)
+                    if not allowed:
+                        return False
+                    stmt = stmt.where(m.orders.city_id.in_(allowed))
+                row = await session.execute(stmt)
                 return row.first() is not None
 
     async def create_guarantee_order(self, source_order_id: int, by_staff_id: int) -> int:

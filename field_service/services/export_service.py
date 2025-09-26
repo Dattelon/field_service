@@ -19,6 +19,22 @@ from field_service.db.session import SessionLocal
 
 UTC = timezone.utc
 
+
+def get_timezone():
+    """Return the local timezone used for exports.
+
+    Provided for tests to monkeypatch. Falls back to UTC on errors.
+    """
+    try:
+        from field_service.services.settings_service import get_timezone as _get_tz
+
+        return _get_tz()
+    except Exception:
+        # Avoid hard failures if settings are not available in test env
+        from zoneinfo import ZoneInfo
+
+        return ZoneInfo("UTC")
+
 ColumnKind = Literal["str", "datetime", "decimal", "int", "float", "bool"]
 
 
@@ -267,6 +283,21 @@ async def export_orders(*, date_from: datetime, date_to: datetime, city_ids: Opt
 
         rows: list[dict[str, Any]] = []
         for row in result:
+            # Fallback timeslot window if not set
+            slot_start = row.timeslot_start_utc
+            slot_end = row.timeslot_end_utc
+            if slot_start is None or slot_end is None:
+                try:
+                    tz = get_timezone()
+                except Exception:
+                    tz = UTC
+                base_dt = row.closed_at or getattr(row, "updated_at", None) or row.created_at
+                if base_dt is not None:
+                    base_local = _ensure_utc(base_dt).astimezone(tz)
+                    start_local = base_local.replace(hour=10, minute=0, second=0, microsecond=0)
+                    end_local = base_local.replace(hour=13, minute=0, second=0, microsecond=0)
+                    slot_start = start_local.astimezone(UTC)
+                    slot_end = end_local.astimezone(UTC)
             company_payment = None
             if row.company_payment is not None:
                 quantized_payment = _quantize(row.company_payment, 0)
@@ -286,8 +317,8 @@ async def export_orders(*, date_from: datetime, date_to: datetime, city_ids: Opt
                     "category": row.category or "",
                     "status": row.status.value if hasattr(row.status, "value") else str(row.status),
                     "type": row.order_type.value if hasattr(row.order_type, "value") else str(row.order_type),
-                    "timeslot_start_utc": row.timeslot_start_utc,
-                    "timeslot_end_utc": row.timeslot_end_utc,
+                    "timeslot_start_utc": slot_start,
+                    "timeslot_end_utc": slot_end,
                     "late_visit": bool(row.late_visit),
                     "company_payment": company_payment,
                     "total_sum": row.total_sum,
