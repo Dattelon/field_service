@@ -1,0 +1,64 @@
+﻿*** Begin Patch
+*** Update File: field_service/bots/master_bot/texts.py
+@@
+-MASTER_PDN_CONSENT = (
+-    "By clicking \"Agree\" you allow the service to process your personal data "
+-    "(name, phone number, document photo, selfie) together with order and payment "
+-    "information for moderation, onboarding and security purposes."
+-)
+-
+-MASTER_PDN_DECLINED = (
+-    "Without consent to personal-data processing we cannot continue registration."
+-)
+-
+-START_NOT_APPROVED = (
+-    "Your profile is waiting for moderation. Submit the onboarding form to continue."
+-)
+-
+-START_APPROVED = (
+-    "You are approved. Use the menu to control your shift and work with orders."
+-)
+-
+-ONBOARDING_SUMMARY_HEADER = "Check your profile before sending it for moderation:"
+-
+-ONBOARDING_ALREADY_VERIFIED = (
+-    "Your profile is already approved. Contact support if you need to update the data."
+-)
+-
+-ONBOARDING_SENT = (
+-    "The profile was sent for moderation. We will notify you when it is reviewed."
+-)
++MASTER_PDN_CONSENT = (
++    "Нажимая «Согласен», вы подтверждаете согласие на обработку и хранение ваших "
++    "персональных данных (ФИО, телефон, фото документа, селфи), а также сведений "
++    "о заказах и оплате комиссий. Данные используются для модерации, допуска к "
++    "заданиям и безопасности сервиса."
++)
++
++MASTER_PDN_DECLINED = (
++    "Без согласия на обработку персональных данных мы не можем продолжить регистрацию."
++)
++
++START_NOT_APPROVED = (
++    "Анкета отправлена на модерацию. Заполните онбординг, чтобы продолжить работу."
++)
++
++START_BLOCKED = (
++    "Доступ временно ограничен. Для возобновления работы отправьте новую анкету или"
++    " свяжитесь с поддержкой."
++)
++
++START_APPROVED = (
++    "Вы допущены к работе. Используйте меню для управления сменой и заказами."
++)
++
++ONBOARDING_SUMMARY_HEADER = "Проверьте данные перед отправкой на модерацию:"
++
++ONBOARDING_ALREADY_VERIFIED = (
++    "Профиль уже одобрен. Для обновления данных обратитесь в поддержку."
++)
++
++ONBOARDING_SENT = (
++    "Анкета отправлена на модерацию. Мы уведомим вас после проверки."
++)
+*** End Patch

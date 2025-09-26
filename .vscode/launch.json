@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "admin_bot",
+            "type": "python",
+            "request": "launch",
+            "module": "field_service.bots.admin_bot.main",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "master_bot",
+            "type": "python",
+            "request": "launch",
+            "module": "field_service.bots.master_bot.main",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
