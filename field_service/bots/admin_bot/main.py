@@ -1,17 +1,19 @@
-﻿# field_service/bots/admin_bot/main.py
+# field_service/bots/admin_bot/main.py
 from __future__ import annotations
 
 import asyncio
 import logging
 from contextlib import suppress
 
-from aiogram import Bot, Dispatcher, exceptions
+from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.types import ErrorEvent
 
 from field_service.config import settings
-from field_service.infra.logging_utils import send_alert, send_log, start_heartbeat
+from field_service.bots.common.error_middleware import setup_error_middleware
+from field_service.bots.common.polling import poll_with_single_instance_guard
+from field_service.infra.notify import send_alert, send_log
 from field_service.services.distribution_scheduler import run_scheduler
+from field_service.services.heartbeat import run_heartbeat
 from field_service.services.watchdogs import watchdog_commissions_overdue
 
 from .handlers import router as admin_router
@@ -63,11 +65,17 @@ async def main() -> int:
     alerts_chat_id = channel_settings.get("alerts_channel_id") or settings.alerts_channel_id
     logs_chat_id = channel_settings.get("logs_channel_id") or settings.logs_channel_id
 
-    heartbeat_task = start_heartbeat(
-        bot,
-        bot_name="ADMIN_BOT",
-        interval_seconds=settings.heartbeat_seconds,
-        chat_id=logs_chat_id,
+    setup_error_middleware(
+        dp,
+        bot=bot,
+        bot_label="admin_bot",
+        logs_chat_id=logs_chat_id,
+        alerts_chat_id=alerts_chat_id,
+    )
+
+    heartbeat_task = asyncio.create_task(
+        run_heartbeat(bot, name="admin", chat_id=logs_chat_id),
+        name="admin_heartbeat",
     )
 
     scheduler_task = asyncio.create_task(
@@ -85,29 +93,21 @@ async def main() -> int:
         name="commissions_watchdog",
     )
 
-    async def on_error(event: ErrorEvent, exception: Exception) -> bool:
-        logger.exception("Unhandled admin bot error: %s", exception)
-        message = f"❗ Ошибка admin_bot: {type(exception).__name__}: {exception}"
-        await send_log(bot, message, chat_id=logs_chat_id)
-        await send_alert(bot, message, chat_id=alerts_chat_id)
-        return True
-
-    dp.errors.register(on_error)
-
     exit_code = 0
     try:
-        await dp.start_polling(bot)
-    except exceptions.TelegramConflictError:
-        message = "[admin_bot] Conflict 409: another instance detected — exiting"
-        logger.warning(message)
-        await send_log(bot, message, chat_id=logs_chat_id)
-        exit_code = 0
-    except (KeyboardInterrupt, SystemExit, asyncio.CancelledError):
+        await poll_with_single_instance_guard(
+            dp,
+            bot,
+            logs_chat_id=logs_chat_id,
+        )
+    except SystemExit as conflict_exit:
+        exit_code = int(conflict_exit.code or 0)
+    except (KeyboardInterrupt, asyncio.CancelledError):
         pass
     except Exception as exc:
         logger.exception("Admin bot polling failed: %s", exc)
-        message = f"❗ Ошибка admin_bot: {type(exc).__name__}: {exc}"
-        await send_alert(bot, message, chat_id=alerts_chat_id)
+        message = f"❗ Ошибка admin_bot polling: {type(exc).__name__}: {exc}"
+        await send_alert(bot, message, chat_id=alerts_chat_id, exc=exc)
         await send_log(bot, message, chat_id=logs_chat_id)
         exit_code = 1
     finally:

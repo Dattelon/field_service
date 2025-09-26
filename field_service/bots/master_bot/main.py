@@ -1,15 +1,17 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import logging
 from contextlib import suppress
 
-from aiogram import Bot, Dispatcher, exceptions
+from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.types import ErrorEvent
 
 from field_service.config import settings
-from field_service.infra.logging_utils import send_alert, send_log, start_heartbeat
+from field_service.bots.common.error_middleware import setup_error_middleware
+from field_service.bots.common.polling import poll_with_single_instance_guard
+from field_service.infra.notify import send_alert, send_log
+from field_service.services.heartbeat import run_heartbeat
 
 from .handlers import router as master_router
 
@@ -28,35 +30,34 @@ async def main() -> int:
     alerts_chat_id = settings.alerts_channel_id
     logs_chat_id = settings.logs_channel_id
 
-    heartbeat_task = start_heartbeat(
-        bot,
-        bot_name="MASTER_BOT",
-        interval_seconds=settings.heartbeat_seconds,
-        chat_id=logs_chat_id,
+    setup_error_middleware(
+        dp,
+        bot=bot,
+        bot_label="master_bot",
+        logs_chat_id=logs_chat_id,
+        alerts_chat_id=alerts_chat_id,
     )
 
-    async def on_error(event: ErrorEvent, exception: Exception) -> bool:
-        logger.exception("Unhandled master bot error: %s", exception)
-        message = f"❗ Ошибка master_bot: {type(exception).__name__}: {exception}"
-        await send_log(bot, message, chat_id=logs_chat_id)
-        await send_alert(bot, message, chat_id=alerts_chat_id)
-        return True
-
-    dp.errors.register(on_error)
+    heartbeat_task = asyncio.create_task(
+        run_heartbeat(bot, name="master", chat_id=logs_chat_id),
+        name="master_heartbeat",
+    )
 
     exit_code = 0
     try:
-        await dp.start_polling(bot)
-    except exceptions.TelegramConflictError:
-        message = "[master_bot] Conflict 409: another instance detected — exiting"
-        logger.warning(message)
-        await send_log(bot, message, chat_id=logs_chat_id)
-    except (KeyboardInterrupt, SystemExit, asyncio.CancelledError):
+        await poll_with_single_instance_guard(
+            dp,
+            bot,
+            logs_chat_id=logs_chat_id,
+        )
+    except SystemExit as conflict_exit:
+        exit_code = int(conflict_exit.code or 0)
+    except (KeyboardInterrupt, asyncio.CancelledError):
         pass
     except Exception as exc:
         logger.exception("Master bot polling failed: %s", exc)
-        message = f"❗ Ошибка master_bot: {type(exc).__name__}: {exc}"
-        await send_alert(bot, message, chat_id=alerts_chat_id)
+        message = f"❗ Ошибка master_bot polling: {type(exc).__name__}: {exc}"
+        await send_alert(bot, message, chat_id=alerts_chat_id, exc=exc)
         await send_log(bot, message, chat_id=logs_chat_id)
         exit_code = 1
     finally:

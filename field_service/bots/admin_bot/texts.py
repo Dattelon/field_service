@@ -188,7 +188,7 @@ def new_order_summary(data: Mapping[str, object]) -> str:
     )
     lines.append(f"Категория: {data.get('category_label', data.get('category', '—'))}")
     lines.append(f"Тип заявки: {data.get('order_type', 'NORMAL')}")
-    lines.append(f"Слот: {data.get('slot_label_display', '—')}")
+    lines.append(f"Слот: {data.get('timeslot_display', '—')}")
     if data.get('description'):
         lines.append("Описание: " + str(data['description']))
     if data.get('attachments_count'):

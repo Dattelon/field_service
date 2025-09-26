@@ -84,10 +84,10 @@ class StreetRef:
 
 @dataclass(frozen=True)
 class TimeslotOption:
+    key: str
     label: str
-    scheduled_date: Optional[date]
-    time_start: Optional[time]
-    time_end: Optional[time]
+    start_utc: Optional[datetime]
+    end_utc: Optional[datetime]
     is_asap: bool = False
 
 
@@ -131,10 +131,10 @@ class OrderDetail(OrderListItem):
     apartment: Optional[str]
     address_comment: Optional[str]
     description: Optional[str]
-    latitude: Optional[float]
-    longitude: Optional[float]
+    lat: Optional[float]
+    lon: Optional[float]
     company_payment: Optional[Decimal]
-    total_price: Decimal
+    total_sum: Decimal
     attachments: Tuple[OrderAttachment, ...]
 
 
@@ -284,14 +284,14 @@ class NewOrderData:
     category: str
     description: str
     order_type: OrderType
-    scheduled_date: Optional[date]
-    time_slot_start: Optional[time]
-    time_slot_end: Optional[time]
-    slot_label: Optional[str]
-    latitude: Optional[float]
-    longitude: Optional[float]
+    timeslot_start_utc: Optional[datetime]
+    timeslot_end_utc: Optional[datetime]
+    timeslot_display: Optional[str]
+    lat: Optional[float]
+    lon: Optional[float]
+    no_district: bool
     company_payment: Optional[Decimal]
-    total_price: Decimal
+    total_sum: Decimal
     created_by_staff_id: Optional[int]
     preferred_master_id: Optional[int] = None
     guarantee_source_order_id: Optional[int] = None

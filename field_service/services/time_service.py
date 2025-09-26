@@ -32,7 +32,7 @@ NormalizedAsap = Literal["ASAP", "DEFERRED_TOM_10_13"]
 @dataclass(frozen=True, slots=True)
 class SlotComputation:
     label: str
-    scheduled_date: date
+    slot_date: date
     start_local: time
     end_local: time
     start_utc: datetime
@@ -41,6 +41,13 @@ class SlotComputation:
 
     def as_tuple(self) -> tuple[datetime, datetime]:
         return self.start_utc, self.end_utc
+
+
+@dataclass(frozen=True, slots=True)
+class TimeslotWindow:
+    start_utc: Optional[datetime]
+    end_utc: Optional[datetime]
+
 
 
 def _coerce_zone(zone: Optional[str | ZoneInfo]) -> ZoneInfo:
@@ -135,7 +142,7 @@ def compute_slot(
         if start_local >= workday_end:
             raise ValueError("ASAP slot cannot start after workday end")
         end_local = workday_end
-        scheduled_day = base_now.date()
+        slot_date = base_now.date()
     else:
         if ":" not in normalized_choice:
             raise ValueError(f"Unsupported slot choice: {choice}")
@@ -144,9 +151,9 @@ def compute_slot(
             raise ValueError(f"Unknown slot bucket: {bucket}")
         start_local, end_local = _SLOT_BUCKETS[bucket]
         if period == "TODAY":
-            scheduled_day = base_now.date()
+            slot_date = base_now.date()
         elif period in {"TOM", "TOMORROW"}:
-            scheduled_day = base_now.date() + timedelta(days=1)
+            slot_date = base_now.date() + timedelta(days=1)
         else:
             raise ValueError(f"Unsupported slot period: {period}")
         if period == "TODAY":
@@ -157,11 +164,11 @@ def compute_slot(
                 raise ValueError("Selected slot already passed for today")
     if start_local >= end_local:
         raise ValueError("Invalid slot interval")
-    start_local_dt = datetime.combine(scheduled_day, start_local, tzinfo=tz)
-    end_local_dt = datetime.combine(scheduled_day, end_local, tzinfo=tz)
+    start_local_dt = datetime.combine(slot_date, start_local, tzinfo=tz)
+    end_local_dt = datetime.combine(slot_date, end_local, tzinfo=tz)
     return SlotComputation(
         label=label,
-        scheduled_date=scheduled_day,
+        slot_date=slot_date,
         start_local=start_local,
         end_local=end_local,
         start_utc=start_local_dt.astimezone(timezone.utc),
@@ -170,14 +177,65 @@ def compute_slot(
     )
 
 
+def _day_prefix(target: date, today: date) -> Optional[str]:
+    delta = (target - today).days
+    if delta == 0:
+        return "???????"
+    if delta == 1:
+        return "??????"
+    if delta == -1:
+        return "?????"
+    return None
+
+
+def format_timeslot_local(
+    start_utc: Optional[datetime],
+    end_utc: Optional[datetime],
+    *,
+    tz: Optional[str | ZoneInfo],
+    fallback: Optional[str] = None,
+    now_utc: Optional[datetime] = None,
+) -> Optional[str]:
+    if not start_utc and not end_utc:
+        return fallback
+    tzinfo = _coerce_zone(tz)
+    reference = (now_utc or datetime.now(timezone.utc)).astimezone(tzinfo)
+    start_local = start_utc.astimezone(tzinfo) if start_utc else None
+    end_local = end_utc.astimezone(tzinfo) if end_utc else None
+
+    def format_single(moment: datetime) -> str:
+        prefix = _day_prefix(moment.date(), reference.date())
+        if prefix:
+            return f"{prefix} {moment:%H:%M}"
+        return moment.strftime("%d.%m %H:%M")
+
+    if start_local and end_local:
+        if start_local.date() == end_local.date():
+            prefix = _day_prefix(start_local.date(), reference.date())
+            if prefix:
+                return f"{prefix} {start_local:%H:%M}-{end_local:%H:%M}"
+            return f"{start_local:%d.%m %H:%M}-{end_local:%H:%M}"
+        start_text = format_single(start_local)
+        end_text = format_single(end_local)
+        return f"{start_text} ? {end_text}"
+    if start_local:
+        return format_single(start_local)
+    if end_local:
+        return format_single(end_local)
+    return fallback
+
+
+
 __all__ = [
     "SlotChoice",
     "NormalizedAsap",
     "SlotComputation",
+    "TimeslotWindow",
     "compute_slot",
     "combine_local",
     "local_range_to_utc",
     "normalize_asap_choice",
+    "format_timeslot_local",
     "now_in_city",
     "parse_time_string",
     "resolve_timezone",

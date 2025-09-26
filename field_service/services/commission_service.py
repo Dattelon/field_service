@@ -70,7 +70,7 @@ class CommissionService:
         avg_week_check = await self._get_avg_week_check(master.id)
         rate = self.compute_rate(avg_week_check)
 
-        total = _to_decimal(order.total_price)
+        total = _to_decimal(order.total_sum)
         amount = (total * rate).quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
 
         now = datetime.now(UTC)
@@ -97,7 +97,7 @@ class CommissionService:
     async def _get_avg_week_check(self, master_id: int) -> Decimal:
         week_ago = datetime.now(UTC) - timedelta(days=7)
         stmt = (
-            select(func.avg(m.orders.total_price))
+            select(func.avg(m.orders.total_sum))
             .where(m.orders.assigned_master_id == master_id)
             .where(m.orders.status == m.OrderStatus.CLOSED)
             .where(m.orders.created_at >= week_ago)
@@ -154,19 +154,22 @@ def _mask_phone(phone: str | None) -> str | None:
 
 def _render_comment(template: str, *, order: m.orders, master: m.masters) -> str:
     if not template:
-        return f"Комиссия #{order.id}"
+        return f"Commission #{order.id}"
     return (
         template.replace("<order_id>", str(order.id))
-        .replace("<master_fio>", master.full_name or "Мастер")
+        .replace("<master_fio>", master.full_name or "Unknown")
     )
 
 
 def _is_guarantee(order: m.orders) -> bool:
-    order_type = getattr(order, "order_type", None)
-    if order_type is not None:
-        if order_type == m.OrderType.GUARANTEE:
+    order_type = getattr(order, "type", None)
+    if order_type is None:
+        order_type = getattr(order, "order_type", None)
+    if isinstance(order_type, m.OrderType):
+        if order_type is m.OrderType.GUARANTEE:
             return True
-        if isinstance(order_type, str) and order_type.upper() == m.OrderType.GUARANTEE.value:
+    elif isinstance(order_type, str):
+        if order_type.upper() == m.OrderType.GUARANTEE.value:
             return True
     if getattr(order, "guarantee_source_order_id", None) is not None:
         return True

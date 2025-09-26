@@ -189,7 +189,7 @@ async def test_commission_creation_and_overdue_block(async_session) -> None:
         city_id=city.id,
         district_id=None,
         status=m.OrderStatus.PAYMENT,
-        total_price=3000,
+        total_sum=3000,
         assigned_master_id=master.id,
     )
     async_session.add(order)

@@ -3,11 +3,13 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional
 
 from aiogram import Bot
 
 from field_service.config import settings
+from field_service.infra.notify import send_alert, send_log
+
+__all__ = ["utcnow_iso", "start_heartbeat", "send_log", "send_alert"]
 
 logger = logging.getLogger(__name__)
 UTC = timezone.utc
@@ -18,57 +20,17 @@ def utcnow_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
-async def _safe_send(
-    bot: Optional[Bot],
-    chat_id: Optional[int],
-    text: str,
-    **kwargs: Any,
-) -> None:
-    if bot is None or chat_id is None:
-        return
-    if not text:
-        return
-    try:
-        await bot.send_message(chat_id, text, **kwargs)
-    except Exception:
-        logger.warning("Failed to send message to chat %s", chat_id, exc_info=True)
-
-
-async def send_log(
-    bot: Optional[Bot],
-    text: str,
-    *,
-    chat_id: Optional[int] = None,
-    **kwargs: Any,
-) -> None:
-    """Send *text* to the logs channel, if configured."""
-    target = chat_id if chat_id is not None else settings.logs_channel_id
-    await _safe_send(bot, target, text, **kwargs)
-
-
-async def send_alert(
-    bot: Optional[Bot],
-    text: str,
-    *,
-    chat_id: Optional[int] = None,
-    reply_markup: Any | None = None,
-    **kwargs: Any,
-) -> None:
-    """Send *text* to the alerts channel, if configured."""
-    target = chat_id if chat_id is not None else settings.alerts_channel_id
-    if reply_markup is not None:
-        kwargs.setdefault("reply_markup", reply_markup)
-    await _safe_send(bot, target, text, **kwargs)
-
-
 def start_heartbeat(
     bot: Bot,
     *,
     bot_name: str,
     interval_seconds: int,
-    chat_id: Optional[int] = None,
+    chat_id: int | None = None,
 ) -> asyncio.Task:
-    """Spawn heartbeat loop for *bot* returning the created asyncio task."""
+    """Spawn heartbeat loop for *bot* returning the created asyncio task.
+
+    Deprecated in favour of field_service.services.heartbeat.run_heartbeat.
+    """
 
     interval = max(5, int(interval_seconds) if interval_seconds else 60)
     target = chat_id if chat_id is not None else settings.logs_channel_id

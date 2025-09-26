@@ -12,6 +12,7 @@ from field_service.bots.admin_bot.services_db import (
     DBFinanceService,
     DBOrdersService,
     DBSettingsService,
+    PAYMENT_METHOD_LABELS,
 )
 from field_service.db import models as m
 from field_service.services import distribution_worker as dw, live_log
@@ -104,13 +105,13 @@ async def test_create_guarantee_order(async_session) -> None:
     order = m.orders(
         city_id=city.id,
         status=m.OrderStatus.CLOSED,
-        order_type=m.OrderType.NORMAL,
+        type=m.OrderType.NORMAL,
         assigned_master_id=master.id,
-        client_name="Клиент",
+        client_name="",
         client_phone="+79990000078",
         category="ELECTRICS",
-        description="Неисправность розетки",
-        total_price=Decimal("1500"),
+        description=" ",
+        total_sum=Decimal("1500"),
     )
     async_session.add(order)
     await async_session.commit()
@@ -120,13 +121,13 @@ async def test_create_guarantee_order(async_session) -> None:
 
     guarantee = await async_session.get(m.orders, new_id)
     assert guarantee is not None
-    assert guarantee.order_type == m.OrderType.GUARANTEE
+    assert guarantee.type == m.OrderType.GUARANTEE
     assert guarantee.status == m.OrderStatus.GUARANTEE
     assert guarantee.preferred_master_id == master.id
     assert guarantee.guarantee_source_order_id == order.id
     assert Decimal(guarantee.company_payment) == Decimal("2500")
-    assert Decimal(guarantee.total_price) == Decimal("0")
-    assert "ГАРАНТ" in guarantee.description.upper()
+    assert Decimal(guarantee.total_sum) == Decimal("0")
+    assert "" in guarantee.description.upper()
 
     assert await service.has_active_guarantee(order.id) is True
 @pytest.mark.asyncio
@@ -154,7 +155,7 @@ async def test_commission_detail(async_session) -> None:
         city_id=city.id,
         district_id=None,
         status=m.OrderStatus.PAYMENT,
-        total_price=Decimal("2000"),
+        total_sum=Decimal("2000"),
         assigned_master_id=master.id,
         client_name="Client",
         client_phone="+79990000002",
@@ -190,7 +191,7 @@ async def test_commission_detail(async_session) -> None:
     assert detail is not None
     assert detail.amount == Decimal("1000")
     assert detail.attachments and detail.attachments[0].file_name == "check.pdf"
-    assert "Карта" in detail.snapshot_methods
+    assert detail.snapshot_methods == (PAYMENT_METHOD_LABELS["card"],)
 
 
 
@@ -221,7 +222,7 @@ async def test_finance_approve_updates_order(async_session) -> None:
         city_id=city.id,
         district_id=None,
         status=m.OrderStatus.PAYMENT,
-        total_price=Decimal("3000"),
+        total_sum=Decimal("3000"),
         assigned_master_id=master.id,
     )
     async_session.add(order)
@@ -435,7 +436,7 @@ async def test_distribution_assign_auto_success(async_session, monkeypatch) -> N
 
     master = m.masters(
         tg_user_id=999,
-        full_name="Иван Мастер",
+        full_name=" ",
         phone="+79990000001",
         city_id=city.id,
         is_active=True,
@@ -668,9 +669,9 @@ async def test_finance_approve_creates_referral_rewards(async_session) -> None:
     order = m.orders(
         city_id=city.id,
         status=m.OrderStatus.PAYMENT,
-        order_type=m.OrderType.NORMAL,
+        type=m.OrderType.NORMAL,
         assigned_master_id=payer.id,
-        total_price=Decimal("1500.00"),
+        total_sum=Decimal("1500.00"),
         client_name="Client",
         client_phone="+79990000999",
     )

@@ -4,7 +4,7 @@ import csv
 import io
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import date, datetime, time, timezone
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, AsyncIterator, Iterable, Literal, Optional, Sequence
 
@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
-from field_service.services.settings_service import get_timezone
 
 UTC = timezone.utc
 
@@ -99,11 +98,6 @@ def _ensure_utc(value: datetime) -> datetime:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
 
-
-def _slot_to_datetime(day: date | None, moment: time | None, tz: timezone) -> datetime | None:
-    if day is None or moment is None:
-        return None
-    return datetime.combine(day, moment, tzinfo=tz)
 
 def _quantize(value: Any, precision: int) -> Decimal:
     quant = Decimal("1").scaleb(-precision)
@@ -220,7 +214,6 @@ async def export_orders(*, date_from: datetime, date_to: datetime, city_ids: Opt
     end_utc = _ensure_utc(date_to)
     assigned_master = aliased(m.masters, name="assigned_master")
     city_filter = list(city_ids) if city_ids else None
-    tz = get_timezone()
     async with _session_scope(session) as db:
         stmt = (
             select(
@@ -230,19 +223,18 @@ async def export_orders(*, date_from: datetime, date_to: datetime, city_ids: Opt
                 m.districts.name.label("district"),
                 m.streets.name.label("street"),
                 m.orders.house.label("house"),
-                m.orders.latitude.label("latitude"),
-                m.orders.longitude.label("longitude"),
+                m.orders.lat.label("lat"),
+                m.orders.lon.label("lon"),
                 m.orders.category.label("category"),
                 m.orders.status.label("status"),
-                m.orders.order_type.label("order_type"),
+                m.orders.type.label("order_type"),
                 m.orders.late_visit.label("late_visit"),
                 m.orders.company_payment.label("company_payment"),
-                m.orders.total_price.label("total_price"),
+                m.orders.total_sum.label("total_sum"),
                 m.orders.client_name.label("client_name"),
                 m.orders.client_phone.label("client_phone"),
-                m.orders.scheduled_date.label("scheduled_date"),
-                m.orders.time_slot_start.label("time_slot_start"),
-                m.orders.time_slot_end.label("time_slot_end"),
+                m.orders.timeslot_start_utc.label("timeslot_start_utc"),
+                m.orders.timeslot_end_utc.label("timeslot_end_utc"),
                 assigned_master.full_name.label("master_name"),
                 assigned_master.phone.label("master_phone"),
                 (
@@ -275,8 +267,6 @@ async def export_orders(*, date_from: datetime, date_to: datetime, city_ids: Opt
 
         rows: list[dict[str, Any]] = []
         for row in result:
-            ts_start = _slot_to_datetime(row.scheduled_date, row.time_slot_start, tz)
-            ts_end = _slot_to_datetime(row.scheduled_date, row.time_slot_end, tz)
             company_payment = None
             if row.company_payment is not None:
                 quantized_payment = _quantize(row.company_payment, 0)
@@ -291,16 +281,16 @@ async def export_orders(*, date_from: datetime, date_to: datetime, city_ids: Opt
                     "district": row.district or "",
                     "street": row.street or "",
                     "house": row.house or "",
-                    "lat": row.latitude,
-                    "lon": row.longitude,
+                    "lat": row.lat,
+                    "lon": row.lon,
                     "category": row.category or "",
                     "status": row.status.value if hasattr(row.status, "value") else str(row.status),
                     "type": row.order_type.value if hasattr(row.order_type, "value") else str(row.order_type),
-                    "timeslot_start_utc": ts_start,
-                    "timeslot_end_utc": ts_end,
+                    "timeslot_start_utc": row.timeslot_start_utc,
+                    "timeslot_end_utc": row.timeslot_end_utc,
                     "late_visit": bool(row.late_visit),
                     "company_payment": company_payment,
-                    "total_sum": row.total_price,
+                    "total_sum": row.total_sum,
                     "user_name": row.client_name or "",
                     "user_phone": row.client_phone or "",
                     "master_name": row.master_name or "",

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import logging
@@ -9,9 +9,12 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from field_service.db.session import SessionLocal
+from field_service.infra.notify import send_alert
 from field_service.services import live_log
-from field_service.services.commission_service import CommissionOverdueEvent, apply_overdue_commissions
-from field_service.infra.logging_utils import send_alert
+from field_service.services.commission_service import (
+    CommissionOverdueEvent,
+    apply_overdue_commissions,
+)
 
 UTC = timezone.utc
 logger = logging.getLogger("watchdogs")
@@ -21,9 +24,13 @@ async def watchdog_commissions_overdue(
     bot: Bot,
     alerts_chat_id: Optional[int],
     interval_seconds: int = 600,
+    *,
+    iterations: int | None = None,
 ) -> None:
     """Periodically block overdue commissions and notify admins."""
+
     sleep_for = max(60, int(interval_seconds) if interval_seconds else 600)
+    loops_done = 0
     while True:
         try:
             async with SessionLocal() as session:
@@ -52,11 +59,15 @@ async def watchdog_commissions_overdue(
             logger.exception("watchdog_commissions_overdue error")
             live_log.push("watchdog", f"watchdog_commissions_overdue error: {exc}", level="ERROR")
 
+        loops_done += 1
+        if iterations is not None and loops_done >= iterations:
+            break
+
         await asyncio.sleep(sleep_for)
 
 
 async def _notify_overdue_commission(bot: Bot, chat_id: int, event: CommissionOverdueEvent) -> None:
-    name = event.master_full_name or "неизвестный мастер"
+    name = event.master_full_name or "Неизвестный мастер"
     message = (
         f"🚫 Просрочка комиссии #{event.commission_id} (заказ #{event.order_id}). "
         f"Мастер {name}, id={event.master_id} заблокирован."
@@ -65,7 +76,8 @@ async def _notify_overdue_commission(bot: Bot, chat_id: int, event: CommissionOv
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="Открыть комиссию", callback_data=f"adm:f:cm:{event.commission_id}"
+                    text="Открыть комиссию",
+                    callback_data=f"adm:f:cm:{event.commission_id}",
                 )
             ]
         ]

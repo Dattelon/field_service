@@ -58,7 +58,7 @@ class CaptureOrdersService:
         status_filter=None,
         category=None,
         master_id=None,
-        scheduled_date=None,
+        timeslot_date=None,
     ) -> tuple[list[OrderListItem], bool]:
         self.calls.append(
             {
@@ -68,7 +68,7 @@ class CaptureOrdersService:
                 "status_filter": status_filter,
                 "category": category,
                 "master_id": master_id,
-                "scheduled_date": scheduled_date,
+                "timeslot_date": timeslot_date,
             }
         )
         return self._items, self._has_next

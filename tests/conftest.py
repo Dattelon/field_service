@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
@@ -33,6 +33,7 @@ TABLES = [
     m.staff_access_code_cities.__table__,
     m.masters.__table__,
     m.master_invite_codes.__table__,
+    m.offers.__table__,
     m.orders.__table__,
     m.attachments.__table__,
     m.commissions.__table__,
@@ -70,6 +71,7 @@ async def async_session() -> AsyncIterator[AsyncSession]:
         await conn.run_sync(
             lambda sync_conn: metadata.create_all(sync_conn, tables=TABLES)
         )
+        await conn.execute(sa.text("DROP INDEX IF EXISTS uix_offers__order_accepted_once"))
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     async with session_factory() as session:
         yield session

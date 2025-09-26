@@ -29,7 +29,7 @@ class StubOrdersService:
         status_filter: Optional[object] = None,
         category: Optional[str] = None,
         master_id: Optional[int] = None,
-        scheduled_date: Optional[object] = None,
+        timeslot_date: Optional[object] = None,
     ) -> tuple[list[object], bool]:
         return [], False
 
@@ -60,7 +60,7 @@ class StubOrdersService:
     async def create_order(self, data) -> int:
         return 0
 
-    async def get_card(self, order_id: int) -> Optional[object]:
+    async def get_card(self, order_id: int, *, city_ids: Optional[Iterable[int]] = None) -> Optional[object]:
         return None
 
     async def return_to_search(self, order_id: int, by_staff_id: int) -> bool:
@@ -109,6 +109,12 @@ class StubSettingsService:
         return {}
 
     async def update_owner_pay_requisites(self, staff_id: int, payload: dict[str, object]) -> None:
+        return None
+
+    async def get_owner_pay_snapshot(self) -> dict[str, object]:
+        return {}
+
+    async def update_owner_pay_snapshot(self, **payload: object) -> None:
         return None
 
     async def get_channel_settings(self) -> dict[str, Optional[int]]:

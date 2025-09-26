@@ -1,68 +1,9 @@
 # Changelog
 
-
-
-
-
-
-
-## Unreleased
-
-- Monitoring/OPS: heartbeat loops for both bots, unified send_log/send_alert helpers, distribution alerts (no district, empty rounds, 10 min escalation), overdue commission 🚫 notifications, single-instance 409 handling, and backup scripts for PostgreSQL.
-
-- Admin bot: staff access flow with adm:staff:* callbacks (code generation, city multi-select, onboarding via access codes).
-
-
-
-- РџСЂРѕСЃСЂРѕС‡РєР° РєРѕРјРёСЃСЃРёР№: watchdog РєР°Р¶РґС‹Рµ 10 РјРёРЅСѓС‚ РїРµСЂРµРІРѕРґРёС‚ WAIT_PAY > OVERDUE, Р±Р»РѕРєРёСЂСѓРµС‚ РјР°СЃС‚РµСЂР°, Р»РѕРіРёСЂСѓРµС‚ СЃРѕР±С‹С‚РёРµ Рё С€Р»С‘С‚ Р°Р»РµСЂС‚ СЃ РєРЅРѕРїРєРѕР№ РїРµСЂРµС…РѕРґР° РІ РєР°СЂС‚РѕС‡РєСѓ РєРѕРјРёСЃСЃРёРё.
-
-
-
-- Owner requisites are now stored in staff_users; admin bot has a guided editor and broadcast of current details.
-
-
-
-- РџРµСЂРµСЂР°Р±РѕС‚Р°РЅ СЂР°СЃС‡С‘С‚ РєРѕРјРёСЃСЃРёР№: CommissionService СЃРѕР·РґР°С‘С‚ Р·Р°РїРёСЃСЊ РїСЂРё РїРµСЂРµС…РѕРґРµ Р·Р°РєР°Р·Р° РІ PAYMENT (СЃС‚Р°РІРєР° 40% РїСЂРё avg_week_check >= 7000 РёРЅР°С‡Рµ 50%), РґРµРґР»Р°Р№РЅ РѕРїР»Р°С‚С‹ +3 С‡Р°СЃР°, РєРѕРїРёСЂСѓРµС‚СЃСЏ СЃРЅР°РїС€РѕС‚ СЂРµРєРІРёР·РёС‚РѕРІ РІР»Р°РґРµР»СЊС†Р° Рё РіР°СЂР°РЅС‚РёР№РЅС‹Рµ Р·Р°РєР°Р·С‹ РїСЂРѕРїСѓСЃРєР°СЋС‚СЃСЏ; РѕР±РЅРѕРІР»РµРЅС‹ РѕР±СЂР°Р±РѕС‚С‡РёРєРё РјР°СЃС‚РµСЂР° Рё С‚РµСЃС‚С‹.
-
-
-
-- Р”РѕР±Р°РІР»РµРЅРѕ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ РѕС‡РµСЂРµРґРё Р·Р°СЏРІРѕРє СЃ С„РёР»СЊС‚СЂР°РјРё, РїР°РіРёРЅР°С†РёРµР№ Рё СѓРїСЂР°РІР»РµРЅРёРµРј РЅР°РІРёРіР°С†РёРµР№ РІ Р°РґРјРёРЅ-Р±РѕС‚Рµ.
-
-
-
-- РћР±РЅРѕРІР»С‘РЅ СЂСѓС‡РЅРѕР№ РїРѕРґР±РѕСЂ РјР°СЃС‚РµСЂРѕРІ: СЃРїРёСЃРѕРє РїРѕРєР°Р·С‹РІР°РµС‚ СЃС‚Р°С‚СѓСЃ СЃРјРµРЅС‹/Р»РёРјРёС‚Р°, РґРѕР±Р°РІР»РµРЅРѕ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ Рё РѕС‚РїСЂР°РІРєР° РѕС„С„РµСЂР° РёР· РѕС‡РµСЂРµРґРё.
-
-
-
-- РђРІС‚РѕРЅР°Р·РЅР°С‡РµРЅРёРµ РёР· РєР°СЂС‚РѕС‡РєРё Р·Р°РєР°Р·Р° РІС‹Р·С‹РІР°РµС‚ СЃРµСЂРІРёСЃ СЂР°СЃРїСЂРµРґРµР»РµРЅРёСЏ, Р»РѕРіРёСЂСѓРµС‚ С‚РёРє Рё РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚ РѕС€РёР±РєРё (РЅРµС‚ СЂР°Р№РѕРЅР°/РєР°РЅРґРёРґР°С‚РѕРІ).
-
-
-
-
-
-
-
-- Р¤РёРЅР°РЅСЃРѕРІС‹Р№ UI РѕР±РЅРѕРІР»С‘РЅ: РјР°СЃС‚РµСЂ РІРёРґРёС‚ СЃРЅР°РїС€РѕС‚ СЂРµРєРІРёР·РёС‚РѕРІ Рё QR, Р°РґРјРёРЅ РјРѕР¶РµС‚ РїСЂРѕСЃРјР°С‚СЂРёРІР°С‚СЊ С‡РµРєРё, РІРІРѕРґРёС‚СЊ С„Р°РєС‚РёС‡РµСЃРєСѓСЋ СЃСѓРјРјСѓ РѕРїР»Р°С‚С‹ Рё СѓРїСЂР°РІР»СЏС‚СЊ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµРј/Р±Р»РѕРєРёСЂРѕРІРєРѕР№ РїСЂСЏРјРѕ РёР· РєР°СЂС‚РѕС‡РєРё РєРѕРјРёСЃСЃРёРё; РґРѕР±Р°РІР»РµРЅС‹ С‚РµСЃС‚С‹ Рё РѕР±СЂР°Р±РѕС‚РєР° РІРѕР·РІСЂР°С‚Р° РІ СЃРїРёСЃРѕРє.
-
-
-
-- Р”РѕР±Р°РІР»РµРЅР° РїРѕРґРґРµСЂР¶РєР° РіР°СЂР°РЅС‚РёР№РЅС‹С… Р·Р°СЏРІРѕРє: РёР· РєР°СЂС‚РѕС‡РєРё Р·Р°РєСЂС‹С‚РѕРіРѕ Р·Р°РєР°Р·Р° РјРѕР¶РЅРѕ СЃРѕР·РґР°С‚СЊ РіР°СЂР°РЅС‚РёР№РЅС‹Р№ РІС‹РµР·Рґ, РјР°СЃС‚РµСЂ Р·Р°РєСЂС‹РІР°РµС‚ Р±РµР· СЃСѓРјРјС‹ (С‚РѕР»СЊРєРѕ Р°РєС‚), РєРѕРјРёСЃСЃРёСЏ РЅРµ С„РѕСЂРјРёСЂСѓРµС‚СЃСЏ, СЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ РїСЂРёРѕСЂРёС‚РёР·РёСЂСѓРµС‚ РїСЂРµР¶РЅРµРіРѕ РёСЃРїРѕР»РЅРёС‚РµР»СЏ Рё Р°РІС‚РѕР±Р»РѕРєРёСЂСѓРµС‚ РµРіРѕ РїСЂРё РѕС‚РєР°Р·Рµ/С‚Р°Р№РјР°СѓС‚Рµ.
-
-
-
-- Р РµС„РµСЂР°Р»СЊРЅС‹Рµ РЅР°С‡РёСЃР»РµРЅРёСЏ: РЅР° РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РѕРїР»Р°С‚С‹ РєРѕРјРёСЃСЃРёРё СЃРѕР·РґР°СЋС‚СЃСЏ Р·Р°РїРёСЃРё СѓСЂРѕРІРЅРµР№ L1 (10%) Рё L2 (5%) СЃ РёРґРµРјРїРѕС‚РµРЅС‚РЅРѕР№ Р·Р°С‰РёС‚РѕР№ (commission_id+level), РґРѕР±Р°РІР»РµРЅС‹ СЋРЅРёС‚-С‚РµСЃС‚С‹.
-
-
-
-- РњР°СЃС‚РµСЂ-Р±РѕС‚: СЂР°Р·РґРµР» В«Р РµС„РµСЂР°Р»РєР°В» РїРѕРєР°Р·С‹РІР°РµС‚ РєРѕРґ, Р°РіСЂРµРіРёСЂРѕРІР°РЅРЅС‹Рµ СЃСѓРјРјС‹ РїРѕ СѓСЂРѕРІРЅСЏРј Рё РїРѕСЃР»РµРґРЅРёРµ РЅР°С‡РёСЃР»РµРЅРёСЏ.
-
-
-
-- Р­РєСЃРїРѕСЂС‚ ref_rewards РґРѕРїРѕР»РЅРµРЅ СЃС‚РѕР»Р±С†РѕРј commission_id; РѕР±РЅРѕРІР»РµРЅС‹ РІС‹РіСЂСѓР·РєРё CSV/XLSX.
-
-
-
-- Р­РєСЃРїРѕСЂС‚С‹ orders/commissions/ref_rewards РІС‹РґР°СЋС‚ CSV UTF-8 BOM СЃ С‚СЂРµР±СѓРµРјС‹Рј РЅР°Р±РѕСЂРѕРј РєРѕР»РѕРЅРѕРє Рё XLSX СЃ Р»РёСЃС‚Р°РјРё orders/commissions/ref_rewards (РґР°С‚С‹ РєР°Рє ISO-С‚РµРєСЃС‚, СЃСѓРјРјС‹ С‡РёСЃР»РѕРІС‹Рµ); СЂР°Р·РґРµР» Р°РґРјРёРЅ-Р±РѕС‚Р° В«?? РћС‚С‡С‘С‚С‹В» Р·Р°РїСЂР°С€РёРІР°РµС‚ РїРµСЂРёРѕРґ Рё РѕС‚РїСЂР°РІР»СЏРµС‚ РѕР±Р° С„Р°Р№Р»Р°.
-
-
+## v1.2.0 — 2025-09-27
+- Orders schema migrated to v1.2: added `type`, `timeslot_start_utc`, `timeslot_end_utc`, `total_sum`, `lat`, `lon`, `no_district`; legacy slot/price/coordinate fields removed by Alembic revision 2025_09_27_0003 with ENUM recreation and new `ck_orders__timeslot_range` + `ix_orders__status_city_timeslot_start`.
+- ORM consolidated: SQLAlchemy models expose only v1.2 fields; services, bots and exports now read UTC slots and `total_sum` directly, shared helper `format_timeslot_local` renders windows per city time zone.
+- Bots & distribution updated to final rules (SLA 120 s, two rounds, guarantee autoblock, no-district skip); finance flow enforces 3 h deadline, referral rewards (10%/5%) issued on approval, heartbeat/alerts unified.
+- Exports produce CSV (UTF-8 BOM, `;`, ISO UTC) and XLSX (orders/commissions/ref_rewards) using the new columns; docs and .env refreshed with v1.2 guidance and smoke/UAT procedures.
+- UAT freeze completed: slots/timeouts, guarantee loop, RBAC, finance watchdog, referrals, exports and ops monitoring verified per checklist; changelog frozen for release.
 

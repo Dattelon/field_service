@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -84,21 +84,21 @@ async def test_queue_visibility_by_city(async_session) -> None:
     order_a = m.orders(
         city_id=city_a.id,
         status=m.OrderStatus.SEARCHING,
-        order_type=m.OrderType.NORMAL,
+        type=m.OrderType.NORMAL,
         client_name="Client A",
         client_phone="+70000000001",
         description="Issue A",
-        total_price=Decimal("0"),
+        total_sum=Decimal("0"),
         created_at=datetime.now(UTC),
     )
     order_b = m.orders(
         city_id=city_b.id,
         status=m.OrderStatus.SEARCHING,
-        order_type=m.OrderType.NORMAL,
+        type=m.OrderType.NORMAL,
         client_name="Client B",
         client_phone="+70000000002",
         description="Issue B",
-        total_price=Decimal("0"),
+        total_sum=Decimal("0"),
         created_at=datetime.now(UTC),
     )
     async_session.add_all([order_a, order_b])
@@ -258,15 +258,17 @@ async def test_access_code_issue_and_use(async_session) -> None:
     code = await staff_service.create_access_code(
         role=StaffRole.CITY_ADMIN,
         city_ids=[city.id],
-        issued_by_staff_id=issuer.id,
+        created_by_staff_id=issuer.id,
         expires_at=None,
         comment=None,
     )
     assert code.expires_at is not None
+    assert code.revoked_at is None
 
     validated = await staff_service.validate_access_code_value(code.code)
     assert validated is not None
     assert validated.city_ids == (city.id,)
+    assert validated.revoked_at is None
 
     new_staff = await staff_service.register_staff_user_from_code(
         code_value=code.code,
@@ -299,8 +301,240 @@ async def test_access_code_issue_and_use(async_session) -> None:
     code_without_expiry = await zero_ttl_service.create_access_code(
         role=StaffRole.CITY_ADMIN,
         city_ids=[city.id],
-        issued_by_staff_id=issuer.id,
+        created_by_staff_id=issuer.id,
         expires_at=None,
         comment=None,
     )
     assert code_without_expiry.expires_at is None
+    assert code_without_expiry.revoked_at is None
+
+@pytest.mark.asyncio
+async def test_get_card_respects_city_scope(async_session) -> None:
+    session_maker = async_sessionmaker(async_session.bind, expire_on_commit=False)
+    orders_service = DBOrdersService(session_factory=session_maker)
+
+    city_a = m.cities(name="CardCityA")
+    city_b = m.cities(name="CardCityB")
+    async_session.add_all([city_a, city_b])
+    await async_session.flush()
+
+    order_a = m.orders(
+        city_id=city_a.id,
+        status=m.OrderStatus.SEARCHING,
+        type=m.OrderType.NORMAL,
+        client_name="Card A",
+        client_phone="+79990000001",
+        description="Card order A",
+        total_sum=Decimal("0"),
+        created_at=datetime.now(UTC),
+    )
+    order_b = m.orders(
+        city_id=city_b.id,
+        status=m.OrderStatus.SEARCHING,
+        type=m.OrderType.NORMAL,
+        client_name="Card B",
+        client_phone="+79990000002",
+        description="Card order B",
+        total_sum=Decimal("0"),
+        created_at=datetime.now(UTC),
+    )
+    async_session.add_all([order_a, order_b])
+    await async_session.commit()
+
+    allowed = await orders_service.get_card(order_a.id, city_ids=[city_a.id])
+    blocked = await orders_service.get_card(order_b.id, city_ids=[city_a.id])
+    assert allowed is not None
+    assert blocked is None
+
+    global_view = await orders_service.get_card(order_b.id, city_ids=None)
+    assert global_view is not None
+
+
+@pytest.mark.asyncio
+async def test_status_history_respects_city_scope(async_session) -> None:
+    session_maker = async_sessionmaker(async_session.bind, expire_on_commit=False)
+    orders_service = DBOrdersService(session_factory=session_maker)
+
+    city_a = m.cities(name="HistoryCityA")
+    city_b = m.cities(name="HistoryCityB")
+    async_session.add_all([city_a, city_b])
+    await async_session.flush()
+
+    order_a = m.orders(
+        city_id=city_a.id,
+        status=m.OrderStatus.SEARCHING,
+        type=m.OrderType.NORMAL,
+        client_name="History A",
+        client_phone="+79990000003",
+        description="History order A",
+        total_sum=Decimal("0"),
+        created_at=datetime.now(UTC),
+    )
+    order_b = m.orders(
+        city_id=city_b.id,
+        status=m.OrderStatus.SEARCHING,
+        type=m.OrderType.NORMAL,
+        client_name="History B",
+        client_phone="+79990000004",
+        description="History order B",
+        total_sum=Decimal("0"),
+        created_at=datetime.now(UTC),
+    )
+    async_session.add_all([order_a, order_b])
+    await async_session.flush()
+
+    async_session.add_all(
+        [
+            m.order_status_history(
+                order_id=order_a.id,
+                from_status=m.OrderStatus.SEARCHING,
+                to_status=m.OrderStatus.ASSIGNED,
+                created_at=datetime.now(UTC),
+            ),
+            m.order_status_history(
+                order_id=order_b.id,
+                from_status=m.OrderStatus.SEARCHING,
+                to_status=m.OrderStatus.ASSIGNED,
+                created_at=datetime.now(UTC),
+            ),
+        ]
+    )
+    await async_session.commit()
+
+    allowed_history = await orders_service.list_status_history(
+        order_a.id, limit=5, city_ids=[city_a.id]
+    )
+    blocked_history = await orders_service.list_status_history(
+        order_b.id, limit=5, city_ids=[city_a.id]
+    )
+    assert len(allowed_history) == 1
+    assert blocked_history == ()
+
+
+@pytest.mark.asyncio
+async def test_has_active_guarantee_respects_city_scope(async_session) -> None:
+    session_maker = async_sessionmaker(async_session.bind, expire_on_commit=False)
+    orders_service = DBOrdersService(session_factory=session_maker)
+
+    city_a = m.cities(name="GuaranteeCityA")
+    city_b = m.cities(name="GuaranteeCityB")
+    async_session.add_all([city_a, city_b])
+    await async_session.flush()
+
+    source = m.orders(
+        city_id=city_b.id,
+        status=m.OrderStatus.CLOSED,
+        type=m.OrderType.NORMAL,
+        client_name="Guarantee Source",
+        client_phone="+79990000005",
+        description="Guarantee source",
+        total_sum=Decimal("0"),
+        created_at=datetime.now(UTC),
+        assigned_master_id=None,
+    )
+    async_session.add(source)
+    await async_session.flush()
+
+    guarantee = m.orders(
+        city_id=city_b.id,
+        status=m.OrderStatus.SEARCHING,
+        type=m.OrderType.GUARANTEE,
+        client_name="Guarantee Child",
+        client_phone="+79990000006",
+        description="Guarantee child",
+        total_sum=Decimal("0"),
+        created_at=datetime.now(UTC),
+        guarantee_source_order_id=source.id,
+    )
+    async_session.add(guarantee)
+    await async_session.commit()
+
+    assert await orders_service.has_active_guarantee(
+        source.id, city_ids=[city_b.id]
+    ) is True
+    assert await orders_service.has_active_guarantee(
+        source.id, city_ids=[city_a.id]
+    ) is False
+
+
+@pytest.mark.asyncio
+async def test_order_attachment_respects_city_scope(async_session) -> None:
+    session_maker = async_sessionmaker(async_session.bind, expire_on_commit=False)
+    orders_service = DBOrdersService(session_factory=session_maker)
+
+    city_a = m.cities(name="AttachmentCityA")
+    city_b = m.cities(name="AttachmentCityB")
+    async_session.add_all([city_a, city_b])
+    await async_session.flush()
+
+    order = m.orders(
+        city_id=city_b.id,
+        status=m.OrderStatus.SEARCHING,
+        type=m.OrderType.NORMAL,
+        client_name="Attachment",
+        client_phone="+79990000007",
+        description="Attachment order",
+        total_sum=Decimal("0"),
+        created_at=datetime.now(UTC),
+    )
+    async_session.add(order)
+    await async_session.flush()
+
+    attachment = m.attachments(
+        entity_type=m.AttachmentEntity.ORDER,
+        entity_id=order.id,
+        file_type=m.AttachmentFileType.PHOTO.value,
+        file_id="FILE1",
+        file_name="pic.jpg",
+        caption="Caption",
+    )
+    async_session.add(attachment)
+    await async_session.commit()
+
+    allowed = await orders_service.get_order_attachment(
+        order.id, attachment.id, city_ids=[city_b.id]
+    )
+    blocked = await orders_service.get_order_attachment(
+        order.id, attachment.id, city_ids=[city_a.id]
+    )
+    assert allowed is not None
+    assert blocked is None
+
+
+@pytest.mark.asyncio
+async def test_manual_candidates_respects_city_scope(async_session) -> None:
+    session_maker = async_sessionmaker(async_session.bind, expire_on_commit=False)
+    orders_service = DBOrdersService(session_factory=session_maker)
+
+    city_a = m.cities(name="CandidatesCityA")
+    city_b = m.cities(name="CandidatesCityB")
+    async_session.add_all([city_a, city_b])
+    await async_session.flush()
+
+    district = m.districts(city_id=city_b.id, name="Center")
+    async_session.add(district)
+    await async_session.flush()
+
+    order = m.orders(
+        city_id=city_b.id,
+        district_id=district.id,
+        status=m.OrderStatus.SEARCHING,
+        type=m.OrderType.NORMAL,
+        category=m.OrderCategory.ELECTRICS,
+        client_name="Candidates",
+        client_phone="+79990000008",
+        description="Manual candidates order",
+        total_sum=Decimal("0"),
+        created_at=datetime.now(UTC),
+    )
+    async_session.add(order)
+    await async_session.commit()
+
+    masters, has_next = await orders_service.manual_candidates(
+        order.id,
+        page=1,
+        page_size=5,
+        city_ids=[city_a.id],
+    )
+    assert masters == []
+    assert has_next is False

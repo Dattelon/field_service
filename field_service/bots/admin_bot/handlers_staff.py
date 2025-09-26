@@ -66,7 +66,11 @@ def _build_staff_menu() -> InlineKeyboardBuilder:
 
 async def _send_staff_menu(cq: CallbackQuery) -> None:
     kb = _build_staff_menu()
-    await cq.message.edit_text("Staff & Access", reply_markup=kb.as_markup())
+    await cq.message.edit_text(
+        "Staff & Access",
+        reply_markup=kb.as_markup(),
+    )
+
 
 
 async def _load_cities(bot) -> list[CityRef]:
@@ -100,21 +104,28 @@ def _build_city_keyboard(
         kb.button(text=f"{marker} {city.name}", callback_data=f"{prefix}:pick:{city.id}")
     if chunk:
         kb.adjust(1)
-    nav = InlineKeyboardBuilder()
+    nav_buttons: list[tuple[str, str]] = []
     if start > 0:
-        nav.button(text="Prev", callback_data=f"{prefix}:page:{page - 1}")
+        nav_buttons.append(("⬅️", f"{prefix}:page:{page - 1}"))
     if start + CITY_PAGE_SIZE < total:
-        nav.button(text="Next", callback_data=f"{prefix}:page:{page + 1}")
-    if nav.buttons:
-        nav.adjust(len(nav.buttons))
+        nav_buttons.append(("➡️", f"{prefix}:page:{page + 1}"))
+    if nav_buttons:
+        nav = InlineKeyboardBuilder()
+        for text_label, callback_data in nav_buttons:
+            nav.button(text=text_label, callback_data=callback_data)
+        nav.adjust(len(nav_buttons))
         kb.attach(nav)
-    controls = InlineKeyboardBuilder()
+    control_buttons: list[tuple[str, str]] = []
     if show_done:
-        controls.button(text="Done", callback_data=f"{prefix}:done")
+        control_buttons.append(("Готово", f"{prefix}:done"))
     if allow_empty:
-        controls.button(text="Cancel", callback_data=f"{prefix}:cancel")
-    controls.adjust(len(controls.buttons))
-    kb.attach(controls)
+        control_buttons.append(("Отмена", f"{prefix}:cancel"))
+    if control_buttons:
+        controls = InlineKeyboardBuilder()
+        for text_label, callback_data in control_buttons:
+            controls.button(text=text_label, callback_data=callback_data)
+        controls.adjust(len(control_buttons))
+        kb.attach(controls)
     return kb
 
 
@@ -137,7 +148,8 @@ async def _render_city_selector(
         show_done=show_done,
         allow_empty=allow_empty,
     )
-    await cq.message.edit_text(title, reply_markup=keyboard.as_markup())
+    if cq.message is not None:
+        await cq.message.edit_text(title, reply_markup=keyboard.as_markup())
 
 
 @router.callback_query(F.data == "adm:staff:menu", StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
@@ -152,24 +164,30 @@ async def staff_list(cq: CallbackQuery, state: FSMContext) -> None:
     parts = cq.data.split(":")
     try:
         role = StaffRole(parts[3])
-    except ValueError:
+    except (IndexError, ValueError):
         await cq.answer("Unknown role", show_alert=True)
         return
-    page = max(1, int(parts[4]))
+    try:
+        page = max(1, int(parts[4]))
+    except (IndexError, ValueError):
+        page = 1
+
     service = _staff_service(cq.message.bot)
     members, has_next = await service.list_staff(role=role, page=page, page_size=10)
     await state.update_data(staff_list_role=role.value, staff_list_page=page)
+
     if not members:
         kb = InlineKeyboardBuilder()
         kb.button(text="Back", callback_data="adm:staff:menu")
         await cq.message.edit_text("No staff found.", reply_markup=kb.as_markup())
         await cq.answer()
         return
+
     city_map: dict[int, list[str]] = {}
     for member in members:
         if member.city_ids:
-            names = await _resolve_city_names(cq.message.bot, member.city_ids)
-            city_map[member.id] = names
+            city_map[member.id] = await _resolve_city_names(cq.message.bot, member.city_ids)
+
     lines = [f"<b>{_role_label(role)}</b>"]
     kb = InlineKeyboardBuilder()
     for member in members:
@@ -179,16 +197,21 @@ async def staff_list(cq: CallbackQuery, state: FSMContext) -> None:
         lines.append(f"#{member.id} {name} — {status} ({city_names})")
         kb.button(text=str(member.id), callback_data=f"adm:staff:edit:{member.id}")
     kb.adjust(3)
+
     nav = InlineKeyboardBuilder()
     if page > 1:
         nav.button(text="Prev", callback_data=f"adm:staff:list:{role.value}:{page - 1}")
     if has_next:
         nav.button(text="Next", callback_data=f"adm:staff:list:{role.value}:{page + 1}")
     nav.button(text="Menu", callback_data="adm:staff:menu")
-    nav.adjust(len(nav.buttons))
-    kb.attach(nav)
-    await cq.message.edit_text("
-".join(lines), reply_markup=kb.as_markup())
+    if nav.buttons:
+        nav.adjust(len(nav.buttons))
+        kb.attach(nav)
+
+    await cq.message.edit_text(
+        "\n".join(lines),
+        reply_markup=kb.as_markup(),
+    )
     await cq.answer()
 
 
@@ -213,8 +236,10 @@ async def _render_staff_card(cq: CallbackQuery, member: StaffMember, city_names:
     page = data.get("staff_list_page", 1)
     kb.button(text="Back", callback_data=f"adm:staff:list:{role_token}:{page}")
     kb.adjust(1)
-    await cq.message.edit_text("
-".join(lines), reply_markup=kb.as_markup())
+    await cq.message.edit_text(
+        "\n".join(lines),
+        reply_markup=kb.as_markup(),
+    )
 
 
 @router.callback_query(F.data.startswith("adm:staff:edit:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
@@ -265,7 +290,7 @@ async def access_code_new_start(cq: CallbackQuery, state: FSMContext, staff: Sta
         code = await service.create_access_code(
             role=role,
             city_ids=[],
-            issued_by_staff_id=staff.id,
+            created_by_staff_id=staff.id,
             expires_at=None,
             comment=None,
         )
@@ -303,15 +328,17 @@ async def _show_code_card(cq: CallbackQuery, code: StaffAccessCode) -> None:
     ]
     if code.expires_at:
         lines.append(code.expires_at.strftime("Valid until: %Y-%m-%d %H:%M"))
-    status = "used" if code.used_at else ("revoked" if code.is_revoked else "active")
+    status = "used" if code.used_at else ("revoked" if bool(code.revoked_at) else "active")
     lines.append(f"Status: {status}")
     kb = InlineKeyboardBuilder()
-    if not code.used_at and not code.is_revoked:
+    if not code.used_at and not bool(code.revoked_at):
         kb.button(text="Revoke", callback_data=f"adm:staff:revoke:{code.id}")
     kb.button(text="Menu", callback_data="adm:staff:menu")
     kb.adjust(1)
-    await cq.message.edit_text("
-".join(lines), reply_markup=kb.as_markup())
+    await cq.message.edit_text(
+        "\n".join(lines),
+        reply_markup=kb.as_markup(),
+    )
 
 
 @router.callback_query(
@@ -374,7 +401,7 @@ async def access_code_city_action(cq: CallbackQuery, state: FSMContext, staff: S
         code = await service.create_access_code(
             role=role,
             city_ids=selected,
-            issued_by_staff_id=staff.id,
+            created_by_staff_id=staff.id,
             expires_at=None,
             comment=None,
         )

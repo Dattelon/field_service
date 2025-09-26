@@ -1,4 +1,4 @@
-﻿# field_service/services/distribution_worker.py
+# field_service/services/distribution_worker.py
 from __future__ import annotations
 
 import asyncio
@@ -45,8 +45,10 @@ async def _get_int_setting(session: AsyncSession, key: str, default: int) -> int
 
 
 async def _max_active_limit_for(session: AsyncSession) -> int:
-    # глобальный лимит
-    return await _get_int_setting(session, "max_active_orders", 1)
+    """Return the global default max active orders (fallback 5)."""
+    value = await _get_int_setting(session, "max_active_orders", 5)
+    # Safety guard: at least 1 active order allowed.
+    return max(1, int(value))
 
 
 @dataclass
@@ -171,7 +173,12 @@ async def _mark_logist_escalation(
             dist_escalated_admin_at=None,
         )
         await _append_history(session, order, f"{ESC_REASON_LOGIST}:{reason_suffix}")
-        print(log_escalate(order.id))
+        message = log_escalate(order.id)
+        print(message)
+        try:
+            live_log.push("dist", message, level="WARN")
+        except Exception:
+            pass
     else:
         setattr(order, "dist_escalated_logist_at", current)
 
@@ -205,10 +212,15 @@ async def _maybe_escalate_admin(
             dist_escalated_admin_at=now,
         )
         await _append_history(session, order, ESC_REASON_ADMIN)
-        print(log_escalate_admin(order.id))
+        message = log_escalate_admin(order.id)
+        print(message)
+        try:
+            live_log.push("dist", message, level="WARN")
+        except Exception:
+            pass
 
 
-# ---------- logs: unified formatter (приложение D v1.1) ----------
+# ---------- logs: unified formatter ( D v1.1) ----------
 
 
 def fmt_rank_item(row: dict[str, Any]) -> str:
@@ -255,7 +267,7 @@ def log_force_first(mid: int) -> str:
 
 
 def log_skip_no_district(order_id: int) -> str:
-    return f"[dist] order={order_id} skip_auto: no_district → escalate=logist_now"
+    return f"[dist] order={order_id} skip_auto: no_district  escalate=logist_now"
 
 
 def log_skip_no_category(order_id: int, category: Any) -> str:
@@ -267,7 +279,7 @@ def log_skip_no_category(order_id: int, category: Any) -> str:
 
 
 def log_escalate(order_id: int) -> str:
-    return f"[dist] order={order_id} candidates=0 → escalate=logist"
+    return f"[dist] order={order_id} candidates=0  escalate=logist"
 
 
 def log_escalate_admin(order_id: int) -> str:
@@ -293,7 +305,11 @@ async def autoblock_guarantee_timeouts(session: AsyncSession) -> int:
              AND ofr.master_id = o.preferred_master_id
              AND m.is_blocked = FALSE
         )
-        UPDATE masters SET is_blocked=TRUE, blocked_at=NOW(), blocked_reason='guarantee_refusal'
+        UPDATE masters
+           SET is_blocked = TRUE,
+               is_active = FALSE,
+               blocked_at = NOW(),
+               blocked_reason = 'guarantee_refusal'
          WHERE id IN (SELECT mid FROM timed)
          RETURNING id
         """
@@ -329,6 +345,7 @@ async def autoblock_guarantee_declines(session: AsyncSession) -> int:
         )
         UPDATE masters
            SET is_blocked = TRUE,
+               is_active = FALSE,
                blocked_at = NOW(),
                blocked_reason = 'guarantee_refusal'
          WHERE id IN (SELECT mid FROM declined)
@@ -361,13 +378,13 @@ async def expire_sent_offers(session: AsyncSession, now: datetime) -> int:
     )
     cursor = cast(CursorResult[Any], result)
     return int(cursor.rowcount or 0)
-    # Индекс: ix_offers__expires_at (миграция 0001) — быстрый апдейт по диапазону.
+    # ндекс: ix_offers__expires_at (миграция 0001) — быстрый апдейт по диапазону.
 
 
 async def finalize_accepted_if_any(session: AsyncSession, order_id: int) -> bool:
     """
-    Если есть ACCEPTED — закрепить мастера атомарно.
-    Races закрывает WHERE assigned_master_id IS NULL + partial unique index uix_offers__order_accepted_once.
+      ACCEPTED    .
+    Races  WHERE assigned_master_id IS NULL + partial unique index uix_offers__order_accepted_once.
     """
     row = await session.execute(
         text(
@@ -398,11 +415,11 @@ async def finalize_accepted_if_any(session: AsyncSession, order_id: int) -> bool
     )
     ok = upd.first() is not None
     if ok:
-        # фиксируем: у своих SENT по этому мастеру меняем на ACCEPTED уже сделано мастером
+        # :   SENT      ACCEPTED   
         pass
     return ok
-    # Индекс: uix_offers__order_accepted_once (partial unique).
-    # Индексы orders: ix_orders__status_city_date, ix_orders__assigned_master — апдейты не медленные (PK).
+    # ндекс: uix_offers__order_accepted_once (partial unique).
+    # ндексы orders: ix_orders__status_city_date, ix_orders__assigned_master — апдейты не медленные (PK).
 
 
 async def fetch_orders_batch(session: AsyncSession, limit: int = 100) -> Sequence[Any]:
@@ -411,7 +428,16 @@ async def fetch_orders_batch(session: AsyncSession, limit: int = 100) -> Sequenc
     rows = await session.execute(
         text(
             """
-        SELECT id, city_id, district_id, preferred_master_id, status, category, order_type, dist_escalated_logist_at, dist_escalated_admin_at
+        SELECT id,
+               city_id,
+               district_id,
+               preferred_master_id,
+               status,
+               category,
+               order_type,
+               dist_escalated_logist_at,
+               dist_escalated_admin_at,
+               no_district
           FROM orders
          WHERE assigned_master_id IS NULL
            AND status IN ('SEARCHING','GUARANTEE')
@@ -422,7 +448,7 @@ async def fetch_orders_batch(session: AsyncSession, limit: int = 100) -> Sequenc
         ).bindparams(lim=limit)
     )
     return rows.fetchall()
-    # Индекс: ix_orders__city_status и ix_orders__status_city_date.
+    # ндекс: ix_orders__city_status и ix_orders__status_city_date.
 
 
 async def current_round(session: AsyncSession, order_id: int) -> int:
@@ -432,7 +458,7 @@ async def current_round(session: AsyncSession, order_id: int) -> int:
         ).bindparams(oid=order_id)
     )
     return int(row.scalar_one() or 0)
-    # Индексы: ix_offers__order_state (по order_id).
+    # ндексы: ix_offers__order_state (по order_id).
 
 
 async def has_active_sent_offer(session: AsyncSession, order_id: int) -> bool:
@@ -462,16 +488,16 @@ async def candidate_rows(
     force_preferred_first: bool = False,
 ) -> list[dict[str, Any]]:
     """
-    Жёсткие фильтры (без категории, если её нет в orders):
-      - город совпадает
-      - мастер одобрен/активен/не блокирован
-      - смена включена (SHIFT_ON)
-      - район присутствует у мастера
-      - не превышен лимит активных
-      - исключить мастеров, которые уже получали оффер по этому заказу
-    Сортировка: car desc, avg_week desc, rating desc, random asc
+    Ƹ  ( ,     orders):
+      -  
+      -  // 
+      -   (SHIFT_ON)
+      -    
+      -    
+      -  ,       
+    : car desc, avg_week desc, rating desc, random asc
     """
-    # Глобальный лимит (пер- мастер override учтём в SQL)
+    #   (-  override   SQL)
     global_limit = await _max_active_limit_for(session)
 
     if not skill_code:
@@ -488,7 +514,7 @@ async def candidate_rows(
        GROUP BY assigned_master_id
     ),
     avg7 AS (
-      SELECT assigned_master_id AS mid, AVG(total_price)::numeric(10,2) AS avg_check
+      SELECT assigned_master_id AS mid, AVG(total_sum)::numeric(10,2) AS avg_check
         FROM orders
        WHERE assigned_master_id IS NOT NULL
          AND status IN ('PAYMENT','CLOSED')
@@ -521,9 +547,9 @@ async def candidate_rows(
       AND m.verified = TRUE
       AND m.is_on_shift = TRUE
       AND (m.break_until IS NULL OR m.break_until <= NOW())
-      -- лимит активных заказов: индивидуальный override либо глобальный
+      --   :  override  
       AND (COALESCE(m.max_active_orders_override, :gmax) > COALESCE(ac.cnt,0))
-      -- исключаем тех, кому уже слали любые офферы по этому заказу
+      --  ,        
       AND NOT EXISTS (
         SELECT 1 FROM offers o
          WHERE o.order_id = :oid AND o.master_id = m.id
@@ -543,7 +569,7 @@ async def candidate_rows(
     out = []
     for r in rows.mappings():
         out.append(dict(r))
-    # Гарантия: force first прежнего мастера, если он прошёл фильтры и не получал оффер
+    # : force first  ,        
     if force_preferred_first and preferred_master_id:
         idx = next(
             (i for i, x in enumerate(out) if int(x["mid"]) == int(preferred_master_id)),
@@ -554,13 +580,13 @@ async def candidate_rows(
             out.insert(0, pm)
             print(log_force_first(int(preferred_master_id)))
     return out
-    # Индексы:
+    # ндексы:
     #  - ix_masters__mod_shift (moderation_status, shift_status)
     #  - ix_masters__city_id
-    #  - ix_masters__heartbeat (косвенно)
+    #  - ix_masters__heartbeat ()
     #  - master_districts PK (master_id, district_id)
-    #  - ix_orders__assigned_master для active_cnt
-    #  - ix_orders__created_at для avg7
+    #  - ix_orders__assigned_master  active_cnt
+    #  - ix_orders__created_at  avg7
 
 
 async def send_offer(
@@ -570,7 +596,7 @@ async def send_offer(
     round_number: int,
     sla_seconds: int,
 ) -> bool:
-    """Идемпотентная вставка оффера (уникальность (order_id, master_id))."""
+    """демпотентная вставка оффера (уникальность (order_id, master_id))."""
     row = await session.execute(
         text(
             """
@@ -582,7 +608,7 @@ async def send_offer(
         ).bindparams(oid=order_id, mid=master_id, rnd=round_number, sla=sla_seconds)
     )
     return row.first() is not None
-    # Индексы: uq_offers__order_master, ix_offers__order_state.
+    # ндексы: uq_offers__order_master, ix_offers__order_state.
 
 
 # ---------- per-order processing ----------\n\n
@@ -591,7 +617,15 @@ async def process_one_order(
 ) -> None:
     await _maybe_escalate_admin(session, cfg, o)
 
-    if getattr(o, "district_id", None) is None:
+    district_missing = getattr(o, "district_id", None) is None
+    no_district_flag = bool(getattr(o, "no_district", False))
+    if district_missing or no_district_flag:
+        message = log_skip_no_district(o.id)
+        print(message)
+        try:
+            live_log.push("dist", message, level="WARN")
+        except Exception:
+            pass
         await _mark_logist_escalation(session, o, "no_district")
         await _maybe_escalate_admin(session, cfg, o)
         return
@@ -612,7 +646,9 @@ async def process_one_order(
         return
     next_round = cur + 1
 
-    order_type = getattr(o, "order_type", None)
+    order_type = getattr(o, "type", None)
+    if order_type is None:
+        order_type = getattr(o, "order_type", None)
     status = getattr(o, "status", None)
     is_guarantee = False
     if status is not None and str(status) == m.OrderStatus.GUARANTEE.value:
@@ -626,7 +662,12 @@ async def process_one_order(
     category = getattr(o, "category", None)
     skill_code = _skill_code_for_category(category)
     if skill_code is None:
-        print(log_skip_no_category(o.id, category))
+        message = log_skip_no_category(o.id, category)
+        print(message)
+        try:
+            live_log.push("dist", message, level="WARN")
+        except Exception:
+            pass
         return
 
     cand = await candidate_rows(
@@ -642,6 +683,10 @@ async def process_one_order(
 
     header = log_tick_header(o, next_round, cfg.rounds, cfg.sla_seconds, len(cand))
     print(header)
+    try:
+        live_log.push("dist", header)
+    except Exception:
+        pass
     if cand:
         top = cand[:10]
         ranked = ", ".join(
@@ -656,7 +701,12 @@ async def process_one_order(
             )
             for x in top
         )
-        print("ranked=[\n  " + ranked + "\n]")
+        ranked_block = "ranked=[\n  " + ranked + "\n]"
+        print(ranked_block)
+        try:
+            live_log.push("dist", ranked_block)
+        except Exception:
+            pass
 
         first = cand[0]
         await _reset_escalations(session, o)
@@ -665,7 +715,12 @@ async def process_one_order(
         )
         if ok:
             until = _now() + timedelta(seconds=cfg.sla_seconds)
-            print(log_decision_offer(int(first["mid"]), until))
+            decision = log_decision_offer(int(first["mid"]), until)
+            print(decision)
+            try:
+                live_log.push("dist", decision)
+            except Exception:
+                pass
         else:
             print(
                 f"[dist] order={o.id} race_conflict: offer exists for mid={first['mid']}"
@@ -681,7 +736,7 @@ async def process_one_order(
 async def tick_once() -> None:
     async with SessionLocal() as s:
         cfg = await _load_config(s)
-        # 0) истечь SENT
+        # 0)  SENT
         expired = await expire_sent_offers(s, _now())
         if expired:
             await s.commit()
@@ -692,12 +747,12 @@ async def tick_once() -> None:
         if declined_blocked:
             await s.commit()
 
-        # 1) пачка заказов под распределение
+        # 1)    
         rows = await fetch_orders_batch(s, limit=100)
-        # обрабатываем по одному (таски можно распараллелить при необходимости)
+        #    (    )
         for o in rows:
             await process_one_order(s, cfg, o)
-        await s.commit()  # фиксация офферов/назначений
+        await s.commit()  #  /
 
 
 async def run_loop() -> None:

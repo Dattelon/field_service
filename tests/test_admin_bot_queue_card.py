@@ -48,10 +48,10 @@ def make_order(**overrides):
         apartment=None,
         address_comment=None,
         description='Проблема',
-        latitude=None,
-        longitude=None,
+        lat=None,
+        lon=None,
         company_payment=Decimal('0'),
-        total_price=Decimal('0'),
+        total_sum=Decimal('0'),
         attachments=tuple(),
     )
     data.update(overrides)

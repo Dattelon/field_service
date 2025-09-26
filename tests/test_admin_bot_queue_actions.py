@@ -39,10 +39,10 @@ def make_order(order_id: int = 1, *, status: str = "ASSIGNED", master_id: int | 
         apartment=None,
         address_comment=None,
         description="Description",
-        latitude=None,
-        longitude=None,
+        lat=None,
+        lon=None,
         company_payment=None,
-        total_price=Decimal("0"),
+        total_sum=Decimal("0"),
         attachments=tuple(),
     )
     base.update(overrides)

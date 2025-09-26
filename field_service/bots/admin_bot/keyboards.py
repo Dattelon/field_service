@@ -30,7 +30,7 @@ def main_menu(staff: StaffUser) -> InlineKeyboardMarkup:
     kb.button(text="💳 Финансы", callback_data="adm:f")
     kb.button(text="📊 Отчёты", callback_data="adm:r")
     kb.button(text="⚙️ Настройки", callback_data="adm:s")
-    kb.button(text="🔐 Доступ", callback_data="adm:codes")
+    kb.button(text="🔐 Доступ и персонал", callback_data="adm:staff:menu")
     if staff.role is StaffRole.GLOBAL_ADMIN:
         kb.button(text="👥 Персонал", callback_data="adm:staff:menu")
     kb.button(text="🪪 Логи", callback_data="adm:l")

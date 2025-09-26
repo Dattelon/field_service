@@ -1,4 +1,4 @@
-﻿from decimal import Decimal
+from decimal import Decimal
 
 from field_service.bots.admin_bot.dto import CommissionAttachment, CommissionDetail
 from field_service.bots.admin_bot.keyboards import finance_card_actions

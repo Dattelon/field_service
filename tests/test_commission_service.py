@@ -47,9 +47,9 @@ async def test_create_commission_basic_flow(async_session) -> None:
         city_id=city.id,
         district_id=None,
         status=m.OrderStatus.PAYMENT,
-        total_price=Decimal("3000"),
+        total_sum=Decimal("3000"),
         assigned_master_id=master.id,
-        order_type=m.OrderType.NORMAL,
+        type=m.OrderType.NORMAL,
     )
     async_session.add(order)
     await async_session.flush()
@@ -103,9 +103,9 @@ async def test_create_commission_high_avg_rate(async_session) -> None:
         city_id=city.id,
         district_id=None,
         status=m.OrderStatus.CLOSED,
-        total_price=Decimal("8000"),
+        total_sum=Decimal("8000"),
         assigned_master_id=master.id,
-        order_type=m.OrderType.NORMAL,
+        type=m.OrderType.NORMAL,
         created_at=datetime.now(UTC) - timedelta(days=1),
     )
     async_session.add(closed_order)
@@ -115,9 +115,9 @@ async def test_create_commission_high_avg_rate(async_session) -> None:
         city_id=city.id,
         district_id=None,
         status=m.OrderStatus.PAYMENT,
-        total_price=Decimal("4000"),
+        total_sum=Decimal("4000"),
         assigned_master_id=master.id,
-        order_type=m.OrderType.NORMAL,
+        type=m.OrderType.NORMAL,
     )
     async_session.add(new_order)
     await async_session.flush()
@@ -155,10 +155,10 @@ async def test_create_commission_skips_guarantee(async_session) -> None:
         city_id=city.id,
         district_id=None,
         status=m.OrderStatus.PAYMENT,
-        total_price=Decimal("0"),
+        total_sum=Decimal("0"),
         company_payment=Decimal("2500"),
         assigned_master_id=master.id,
-        order_type=m.OrderType.GUARANTEE,
+        type=m.OrderType.GUARANTEE,
     )
     async_session.add(guarantee_order)
     await async_session.flush()

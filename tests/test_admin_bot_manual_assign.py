@@ -4,6 +4,7 @@ import types
 from decimal import Decimal
 
 import pytest
+from typing import Iterable, Optional
 
 from field_service.bots.admin_bot import queue
 from field_service.bots.admin_bot.dto import MasterBrief, OrderDetail, OrderType, StaffRole, StaffUser
@@ -15,7 +16,9 @@ class StubOrdersService:
         self._masters = masters
         self.calls: list[tuple[int, int, int]] = []
 
-    async def get_card(self, order_id: int) -> OrderDetail | None:
+    async def get_card(
+        self, order_id: int, *, city_ids: Optional[Iterable[int]] | None = None
+    ) -> OrderDetail | None:
         return self.order if order_id == self.order.id else None
 
     async def manual_candidates(
@@ -24,6 +27,7 @@ class StubOrdersService:
         *,
         page: int,
         page_size: int,
+        city_ids: Optional[Iterable[int]] = None,
     ) -> tuple[list[MasterBrief], bool]:
         self.calls.append((order_id, page, page_size))
         return list(self._masters), False
@@ -93,10 +97,10 @@ def make_order(**overrides) -> OrderDetail:
         apartment=None,
         address_comment=None,
         description="",
-        latitude=None,
-        longitude=None,
+        lat=None,
+        lon=None,
         company_payment=None,
-        total_price=Decimal("0"),
+        total_sum=Decimal("0"),
         attachments=tuple(),
     )
     base.update(overrides)

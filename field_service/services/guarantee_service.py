@@ -33,7 +33,7 @@ async def create_from_closed_order(
 
     Rules (per §10):
       - company_payment is fixed (env SETTINGS.GUARANTEE_COMPANY_PAYMENT, default 2500).
-      - total_sum (total_price) = 0.
+      - total_sum = 0.
       - commission for this order must be 0 later.
       - first offer goes to previous master (preferred_master_id).
       - If prev master refuses or times out -> auto-block.
@@ -65,21 +65,20 @@ async def create_from_closed_order(
         status_is_closed = str(status_val).upper() == "CLOSED"
     if not status_is_closed:
         raise GuaranteeError("source order must be CLOSED")
-    if getattr(source, "order_type", None) == m.OrderType.GUARANTEE:
+    if getattr(source, "type", None) == m.OrderType.GUARANTEE:
         raise GuaranteeError("source order is already guarantee")
     if not source.assigned_master_id:
         raise GuaranteeError("source order has no assigned master")
 
     description_prefix = description_prefix.strip()
     source_description = (source.description or "").strip()
-    if description_prefix:
-        if source_description:
-            if not source_description.startswith(description_prefix):
-                description = f"{description_prefix}\n{source_description}"
-            else:
-                description = source_description
+    if description_prefix and source_description:
+        if not source_description.startswith(description_prefix):
+            description = f"{description_prefix}\n{source_description}"
         else:
-            description = description_prefix
+            description = source_description
+    elif description_prefix:
+        description = description_prefix
     else:
         description = source_description
 
@@ -95,19 +94,18 @@ async def create_from_closed_order(
         category=source.category,
         description=description,
         status=m.OrderStatus.GUARANTEE if hasattr(m, "OrderStatus") else "GUARANTEE",
-        order_type=m.OrderType.GUARANTEE if hasattr(m, "OrderType") else "GUARANTEE",
-        scheduled_date=None,
-        time_slot_start=None,
-        time_slot_end=None,
-        slot_label=None,
+        type=m.OrderType.GUARANTEE if hasattr(m, "OrderType") else "GUARANTEE",
+        timeslot_start_utc=None,
+        timeslot_end_utc=None,
         preferred_master_id=source.assigned_master_id,
         assigned_master_id=None,
-        total_price=Decimal("0"),
+        total_sum=Decimal("0"),
         company_payment=cp_value,
         guarantee_source_order_id=source.id,
         created_by_staff_id=created_by_staff_id,
-        latitude=getattr(source, "latitude", None),
-        longitude=getattr(source, "longitude", None),
+        lat=getattr(source, "lat", None),
+        lon=getattr(source, "lon", None),
+        no_district=getattr(source, "no_district", False),
     )
     session.add(new_order)
     await session.flush()

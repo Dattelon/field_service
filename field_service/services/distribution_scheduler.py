@@ -3,8 +3,9 @@
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from aiogram import Bot
 from sqlalchemy import insert, select, text, update
@@ -14,10 +15,29 @@ from field_service.config import settings as env_settings
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import live_log, time_service, settings_service as settings_store
-from field_service.infra.logging_utils import send_alert
+from field_service.infra.notify import send_alert
 from field_service.services.settings_service import (
     get_int,
 )
+
+CATEGORY_TO_SKILL_CODE = {
+    "ELECTRICS": "ELEC",
+    "PLUMBING": "PLUMB",
+    "APPLIANCES": "APPLI",
+    "WINDOWS": "WINDOWS",
+    "HANDYMAN": "HANDY",
+    "ROADSIDE": "AUTOHELP",
+}
+
+
+def _skill_code_for_category(category: Optional[str]) -> Optional[str]:
+    if not category:
+        return None
+    return CATEGORY_TO_SKILL_CODE.get(str(category).upper())
+
+
+DEFAULT_MAX_ACTIVE_LIMIT = 5
+
 
 logger = logging.getLogger("distribution")
 ADVISORY_LOCK_KEY = 982734
@@ -49,6 +69,10 @@ class OrderForDistribution:
     city_name: str
     district_id: Optional[int]
     preferred_master_id: Optional[int]
+    status: str
+    category: Optional[str]
+    order_type: Optional[str]
+    no_district: bool
     escalated_logist_at: Optional[datetime]
     escalated_admin_at: Optional[datetime]
 
@@ -88,6 +112,10 @@ async def _fetch_orders_for_distribution(
                c.name AS city_name,
                o.district_id,
                o.preferred_master_id,
+               o.status,
+               o.category,
+               o.type AS order_type,
+               o.no_district,
                o.dist_escalated_logist_at,
                o.dist_escalated_admin_at
           FROM orders o
@@ -110,6 +138,14 @@ async def _fetch_orders_for_distribution(
                 city_name=str(row["city_name"]),
                 district_id=row["district_id"],
                 preferred_master_id=row["preferred_master_id"],
+                status=str(row["status"]),
+                category=row["category"],
+                order_type=row["order_type"],
+                no_district=(
+                    bool(row["no_district"])
+                    if isinstance(row["no_district"], bool)
+                    else str(row["no_district"]).lower() in {"1", "true", "t", "yes"}
+                ),
                 escalated_logist_at=row["dist_escalated_logist_at"],
                 escalated_admin_at=row["dist_escalated_admin_at"],
             )
@@ -146,7 +182,7 @@ async def _current_round(session: AsyncSession, order_id: int) -> int:
         ).bindparams(oid=order_id)
     )
     r = int(row.scalar() or 0)
-    return 1 if r == 0 else r
+    return r
 
 
 async def _transition_orders(
@@ -208,13 +244,18 @@ async def _city_timezone(session: AsyncSession, city_id: Optional[int]) -> ZoneI
     return time_service.resolve_timezone(env_settings.timezone)
 
 
+
 async def _wake_deferred_orders(
     session: AsyncSession,
     *,
     now_utc: datetime,
 ) -> list[tuple[int, datetime]]:
     rows = await session.execute(
-        select(m.orders.id, m.orders.city_id, m.orders.scheduled_date).where(
+        select(
+            m.orders.id,
+            m.orders.city_id,
+            m.orders.timeslot_start_utc,
+        ).where(
             m.orders.status == m.OrderStatus.DEFERRED
         )
     )
@@ -222,24 +263,20 @@ async def _wake_deferred_orders(
     if not records:
         return []
     workday_start, _ = await _workday_window()
-    awakened: list[tuple[int, ZoneInfo, date]] = []
+    awakened: list[tuple[int, datetime]] = []
     tz_cache: dict[int, ZoneInfo] = {}
-    for order_id, city_id, scheduled_date in records:
-        if city_id in tz_cache:
-            tz = tz_cache[city_id]
-        else:
+    for order_id, city_id, start_utc in records:
+        tz = tz_cache.get(city_id)
+        if tz is None:
             tz = await _city_timezone(session, city_id)
             tz_cache[city_id] = tz
         local_now = now_utc.astimezone(tz)
-        target_date = scheduled_date or local_now.date()
-        if local_now.date() < target_date:
-            continue
-        local_time = local_now.timetz()
-        if local_time.tzinfo is not None:
-            local_time = local_time.replace(tzinfo=None)
-        if local_now.date() == target_date and local_time < workday_start:
+        if start_utc is not None:
+            target_local = start_utc.astimezone(tz)
+        else:
+            target_local = datetime.combine(local_now.date(), workday_start, tzinfo=tz)
+        if target_local > local_now:
             if order_id not in DEFERRED_LOGGED:
-                target_local = datetime.combine(target_date, workday_start, tzinfo=tz)
                 message = f"[dist] order={order_id} deferred until {target_local.isoformat()}"
                 logger.info(message)
                 _dist_log(message)
@@ -266,11 +303,8 @@ async def _wake_deferred_orders(
             )
         )
         DEFERRED_LOGGED.discard(order_id)
-        target_local = datetime.combine(target_date, workday_start, tzinfo=tz)
         awakened.append((order_id, target_local))
     return awakened
-
-
 
 
 async def _candidates(
@@ -279,18 +313,20 @@ async def _candidates(
     oid: int,
     city_id: int,
     district_id: int,
-    round_number: int,
+    skill_code: Optional[str],
     preferred_mid: Optional[int],
+    fallback_limit: int,
 ) -> list[dict]:
-    # Р°РєС‚РёРІРЅС‹Рµ Р»РёРјРёС‚С‹ (per-master override -> settings.max_active_orders)
-    # СЃСЂРµРґРЅРёР№ С‡РµРє Р·Р° 7 РґРЅРµР№
-    # С„РёР»СЊС‚СЂС‹ СЃРјРµРЅС‹, Р±Р»РѕРєРёСЂРѕРІРєРё Рё С‚.Рґ.
+    if not skill_code:
+        return []
     sql = text(
         """
     WITH lim AS (
       SELECT m.id AS master_id,
-             COALESCE(m.max_active_orders_override,
-                      (SELECT CAST(value AS INT) FROM settings WHERE key='max_active_orders' LIMIT 1)
+             COALESCE(
+                 m.max_active_orders_override,
+                 (SELECT CAST(value AS INT) FROM settings WHERE key='max_active_orders' LIMIT 1),
+                 :fallback
              ) AS max_limit,
              (SELECT COUNT(*) FROM orders o2
                WHERE o2.assigned_master_id = m.id
@@ -298,7 +334,7 @@ async def _candidates(
              ) AS active_cnt
       FROM masters m
     ), avg7 AS (
-      SELECT o.assigned_master_id AS mid, AVG(o.total_price)::numeric(10,2) AS avg_week_check
+      SELECT o.assigned_master_id AS mid, AVG(o.total_sum)::numeric(10,2) AS avg_week_check
       FROM orders o
       WHERE o.status IN ('PAYMENT','CLOSED')
         AND o.created_at >= (NOW() - INTERVAL '7 days')
@@ -308,25 +344,27 @@ async def _candidates(
            m.has_vehicle         AS car,
            COALESCE(a.avg_week_check,0)::numeric(10,2) AS avg_week,
            COALESCE(m.rating,0)::numeric(3,1) AS rating,
-           m.is_on_shift        AS shift,
+           m.is_on_shift         AS shift,
            RANDOM()              AS rnd
       FROM masters m
-      JOIN master_districts md ON md.master_id=m.id AND md.district_id=:did
-      -- JOIN master_skills ms  ON ms.master_id=m.id AND ms.skill_id=:skill_id   -- TODO РїРѕСЃР»Рµ РјРёРіСЂР°С†РёРё orders.skill_id
-      JOIN lim ON lim.master_id=m.id
-      LEFT JOIN avg7 a ON a.mid=m.id
-     WHERE m.city_id=:cid
-       AND m.is_active=TRUE
-       AND m.is_blocked=FALSE
+      JOIN master_districts md ON md.master_id = m.id AND md.district_id = :did
+      JOIN master_skills ms ON ms.master_id = m.id
+      JOIN skills s ON s.id = ms.skill_id AND s.code = :skill_code AND s.is_active = TRUE
+      JOIN lim ON lim.master_id = m.id
+      LEFT JOIN avg7 a ON a.mid = m.id
+     WHERE m.city_id = :cid
+       AND m.is_active = TRUE
+       AND m.is_blocked = FALSE
        AND m.verified = TRUE
        AND m.is_on_shift = TRUE
+       AND (m.break_until IS NULL OR m.break_until <= NOW())
        AND lim.active_cnt < lim.max_limit
-       AND m.id NOT IN (
-            SELECT ofr.master_id FROM offers ofr
-             WHERE ofr.order_id=:oid AND ofr.round_number=:r
+       AND NOT EXISTS (
+            SELECT 1 FROM offers o
+             WHERE o.order_id = :oid AND o.master_id = m.id
        )
      ORDER BY
-       (CASE WHEN m.id = :pref THEN 1 ELSE 0 END) DESC,   -- force_first РґР»СЏ РіР°СЂР°РЅС‚РёРё
+       (CASE WHEN :pref > 0 AND m.id = :pref THEN 1 ELSE 0 END) DESC,
        m.has_vehicle DESC,
        COALESCE(a.avg_week_check,0) DESC,
        COALESCE(m.rating,0) DESC,
@@ -338,21 +376,23 @@ async def _candidates(
             oid=oid,
             cid=city_id,
             did=district_id,
-            r=round_number,
             pref=(preferred_mid or -1),
+            skill_code=skill_code,
+            fallback=fallback_limit,
         )
     )
     return [
         dict(
-            mid=r[0],
-            car=bool(r[1]),
-            avg_week=float(r[2]),
-            rating=float(r[3]),
-            shift=bool(r[4]),
-            rnd=float(r[5]),
+            mid=row[0],
+            car=bool(row[1]),
+            avg_week=float(row[2]),
+            rating=float(row[3]),
+            shift=bool(row[4]),
+            rnd=float(row[5]),
         )
-        for r in rs.fetchall()
+        for row in rs.fetchall()
     ]
+
 
 
 async def _send_offer(
@@ -526,7 +566,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                         chat_id=alerts_chat_id,
                     )
 
-            if order.district_id is None:
+            if order.district_id is None or order.no_district:
                 message = (
                     f"[dist] order={order.id} city={order.city_id} district=null skip_auto: no_district -> escalate=logist_now"
                 )
@@ -560,48 +600,90 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
 
             current_round = await _current_round(session, order.id)
 
+            if current_round >= cfg.rounds:
+                message = f"[dist] order={order.id} round={current_round} rounds_exhausted -> escalate=logist"
+                logger.info(message)
+                _dist_log(message)
+                newly_marked = False
+                if order.escalated_logist_at is None:
+                    marked = await _set_logist_escalation(session, order)
+                    newly_marked = marked is not None
+                await _escalate_logist(order.id)
+                if newly_marked:
+                    await send_alert(
+                        bot,
+                        f"⚠️ Нет свободных мастеров в городе {order.city_name} по заявке #{order.id}. Эскалация логисту.",
+                        chat_id=alerts_chat_id,
+                    )
+                continue
+
+            skill_code = _skill_code_for_category(order.category)
+            if not skill_code:
+                category_label = order.category if order.category else "-"
+                message = (
+                    f"[dist] order={order.id} skip_auto: no_category_filter category={category_label} -> escalate=logist_now"
+                )
+                logger.info(message)
+                _dist_log(message)
+                newly_marked = False
+                if order.escalated_logist_at is None:
+                    marked = await _set_logist_escalation(session, order)
+                    newly_marked = marked is not None
+                await _escalate_logist(order.id)
+                if newly_marked:
+                    await send_alert(
+                        bot,
+                        f"⚠️ Нет доступных мастеров по категории для заявки #{order.id} в городе {order.city_name}. Эскалация логисту.",
+                        chat_id=alerts_chat_id,
+                    )
+                continue
+
+            status_value = str(order.status) if order.status is not None else ""
+
+            order_type_value = str(order.order_type) if order.order_type is not None else ""
+
+            order_kind = "GUARANTEE" if order_type_value.upper() == "GUARANTEE" or status_value.upper() == "GUARANTEE" else "NORMAL"
+            preferred_id = order.preferred_master_id if order_kind == "GUARANTEE" else None
+
             ranked = await _candidates(
                 session,
                 oid=order.id,
                 city_id=order.city_id,
                 district_id=order.district_id,
-                round_number=current_round,
-                preferred_mid=order.preferred_master_id,
+                skill_code=skill_code,
+                preferred_mid=preferred_id,
+                fallback_limit=DEFAULT_MAX_ACTIVE_LIMIT,
             )
+            next_round = current_round + 1
             await _log_ranked(
                 order.id,
                 order.city_id,
                 order.district_id,
-                None,
-                "GUARANTEE" if order.preferred_master_id else "NORMAL",
-                current_round,
+                order.category,
+                order_kind,
+                next_round,
                 cfg.rounds,
                 cfg.sla_seconds,
                 ranked,
-                order.preferred_master_id,
+                preferred_id,
                 cfg.top_log_n,
             )
 
             if not ranked:
-                if current_round < cfg.rounds:
-                    message = f"[dist] order={order.id} round={current_round} -> next_round"
-                    logger.info(message)
-                    _dist_log(message)
-                else:
-                    message = f"[dist] order={order.id} round={current_round} no_candidates -> escalate=logist"
-                    logger.info(message)
-                    _dist_log(message)
-                    newly_marked = False
-                    if order.escalated_logist_at is None:
-                        marked = await _set_logist_escalation(session, order)
-                        newly_marked = marked is not None
-                    await _escalate_logist(order.id)
-                    if newly_marked:
-                        await send_alert(
-                            bot,
-                            f"вљ пёЏ РќРµС‚ СЃРІРѕР±РѕРґРЅС‹С… РјР°СЃС‚РµСЂРѕРІ РІ РіРѕСЂРѕРґРµ {order.city_name} РїРѕ Р·Р°СЏРІРєРµ #{order.id}. Р­СЃРєР°Р»Р°С†РёСЏ Р»РѕРіРёСЃС‚Сѓ.",
-                            chat_id=alerts_chat_id,
-                        )
+                message = f"[dist] order={order.id} round={next_round} no_candidates -> escalate=logist"
+                logger.info(message)
+                _dist_log(message)
+                newly_marked = False
+                if order.escalated_logist_at is None:
+                    marked = await _set_logist_escalation(session, order)
+                    newly_marked = marked is not None
+                await _escalate_logist(order.id)
+                if newly_marked:
+                    await send_alert(
+                        bot,
+                        f"⚠️ Нет свободных мастеров в городе {order.city_name} по заявке #{order.id}. Эскалация логисту.",
+                        chat_id=alerts_chat_id,
+                    )
                 continue
 
             first_mid = ranked[0]["mid"]
@@ -610,9 +692,10 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                 session,
                 oid=order.id,
                 mid=first_mid,
-                round_number=current_round,
+                round_number=next_round,
                 sla_seconds=cfg.sla_seconds,
             )
+
             if ok:
                 until_row = await session.execute(
                     text("SELECT NOW() + make_interval(secs => :sla)").bindparams(

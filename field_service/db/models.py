@@ -1,4 +1,4 @@
-from __future__ import annotations
+п»їfrom __future__ import annotations
 import enum
 from datetime import datetime, time
 from decimal import Decimal
@@ -22,7 +22,7 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
     func,
-    text,  # ? добавляем
+    text,  # ? пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -52,7 +52,7 @@ class PayoutMethod(str, enum.Enum):
 
 
 class OrderStatus(str, enum.Enum):
-    """Canonical order statuses per TZ v1.2 with legacy aliases."""
+    """Canonical order statuses per TZ v1.2."""
 
     CREATED = "CREATED"
     SEARCHING = "SEARCHING"
@@ -64,12 +64,6 @@ class OrderStatus(str, enum.Enum):
     DEFERRED = "DEFERRED"
     GUARANTEE = "GUARANTEE"
     CANCELED = "CANCELED"
-
-    # Legacy aliases kept for backward compatibility with v1.1 data
-    DISTRIBUTION = "SEARCHING"
-    SCHEDULED = "EN_ROUTE"
-    IN_PROGRESS = "WORKING"
-    DONE = "PAYMENT"
 
 
 class OrderType(str, enum.Enum):
@@ -90,7 +84,7 @@ class AttachmentEntity(str, enum.Enum):
     ORDER = "ORDER"
     OFFER = "OFFER"
     COMMISSION = "COMMISSION"
-    MASTER = "MASTER"  # добавлено в миграции 0002
+    MASTER = "MASTER"  # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 0002
 
 
 class AttachmentFileType(str, enum.Enum):
@@ -235,7 +229,7 @@ class masters(Base):
         Integer, nullable=False, default=1, server_default="1"
     )
 
-    # ---- поля из миграции 0002 ----
+    # ---- пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 0002 ----
     moderation_status: Mapped[ModerationStatus] = mapped_column(
         Enum(ModerationStatus, name="moderation_status"),
         nullable=False,
@@ -375,8 +369,8 @@ class orders(Base):
         ForeignKey("streets.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
-    latitude: Mapped[Optional[float]] = mapped_column(Numeric(9, 6))
-    longitude: Mapped[Optional[float]] = mapped_column(Numeric(9, 6))
+    lat: Mapped[Optional[float]] = mapped_column(Float(asdecimal=False))
+    lon: Mapped[Optional[float]] = mapped_column(Float(asdecimal=False))
 
     house: Mapped[Optional[str]] = mapped_column(String(32))
     apartment: Mapped[Optional[str]] = mapped_column(String(32))
@@ -396,12 +390,10 @@ class orders(Base):
         index=True,
     )
 
-    scheduled_date: Mapped[Optional[Date]] = mapped_column(Date, index=True)
-    time_slot_start: Mapped[Optional[time]] = mapped_column(Time(timezone=False))
-    time_slot_end: Mapped[Optional[time]] = mapped_column(Time(timezone=False))
-    slot_label: Mapped[Optional[str]] = mapped_column(String(32))
+    timeslot_start_utc: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    timeslot_end_utc: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
-    order_type: Mapped[OrderType] = mapped_column(
+    type: Mapped[OrderType] = mapped_column(
         Enum(OrderType, name="order_type"),
         nullable=False,
         default=OrderType.NORMAL,
@@ -410,18 +402,21 @@ class orders(Base):
 
     preferred_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL"), nullable=True, index=True
-    )  # приоритет для гарантий
+    )
     assigned_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
-    total_price: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), nullable=False, default=0, server_default="0"
+    total_sum: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("0"), server_default="0"
     )
     company_payment: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=0, server_default="0"
     )
     late_visit: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    no_district: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
     dist_escalated_logist_at: Mapped[datetime | None] = mapped_column(
@@ -453,21 +448,20 @@ class orders(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "(time_slot_start IS NULL AND time_slot_end IS NULL) OR (time_slot_start < time_slot_end)",
-            name="ck_orders__slot_interval_valid",
-        ),
-        CheckConstraint(
-            "(time_slot_start IS NULL AND time_slot_end IS NULL) OR (time_slot_start >= '10:00:00' AND time_slot_end <= '20:00:00' AND time_slot_start < time_slot_end)",
-            name="ck_orders__slot_in_working_window",
+            "(timeslot_start_utc IS NULL AND timeslot_end_utc IS NULL) OR (timeslot_start_utc < timeslot_end_utc)",
+            name="ck_orders__timeslot_range",
         ),
         Index("ix_orders__status_city", "status", "city_id"),
-        Index("ix_orders__status_city_date", "status", "city_id", "scheduled_date"),
         Index("ix_orders__city_status", "city_id", "status"),
         Index("ix_orders__assigned_master", "assigned_master_id"),
         Index("ix_orders__preferred_master", "preferred_master_id"),
+        Index(
+            "ix_orders__status_city_timeslot_start",
+            "status",
+            "city_id",
+            "timeslot_start_utc",
+        ),
     )
-
-
 class order_status_history(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     order_id: Mapped[int] = mapped_column(
@@ -527,7 +521,7 @@ class offers(Base):
         UniqueConstraint("order_id", "master_id", name="uq_offers__order_master"),
         Index("ix_offers__order_state", "order_id", "state"),
         Index("ix_offers__master_state", "master_id", "state"),
-        # Частичный уникальный индекс: один ACCEPTED оффер на заказ (как в Alembic 0001)
+        # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ ACCEPTED пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅ Alembic 0001)
         Index(
             "uix_offers__order_accepted_once",
             "order_id",
@@ -636,10 +630,10 @@ class referrals(Base):
         nullable=False,
         unique=True,
         index=True,
-    )  # приглашённый
+    )  # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     referrer_id: Mapped[int] = mapped_column(
         ForeignKey("masters.id", ondelete="CASCADE"), nullable=False, index=True
-    )  # пригласивший (L1)
+    )  # пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (L1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -698,7 +692,7 @@ class settings(Base):
     )
 
 
-# ===== Skills & Master mappings (из миграции 0002) =====
+# ===== Skills & Master mappings (пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 0002) =====
 class skills(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
@@ -763,5 +757,6 @@ class master_invite_codes(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
 
 

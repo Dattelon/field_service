@@ -56,6 +56,7 @@ from .keyboards import (
     finance_menu,
     finance_reject_cancel_keyboard,
     finance_segment_keyboard,
+    logs_menu_keyboard,
     main_menu,
     manual_candidates_keyboard,
     manual_confirm_keyboard,
@@ -68,8 +69,10 @@ from .keyboards import (
     new_order_street_manual_keyboard,
     new_order_street_mode_keyboard,
     order_card_keyboard,
+    reports_menu_keyboard,
+    settings_group_keyboard,
+    settings_menu_keyboard,
 )
-from .keyboards import reports_menu_keyboard
 from .states import (FinanceActionFSM, NewOrderFSM, OwnerPayEditFSM, ReportsExportFSM, SettingsEditFSM, StaffAccessFSM)
 from .texts import (
     commission_detail as format_commission_detail,
@@ -334,6 +337,9 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
         ),
     ),
 }
+SETTINGS_GROUPS = SETTING_GROUPS
+
+
 
 SETTING_FIELD_BY_KEY: dict[str, SettingFieldDef] = {
     field.key: field
@@ -590,6 +596,21 @@ def _build_new_order_data(data: dict, staff: StaffUser) -> NewOrderData:
             initial_status = OrderStatus(initial_status_value)
         except ValueError:
             initial_status = None
+    total_sum_value = data.get("total_sum")
+    if total_sum_value is None:
+        total_sum_value = 0
+    lat_value = data.get("lat")
+    if lat_value is not None:
+        try:
+            lat_value = float(lat_value)
+        except (TypeError, ValueError):
+            lat_value = None
+    lon_value = data.get("lon")
+    if lon_value is not None:
+        try:
+            lon_value = float(lon_value)
+        except (TypeError, ValueError):
+            lon_value = None
     return NewOrderData(
         city_id=int(data["city_id"]),
         district_id=data.get("district_id"),
@@ -602,14 +623,14 @@ def _build_new_order_data(data: dict, staff: StaffUser) -> NewOrderData:
         category=str(data.get("category")),
         description=str(data.get("description", "")),
         order_type=OrderType(data.get("order_type", OrderType.NORMAL.value)),
-        scheduled_date=data.get("scheduled_date"),
-        time_slot_start=data.get("time_slot_start"),
-        time_slot_end=data.get("time_slot_end"),
-        slot_label=data.get("slot_label"),
-        latitude=None,
-        longitude=None,
+        timeslot_start_utc=data.get("timeslot_start_utc"),
+        timeslot_end_utc=data.get("timeslot_end_utc"),
+        timeslot_display=data.get("timeslot_display"),
+        lat=lat_value,
+        lon=lon_value,
+        no_district=data.get("district_id") is None,
         company_payment=Decimal(data.get("company_payment", 0)),
-        total_price=Decimal(data.get("total_price", 0)),
+        total_sum=Decimal(total_sum_value or 0),
         created_by_staff_id=staff.id,
         initial_status=initial_status,
         attachments=attachments,
@@ -645,15 +666,13 @@ def _format_slot_display(
 ) -> str:
     if choice == "ASAP":
         return "ASAP"
-    today = time_service.now_in_city(tz).date()
-    scheduled = computation.scheduled_date
-    if scheduled == today:
-        prefix = "???????"
-    elif scheduled == today + timedelta(days=1):
-        prefix = "??????"
-    else:
-        prefix = scheduled.strftime("%d.%m")
-    return f"{prefix} {computation.start_local:%H:%M}-{computation.end_local:%H:%M}"
+    formatted = time_service.format_timeslot_local(
+        computation.start_utc,
+        computation.end_utc,
+        tz=tz,
+    )
+    return formatted or "?"
+
 
 
 def _zone_storage_value(tz: ZoneInfo) -> str:
@@ -696,12 +715,11 @@ async def _finalize_slot_selection(
         workday_end=workday_end,
     )
     slot_display = _format_slot_display(slot_choice, computation, tz)
+
     await state.update_data(
-        slot_label=slot_display,
-        slot_label_display=slot_display,
-        scheduled_date=computation.scheduled_date,
-        time_slot_start=computation.start_local,
-        time_slot_end=computation.end_local,
+        timeslot_display=slot_display,
+        timeslot_start_utc=computation.start_utc,
+        timeslot_end_utc=computation.end_utc,
         initial_status=initial_status_override,
         pending_asap=False,
     )
@@ -712,7 +730,6 @@ async def _finalize_slot_selection(
         reply_markup=new_order_confirm_keyboard(),
         disable_web_page_preview=True,
     )
-
 
 
 def _send_export_documents(message: Message, bundle: export_service.ExportBundle, caption: str) -> None:
@@ -769,8 +786,7 @@ async def staff_access_enter_code(message: Message, state: FSMContext) -> None:
         f"Роль: {role_label}",
         f"Города: {', '.join(city_names) if city_names else '-'}",
     ]
-    await message.answer("
-".join(summary_lines))
+    await message.answer("\n".join(summary_lines))
     await state.set_state(StaffAccessFSM.pdn)
     await message.answer(STAFF_PDN_TEXT)
 
@@ -783,7 +799,7 @@ async def staff_access_pdn(message: Message, state: FSMContext) -> None:
         await message.answer("Без согласия продолжить нельзя. Отправьте /start, если передумаете.")
         return
     if text_value not in {"согласен", "да", "ok", "хорошо"}:
-        await message.answer("Отправьте "Согласен" или "Не согласен".")
+        await message.answer('Введите "согласен" или "не согласен".')
         return
     await state.set_state(StaffAccessFSM.full_name)
     await message.answer("Введите ФИО полностью (например, Иванов Иван Иванович).")
@@ -845,8 +861,7 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
         f"Вы добавлены как {role_label}.",
         f"Города: {', '.join(city_names) if city_names else '-'}",
     ]
-    await message.answer("
-".join(lines))
+    await message.answer("\n".join(lines))
     await message.answer("Готово. Главное меню:", reply_markup=main_menu(staff_user))
 
 
@@ -921,7 +936,16 @@ async def _render_finance_segment(
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_finance_aw(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    page = int(cq.data.split(":")[2])
+    parts = cq.data.split(":")
+    page = 1
+    if len(parts) > 3:
+        try:
+            page = max(1, int(parts[3]))
+        except ValueError:
+            page = 1
+    if cq.message is None:
+        await cq.answer()
+        return
     await _render_finance_segment(cq.message, staff, "aw", page, state)
     await cq.answer()
 
@@ -931,7 +955,16 @@ async def cb_finance_aw(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_finance_pd(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    page = int(cq.data.split(":")[2])
+    parts = cq.data.split(":")
+    page = 1
+    if len(parts) > 3:
+        try:
+            page = max(1, int(parts[3]))
+        except ValueError:
+            page = 1
+    if cq.message is None:
+        await cq.answer()
+        return
     await _render_finance_segment(cq.message, staff, "pd", page, state)
     await cq.answer()
 
@@ -941,7 +974,16 @@ async def cb_finance_pd(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_finance_ov(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    page = int(cq.data.split(":")[2])
+    parts = cq.data.split(":")
+    page = 1
+    if len(parts) > 3:
+        try:
+            page = max(1, int(parts[3]))
+        except ValueError:
+            page = 1
+    if cq.message is None:
+        await cq.answer()
+        return
     await _render_finance_segment(cq.message, staff, "ov", page, state)
     await cq.answer()
 
