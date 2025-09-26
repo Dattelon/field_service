@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from types import SimpleNamespace
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -94,6 +93,7 @@ async def _render_referrals(
         lines.append(f"Ваш код: {referral_code}")
     else:
         lines.append("Реферальный код пока не выдан.")
+    lines.append("Начисления: L1 — 10%, L2 — 5%")
     lines.append('')
     for level in (1, 2):
         bucket = level_stats[level]

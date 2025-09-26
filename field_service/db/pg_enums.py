@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import bindparam
@@ -26,3 +27,12 @@ def staff_role_param(name: str, value: Any) -> BindParameter[Any]:
 
 def order_status_param(name: str, value: Any) -> BindParameter[Any]:
     return enum_param(name, value, "order_status")
+
+
+class OrderCategory(StrEnum):
+    ELECTRICS = "ELECTRICS"
+    PLUMBING = "PLUMBING"
+    APPLIANCES = "APPLIANCES"
+    WINDOWS = "WINDOWS"
+    HANDYMAN = "HANDYMAN"
+    ROADSIDE = "ROADSIDE"

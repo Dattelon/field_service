@@ -41,6 +41,7 @@ from .dto import (
     NewOrderAttachment,
     NewOrderData,
     OrderCard,
+    OrderCategory,
     OrderDetail,
     OrderListItem,
     OrderType,
@@ -125,15 +126,16 @@ UTC = timezone.utc
 PHONE_RE = re.compile(r"^(?:\+7|8)\d{10}$")
 NAME_RE = re.compile(r"^[пїЅ-ЯЁпїЅ-пїЅпїЅ\-\s]{2,30}$")
 ATTACHMENTS_LIMIT = 5
-CATEGORY_CHOICES = [
-    ("ELECTRICS", "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"),
-    ("PLUMBING", "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"),
-    ("APPLIANCES", "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ"),
-    ("WINDOWS", "пїЅпїЅпїЅпїЅ"),
-    ("HANDYMAN", "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"),
-    ("ROADSIDE", "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"),
+CATEGORY_CHOICES: list[tuple[OrderCategory, str]] = [
+    (OrderCategory.ELECTRICS, "Электрика"),
+    (OrderCategory.PLUMBING, "Сантехника"),
+    (OrderCategory.APPLIANCES, "Бытовая техника"),
+    (OrderCategory.WINDOWS, "Окна"),
+    (OrderCategory.HANDYMAN, "Универсал"),
+    (OrderCategory.ROADSIDE, "Автопомощь"),
 ]
-CATEGORY_LABELS = {code: label for code, label in CATEGORY_CHOICES}
+CATEGORY_LABELS = {category: label for category, label in CATEGORY_CHOICES}
+CATEGORY_LABELS_BY_VALUE = {category.value: label for category, label in CATEGORY_CHOICES}
 SLOT_BUCKETS = (
     ("10-13", time(10, 0), time(13, 0)),
     ("13-16", time(13, 0), time(16, 0)),
@@ -611,6 +613,17 @@ def _build_new_order_data(data: dict, staff: StaffUser) -> NewOrderData:
             lon_value = float(lon_value)
         except (TypeError, ValueError):
             lon_value = None
+    category_value = data.get("category")
+    if isinstance(category_value, OrderCategory):
+        category_enum = category_value
+    elif isinstance(category_value, str) and category_value:
+        try:
+            category_enum = OrderCategory(category_value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown category: {category_value}") from exc
+    else:
+        raise ValueError("Category is required")
+
     return NewOrderData(
         city_id=int(data["city_id"]),
         district_id=data.get("district_id"),
@@ -620,7 +633,7 @@ def _build_new_order_data(data: dict, staff: StaffUser) -> NewOrderData:
         address_comment=address_comment,
         client_name=str(data.get("client_name")),
         client_phone=str(data.get("client_phone")),
-        category=str(data.get("category")),
+        category=category_enum,
         description=str(data.get("description", "")),
         order_type=OrderType(data.get("order_type", OrderType.NORMAL.value)),
         timeslot_start_utc=data.get("timeslot_start_utc"),
@@ -1589,16 +1602,24 @@ async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
     from aiogram.utils.keyboard import InlineKeyboardBuilder
 
     kb = InlineKeyboardBuilder()
-    for code, label in CATEGORY_CHOICES:
-        kb.button(text=label, callback_data=f"adm:new:cat:{code}")
+    for category, label in CATEGORY_CHOICES:
+        kb.button(text=label, callback_data=f"adm:new:cat:{category.value}")
     kb.adjust(2)
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ:", reply_markup=kb.as_markup())
+    await msg.answer("Выберите категорию заявки:", reply_markup=kb.as_markup())
 
 
 @router.callback_query(F.data.startswith("adm:new:cat:"), StateFilter(NewOrderFSM.category))
 async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
-    code = cq.data.split(":")[2]
-    await state.update_data(category=code, category_label=CATEGORY_LABELS.get(code, code))
+    raw = cq.data.split(":")[2]
+    try:
+        category = OrderCategory(raw)
+    except ValueError:
+        await cq.answer("Неизвестная категория", show_alert=True)
+        return
+    await state.update_data(
+        category=category,
+        category_label=CATEGORY_LABELS.get(category, CATEGORY_LABELS_BY_VALUE.get(raw, raw)),
+    )
     await state.set_state(NewOrderFSM.description)
     await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (10-500 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).")
     await cq.answer()

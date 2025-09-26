@@ -14,7 +14,17 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from field_service.db.models import OrderStatus
 
 from .access import visible_city_ids_for
-from .dto import CityRef, OrderAttachment, OrderDetail, OrderListItem, OrderStatusHistoryItem, OrderType, StaffRole, StaffUser
+from .dto import (
+    CityRef,
+    OrderAttachment,
+    OrderCategory,
+    OrderDetail,
+    OrderListItem,
+    OrderStatusHistoryItem,
+    OrderType,
+    StaffRole,
+    StaffUser,
+)
 from .filters import StaffRoleFilter
 from .keyboards import (
     assign_menu_keyboard,
@@ -62,7 +72,7 @@ def _format_order_line(order: OrderListItem) -> str:
     if street_parts:
         address_parts.append(' '.join(street_parts))
     address = ', '.join(address_parts) if address_parts else '-'
-    category = order.category or '-'
+    category = CATEGORY_LABELS.get(order.category, order.category.value)
     status = order.status or '-'
     if order.order_type is OrderType.GUARANTEE:
         status = f"{status} · гарантия"
@@ -107,15 +117,20 @@ def _manual_candidates_text(order: OrderCard, masters: Sequence[MasterBrief], pa
 
 
 
-CATEGORY_CHOICES: tuple[tuple[str, str], ...] = (
-    ("ELECTRICS", "Электрика"),
-    ("PLUMBING", "Сантехника"),
-    ("APPLIANCES", "Бытовая техника"),
-    ("WINDOWS", "Окна"),
-    ("HANDYMAN", "Универсал"),
-    ("ROADSIDE", "Автопомощь"),
+CATEGORY_CHOICES: tuple[tuple[OrderCategory, str], ...] = (
+    (OrderCategory.ELECTRICS, "Электрика"),
+    (OrderCategory.PLUMBING, "Сантехника"),
+    (OrderCategory.APPLIANCES, "Бытовая техника"),
+    (OrderCategory.WINDOWS, "Окна"),
+    (OrderCategory.HANDYMAN, "Универсал"),
+    (OrderCategory.ROADSIDE, "Автопомощь"),
 )
-CATEGORY_LABELS = {code: label for code, label in CATEGORY_CHOICES}
+CATEGORY_LABELS = {category: label for category, label in CATEGORY_CHOICES}
+CATEGORY_LABELS_BY_VALUE = {category.value: label for category, label in CATEGORY_CHOICES}
+CATEGORY_VALUE_MAP = {category.value: category for category, _ in CATEGORY_CHOICES}
+CATEGORY_CHOICE_ENTRIES: tuple[tuple[str, str], ...] = tuple(
+    (category.value, label) for category, label in CATEGORY_CHOICES
+)
 STATUS_CHOICES = tuple((status.value, status.value) for status in OrderStatus)
 FILTER_DATA_KEY = "queue_filters"
 FILTER_MSG_CHAT_KEY = "queue_filters_chat_id"
@@ -169,11 +184,12 @@ def _format_order_card_text(
 
     is_guarantee = order.order_type is OrderType.GUARANTEE
     type_label = order.type if not is_guarantee else f"{order.type} · гарантия"
+    category_label = CATEGORY_LABELS.get(order.category, order.category.value)
     lines_out = [
         f"<b>Заявка #{order.id}</b>",
         f"Статус: {html.escape(order.status)}",
         f"Тип: {html.escape(type_label)}",
-        f"Категория: {html.escape(order.category) if order.category else '-'}",
+        f"Категория: {html.escape(category_label)}",
         f"Слот: {html.escape(order.timeslot_local) if order.timeslot_local else '-'}",
         f"Адрес: {html.escape(address)}",
     ]
@@ -270,6 +286,15 @@ def _default_filters() -> dict[str, Optional[str | int]]:
         "master_id": None,
         "date": None,
     }
+
+
+def _parse_category_filter(value: Optional[str]) -> Optional[OrderCategory]:
+    if not value:
+        return None
+    try:
+        return OrderCategory(value)
+    except ValueError:
+        return None
 
 
 async def _load_filters(state: FSMContext) -> dict[str, Optional[str | int]]:
@@ -370,8 +395,11 @@ async def _format_filters_text(
     if city_id:
         city = await orders_service.get_city(int(city_id))
         city_text = city.name if city else f"#{city_id}"
-    category_code = filters.get("category")
-    category_text = CATEGORY_LABELS.get(category_code, "—") if category_code else "—"
+    category_filter = _parse_category_filter(filters.get("category"))
+    if category_filter:
+        category_text = CATEGORY_LABELS.get(category_filter, category_filter.value)
+    else:
+        category_text = "—"
     status_code = filters.get("status")
     status_text = status_code or "—"
     master_id = filters.get("master_id")
@@ -464,7 +492,7 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
         except ValueError:
             status_filter = None
 
-    category_filter = filters.get("category")
+    category_filter = _parse_category_filter(filters.get("category"))
     master_filter = filters.get("master_id")
     timeslot_date: Optional[date] = None
     date_value = filters.get("date")
@@ -569,7 +597,7 @@ async def cb_queue_filters_category(cq: CallbackQuery, staff: StaffUser, state: 
     filters = await _load_filters(state)
     await _render_choice(
         cq.message,
-        entries=CATEGORY_CHOICES,
+        entries=CATEGORY_CHOICE_ENTRIES,
         prefix="adm:q:flt:cat",
         selected=filters.get("category"),
         state=state,
@@ -588,6 +616,9 @@ async def cb_queue_filters_category_pick(cq: CallbackQuery, staff: StaffUser, st
     if value == "clr":
         filters["category"] = None
     else:
+        if value not in CATEGORY_VALUE_MAP:
+            await cq.answer("Некорректная категория", show_alert=True)
+            return
         filters["category"] = value
     await _save_filters(state, filters)
     await _render_filters_menu(cq.message, staff, state)

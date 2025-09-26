@@ -1,7 +1,8 @@
 ﻿from __future__ import annotations
 
 import math
-from typing import Iterable, Sequence
+from typing import Sequence
+import re
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -62,19 +63,35 @@ async def onboarding_start(
     await callback.answer()
 
 
+ACCESS_CODE_RE = re.compile(r"^[A-Z0-9]{6}$")
+
+
 @router.message(OnboardingStates.access_code)
 async def onboarding_access_code(
     message: Message,
     state: FSMContext,
     session: AsyncSession,
 ) -> None:
-    raw_code = (message.text or "").strip()
-    try:
-        record = await onboarding_service.validate_access_code(session, raw_code)
-    except onboarding_service.AccessCodeError as exc:
-        await message.answer(str(exc))
+    raw_code = (message.text or "").strip().upper()
+    if not ACCESS_CODE_RE.fullmatch(raw_code):
+        await message.answer("Код доступа должен состоять из 6 символов A-Z или 0-9.")
         return
-    await state.update_data(access_code_id=record.id)
+
+    record = await _fetch_staff_access_code(session, raw_code)
+    source = "staff" if record else None
+
+    if record is None:
+        try:
+            legacy = await onboarding_service.validate_access_code(session, raw_code)
+        except onboarding_service.AccessCodeError:
+            await message.answer(
+                "Код доступа не найден. Проверьте правильность и попробуйте снова."
+            )
+            return
+        record = legacy
+        source = "master"
+
+    await state.update_data(access_code={"id": record.id, "source": source})
     await state.set_state(OnboardingStates.pdn)
     await push_step_message(message, state, MASTER_PDN_CONSENT, pdn_keyboard())
 
@@ -629,11 +646,19 @@ async def onboarding_confirm(
         )
     session.add_all(attachments)
 
-    code_id = data.get("access_code_id")
-    if code_id:
-        code = await session.get(m.master_invite_codes, code_id)
-        if code:
-            await onboarding_service.mark_code_used(session, code, master.id)
+    access_code = data.get("access_code") or {}
+    if access_code:
+        code_id = access_code.get("id")
+        source = access_code.get("source")
+        if source == "master" and code_id:
+            code = await session.get(m.master_invite_codes, code_id)
+            if code:
+                await onboarding_service.mark_code_used(session, code, master.id)
+        elif source == "staff" and code_id:
+            staff_code = await session.get(m.staff_access_codes, code_id)
+            if staff_code:
+                staff_code.used_at = now_utc()
+                staff_code.is_revoked = True
 
     await session.commit()
 
@@ -712,4 +737,22 @@ def _format_payout_summary(method_value: str | None, payload: dict | None) -> st
         last4 = account[-4:] if account else ''
         return f"Банк счёт ••••{last4}" if last4 else "Банковские реквизиты"
     return method.value
+
+
+async def _fetch_staff_access_code(
+    session: AsyncSession, normalized_code: str
+) -> m.staff_access_codes | None:
+    now = now_utc()
+    stmt = (
+        select(m.staff_access_codes)
+        .where(func.upper(m.staff_access_codes.code) == normalized_code)
+        .where(m.staff_access_codes.is_revoked.is_(False))
+        .where(m.staff_access_codes.used_at.is_(None))
+        .where(
+            (m.staff_access_codes.expires_at.is_(None))
+            | (m.staff_access_codes.expires_at >= now)
+        )
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
 

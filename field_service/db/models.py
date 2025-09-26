@@ -28,6 +28,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, metadata
+from .pg_enums import OrderCategory
 
 # ===== Enums =====
 
@@ -379,7 +380,11 @@ class orders(Base):
     client_name: Mapped[Optional[str]] = mapped_column(String(160))
     client_phone: Mapped[Optional[str]] = mapped_column(String(32), index=True)
 
-    category: Mapped[Optional[str]] = mapped_column(String(32))
+    category: Mapped[OrderCategory] = mapped_column(
+        Enum(OrderCategory, name="order_category"),
+        nullable=False,
+        server_default=OrderCategory.ELECTRICS.value,
+    )
     description: Mapped[Optional[str]] = mapped_column(Text)
 
     status: Mapped[OrderStatus] = mapped_column(
@@ -453,6 +458,7 @@ class orders(Base):
         ),
         Index("ix_orders__status_city", "status", "city_id"),
         Index("ix_orders__city_status", "city_id", "status"),
+        Index("ix_orders__category", "category"),
         Index("ix_orders__assigned_master", "assigned_master_id"),
         Index("ix_orders__preferred_master", "preferred_master_id"),
         Index(
