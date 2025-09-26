@@ -43,6 +43,8 @@ from .dto import (
     OrderDetail,
     OrderStatusHistoryItem,
     OrderListItem,
+    OrderCategory,
+    OrderStatus,
     OrderType,
     StaffAccessCode,
     StaffMember,
@@ -52,6 +54,7 @@ from .dto import (
     TimeslotOption,
     WaitPayRecipient,
 )
+from .normalizers import normalize_category, normalize_status
 
 UTC = timezone.utc
 PAYMENT_METHOD_LABELS = {
@@ -929,7 +932,7 @@ class DBOrdersService:
             page: int,
             page_size: int,
             status_filter: Optional[OrderStatus] = None,
-            category: Optional[str] = None,
+            category: Optional[OrderCategory] = None,
             master_id: Optional[int] = None,
             timeslot_date: Optional[date] = None,
         ) -> tuple[list[OrderListItem], bool]:
@@ -941,6 +944,7 @@ class DBOrdersService:
                     return [], False
             allowed_statuses = [status.value for status in QUEUE_STATUSES]
             async with self._session_factory() as session:
+                category_enum = normalize_category(category)
                 stmt = (
                     select(
                         m.orders.id,
@@ -991,8 +995,8 @@ class DBOrdersService:
                     stmt = stmt.where(m.orders.status.in_(allowed_statuses))
                 if city_filter is not None:
                     stmt = stmt.where(m.orders.city_id.in_(city_filter))
-                if category:
-                    stmt = stmt.where(m.orders.category == category)
+                if category_enum:
+                    stmt = stmt.where(m.orders.category == category_enum)
                 if master_id:
                     stmt = stmt.where(m.orders.assigned_master_id == master_id)
                 if timeslot_date:
@@ -1260,8 +1264,10 @@ class DBOrdersService:
                     current_time = now_local.timetz()
                     if current_time.tzinfo is not None:
                         current_time = current_time.replace(tzinfo=None)
-                    initial_status = data.initial_status or m.OrderStatus.SEARCHING
-                    if data.initial_status is None and current_time >= workday_end:
+                    normalized_status = normalize_status(data.initial_status)
+                    initial_status = normalized_status or m.OrderStatus.SEARCHING
+                    status_provided = normalized_status is not None
+                    if not status_provided and current_time >= workday_end:
                         initial_status = m.OrderStatus.DEFERRED
                     order = m.orders(
                         city_id=data.city_id,

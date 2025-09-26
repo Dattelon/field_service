@@ -12,11 +12,14 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from field_service.db.models import OrderStatus
+from field_service.services.guarantee_service import GuaranteeError
 
 from .access import visible_city_ids_for
 from .dto import (
     CityRef,
+    MasterBrief,
     OrderAttachment,
+    OrderCard,
     OrderCategory,
     OrderDetail,
     OrderListItem,
@@ -38,6 +41,7 @@ from .keyboards import (
 from .states import QueueActionFSM, QueueFiltersFSM
 from .texts import master_brief_line
 from .utils import get_service
+from .normalizers import normalize_category, normalize_status
 
 queue_router = Router(name="admin_queue")
 
@@ -291,10 +295,7 @@ def _default_filters() -> dict[str, Optional[str | int]]:
 def _parse_category_filter(value: Optional[str]) -> Optional[OrderCategory]:
     if not value:
         return None
-    try:
-        return OrderCategory(value)
-    except ValueError:
-        return None
+    return normalize_category(value)
 
 
 async def _load_filters(state: FSMContext) -> dict[str, Optional[str | int]]:
@@ -400,8 +401,8 @@ async def _format_filters_text(
         category_text = CATEGORY_LABELS.get(category_filter, category_filter.value)
     else:
         category_text = "—"
-    status_code = filters.get("status")
-    status_text = status_code or "—"
+    status_filter = normalize_status(filters.get("status"))
+    status_text = status_filter.value if status_filter else "—"
     master_id = filters.get("master_id")
     master_text = f"#{master_id}" if master_id else "—"
     date_value = filters.get("date") or "—"
@@ -484,14 +485,7 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
 
     city_filter = _resolve_city_filter(staff, filters.get("city_id"))
 
-    status_value = filters.get("status")
-    status_filter: Optional[OrderStatus] = None
-    if status_value:
-        try:
-            status_filter = OrderStatus(status_value)
-        except ValueError:
-            status_filter = None
-
+    status_filter = normalize_status(filters.get("status"))
     category_filter = _parse_category_filter(filters.get("category"))
     master_filter = filters.get("master_id")
     timeslot_date: Optional[date] = None
@@ -652,7 +646,11 @@ async def cb_queue_filters_status_pick(cq: CallbackQuery, staff: StaffUser, stat
     if value == "clr":
         filters["status"] = None
     else:
-        filters["status"] = value
+        status_enum = normalize_status(value)
+        if not status_enum:
+            await cq.answer("Некорректный статус", show_alert=True)
+            return
+        filters["status"] = status_enum.value
     await _save_filters(state, filters)
     await _render_filters_menu(cq.message, staff, state)
     await cq.answer()

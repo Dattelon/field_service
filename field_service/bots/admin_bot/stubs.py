@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Optional, Sequence
 
+from field_service.db import OrderCategory
+
 from .services_db import AutoAssignResult
 
 @dataclass(slots=True)
@@ -27,7 +29,7 @@ class StubOrdersService:
         page: int,
         page_size: int,
         status_filter: Optional[object] = None,
-        category: Optional[str] = None,
+        category: Optional[OrderCategory] = None,
         master_id: Optional[int] = None,
         timeslot_date: Optional[object] = None,
     ) -> tuple[list[object], bool]:

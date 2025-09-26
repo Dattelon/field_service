@@ -74,6 +74,7 @@ from .keyboards import (
     settings_group_keyboard,
     settings_menu_keyboard,
 )
+from .normalizers import normalize_category, normalize_status
 from .states import (FinanceActionFSM, NewOrderFSM, OwnerPayEditFSM, ReportsExportFSM, SettingsEditFSM, StaffAccessFSM)
 from .texts import (
     commission_detail as format_commission_detail,
@@ -590,14 +591,7 @@ def _build_new_order_data(data: dict, staff: StaffUser) -> NewOrderData:
         extra = f"(???????????????: {manual_street})"
         address_comment = f"{address_comment} {extra}".strip() if address_comment else extra
     initial_status_value = data.get("initial_status")
-    initial_status = None
-    if isinstance(initial_status_value, OrderStatus):
-        initial_status = initial_status_value
-    elif isinstance(initial_status_value, str):
-        try:
-            initial_status = OrderStatus(initial_status_value)
-        except ValueError:
-            initial_status = None
+    initial_status = normalize_status(initial_status_value)
     total_sum_value = data.get("total_sum")
     if total_sum_value is None:
         total_sum_value = 0
@@ -614,14 +608,8 @@ def _build_new_order_data(data: dict, staff: StaffUser) -> NewOrderData:
         except (TypeError, ValueError):
             lon_value = None
     category_value = data.get("category")
-    if isinstance(category_value, OrderCategory):
-        category_enum = category_value
-    elif isinstance(category_value, str) and category_value:
-        try:
-            category_enum = OrderCategory(category_value)
-        except ValueError as exc:
-            raise ValueError(f"Unknown category: {category_value}") from exc
-    else:
+    category_enum = normalize_category(category_value)
+    if category_enum is None:
         raise ValueError("Category is required")
 
     return NewOrderData(
@@ -1611,9 +1599,8 @@ async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
 @router.callback_query(F.data.startswith("adm:new:cat:"), StateFilter(NewOrderFSM.category))
 async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
     raw = cq.data.split(":")[2]
-    try:
-        category = OrderCategory(raw)
-    except ValueError:
+    category = normalize_category(raw)
+    if category is None:
         await cq.answer("Неизвестная категория", show_alert=True)
         return
     await state.update_data(
