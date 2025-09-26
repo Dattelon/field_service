@@ -1,4 +1,5 @@
 """owner pay settings (snapshot for commissions)"""
+
 from alembic import op
 
 revision = "2025_09_19_0010"
@@ -6,8 +7,10 @@ down_revision = "2025_09_19_0009"
 branch_labels = None
 depends_on = None
 
+
 def upgrade() -> None:
-    op.execute("""
+    op.execute(
+        """
     INSERT INTO settings(key,value,value_type,description) VALUES
     ('owner_pay_methods_enabled','["card","sbp"]','JSON','Разрешённые методы оплаты комиссии'),
     ('owner_pay_card_number','2200123456789012','STR','Номер карты (без пробелов)'),
@@ -19,7 +22,9 @@ def upgrade() -> None:
     ('owner_pay_other_text','','STR','Иной способ (текст)'),
     ('owner_pay_comment_template','Комиссия #<order_id> от <master_fio>','STR','Шаблон комментария к платежу')
     ON CONFLICT (key) DO NOTHING
-    """)
+    """
+    )
+
 
 def downgrade() -> None:
     # оставляем значения — безопаснее

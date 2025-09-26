@@ -3,6 +3,7 @@ Revision ID: 2025_09_17_0003
 Revises: 2025_09_17_0002
 Create Date: 2025-09-17 18:30:00.000000
 """
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -68,4 +69,6 @@ def downgrade():
     op.execute("DELETE FROM skills WHERE code IN ('ELEC','PLUMB','FURN','APPLI')")
     op.execute("DELETE FROM districts WHERE name IN ('ЦАО','САО','ЮАО','ВАО','ЗАО')")
     op.execute("DELETE FROM cities WHERE name IN ('Москва','Санкт-Петербург','Казань')")
-    op.execute("DELETE FROM settings WHERE key IN ('max_active_orders','commission_percent_default')")
+    op.execute(
+        "DELETE FROM settings WHERE key IN ('max_active_orders','commission_percent_default')"
+    )
