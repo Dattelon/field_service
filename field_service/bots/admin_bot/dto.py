@@ -5,6 +5,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import FrozenSet, Mapping, Optional, Sequence, Tuple
 
+from field_service.db import OrderCategory
 from field_service.db.models import OrderStatus, OrderType, StaffRole
 
 
@@ -111,7 +112,7 @@ class OrderListItem:
     house: Optional[str]
     status: str
     order_type: OrderType
-    category: Optional[str]
+    category: OrderCategory
     created_at_local: str
     timeslot_local: Optional[str]
     master_id: Optional[int]
@@ -281,7 +282,7 @@ class NewOrderData:
     address_comment: Optional[str]
     client_name: str
     client_phone: str
-    category: str
+    category: OrderCategory
     description: str
     order_type: OrderType
     timeslot_start_utc: Optional[datetime]
@@ -315,6 +316,7 @@ __all__ = [
     'OrderDetail',
     'OrderCard',
     'OrderListItem',
+    'OrderCategory',
     'OrderType',
     'OrderStatus',
     'StaffAccessCode',

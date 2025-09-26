@@ -9,6 +9,7 @@ from .dto import (
     CommissionListItem,
     MasterBrief,
     OrderCard,
+    OrderCategory,
     OrderListItem,
 )
 
@@ -20,10 +21,18 @@ COMMISSION_STATUS_LABELS = {
 }
 
 
+def _category_value(category: object) -> str:
+    if isinstance(category, OrderCategory):
+        return category.value
+    if isinstance(category, str):
+        return category
+    return "—"
+
+
 def order_teaser(order: OrderListItem) -> str:
     district = order.district_name or "—"
     slot = f" • {order.timeslot_local}" if order.timeslot_local else ""
-    category = order.category or "—"
+    category = _category_value(order.category)
     return (
         f"#{order.id} · {order.city_name}/{district} · {category}{slot} · {order.status}"
     )
@@ -47,7 +56,7 @@ def order_card(order: OrderCard) -> str:
     lines = [
         f"📄 <b>Заявка #{order.id}</b>",
         f"📍 {address}",
-        f"Категория: {order.category or '—'}",
+        f"Категория: {_category_value(order.category)}",
         f"Тип: {order.order_type.value}",
         f"Слот: {slot}",
         f"Статус: {order.status}",
@@ -186,7 +195,14 @@ def new_order_summary(data: Mapping[str, object]) -> str:
         + str(data.get('client_name', '—'))
         + (f" ({data['client_phone']})" if data.get('client_phone') else "")
     )
-    lines.append(f"Категория: {data.get('category_label', data.get('category', '—'))}")
+    category_obj = data.get('category')
+    if isinstance(category_obj, OrderCategory):
+        category_fallback = category_obj.value
+    else:
+        category_fallback = str(category_obj or '—')
+    lines.append(
+        f"Категория: {data.get('category_label', category_fallback)}"
+    )
     lines.append(f"Тип заявки: {data.get('order_type', 'NORMAL')}")
     lines.append(f"Слот: {data.get('timeslot_display', '—')}")
     if data.get('description'):

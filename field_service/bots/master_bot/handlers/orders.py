@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
 from types import SimpleNamespace
 
 from aiogram import F, Router
@@ -121,6 +122,17 @@ async def offer_accept(
         update(m.offers)
         .where((m.offers.order_id == order_id) & (m.offers.master_id == master.id))
         .values(state=m.OfferState.ACCEPTED, responded_at=func.now())
+    )
+    await session.execute(
+        update(m.offers)
+        .where(
+            and_(
+                m.offers.order_id == order_id,
+                m.offers.master_id != master.id,
+                m.offers.state.in_((m.OfferState.SENT, m.OfferState.VIEWED)),
+            )
+        )
+        .values(state=m.OfferState.CANCELED, responded_at=func.now())
     )
     await session.execute(
         insert(m.order_status_history).values(

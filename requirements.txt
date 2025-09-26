@@ -1,20 +1,21 @@
-# Runtime dependencies
-aiogram==3.10.0
-SQLAlchemy==2.0.32
-asyncpg==0.29.0
-alembic==1.13.2
-python-dotenv==1.0.1
-pydantic==2.8.2
-aiohttp==3.9.5
-rapidfuzz==3.6.1
-XlsxWriter==3.1.9
-tzdata==2024.1  # для zoneinfo на Windows
+# Core runtime dependencies
+aiogram>=3.7
+aiohttp>=3.9
+SQLAlchemy>=2.0
+asyncpg>=0.29
+psycopg2-binary>=2.9
+alembic>=1.13
+python-dotenv>=1.0
+pydantic>=2.8
+rapidfuzz>=3.6
+XlsxWriter>=3.1
+tzdata>=2024.1
+aiosqlite>=0.19
+openpyxl>=3.1
 
 # Tooling & QA
-black==25.9.0
-mypy==1.18.2
-ruff==0.13.1
-pytest==8.3.2
-pytest-asyncio==0.23.8
-aiosqlite==0.19.0
-openpyxl==3.1.2
+pytest>=8.3
+pytest-asyncio>=0.23
+ruff>=0.13
+black>=24.8
+mypy>=1.8

@@ -27,6 +27,14 @@ CATEGORY_TO_SKILL_CODE = {
     "ROADSIDE": "AUTOHELP",
 }
 
+LEGACY_STATUS_ALIASES = {
+    "DISTRIBUTION": m.OrderStatus.SEARCHING,
+    "SCHEDULED": m.OrderStatus.EN_ROUTE,
+    "IN_PROGRESS": m.OrderStatus.WORKING,
+    "INPROGRESS": m.OrderStatus.WORKING,
+    "DONE": m.OrderStatus.PAYMENT,
+}
+
 def _skill_code_for_category(category: str | None) -> str | None:
     if not category:
         return None
@@ -77,8 +85,12 @@ ESC_REASON_ADMIN = "distribution_escalate_admin"
 def _status_enum(value: Any) -> m.OrderStatus:
     if isinstance(value, m.OrderStatus):
         return value
+    raw = str(value).strip().upper()
+    alias = LEGACY_STATUS_ALIASES.get(raw)
+    if alias:
+        return alias
     try:
-        return m.OrderStatus(str(value))
+        return m.OrderStatus(raw)
     except Exception:
         return m.OrderStatus.SEARCHING
 
