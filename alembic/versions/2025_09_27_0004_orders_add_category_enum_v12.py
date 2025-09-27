@@ -30,24 +30,42 @@ order_category = sa.Enum(
 
 def upgrade() -> None:
     bind = op.get_bind()
+    insp = sa.inspect(bind)
+
+    # Ensure enum type exists
     order_category.create(bind, checkfirst=True)
 
-    op.add_column(
-        "orders",
-        sa.Column(
-            "category",
-            sa.Enum(name="order_category", create_type=False),
-            nullable=False,
-            server_default="ELECTRICS",
-        ),
-    )
-    op.create_index("ix_orders__category", "orders", ["category"])
+    # Add column only if it does not already exist
+    cols = {c.get("name") for c in insp.get_columns("orders")}
+    if "category" not in cols:
+        op.add_column(
+            "orders",
+            sa.Column(
+                "category",
+                sa.Enum(name="order_category", create_type=False),
+                nullable=False,
+                server_default="ELECTRICS",
+            ),
+        )
+
+    # Create index if missing
+    idx_names = {i.get("name") for i in insp.get_indexes("orders")}
+    if "ix_orders__category" not in idx_names:
+        op.create_index("ix_orders__category", "orders", ["category"])
 
 
 
 def downgrade() -> None:
-    op.drop_index("ix_orders__category", table_name="orders")
-    op.drop_column("orders", "category")
-
+    # Best-effort downgrade with guards
     bind = op.get_bind()
+    insp = sa.inspect(bind)
+
+    idx_names = {i.get("name") for i in insp.get_indexes("orders")}
+    if "ix_orders__category" in idx_names:
+        op.drop_index("ix_orders__category", table_name="orders")
+
+    cols = {c.get("name") for c in insp.get_columns("orders")}
+    if "category" in cols:
+        op.drop_column("orders", "category")
+
     order_category.drop(bind, checkfirst=True)
