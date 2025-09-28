@@ -1,18 +1,20 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import html
 import json
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
 from decimal import Decimal
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, Optional, Sequence
+from zoneinfo import ZoneInfo
 
 from aiogram import F, Router, Bot
-from aiogram.filters import CommandStart, StateFilter
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import BufferedInputFile, CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from field_service.config import settings as env_settings
 from field_service.services import export_service, live_log, time_service
@@ -21,9 +23,9 @@ from field_service.services.onboarding_service import normalize_phone
 from field_service.bots.admin_bot.services_db import AccessCodeError
 
 FINANCE_SEGMENT_TITLES = {
-    'aw': 'РћР¶РёРґР°СЋС‚ РѕРїР»Р°С‚С‹',
-    'pd': 'РћРїР»Р°С‡РµРЅРЅС‹Рµ',
-    'ov': 'РџСЂРѕСЃСЂРѕС‡РµРЅРЅС‹Рµ',
+    "aw": "Ожидают оплаты",
+    "pd": "Оплаченные",
+    "ov": "Просроченные",
 }
 
 STAFF_CODE_PROMPT = "Введите код доступа, выданный глобальным администратором."
@@ -75,7 +77,7 @@ from .keyboards import (
     settings_menu_keyboard,
 )
 from .normalizers import normalize_category, normalize_status
-from .states import (FinanceActionFSM, NewOrderFSM, OwnerPayEditFSM, ReportsExportFSM, SettingsEditFSM, StaffAccessFSM)
+from .states import (FinanceActionFSM, NewOrderFSM, ReportsExportFSM, SettingsEditFSM, StaffAccessFSM)
 from .texts import (
     commission_detail as format_commission_detail,
     finance_list_line,
@@ -86,9 +88,29 @@ from .texts import (
 )
 from .utils import get_service
 from .queue import queue_router
+from .handlers_finance import router as finance_router
 
 router = Router(name="admin_handlers")
 router.include_router(queue_router)
+router.include_router(finance_router)
+
+
+async def show_admin_main_menu(
+    message: Message,
+    staff: StaffUser,
+    *,
+    edit: bool = False,
+    notice: Optional[str] = None,
+) -> None:
+    text = notice or "Главное меню:"
+    markup = main_menu(staff)
+    if edit:
+        try:
+            await message.edit_text(text, reply_markup=markup)
+            return
+        except Exception:
+            pass
+    await message.answer(text, reply_markup=markup)
 
 STAFF_ROLE_LABELS = {
     StaffRole.GLOBAL_ADMIN: "Global admin",
@@ -733,14 +755,27 @@ async def _finalize_slot_selection(
     )
 
 
-def _send_export_documents(message: Message, bundle: export_service.ExportBundle, caption: str) -> None:
+async def _send_export_documents(
+    bot: Bot,
+    bundle: export_service.ExportBundle,
+    caption: str,
+    *,
+    chat_id: int,
+) -> None:
     documents = [
         (bundle.csv_bytes, bundle.csv_filename, f"{caption} - CSV"),
         (bundle.xlsx_bytes, bundle.xlsx_filename, f"{caption} - XLSX"),
     ]
-    for payload, filename, note in documents:
-        file = BufferedInputFile(payload, filename)
-        message.bot.loop.create_task(message.answer_document(file, caption=note))
+    with TemporaryDirectory() as tmpdir:
+        base_path = Path(tmpdir)
+        for payload, filename, note in documents:
+            file_path = base_path / filename
+            file_path.write_bytes(payload)
+            await bot.send_document(
+                chat_id=chat_id,
+                document=FSInputFile(file_path),
+                caption=note,
+            )
 
 @router.message(CommandStart(), StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}))
 async def admin_start(message: Message, staff: StaffUser) -> None:
@@ -873,6 +908,19 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
 async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ:", reply_markup=main_menu(staff))
     await cq.answer()
+
+
+@router.callback_query(
+    F.data == "adm:staff:menu",
+    StaffRoleFilter({StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
+)
+async def cb_staff_menu_denied(cq: CallbackQuery, staff: StaffUser) -> None:
+    if cq.message is not None:
+        await cq.message.edit_text(
+            "Недостаточно прав. Главное меню:",
+            reply_markup=main_menu(staff),
+        )
+    await cq.answer("Недостаточно прав", show_alert=True)
 
 
 @router.callback_query(
@@ -1168,48 +1216,6 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
         await msg.answer("РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕРґС‚РІРµСЂРґРёС‚СЊ РѕРїР»Р°С‚Сѓ.")
 
 @router.callback_query(
-    F.data == "adm:f:set",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def cb_finance_owner_snapshot(cq: CallbackQuery) -> None:
-    settings_service = _settings_service(cq.message.bot)
-    snapshot = await settings_service.get_owner_pay_snapshot()
-    text = "<b>пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ</b>\n" + json.dumps(snapshot, ensure_ascii=False, indent=2)
-    keyboard = finance_reject_cancel_keyboard(0)
-    await cq.message.edit_text(text, reply_markup=keyboard)
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data == "adm:f:set:edit",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def cb_finance_owner_edit(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(OwnerPayEditFSM.value)
-    await cq.message.edit_text(
-        "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ JSON пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (methods, card, sbp пїЅ пїЅ.пїЅ.), пїЅпїЅпїЅ /cancel.",
-    )
-    await cq.answer()
-
-
-@router.message(StateFilter(OwnerPayEditFSM.value))
-async def finance_owner_edit_value(msg: Message, state: FSMContext) -> None:
-    try:
-        payload = json.loads(msg.text)
-    except json.JSONDecodeError:
-        await msg.answer("пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ JSON. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ /cancel.")
-        return
-    settings_service = _settings_service(msg.bot)
-    await settings_service.update_owner_pay_snapshot(**payload)
-    await state.clear()
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
-
-
-@router.message(StateFilter(OwnerPayEditFSM.value), F.text == "/cancel")
-async def finance_owner_edit_cancel(msg: Message, state: FSMContext) -> None:
-    await state.clear()
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
-@router.callback_query(
     F.data == "adm:r",
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
@@ -1296,9 +1302,28 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
         return
 
     period_label = _format_period_label(start_dt, end_dt)
-    _send_export_documents(msg, bundle, f"{caption_prefix} {period_label}")
+    operator_chat_id = None
+    if msg.chat:
+        operator_chat_id = msg.chat.id
+    elif msg.from_user:
+        operator_chat_id = msg.from_user.id
+    target_chat_id = env_settings.reports_channel_id or operator_chat_id
+    if target_chat_id is None:
+        await state.clear()
+        await msg.answer(
+            "Не удалось определить чат для отправки отчёта.",
+            reply_markup=reports_menu_keyboard(),
+        )
+        return
+
+    await _send_export_documents(
+        msg.bot,
+        bundle,
+        f"{caption_prefix} {period_label}",
+        chat_id=target_chat_id,
+    )
     await state.clear()
-    await msg.answer("Файлы отправлены. Выберите другой отчёт:", reply_markup=reports_menu_keyboard())
+    await msg.answer("Отчёт отправлен", reply_markup=reports_menu_keyboard())
 
 async def _start_new_order(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
@@ -1336,11 +1361,30 @@ async def cb_new_order_start(cq: CallbackQuery, staff: StaffUser, state: FSMCont
     await _start_new_order(cq, staff, state)
 
 
-@router.callback_query(F.data == "adm:new:cancel")
-async def cb_new_order_cancel(cq: CallbackQuery, state: FSMContext) -> None:
+@router.message(
+    Command("cancel"),
+    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
+)
+async def admin_cancel_command(message: Message, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
-    await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
-    await cq.answer()
+    await show_admin_main_menu(
+        message,
+        staff,
+        notice="Создание заявки отменено. Главное меню:",
+    )
+
+
+@router.callback_query(F.data == "adm:new:cancel")
+async def cb_new_order_cancel(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    await state.clear()
+    if cq.message:
+        await show_admin_main_menu(
+            cq.message,
+            staff,
+            edit=True,
+            notice="Создание заявки отменено. Главное меню:",
+        )
+    await cq.answer("Создание заявки отменено")
 
 
 @router.callback_query(F.data.startswith("adm:new:city_page:"), StateFilter(NewOrderFSM.city))
@@ -1348,12 +1392,14 @@ async def cb_new_order_city_page(cq: CallbackQuery, state: FSMContext) -> None:
     page = int(cq.data.split(":")[2])
     data = await state.get_data()
     query = data.get("city_query")
+    await state.set_state(NewOrderFSM.city)
     await _render_city_step(cq.message, state, page=page, query=query)
     await cq.answer()
 
 
 @router.callback_query(F.data == "adm:new:city_search", StateFilter(NewOrderFSM.city))
-async def cb_new_order_city_search(cq: CallbackQuery) -> None:
+async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None:
+    await state.set_state(NewOrderFSM.city)
     await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ). пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ /cancel.")
     await cq.answer()
 
@@ -1395,6 +1441,7 @@ async def _render_district_step(message: Message, state: FSMContext, page: int) 
 @router.callback_query(F.data.startswith("adm:new:district_page:"), StateFilter(NewOrderFSM.district))
 async def cb_new_order_district_page(cq: CallbackQuery, state: FSMContext) -> None:
     page = int(cq.data.split(":")[2])
+    await state.set_state(NewOrderFSM.district)
     await _render_district_step(cq.message, state, page=page)
     await cq.answer()
 
@@ -1627,7 +1674,8 @@ async def new_order_description(msg: Message, state: FSMContext) -> None:
 
 
 @router.callback_query(F.data == "adm:new:att:add", StateFilter(NewOrderFSM.attachments))
-async def cb_new_order_att_add(cq: CallbackQuery) -> None:
+async def cb_new_order_att_add(cq: CallbackQuery, state: FSMContext) -> None:
+    await state.set_state(NewOrderFSM.attachments)
     await cq.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
 
 
@@ -1636,6 +1684,7 @@ async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     data["attachments"] = []
     await state.update_data(**data)
+    await state.set_state(NewOrderFSM.attachments)
     await cq.message.edit_text(
         "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
         reply_markup=new_order_attachments_keyboard(False),
@@ -1738,6 +1787,7 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
     if not city_id:
         await cq.answer("????? ?? ??????", show_alert=True)
         return
+    await state.set_state(NewOrderFSM.slot)
     options = data.get("slot_options") or []
     valid_keys = {item[0] for item in options}
     if key not in valid_keys:
@@ -1760,6 +1810,7 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
         )
         if normalized == "DEFERRED_TOM_10_13":
             await state.update_data(pending_asap=True)
+            await state.set_state(NewOrderFSM.slot)
             await cq.message.edit_text(
                 "ASAP ????? 19:30. ????????? ?? ?????? 10-13?",
                 reply_markup=new_order_asap_late_keyboard(),
@@ -1788,6 +1839,7 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
             workday_end=workday_end,
         )
         await state.update_data(slot_options=refreshed_options, pending_asap=False, initial_status=None)
+        await state.set_state(NewOrderFSM.slot)
         await cq.message.edit_text(
             "???? ??????????. ???????? ?????? ????:",
             reply_markup=new_order_slot_keyboard(refreshed_options),
@@ -1829,6 +1881,7 @@ async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None
     if not city_id:
         await cq.answer("????? ?? ??????", show_alert=True)
         return
+    await state.set_state(NewOrderFSM.slot)
     tz_value = data.get("city_timezone")
     if tz_value:
         tz = time_service.resolve_timezone(tz_value)

@@ -110,11 +110,9 @@ class ReferralRewardStatus(str, enum.Enum):
 
 
 class StaffRole(str, enum.Enum):
-    ADMIN = "ADMIN"  # legacy/global admin
+    GLOBAL_ADMIN = "GLOBAL_ADMIN"
     CITY_ADMIN = "CITY_ADMIN"
     LOGIST = "LOGIST"
-
-    GLOBAL_ADMIN = "ADMIN"
 
 
 # ===== Geo =====
