@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone, timedelta
@@ -8,6 +8,7 @@ import json
 import secrets
 import string
 from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
+from types import SimpleNamespace
 
 from sqlalchemy import and_, delete, func, insert, select, text, update
 from sqlalchemy.exc import OperationalError
@@ -19,6 +20,7 @@ from field_service.config import settings
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import distribution_worker as dw
+from field_service.services.candidates import select_candidates
 from field_service.services import live_log
 from field_service.services import time_service
 from field_service.services import settings_service as settings_store
@@ -58,9 +60,9 @@ from .normalizers import normalize_category, normalize_status
 
 UTC = timezone.utc
 PAYMENT_METHOD_LABELS = {
-    'card': 'Р С™Р В°РЎР‚РЎвЂљР В°',
-    'sbp': 'Р РЋР вЂР Сџ',
-    'cash': 'Р СњР В°Р В»Р С‘РЎвЂЎР Р…РЎвЂ№Р Вµ',
+    "card": "Карта",
+    "sbp": "СБП",
+    "cash": "Наличные",
 }
 
 OWNER_PAY_SETTING_FIELDS: dict[str, tuple[str, str]] = {
@@ -1704,16 +1706,25 @@ class DBDistributionService:
                         code="rounds_exhausted",
                     )
 
-                candidates = await dw.candidate_rows(
+                candidate_infos = await select_candidates(
+                    data,
+                    "auto",
                     session=session,
-                    order_id=order_id,
-                    city_id=data.city_id,
-                    district_id=data.district_id,
-                    preferred_master_id=data.preferred_master_id,
-                    skill_code=skill_code,
                     limit=50,
-                    force_preferred_first=is_guarantee,
+                    log_hook=lambda message: _push_dist_log(message, level="INFO"),
                 )
+
+                candidates = [
+                    {
+                        "mid": candidate.master_id,
+                        "car": candidate.has_car,
+                        "avg_week": candidate.avg_week_check,
+                        "rating": candidate.rating_avg,
+                        "rnd": candidate.random_rank,
+                        "shift": candidate.is_on_shift,
+                    }
+                    for candidate in candidate_infos
+                ]
 
                 header = dw.log_tick_header(
                     data,
@@ -1729,7 +1740,7 @@ class DBDistributionService:
                         pref_id = int(data.preferred_master_id)
                     except (TypeError, ValueError):
                         pref_id = None
-                    if pref_id is not None and int(candidates[0]["mid"]) == pref_id:
+                    if candidates and pref_id is not None and int(candidates[0]["mid"]) == pref_id:
                         _push_dist_log(dw.log_force_first(pref_id))
 
                 if candidates:
@@ -2175,131 +2186,69 @@ class DBMastersService:
     ) -> tuple[list[MasterBrief], bool]:
         page = max(page, 1)
         offset = (page - 1) * page_size
-        limit = page_size + 1
         async with self._session_factory() as session:
             order_q = await session.execute(
                 select(
+                    m.orders.id,
                     m.orders.city_id,
                     m.orders.district_id,
-                    m.orders.preferred_master_id,
                     m.orders.category,
-                    m.orders.status,
-                    m.orders.type.label("order_type"),
                 ).where(m.orders.id == order_id)
             )
             order_row = order_q.first()
-            if not order_row or order_row.district_id is None:
-                return [], False
-            category = getattr(order_row, "category", None)
-            skill_code = dw._skill_code_for_category(category)
-            if skill_code is None:
+            if not order_row:
                 return [], False
 
-            global_limit = await dw._max_active_limit_for(session)
-            now = datetime.now(UTC)
-            rows = await session.execute(
-                text(
-                    """
-WITH active_cnt AS (
-  SELECT assigned_master_id AS mid, COUNT(*) AS cnt
-    FROM orders
-   WHERE assigned_master_id IS NOT NULL
-     AND status IN ('ASSIGNED','EN_ROUTE','WORKING','PAYMENT')
-   GROUP BY assigned_master_id
-),
-avg7 AS (
-  SELECT assigned_master_id AS mid, AVG(total_sum)::numeric(10,2) AS avg_check
-    FROM orders
-   WHERE assigned_master_id IS NOT NULL
-     AND status IN ('PAYMENT','CLOSED')
-     AND created_at >= NOW() - INTERVAL '7 days'
-   GROUP BY assigned_master_id
-)
-SELECT
-    m.id AS mid,
-    m.full_name,
-    m.city_id,
-    m.has_vehicle,
-    m.rating,
-    m.is_on_shift,
-    m.break_until,
-    m.is_active,
-    m.verified,
-    COALESCE(ac.cnt, 0)      AS active_cnt,
-    COALESCE(m.max_active_orders_override, :gmax) AS max_limit,
-    COALESCE(a.avg_check, 0) AS avg_week
-FROM masters m
-JOIN master_districts md
-  ON md.master_id = m.id
- AND md.district_id = :did
-JOIN master_skills ms
-  ON ms.master_id = m.id
-JOIN skills s
-  ON s.id = ms.skill_id
- AND s.code = :skill_code
- AND s.is_active = TRUE
-LEFT JOIN active_cnt ac ON ac.mid = m.id
-LEFT JOIN avg7 a ON a.mid = m.id
-WHERE m.city_id = :cid
-  AND m.is_blocked = FALSE
-  AND m.verified = TRUE
-  AND m.is_active = TRUE
-  AND NOT EXISTS (
-    SELECT 1
-      FROM offers o
-     WHERE o.order_id = :oid
-       AND o.master_id = m.id
-       AND o.state IN ('SENT','VIEWED','ACCEPTED')
-  )
-ORDER BY
-  CASE WHEN m.is_on_shift = TRUE AND (m.break_until IS NULL OR m.break_until <= :now) THEN 1 ELSE 0 END DESC,
-  CASE WHEN m.has_vehicle THEN 1 ELSE 0 END DESC,
-  a.avg_check DESC NULLS LAST,
-  m.rating DESC NULLS LAST
-OFFSET :offset
-LIMIT :limit
-                    """
-                ).bindparams(
-                    cid=order_row.city_id,
-                    did=order_row.district_id,
-                    oid=order_id,
-                    skill_code=skill_code,
-                    offset=offset,
-                    limit=limit,
-                    gmax=global_limit,
-                    now=now,
-                )
-            )
-            fetched = rows.mappings().all()
-        has_next = len(fetched) > page_size
-        result_rows = fetched[:page_size]
-        briefs: list[MasterBrief] = []
-        for row in result_rows:
-            data = dict(row)
-            mid = int(data["mid"])
-            max_limit = int(data["max_limit"] or global_limit)
-            active_cnt = int(data["active_cnt"] or 0)
-            break_until = data.get("break_until")
-            on_break = bool(break_until and break_until > now)
-            briefs.append(
-                MasterBrief(
-                    id=mid,
-                    full_name=data.get("full_name") or f"Р СљР В°РЎРѓРЎвЂљР ВµРЎР‚ #{mid}",
-                    city_id=int(data.get("city_id") or 0),
-                    has_car=bool(data.get("has_vehicle")),
-                    avg_week_check=float(data.get("avg_week") or 0),
-                    rating_avg=float(data.get("rating") or 0),
-                    is_on_shift=bool(data.get("is_on_shift")),
-                    is_active=bool(data.get("is_active")),
-                    verified=bool(data.get("verified")),
-                    in_district=True,
-                    active_orders=active_cnt,
-                    max_active_orders=max_limit,
-                    on_break=on_break,
-                )
-            )
-        return briefs, has_next
+            raw_city = getattr(order_row, "city_id", None)
+            raw_district = getattr(order_row, "district_id", None)
+            try:
+                city_id = int(raw_city) if raw_city is not None else None
+            except (TypeError, ValueError):
+                city_id = None
+            try:
+                district_id = int(raw_district) if raw_district is not None else None
+            except (TypeError, ValueError):
+                district_id = None
 
+            order_payload = SimpleNamespace(
+                id=order_id,
+                city_id=city_id,
+                district_id=district_id,
+                category=getattr(order_row, "category", None),
+            )
+
+            candidate_infos = await select_candidates(
+                order_payload,
+                "manual",
+                session=session,
+            )
+
+            slice_end = offset + page_size + 1
+            page_slice = candidate_infos[offset:slice_end]
+            has_next = len(page_slice) > page_size
+            page_candidates = page_slice[:page_size]
+
+            briefs: list[MasterBrief] = []
+            for candidate in page_candidates:
+                briefs.append(
+                    MasterBrief(
+                        id=candidate.master_id,
+                        full_name=candidate.full_name,
+                        city_id=candidate.city_id,
+                        has_car=candidate.has_car,
+                        avg_week_check=candidate.avg_week_check,
+                        rating_avg=candidate.rating_avg,
+                        is_on_shift=candidate.is_on_shift,
+                        is_active=candidate.is_active,
+                        verified=candidate.verified,
+                        in_district=candidate.in_district,
+                        active_orders=candidate.active_orders,
+                        max_active_orders=candidate.max_active_orders,
+                        on_break=candidate.on_break,
+                    )
+                )
+
+            return briefs, has_next
 
     async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
         async with self._session_factory() as session:

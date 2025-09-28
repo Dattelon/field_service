@@ -30,9 +30,8 @@ def main_menu(staff: StaffUser) -> InlineKeyboardMarkup:
     kb.button(text="💳 Финансы", callback_data="adm:f")
     kb.button(text="📊 Отчёты", callback_data="adm:r")
     kb.button(text="⚙️ Настройки", callback_data="adm:s")
-    kb.button(text="🔐 Доступ и персонал", callback_data="adm:staff:menu")
     if staff.role is StaffRole.GLOBAL_ADMIN:
-        kb.button(text="👥 Персонал", callback_data="adm:staff:menu")
+        kb.button(text="🔐 Доступ и персонал", callback_data="adm:staff:menu")
     kb.button(text="🪪 Логи", callback_data="adm:l")
     kb.adjust(2, 2, 2, 2, 1)
     return kb.as_markup()
@@ -196,6 +195,35 @@ def finance_card_actions(detail: CommissionDetail, segment: str, page: int) -> I
 def finance_reject_cancel_keyboard(commission_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text="◀️ Назад", callback_data=f"adm:f:cm:card:{commission_id}")
+    return kb.as_markup()
+
+
+def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✏️ Изменить", callback_data="adm:f:set:edit")
+    kb.button(text="📣 Рассылка", callback_data="adm:f:set:bc")
+    kb.button(text="◀️ Финансы", callback_data="adm:f")
+    kb.adjust(2, 1)
+    return kb.as_markup()
+
+
+def owner_pay_edit_keyboard() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    field_labels = [
+        ("methods", "Способы оплаты"),
+        ("card_number", "Номер карты"),
+        ("card_holder", "Получатель"),
+        ("card_bank", "Банк карты"),
+        ("sbp_phone", "Телефон СБП"),
+        ("sbp_bank", "Банк СБП"),
+        ("sbp_qr_file_id", "QR-код СБП"),
+        ("other_text", "Дополнительно"),
+        ("comment_template", "Комментарий"),
+    ]
+    for field, label in field_labels:
+        kb.button(text=label, callback_data=f"adm:f:set:field:{field}")
+    kb.adjust(2)
+    kb.button(text="◀️ Назад", callback_data="adm:f:set")
     return kb.as_markup()
 
 
