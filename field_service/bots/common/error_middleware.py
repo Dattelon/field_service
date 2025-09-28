@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import logging
 from typing import Optional
@@ -42,8 +42,9 @@ class _AlertingErrorHandler:
         update = event.update
         update_type = _detect_update_type(update)
         user_id = _extract_user_id(update)
-        header = f'вќ— РћС€РёР±РєР° {self._bot_label}'
-        lines = [header, f'Update: {update_type}']
+        header = f"❗ Ошибка {self._bot_label}"
+        subheader = "Подробности см. в логах."
+        lines = [header, subheader, f"Update: {update_type}"]
         if user_id is not None:
             lines.append(f'User: {user_id}')
         message = '\n'.join(lines)
