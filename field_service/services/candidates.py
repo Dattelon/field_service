@@ -149,22 +149,34 @@ async def select_candidates(
     active_statuses_sql = ", ".join(f"'{status}'" for status in _ACTIVE_ORDER_STATUSES)
     offer_states_sql = ", ".join(f"'{state}'" for state in _ACTIVE_OFFER_STATES)
 
+    # Dialect-specific bits for AVG and date arithmetic
+    dialect_name = getattr(getattr(session, "bind", None), "dialect", None)
+    dialect_name = getattr(dialect_name, "name", "") or ""
+    is_sqlite = "sqlite" in dialect_name
+
+    avg_expr = (
+        "AVG(total_sum) AS avg_check" if is_sqlite else "AVG(total_sum)::numeric(10,2) AS avg_check"
+    )
+    date_7days_ago = (
+        "DATETIME('now', '-7 days')" if is_sqlite else "NOW() - INTERVAL '7 days'"
+    )
+
     sql = text(
-        """
+        f"""
 WITH active_cnt AS (
     SELECT assigned_master_id AS mid, COUNT(*) AS cnt
       FROM orders
      WHERE assigned_master_id IS NOT NULL
-       AND status IN ({active_statuses})
-     GROUP BY assigned_master_id
+        AND status IN ({active_statuses_sql})
+      GROUP BY assigned_master_id
 ),
 avg7 AS (
-    SELECT assigned_master_id AS mid, AVG(total_sum)::numeric(10,2) AS avg_check
+    SELECT assigned_master_id AS mid, {avg_expr}
       FROM orders
      WHERE assigned_master_id IS NOT NULL
        AND status IN ('PAYMENT','CLOSED')
-       AND created_at >= NOW() - INTERVAL '7 days'
-     GROUP BY assigned_master_id
+       AND created_at >= {date_7days_ago}
+      GROUP BY assigned_master_id
 )
 SELECT
     m.id AS mid,
@@ -194,8 +206,8 @@ SELECT
         SELECT 1 FROM offers o
          WHERE o.order_id = :oid
            AND o.master_id = m.id
-           AND o.state IN ({offer_states})
-    ) AS has_open_offer
+               AND o.state IN ({offer_states_sql})
+       ) AS has_open_offer
 FROM masters m
 LEFT JOIN active_cnt ac ON ac.mid = m.id
 LEFT JOIN avg7 a ON a.mid = m.id
@@ -203,7 +215,6 @@ WHERE m.city_id = :cid
   AND m.is_blocked = FALSE
 ORDER BY m.id
         """
-        .format(active_statuses=active_statuses_sql, offer_states=offer_states_sql)
     )
 
     try:

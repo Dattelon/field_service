@@ -113,6 +113,8 @@ class StaffRole(str, enum.Enum):
     GLOBAL_ADMIN = "GLOBAL_ADMIN"
     CITY_ADMIN = "CITY_ADMIN"
     LOGIST = "LOGIST"
+    # Backward-compat alias for legacy name
+    ADMIN = GLOBAL_ADMIN
 
 
 # ===== Geo =====
