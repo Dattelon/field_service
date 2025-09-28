@@ -4,7 +4,6 @@ from aiogram.fsm.state import State, StatesGroup
 
 
 class OnboardingStates(StatesGroup):
-    access_code = State()
     pdn = State()
     last_name = State()
     first_name = State()
