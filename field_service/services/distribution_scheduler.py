@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import logging
@@ -155,7 +155,7 @@ async def _fetch_orders_for_distribution(
 
 
 async def _expire_overdue_offer(session: AsyncSession, order_id: int) -> Optional[int]:
-    """Р•СЃР»Рё РµСЃС‚СЊ SENT Рё РѕРЅ РїСЂРѕС‚СѓС… вЂ” EXPIRED, РІРµСЂРЅСѓС‚СЊ master_id РґР»СЏ Р»РѕРіР° timeout; РёРЅР°С‡Рµ None."""
+    """Если есть SENT и он протух — EXPIRED, вернуть master_id для лога timeout; иначе None."""
     row = await session.execute(
         text(
             """
@@ -562,7 +562,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                     _dist_log(admin_message, level="WARN")
                     await send_alert(
                         bot,
-                        f"вЏ± Р—Р°СЏРІРєР° #{order.id} РЅРµ СЂР°СЃРїСЂРµРґРµР»РµРЅР° Р»РѕРіРёСЃС‚РѕРј 10 РјРёРЅ. Р­СЃРєР°Р»Р°С†РёСЏ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂСѓ.",
+                        f"⏱ Заявка #{order.id} не распределена логистом 10 мин. Эскалация администратору.",
                         chat_id=alerts_chat_id,
                     )
 
@@ -577,7 +577,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                     if marked:
                         await send_alert(
                             bot,
-                            f"вљ пёЏ Р—Р°СЏРІРєР° #{order.id} Р±РµР· СЂР°Р№РѕРЅР° РІ РіРѕСЂРѕРґРµ {order.city_name}. РўСЂРµР±СѓРµС‚СЃСЏ СЂСѓС‡РЅРѕРµ РЅР°Р·РЅР°С‡РµРЅРёРµ.",
+                            f"⚠️ Заявка #{order.id} без района в городе {order.city_name}. Требуется ручное назначение.",
                             chat_id=alerts_chat_id,
                         )
                 await _escalate_logist(order.id)

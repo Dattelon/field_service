@@ -1643,14 +1643,14 @@ class DBDistributionService:
                 data = order_q.first()
                 if not data:
                     return False, AutoAssignResult(
-                        "Р вЂ”Р В°РЎРЏР Р†Р С”Р В° Р Р…Р Вµ Р Р…Р В°Р в„–Р Т‘Р ВµР Р…Р В°",
+                        "Заявка не найдена",
                         code="not_found",
                     )
 
                 staff = await _load_staff_access(session, by_staff_id or None)
                 if not _staff_can_access_city(staff, data.city_id):
                     return False, AutoAssignResult(
-                        "Р СњР ВµР Т‘Р С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• Р С—РЎР‚Р В°Р Р† Р Т‘Р В»РЎРЏ Р С–Р С•РЎР‚Р С•Р Т‘Р В°",
+                        "Недостаточно прав для города",
                         code="forbidden",
                     )
 
@@ -1678,7 +1678,7 @@ class DBDistributionService:
                     message = dw.log_skip_no_district(order_id)
                     _push_dist_log(message, level="WARN")
                     return False, AutoAssignResult(
-                        "Р СњР ВµР В»РЎРЉР В·РЎРЏ Р В·Р В°Р С—РЎС“РЎРѓРЎвЂљР С‘РЎвЂљРЎРЉ Р В°Р Р†РЎвЂљР С•: Р Р…Р Вµ Р Р†РЎвЂ№Р В±РЎР‚Р В°Р Р… РЎР‚Р В°Р в„–Р С•Р Р…. Р вЂ”Р В°РЎРЏР Р†Р С”Р В° Р С—Р ВµРЎР‚Р ВµР Т‘Р В°Р Р…Р В° Р В»Р С•Р С–Р С‘РЎРѓРЎвЂљРЎС“.",
+                        "Нельзя запустить авто: не выбран район. Заявка передана логисту.",
                         code="no_district",
                     )
 
@@ -1688,7 +1688,7 @@ class DBDistributionService:
                     message = dw.log_skip_no_category(order_id, category)
                     _push_dist_log(message, level="WARN")
                     return False, AutoAssignResult(
-                        "Р С™Р В°РЎвЂљР ВµР С–Р С•РЎР‚Р С‘РЎРЏ Р В·Р В°Р С”Р В°Р В·Р В° Р Р…Р Вµ Р С—Р С•Р Т‘Р Т‘Р ВµРЎР‚Р В¶Р С‘Р Р†Р В°Р ВµРЎвЂљРЎРѓРЎРЏ Р Т‘Р В»РЎРЏ Р В°Р Р†РЎвЂљР С•Р Р…Р В°Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р С‘РЎРЏ",
+                        "Категория заказа не поддерживается для автоназначения",
                         code="no_category",
                     )
 
@@ -1702,7 +1702,7 @@ class DBDistributionService:
                 current_round = await dw.current_round(session, order_id)
                 if current_round >= cfg.rounds:
                     return False, AutoAssignResult(
-                        "Р вЂєР С‘Р СР С‘РЎвЂљ Р В°Р Р†РЎвЂљР С•Р СР В°РЎвЂљР С‘РЎвЂЎР ВµРЎРѓР С”Р С‘РЎвЂ¦ Р С—Р С•Р С—РЎвЂ№РЎвЂљР С•Р С” Р С‘РЎРѓРЎвЂЎР ВµРЎР‚Р С—Р В°Р Р…",
+                        "Лимит автоматических попыток исчерпан",
                         code="rounds_exhausted",
                     )
 
@@ -1776,7 +1776,7 @@ class DBDistributionService:
                         )
                         _push_dist_log(conflict, level="WARN")
                         return False, AutoAssignResult(
-                            "Р СњР Вµ РЎС“Р Т‘Р В°Р В»Р С•РЎРѓРЎРЉ Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р С‘РЎвЂљРЎРЉ Р С•РЎвЂћРЎвЂћР ВµРЎР‚ Р СР В°РЎРѓРЎвЂљР ВµРЎР‚РЎС“",
+                            "Не удалось отправить оффер мастеру",
                             code="offer_conflict",
                         )
 
@@ -1793,7 +1793,7 @@ class DBDistributionService:
                     _push_dist_log(dw.log_decision_offer(master_id, deadline))
                     return True, AutoAssignResult(
                         message=(
-                            f"Р С›РЎвЂћРЎвЂћР ВµРЎР‚ Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р В»Р ВµР Р… Р СР В°РЎРѓРЎвЂљР ВµРЎР‚РЎС“ {master_id} Р Т‘Р С• {deadline.isoformat()}"
+                            f"Оффер отправлен мастеру {master_id} до {deadline.isoformat()}"
                         ),
                         master_id=master_id,
                         deadline=deadline,
@@ -1820,7 +1820,7 @@ class DBDistributionService:
 
                 _push_dist_log(dw.log_escalate(order_id), level="WARN")
                 return False, AutoAssignResult(
-                    "Р С™Р В°Р Р…Р Т‘Р С‘Р Т‘Р В°РЎвЂљР С•Р Р† Р Р…Р ВµРЎвЂљ РІР‚вЂќ РЎРЊРЎРѓР С”Р В°Р В»Р В°РЎвЂ Р С‘РЎРЏ",
+                    "Кандидатов нет — эскалация",
                     code="no_candidates",
                 )
 
@@ -1848,11 +1848,11 @@ class DBDistributionService:
                 )
                 order = order_row.first()
                 if not order:
-                    return False, "Р вЂ”Р В°РЎРЏР Р†Р С”Р В° Р Р…Р Вµ Р Р…Р В°Р в„–Р Т‘Р ВµР Р…Р В°"
+                    return False, "Заявка не найдена"
 
                 staff = await _load_staff_access(session, by_staff_id or None)
                 if not _staff_can_access_city(staff, order.city_id):
-                    return False, "Р СњР ВµРЎвЂљ Р Т‘Р С•РЎРѓРЎвЂљРЎС“Р С—Р В° Р С” Р С–Р С•РЎР‚Р С•Р Т‘РЎС“"
+                    return False, "Нет доступа к городу"
 
                 status = getattr(order, "status", None)
                 allowed_statuses = {
@@ -1865,12 +1865,12 @@ class DBDistributionService:
                     else m.OrderStatus.SEARCHING
                 )
                 if status_enum not in allowed_statuses:
-                    return False, "Р вЂ”Р В°РЎРЏР Р†Р С”Р В° Р Р…Р Вµ Р Р† Р С—Р С•Р С‘РЎРѓР С”Р Вµ"
+                    return False, "Заявка не в поиске"
 
                 category = getattr(order, "category", None)
                 skill_code = dw._skill_code_for_category(category)
                 if skill_code is None:
-                    return False, "Р С™Р В°РЎвЂљР ВµР С–Р С•РЎР‚Р С‘РЎРЏ Р В·Р В°РЎРЏР Р†Р С”Р С‘ Р Р…Р Вµ Р С—Р С•Р Т‘Р Т‘Р ВµРЎР‚Р В¶Р С‘Р Р†Р В°Р ВµРЎвЂљРЎРѓРЎРЏ"
+                    return False, "Категория заявки не поддерживается"
 
                 master_row = await session.execute(
                     select(
@@ -1883,11 +1883,11 @@ class DBDistributionService:
                 )
                 master = master_row.first()
                 if not master:
-                    return False, "Р СљР В°РЎРѓРЎвЂљР ВµРЎР‚ Р Р…Р Вµ Р Р…Р В°Р в„–Р Т‘Р ВµР Р…"
+                    return False, "Мастер не найден"
                 if master.city_id != order.city_id:
-                    return False, "Р СљР В°РЎРѓРЎвЂљР ВµРЎР‚ РЎР‚Р В°Р В±Р С•РЎвЂљР В°Р ВµРЎвЂљ Р Р† Р Т‘РЎР‚РЎС“Р С–Р С•Р С Р С–Р С•РЎР‚Р С•Р Т‘Р Вµ"
+                    return False, "Мастер работает в другом городе"
                 if not master.is_active or master.is_blocked or not master.verified:
-                    return False, "Р СљР В°РЎРѓРЎвЂљР ВµРЎР‚ Р Р…Р ВµР Т‘Р С•РЎРѓРЎвЂљРЎС“Р С—Р ВµР Р…"
+                    return False, "Мастер недоступен"
 
                 if order.district_id:
                     district_row = await session.execute(
@@ -1899,7 +1899,7 @@ class DBDistributionService:
                         .limit(1)
                     )
                     if district_row.first() is None:
-                        return False, "Р СљР В°РЎРѓРЎвЂљР ВµРЎР‚ Р Р…Р Вµ Р С•Р В±РЎРѓР В»РЎС“Р В¶Р С‘Р Р†Р В°Р ВµРЎвЂљ РЎР‚Р В°Р в„–Р С•Р Р…"
+                        return False, "Мастер не обслуживает район"
 
                 skill_row = await session.execute(
                     select(m.master_skills.id)
@@ -1912,7 +1912,7 @@ class DBDistributionService:
                     .limit(1)
                 )
                 if skill_row.first() is None:
-                    return False, "Р Р€ Р СР В°РЎРѓРЎвЂљР ВµРЎР‚Р В° Р Р…Р ВµРЎвЂљ Р Р…РЎС“Р В¶Р Р…Р С•Р С–Р С• Р Р…Р В°Р Р†РЎвЂ№Р С”Р В°"
+                    return False, "У мастера нет нужного навыка"
 
                 existing_offer = await session.execute(
                     select(m.offers.id)
@@ -1932,7 +1932,7 @@ class DBDistributionService:
                     .limit(1)
                 )
                 if existing_offer.first() is not None:
-                    return False, "Р С›РЎвЂћРЎвЂћР ВµРЎР‚ РЎС“Р В¶Р Вµ Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р В»Р ВµР Р… РЎРЊРЎвЂљР С•Р СРЎС“ Р СР В°РЎРѓРЎвЂљР ВµРЎР‚РЎС“"
+                    return False, "Оффер уже отправлен этому мастеру"
 
                 cfg = await dw._load_config(session)
                 current_round = await dw.current_round(session, order_id)
@@ -1945,7 +1945,7 @@ class DBDistributionService:
                     cfg.sla_seconds,
                 )
                 if not sent:
-                    return False, "Р СњР Вµ РЎС“Р Т‘Р В°Р В»Р С•РЎРѓРЎРЉ Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р С‘РЎвЂљРЎРЉ Р С•РЎвЂћРЎвЂћР ВµРЎР‚"
+                    return False, "Не удалось отправить оффер"
 
                 await session.execute(
                     update(m.orders)
@@ -1955,7 +1955,7 @@ class DBDistributionService:
                         dist_escalated_admin_at=None,
                     )
                 )
-        return True, "Р С›РЎвЂћРЎвЂћР ВµРЎР‚ Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р В»Р ВµР Р…"
+        return True, "Оффер отправлен"
 
 
 
@@ -2030,7 +2030,7 @@ class DBMastersService:
             items.append(
                 MasterListItem(
                     id=int(row.id),
-                    full_name=row.full_name or f"Р СљР В°РЎРѓРЎвЂљР ВµРЎР‚ #{row.id}",
+                    full_name=row.full_name or f"Мастер #{row.id}",
                     phone=row.phone,
                     city_name=row.city_name,
                     moderation_status=moderation_status,
@@ -2271,7 +2271,7 @@ class DBMastersService:
                     WaitPayRecipient(
                         master_id=int(master_id),
                         tg_user_id=int(tg_user_id),
-                        full_name=full_name or f"Р СљР В°РЎРѓРЎвЂљР ВµРЎР‚ #{int(master_id)}",
+                        full_name=full_name or f"Мастер #{int(master_id)}",
                     )
                 )
         return recipients
