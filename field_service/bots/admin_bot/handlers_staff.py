@@ -273,17 +273,21 @@ async def staff_toggle_active(cq: CallbackQuery, state: FSMContext) -> None:
     await cq.answer("Updated")
 
 
+# ВАЖНО: этот хэндлер должен ловить ТОЛЬКО выбор роли, а не шаг выбора города.
 @router.callback_query(
-    F.data.startswith("adm:staff:new:"),
+    F.data.in_(
+        {
+            "adm:staff:new:GLOBAL_ADMIN",
+            "adm:staff:new:CITY_ADMIN",
+            "adm:staff:new:LOGIST",
+        }
+    ),
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
 )
 async def access_code_new_start(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
     role_token = cq.data.split(":")[3]
-    try:
-        role = StaffRole(role_token)
-    except ValueError:
-        await cq.answer("Unknown role", show_alert=True)
-        return
+    # безопасно после ужесточения фильтра
+    role = StaffRole(role_token)
     await state.clear()
     if role is StaffRole.GLOBAL_ADMIN:
         service = _staff_service(cq.message.bot)
