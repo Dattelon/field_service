@@ -101,14 +101,14 @@ def _format_order_line(order: OrderListItem) -> str:
         category = str(getattr(order, "category", ""))
     status = order.status or '-'
     if order.order_type is OrderType.GUARANTEE:
-        status = f"{status} · гарантия"
+        status = f"{status}  "
     slot = order.timeslot_local or '-'
     if order.master_name:
         master_label = order.master_name
     elif order.master_id:
-        master_label = f"мастер #{order.master_id}"
+        master_label = f" #{order.master_id}"
     else:
-        master_label = 'в поиске'
+        master_label = ' '
     return (
         f"#{order.id} - {html.escape(address, quote=False)} | "
         f"{html.escape(category, quote=False)} | "
@@ -128,28 +128,28 @@ def _manual_candidates_text(order: OrderCard, masters: Sequence[MasterBrief], pa
         address_parts.append(order.district_name)
     address_label = " / ".join(address_parts) if address_parts else "-"
     lines = [
-        f"Заявка #{order.id}",
-        f"Адрес: {address_label}",
-        f"Страница {page}",
-        "Выберите мастера для отправки оффера:",
+        f" #{order.id}",
+        f": {address_label}",
+        f" {page}",
+        "    :",
     ]
     if masters:
         lines.append("")
         lines.extend(master_brief_line(m) for m in masters)
     else:
         lines.append("")
-        lines.append("Подходящих мастеров не найдено.")
+        lines.append("   .")
     return "\n".join(lines)
 
 
 
 CATEGORY_CHOICES: tuple[tuple[OrderCategory, str], ...] = (
-    (OrderCategory.ELECTRICS, "Электрика"),
-    (OrderCategory.PLUMBING, "Сантехника"),
-    (OrderCategory.APPLIANCES, "Бытовая техника"),
-    (OrderCategory.WINDOWS, "Окна"),
-    (OrderCategory.HANDYMAN, "Универсал"),
-    (OrderCategory.ROADSIDE, "Автопомощь"),
+    (OrderCategory.ELECTRICS, ""),
+    (OrderCategory.PLUMBING, ""),
+    (OrderCategory.APPLIANCES, " "),
+    (OrderCategory.WINDOWS, ""),
+    (OrderCategory.HANDYMAN, ""),
+    (OrderCategory.ROADSIDE, ""),
 )
 CATEGORY_LABELS = {category: label for category, label in CATEGORY_CHOICES}
 CATEGORY_LABELS_BY_VALUE = {category.value: label for category, label in CATEGORY_CHOICES}
@@ -203,7 +203,7 @@ def _format_order_card_text(
         master_bits.append(f" #{order.master_id}")
     if order.master_phone:
         master_bits.append(html.escape(order.master_phone))
-    master_line = " / ".join(master_bits) if master_bits else "пока не назначен"
+    master_line = " / ".join(master_bits) if master_bits else "  "
 
     description = order.description.strip() if order.description else ""
     description_line = html.escape(description) if description else "-"
@@ -217,41 +217,41 @@ def _format_order_card_text(
         raw_cat = getattr(order, "category", "")
         category_label = str(raw_cat)
     lines_out = [
-        f"<b>Заявка #{order.id}</b>",
-        f"Статус: {html.escape(order.status)}",
-        f"Тип: {html.escape(type_label)}",
-        f"Категория: {html.escape(category_label)}",
-        f"Слот: {html.escape(order.timeslot_local) if order.timeslot_local else '-'}",
-        f"Адрес: {html.escape(address)}",
+        f"<b> #{order.id}</b>",
+        f": {html.escape(order.status)}",
+        f": {html.escape(type_label)}",
+        f": {html.escape(category_label)}",
+        f": {html.escape(order.timeslot_local) if order.timeslot_local else '-'}",
+        f": {html.escape(address)}",
     ]
     if is_guarantee:
-        lines_out.append("<b>ЗАЯВКА ПО ГАРАНТИИ</b>")
-    lines_out.append(f"Вложения: {len(order.attachments)}")
+        lines_out.append("<b>  </b>")
+    lines_out.append(f": {len(order.attachments)}")
     lines_out.append("")
-    lines_out.append("<b>Контакты</b>")
-    lines_out.append(f"Клиент: {client_line}")
-    lines_out.append(f"Мастер: {master_line}")
+    lines_out.append("<b></b>")
+    lines_out.append(f": {client_line}")
+    lines_out.append(f": {master_line}")
     lines_out.append("")
-    lines_out.append("<b>Описание</b>")
+    lines_out.append("<b></b>")
     lines_out.append(description_line)
     lines_out.append("")
-    lines_out.append("<b>История статусов</b>")
+    lines_out.append("<b> </b>")
     if history:
         for item in history:
             when = item.changed_at_local or "-"
             transition = item.to_status
             if item.from_status:
-                transition = f"{item.from_status} → {item.to_status}"
+                transition = f"{item.from_status}  {item.to_status}"
             actors: list[str] = []
             if item.changed_by_staff_id:
                 actors.append(f"staff #{item.changed_by_staff_id}")
             if item.changed_by_master_id:
                 actors.append(f"master #{item.changed_by_master_id}")
             actor_part = f" ({', '.join(actors)})" if actors else ""
-            reason_part = f" — {item.reason}" if item.reason else ""
-            lines_out.append(f"• {when} — {transition}{actor_part}{reason_part}")
+            reason_part = f"  {item.reason}" if item.reason else ""
+            lines_out.append(f" {when}  {transition}{actor_part}{reason_part}")
     else:
-        lines_out.append("— нет записей —")
+        lines_out.append("   ")
     return chr(10).join(lines_out)
 
 
@@ -541,15 +541,15 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
     filters_text = await _format_filters_text(
         staff, filters, orders_service, include_header=False
     )
-    lines = ["<b>Очередь</b>", filters_text]
+    lines = ["<b></b>", filters_text]
     if items:
         lines.append("")
         lines.extend(_format_order_line(item) for item in items)
     else:
         lines.append("")
-        lines.append("Список пуст")
+        lines.append(" ")
     lines.append("")
-    lines.append(f"Страница: {page}")
+    lines.append(f": {page}")
     text = "\n".join(lines)
 
     markup = queue_list_keyboard(items, page=page, has_next=has_next)
@@ -563,11 +563,11 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
 )
 async def cb_queue_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     builder = InlineKeyboardBuilder()
-    builder.button(text="Фильтры", callback_data="adm:q:flt")
-    builder.button(text="Список", callback_data="adm:q:list:1")
-    builder.button(text="В меню", callback_data="adm:menu")
+    builder.button(text="", callback_data="adm:q:flt")
+    builder.button(text="", callback_data="adm:q:list:1")
+    builder.button(text=" ", callback_data="adm:menu")
     builder.adjust(1)
-    await cq.message.edit_text("Очередь:", reply_markup=builder.as_markup())
+    await cq.message.edit_text(":", reply_markup=builder.as_markup())
     await cq.answer()
 
 
@@ -1324,7 +1324,7 @@ async def queue_cancel_abort(msg: Message, staff: StaffUser, state: FSMContext) 
 )
 async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
     # Business rule for cancel reason:
-    # - empty or whitespace-only reason is allowed (operator skips typing) → proceed
+    # - empty or whitespace-only reason is allowed (operator skips typing)  proceed
     # - short non-empty (< 3) is rejected (e.g. 'ok')
     text_raw = msg.text or ""
     reason = text_raw

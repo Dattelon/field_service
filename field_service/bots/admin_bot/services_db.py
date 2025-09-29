@@ -60,9 +60,9 @@ from .normalizers import normalize_category, normalize_status
 
 UTC = timezone.utc
 PAYMENT_METHOD_LABELS = {
-    "card": "",
-    "sbp": "",
-    "cash": "",
+    "card": "💳 Карта",
+    "sbp": "СБП",
+    "cash": "Наличные",
 }
 
 OWNER_PAY_SETTING_FIELDS: dict[str, tuple[str, str]] = {

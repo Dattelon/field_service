@@ -22,37 +22,44 @@ from .utils import get_service
 router = Router(name="admin_finance")
 
 PAYMENT_METHOD_LABELS = {
-    "card": "",
-    "sbp": "",
-    "cash": "",
+    "card": "💳 Карта",
+    "sbp": "СБП",
+    "cash": "Наличные",
 }
 
 _METHOD_ALIASES = {
+    # Карта
     "card": "card",
-    "": "card",
-    "": "card",
-    "": "card",
-    "": "card",
+    "карта": "card",
+    "банковская карта": "card",
+    "банк карта": "card",
+    "visa": "card",
+    "mastercard": "card",
+    "мир": "card",
+    # СБП
     "sbp": "sbp",
-    "": "sbp",
-    "  ": "sbp",
+    "сбп": "sbp",
+    "система быстрых платежей": "sbp",
     "qr": "sbp",
-    "": "cash",
-    "": "cash",
-    "": "cash",
+    "кьюар": "sbp",
+    "кью-ар": "sbp",
+    # Наличные
     "cash": "cash",
+    "наличные": "cash",
+    "нал": "cash",
+    "наличными": "cash",
 }
 
 _OWNER_FIELDS = {
-    "methods": " ",
-    "card_number": " ",
-    "card_holder": "",
-    "card_bank": " ",
-    "sbp_phone": "  ",
-    "sbp_bank": "  ",
-    "sbp_qr_file_id": "QR- ",
-    "other_text": " ",
-    "comment_template": " ",
+    "methods": "Способы оплаты",
+    "card_number": "Номер карты",
+    "card_holder": "Держатель карты",
+    "card_bank": "Банк карты",
+    "sbp_phone": "Телефон для СБП",
+    "sbp_bank": "Банк для СБП",
+    "sbp_qr_file_id": "QR-код СБП",
+    "other_text": "Дополнительная информация",
+    "comment_template": "Шаблон комментария",
 }
 
 
@@ -82,7 +89,7 @@ async def _render_owner_snapshot(
         if "message is not modified" not in str(exc).lower():
             await bot_message.answer(text, reply_markup=markup)
     if notify_empty:
-        await bot_message.answer("  .")
+        await bot_message.answer("Заполните реквизиты для приема платежей.")
     return (bot_message.chat.id, bot_message.message_id)
 
 
@@ -91,10 +98,10 @@ def _format_snapshot_text(snapshot: dict[str, Any], *, for_staff: bool) -> str:
     methods = _format_methods(data.get("methods") or [])
     lines: list[str] = []
     if for_staff:
-        lines.append("<b>  </b>")
+        lines.append("<b>Реквизиты владельца</b>")
     else:
-        lines.append("<b>   </b>")
-    lines.append(f" : {methods}")
+        lines.append("<b>Оплата комиссии</b>")
+    lines.append(f"Способы оплаты: {methods}")
 
     card_block = _format_card_block(data)
     sbp_block = _format_sbp_block(data, include_qr=for_staff)
@@ -109,17 +116,17 @@ def _format_snapshot_text(snapshot: dict[str, Any], *, for_staff: bool) -> str:
         lines.extend(sbp_block)
     if other_text:
         lines.append("")
-        lines.append("<b></b>")
+        lines.append("<b>Дополнительно</b>")
         lines.append(html.escape(other_text))
     if comment_template:
         lines.append("")
-        lines.append("<b>  </b>")
+        lines.append("<b>Шаблон комментария</b>")
         lines.append(html.escape(comment_template))
 
     if not for_staff:
         lines.append("")
         lines.append(
-            "      , , , ."
+            "Оплата по реквизитам выше. При прикреплении чека укажите комментарий к оплате."
         )
 
     return "\n".join(lines)
@@ -142,13 +149,13 @@ def _format_card_block(data: dict[str, Any]) -> list[str]:
     card_bank = data.get("card_bank") or ""
     block: list[str] = []
     if card_number or card_holder or card_bank:
-        block.append("<b>  </b>")
+        block.append("<b>Банковская карта</b>")
         if card_number:
-            block.append(f": {html.escape(card_number)}")
+            block.append(f"Номер: {html.escape(card_number)}")
         if card_holder:
-            block.append(f": {html.escape(card_holder)}")
+            block.append(f"Держатель: {html.escape(card_holder)}")
         if card_bank:
-            block.append(f": {html.escape(card_bank)}")
+            block.append(f"Банк: {html.escape(card_bank)}")
     return block
 
 
@@ -158,19 +165,19 @@ def _format_sbp_block(data: dict[str, Any], *, include_qr: bool) -> list[str]:
     qr = data.get("sbp_qr_file_id") or ""
     block: list[str] = []
     if phone or bank or (include_qr and qr):
-        block.append("<b>  </b>")
+        block.append("<b>СБП</b>")
         if phone:
-            block.append(f": {html.escape(phone)}")
+            block.append(f"Телефон: {html.escape(phone)}")
         if bank:
-            block.append(f": {html.escape(bank)}")
+            block.append(f"Банк: {html.escape(bank)}")
         if include_qr:
-            block.append("QR-: " + ("" if qr else " "))
+            block.append("QR-код: " + ("прикреплён" if qr else "отсутствует"))
     return block
 
 
 def _parse_methods_payload(text: str) -> list[str]:
     cleaned = text.strip()
-    if not cleaned or cleaned in {"-", "", "none", ""}:
+    if not cleaned or cleaned in {"-", "", "none", "нет"}:
         return []
     result: list[str] = []
     pieces = re.split(r"[\n;,]+", cleaned)
@@ -185,9 +192,9 @@ def _parse_methods_payload(text: str) -> list[str]:
                 if alias:
                     break
         if not alias:
-            raise ValueError(f"  : {piece}")
+            raise ValueError(f"Неизвестный способ оплаты: {piece}")
         if alias not in owner_requisites_service.ALLOWED_METHODS:
-            raise ValueError(f"   : {piece}")
+            raise ValueError(f"Недопустимый способ оплаты: {piece}")
         if alias not in result:
             result.append(alias)
     return result
@@ -196,7 +203,7 @@ def _parse_methods_payload(text: str) -> list[str]:
 def _extract_field_value(field: str, message: Message) -> Any:
     if field == "methods":
         if not message.text:
-            raise ValueError("    .")
+            raise ValueError("Нужно прислать список способов оплаты.")
         return _parse_methods_payload(message.text)
 
     if field == "sbp_qr_file_id":
@@ -436,4 +443,3 @@ async def on_owner_requisites_broadcast(
         summary += f"   : {failed}."
     await cq.message.answer(summary, reply_markup=finance_menu(staff))
     await _rerender_origin(cq.message.bot, staff, (cq.message.chat.id, cq.message.message_id))
-
