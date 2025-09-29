@@ -87,13 +87,13 @@ async def offer_accept(
     page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
 
     if master.is_blocked:
-        await callback.answer("Доступ запрещён: вы заблокированы.", show_alert=True)
+        await callback.answer(" :  .", show_alert=True)
         return
 
     limit = await _get_active_limit(session, master)
     active_orders = await _count_active_orders(session, master.id)
     if limit and active_orders >= limit:
-        await callback.answer("Превышен лимит активных заказов.", show_alert=True)
+        await callback.answer("   .", show_alert=True)
         return
 
     updated = await session.execute(
@@ -115,7 +115,7 @@ async def offer_accept(
         .returning(m.orders.id)
     )
     if not updated.first():
-        await callback.answer("Заказ уже принят другим мастером.", show_alert=True)
+        await callback.answer("    .", show_alert=True)
         return
 
     await session.execute(
@@ -145,7 +145,7 @@ async def offer_accept(
     )
     await session.commit()
 
-    await callback.answer("Заказ принят.")
+    await callback.answer(" .")
     await _render_offers(callback, session, master, page=page)
 
 
@@ -166,7 +166,7 @@ async def offer_decline(
     )
     await session.commit()
 
-    await callback.answer("Оффер отклонён.")
+    await callback.answer(" .")
     await _render_offers(callback, session, master, page=page)
 
 
@@ -207,9 +207,9 @@ async def active_set_enroute(
         reason="master_en_route",
     )
     if not changed:
-        await callback.answer("Не удалось изменить статус.", show_alert=True)
+        await callback.answer("   .", show_alert=True)
         return
-    await callback.answer("Статус обновлён.")
+    await callback.answer(" .")
     await _render_active_order(callback, session, master, order_id=order_id)
 
 
@@ -229,9 +229,9 @@ async def active_set_working(
         reason="master_working",
     )
     if not changed:
-        await callback.answer("Не удалось изменить статус.", show_alert=True)
+        await callback.answer("   .", show_alert=True)
         return
-    await callback.answer("Статус обновлён.")
+    await callback.answer(" .")
     await _render_active_order(callback, session, master, order_id=order_id)
 
 
@@ -245,20 +245,20 @@ async def active_close_start(
     order_id = int(callback.data.split(":")[-1])
     order = await session.get(m.orders, order_id)
     if order is None or order.assigned_master_id != master.id:
-        await callback.answer("Заказ не найден.", show_alert=True)
+        await callback.answer("  .", show_alert=True)
         return
     if order.status != m.OrderStatus.WORKING:
-        await callback.answer("Переведите заказ в статус «Работаю» перед закрытием.", show_alert=True)
+        await callback.answer("      .", show_alert=True)
         return
 
     await state.update_data(close_order_id=order_id)
     if order.order_type == m.OrderType.GUARANTEE:
         await state.update_data(close_order_amount=str(Decimal("0")))
         await state.set_state(CloseOrderStates.act)
-        await callback.message.answer("Загрузите акт (фото или PDF).")
+        await callback.message.answer("  (  PDF).")
     else:
         await state.set_state(CloseOrderStates.amount)
-        await callback.message.answer("Введите итоговую сумму, например 3500 или 4999.99.")
+        await callback.message.answer("  ,  3500  4999.99.")
     await callback.answer()
 
 
@@ -266,11 +266,11 @@ async def active_close_start(
 async def active_close_amount(message: Message, state: FSMContext) -> None:
     amount = normalize_money(message.text or "")
     if amount is None:
-        await message.answer("Неверный формат суммы. Пример: 3500 или 4999.99.")
+        await message.answer("  . : 3500  4999.99.")
         return
     await state.update_data(close_order_amount=str(amount))
     await state.set_state(CloseOrderStates.act)
-    await message.answer("Загрузите акт (фото или PDF).")
+    await message.answer("  (  PDF).")
 
 
 @router.message(
@@ -289,11 +289,11 @@ async def active_close_act(
 
     order = await session.get(m.orders, order_id)
     if order is None or order.assigned_master_id != master.id:
-        await message.answer("Заказ не найден или уже закрыт.")
+        await message.answer("     .")
         await state.clear()
         return
     if order.status != m.OrderStatus.WORKING:
-        await message.answer("Заказ должен быть в статусе «Работаю».")
+        await message.answer("     .")
         await state.clear()
         return
 
@@ -345,15 +345,15 @@ async def active_close_act(
     await state.clear()
 
     if is_guarantee:
-        await message.answer(f"Заказ #{order_id} закрыт как гарантийный.")
+        await message.answer(f" #{order_id}   .")
     else:
-        await message.answer(f"Заказ #{order_id} закрыт. Итог: {amount:.2f} ₽")
+        await message.answer(f" #{order_id} . : {amount:.2f} ")
     await _render_active_order(message, session, master, order_id=order_id)
 
 
 @router.message(CloseOrderStates.act)
 async def active_close_act_invalid(message: Message) -> None:
-    await message.answer("Пожалуйста, загрузите акт в виде фото или PDF.")
+    await message.answer(",       PDF.")
 
 
 async def _render_offers(
@@ -365,8 +365,8 @@ async def _render_offers(
 ) -> None:
     offers = await _load_offers(session, master.id)
     if not offers:
-        keyboard = inline_keyboard([[InlineKeyboardButton(text="Обновить", callback_data="m:new")]])
-        await _respond(event, "Нет новых офферов.", keyboard)
+        keyboard = inline_keyboard([[InlineKeyboardButton(text="", callback_data="m:new")]])
+        await _respond(event, "  .", keyboard)
         return
 
     total = len(offers)
@@ -375,7 +375,7 @@ async def _render_offers(
     start = (page - 1) * OFFERS_PAGE_SIZE
     chunk = offers[start : start + OFFERS_PAGE_SIZE]
 
-    lines = ["<b>Новые офферы</b>"]
+    lines = ["<b> </b>"]
     keyboard_rows: list[list[InlineKeyboardButton]] = []
     for item in chunk:
         order_id = item.order_id

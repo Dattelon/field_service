@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
@@ -16,14 +16,14 @@ from field_service.services import export_service
 async def test_export_orders_bundle(monkeypatch, async_session):
     monkeypatch.setattr(export_service, "get_timezone", lambda: ZoneInfo("UTC"))
 
-    city = m.cities(name="Тестовый город")
+    city = m.cities(name=" ")
     async_session.add(city)
     await async_session.flush()
 
-    district = m.districts(city_id=city.id, name="Центральный")
-    street = m.streets(city_id=city.id, district_id=district.id, name="Пушкина")
+    district = m.districts(city_id=city.id, name="")
+    street = m.streets(city_id=city.id, district_id=district.id, name="")
     master = m.masters(
-        full_name="Тест Мастер",
+        full_name=" ",
         phone="+79990001122",
         city_id=city.id,
         verified=True,
@@ -45,12 +45,12 @@ async def test_export_orders_bundle(monkeypatch, async_session):
         late_visit=True,
         company_payment=Decimal("0"),
         total_sum=Decimal("3500.50"),
-        client_name="Иван Петров",
+        client_name=" ",
         client_phone="+79991234567",
         assigned_master_id=master.id,
         created_at=datetime(2025, 9, 14, 12, tzinfo=timezone.utc),
         updated_at=datetime(2025, 9, 15, 12, tzinfo=timezone.utc),
-        description="Починить",
+        description="",
     )
     async_session.add(order)
     await async_session.flush()
@@ -103,9 +103,9 @@ async def test_export_orders_bundle(monkeypatch, async_session):
     assert header == expected_columns
 
     values = dict(zip(header, csv_text[1].split(";")))
-    assert values["city"] == "Тестовый город"
-    assert values["district"] == "Центральный"
-    assert values["street"] == "Пушкина"
+    assert values["city"] == " "
+    assert values["district"] == ""
+    assert values["street"] == ""
     assert values["house"] == "10"
     assert values["lat"] == "55.123456"
     assert values["lon"] == "37.654321"
@@ -115,9 +115,9 @@ async def test_export_orders_bundle(monkeypatch, async_session):
     assert values["late_visit"] == "true"
     assert values["company_payment"] == ""
     assert values["total_sum"] == "3500.50"
-    assert values["user_name"] == "Иван Петров"
+    assert values["user_name"] == " "
     assert values["user_phone"] == "+79991234567"
-    assert values["master_name"] == "Тест Мастер"
+    assert values["master_name"] == " "
     assert values["master_phone"] == "+79990001122"
     assert values["timeslot_start_utc"] == "2025-09-15T10:00:00Z"
     assert values["timeslot_end_utc"] == "2025-09-15T13:00:00Z"
@@ -134,12 +134,12 @@ async def test_export_orders_bundle(monkeypatch, async_session):
 
 @pytest.mark.asyncio
 async def test_export_commissions(monkeypatch, async_session):
-    city = m.cities(name="Комиссии град")
+    city = m.cities(name=" ")
     async_session.add(city)
     await async_session.flush()
 
     master = m.masters(
-        full_name="Мастер",
+        full_name="",
         phone="+79990002233",
         city_id=city.id,
         verified=True,
@@ -155,7 +155,7 @@ async def test_export_commissions(monkeypatch, async_session):
         total_sum=Decimal("4000.00"),
         assigned_master_id=master.id,
         created_at=datetime(2025, 9, 10, tzinfo=timezone.utc),
-        description="Работа",
+        description="",
     )
     async_session.add(order)
     await async_session.flush()
@@ -175,7 +175,7 @@ async def test_export_commissions(monkeypatch, async_session):
         pay_to_snapshot={
             "methods": ["card", "sbp"],
             "card_number_last4": "4242",
-            "sbp_phone_masked": "+7•••1234",
+            "sbp_phone_masked": "+71234",
         },
     )
     async_session.add(commission)
@@ -207,7 +207,7 @@ async def test_export_commissions(monkeypatch, async_session):
     assert values["has_checks"] == "true"
     assert values["snapshot_methods"] == "card,sbp"
     assert values["snapshot_card_number_last4"] == "4242"
-    assert values["snapshot_sbp_phone_masked"] == "+7•••1234"
+    assert values["snapshot_sbp_phone_masked"] == "+71234"
 
     wb = load_workbook(io.BytesIO(bundle.xlsx_bytes))
     assert wb.sheetnames == ["commissions"]
@@ -219,12 +219,12 @@ async def test_export_commissions(monkeypatch, async_session):
 
 @pytest.mark.asyncio
 async def test_export_referral_rewards(async_session):
-    city = m.cities(name="Реферальный")
+    city = m.cities(name="")
     async_session.add(city)
     await async_session.flush()
 
-    referrer = m.masters(full_name="Реф", phone="+79990003344", city_id=city.id, verified=True, is_active=True)
-    referred = m.masters(full_name="Приглашённый", phone="+79990004455", city_id=city.id, verified=True, is_active=True)
+    referrer = m.masters(full_name="", phone="+79990003344", city_id=city.id, verified=True, is_active=True)
+    referred = m.masters(full_name="", phone="+79990004455", city_id=city.id, verified=True, is_active=True)
     async_session.add_all([referrer, referred])
     await async_session.flush()
 

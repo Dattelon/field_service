@@ -57,15 +57,15 @@ class CandidateInfo:
 
 
 _REASON_LABELS: dict[str, str] = {
-    "city": "город не совпадает",
-    "district": "район не обслуживает",
-    "verified": "мастер не верифицирован",
-    "active": "мастер не активен",
-    "shift": "мастер вне смены",
-    "break": "мастер на перерыве",
-    "skill": "нет подходящего навыка",
-    "limit": "превышен лимит активных заказов",
-    "offer": "уже есть активный оффер",
+    "city": "  ",
+    "district": "  ",
+    "verified": "  ",
+    "active": "  ",
+    "shift": "  ",
+    "break": "  ",
+    "skill": "  ",
+    "limit": "   ",
+    "offer": "   ",
 }
 
 
@@ -87,7 +87,7 @@ def _log_rejection(
     labels = [_REASON_LABELS.get(reason, reason) for reason in reasons]
     reason_text = ", ".join(labels)
     message = (
-        f"[candidates] order={order_id} master={candidate_id} mode={mode} исключён: {reason_text}"
+        f"[candidates] order={order_id} master={candidate_id} mode={mode} : {reason_text}"
     )
     logger.info(message)
     if hook is not None:
@@ -111,7 +111,7 @@ async def select_candidates(
     try:
         order_id = int(raw_id)
     except (TypeError, ValueError):
-        logger.info("[candidates] пропуск заявки с некорректным идентификатором: %r", raw_id)
+        logger.info("[candidates]     : %r", raw_id)
         return []
 
     city_id = _order_attr(order, "city_id")
@@ -119,14 +119,14 @@ async def select_candidates(
     try:
         city_id_int = int(city_id)
     except (TypeError, ValueError):
-        logger.info("[candidates] order=%s: пропущено из-за отсутствия города", order_id)
+        logger.info("[candidates] order=%s:  -  ", order_id)
         return []
     city_id = city_id_int
 
     skill_code = dw._skill_code_for_category(_order_attr(order, "category"))
     if skill_code is None:
         logger.info(
-            "[candidates] order=%s: пропущено из-за отсутствия навыка для категории", order_id
+            "[candidates] order=%s:  -    ", order_id
         )
         return []
 
@@ -281,7 +281,7 @@ ORDER BY m.id
         candidates.append(
             CandidateInfo(
                 master_id=master_id,
-                full_name=mapping.get("full_name") or f"Мастер #{master_id}",
+                full_name=mapping.get("full_name") or f" #{master_id}",
                 city_id=int(mapping["city_id"] or 0),
                 has_car=bool(mapping.get("has_vehicle")),
                 avg_week_check=float(mapping.get("avg_week") or 0),

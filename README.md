@@ -23,6 +23,7 @@
 ## Order Schema (v1.2)
 - Coordinates: `lat`, `lon` (float, nullable).
 - Slots: `timeslot_start_utc`, `timeslot_end_utc` (TIMESTAMPTZ). UI formatting uses `field_service.services.time_service.format_timeslot_local` with city time zones.
+  - Working window: business validation of 10:00–20:00 is enforced at the service layer with the city's local time zone (see `field_service.services.time_service`). At the DB level, integrity is ensured by `ck_orders__timeslot_range` (`timeslot_start_utc < timeslot_end_utc`).
 - Money: `total_sum` (NUMERIC(10,2)), `company_payment` (NUMERIC(10,2)).
 - Workflow flags: `type` (`NORMAL`/`GUARANTEE`), `no_district`, `late_visit`, escalation timestamps, optimistic lock `version`.
 - Status ENUM `order_status`: `CREATED`, `SEARCHING`, `ASSIGNED`, `EN_ROUTE`, `WORKING`, `PAYMENT`, `CLOSED`, `DEFERRED`, `GUARANTEE`, `CANCELED`.

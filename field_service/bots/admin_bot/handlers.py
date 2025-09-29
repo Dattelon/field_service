@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import html
 import json
@@ -12,6 +12,7 @@ from typing import Any, Optional, Sequence
 from zoneinfo import ZoneInfo
 
 from aiogram import F, Router, Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -23,15 +24,15 @@ from field_service.services.onboarding_service import normalize_phone
 from field_service.bots.admin_bot.services_db import AccessCodeError
 
 FINANCE_SEGMENT_TITLES = {
-    "aw": "Ожидают оплаты",
-    "pd": "Оплаченные",
-    "ov": "Просроченные",
+    "aw": "РћР¶РёРґР°СЋС‚ РѕРїР»Р°С‚С‹",
+    "pd": "РћРїР»Р°С‡РµРЅРЅС‹Рµ",
+    "ov": "РџСЂРѕСЃСЂРѕС‡РµРЅРЅС‹Рµ",
 }
 
-STAFF_CODE_PROMPT = "Введите код доступа, выданный глобальным администратором."
-STAFF_CODE_ERROR = "Код не найден / истёк / отозван / уже использован."
+STAFF_CODE_PROMPT = "Р’РІРµРґРёС‚Рµ РєРѕРґ РґРѕСЃС‚СѓРїР°, РІС‹РґР°РЅРЅС‹Р№ РіР»РѕР±Р°Р»СЊРЅС‹Рј Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂРѕРј."
+STAFF_CODE_ERROR = "РљРѕРґ РЅРµ РЅР°Р№РґРµРЅ / РёСЃС‚С‘Рє / РѕС‚РѕР·РІР°РЅ / СѓР¶Рµ РёСЃРїРѕР»СЊР·РѕРІР°РЅ."
 STAFF_PDN_TEXT = (
-    "Согласие на обработку персональных данных.\nСогласие включает обработку ФИО, телефона и данных о заказах для допуска к работе и обеспечения безопасности сервиса. Отправьте \"Согласен\" для продолжения или \"Не согласен\" для отмены."
+    "РЎРѕРіР»Р°СЃРёРµ РЅР° РѕР±СЂР°Р±РѕС‚РєСѓ РїРµСЂСЃРѕРЅР°Р»СЊРЅС‹С… РґР°РЅРЅС‹С….\nРЎРѕРіР»Р°СЃРёРµ РІРєР»СЋС‡Р°РµС‚ РѕР±СЂР°Р±РѕС‚РєСѓ Р¤Рћ, С‚РµР»РµС„РѕРЅР° Рё РґР°РЅРЅС‹С… Рѕ Р·Р°РєР°Р·Р°С… РґР»СЏ РґРѕРїСѓСЃРєР° Рє СЂР°Р±РѕС‚Рµ Рё РѕР±РµСЃРїРµС‡РµРЅРёСЏ Р±РµР·РѕРїР°СЃРЅРѕСЃС‚Рё СЃРµСЂРІРёСЃР°. РћС‚РїСЂР°РІСЊС‚Рµ \"РЎРѕРіР»Р°СЃРµРЅ\" РґР»СЏ РїСЂРѕРґРѕР»Р¶РµРЅРёСЏ РёР»Рё \"РќРµ СЃРѕРіР»Р°СЃРµРЅ\" РґР»СЏ РѕС‚РјРµРЅС‹."
 )
 
 from .access import visible_city_ids_for
@@ -95,6 +96,105 @@ router.include_router(queue_router)
 router.include_router(finance_router)
 
 
+async def _edit_or_answer(message: Message, text: str, *, reply_markup=None, disable_web_page_preview=None) -> None:
+    try:
+        await message.edit_text(text, reply_markup=reply_markup, disable_web_page_preview=disable_web_page_preview)
+    except Exception:
+        await message.answer(text, reply_markup=reply_markup, disable_web_page_preview=disable_web_page_preview)
+
+# Global safety patch: ensure any Message.edit_text falls back to sending a new message if editing fails
+try:
+    from aiogram.types import Message as _AiogramMessage
+
+    if not getattr(_AiogramMessage, "_fs_safe_patched", False):
+        _orig_edit_text = _AiogramMessage.edit_text
+
+        async def _fs_safe_edit_text(self, text: str, **kwargs):
+            try:
+                return await _orig_edit_text(self, text, **kwargs)
+            except Exception:
+                return await self.answer(
+                    text,
+                    reply_markup=kwargs.get("reply_markup"),
+                    disable_web_page_preview=kwargs.get("disable_web_page_preview"),
+                )
+
+        _AiogramMessage.edit_text = _fs_safe_edit_text  # type: ignore[assignment]
+        _AiogramMessage._fs_safe_patched = True  # type: ignore[attr-defined]
+except Exception:
+    # If patching fails, proceed without it; explicit fallbacks still exist on critical paths
+    pass
+
+# --- Runtime safety/encoding patches ---
+# Safe CallbackQuery.answer: swallow "query is too old/invalid" errors to avoid noisy logs
+try:
+    from aiogram.types import CallbackQuery as _AiogramCallbackQuery
+    from aiogram.exceptions import TelegramBadRequest as _TgBadReq
+
+    if not getattr(_AiogramCallbackQuery, "_fs_safe_answer_patched", False):
+        _orig_cq_answer = _AiogramCallbackQuery.answer
+
+        async def _fs_safe_cq_answer(self, *args, **kwargs):
+            try:
+                return await _orig_cq_answer(self, *args, **kwargs)
+            except _TgBadReq as exc:  # type: ignore[misc]
+                msg = str(getattr(exc, "message", "") or exc)
+                msg_low = msg.lower()
+                if (
+                    "query is too old" in msg_low
+                    or "response timeout expired" in msg_low
+                    or "query id is invalid" in msg_low
+                ):
+                    return None
+                raise
+            except Exception:
+                # Be conservative: unexpected errors bubble up
+                raise
+
+        _AiogramCallbackQuery.answer = _fs_safe_cq_answer  # type: ignore[assignment]
+        _AiogramCallbackQuery._fs_safe_answer_patched = True  # type: ignore[attr-defined]
+except Exception:
+    pass
+
+# Attempt to repair mojibake text (UTF-8 mis-decoded as cp1251) before sending
+def _maybe_fix_mojibake(text: object) -> object:
+    if not isinstance(text, str):
+        return text
+    sample = text[:200]
+    suspicious = sum(1 for ch in sample if ch in "СЃвЂ№")
+    if suspicious == 0:
+        return text
+    try:
+        fixed = text.encode("cp1251", errors="ignore").decode("utf-8", errors="ignore")
+        if fixed and (fixed.count("") + fixed.count("")) < suspicious:
+            return fixed
+    except Exception:
+        pass
+    return text
+
+try:
+    from aiogram.types import Message as _Msg
+    _orig_edit = _Msg.edit_text
+    _orig_answer = _Msg.answer
+
+    async def _fs_edit_text(self, text: str, **kwargs):
+        text = _maybe_fix_mojibake(text)  # type: ignore[assignment]
+        try:
+            return await _orig_edit(self, text, **kwargs)
+        except Exception:
+            # fallback to sending a new message
+            return await _orig_answer(self, text, **kwargs)
+
+    async def _fs_answer(self, text: str, **kwargs):
+        text = _maybe_fix_mojibake(text)  # type: ignore[assignment]
+        return await _orig_answer(self, text, **kwargs)
+
+    _Msg.edit_text = _fs_edit_text  # type: ignore[assignment]
+    _Msg.answer = _fs_answer  # type: ignore[assignment]
+except Exception:
+    pass
+
+
 async def show_admin_main_menu(
     message: Message,
     staff: StaffUser,
@@ -102,7 +202,7 @@ async def show_admin_main_menu(
     edit: bool = False,
     notice: Optional[str] = None,
 ) -> None:
-    text = notice or "Главное меню:"
+    text = notice or "Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ:"
     markup = main_menu(staff)
     if edit:
         try:
@@ -121,8 +221,8 @@ STAFF_ROLE_LABELS = {
 ACCESS_CODE_ERROR_MESSAGES = {
     "invalid_code": STAFF_CODE_ERROR,
     "expired": STAFF_CODE_ERROR,
-    "no_cities": "Код не содержит городов. Обратитесь к глобальному администратору.",
-    "already_staff": "Этот код уже использован.",
+    "no_cities": "РљРѕРґ РЅРµ СЃРѕРґРµСЂР¶РёС‚ РіРѕСЂРѕРґРѕРІ. РћР±СЂР°С‚РёС‚РµСЃСЊ Рє РіР»РѕР±Р°Р»СЊРЅРѕРјСѓ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂСѓ.",
+    "already_staff": "Р­С‚РѕС‚ РєРѕРґ СѓР¶Рµ РёСЃРїРѕР»СЊР·РѕРІР°РЅ.",
 }
 
 
@@ -147,15 +247,16 @@ class _MessageEditProxy:
 LOCAL_TZ = settings_service.get_timezone()
 UTC = timezone.utc
 PHONE_RE = re.compile(r"^(?:\+7|8)\d{10}$")
-NAME_RE = re.compile(r"^[пїЅ-ЯЁпїЅ-пїЅпїЅ\-\s]{2,30}$")
+# Allow Cyrillic letters (upper/lower incl. /), spaces and hyphen, length 2..30
+NAME_RE = re.compile(r"^[\u0410-\u042F\u0401\u0430-\u044F\u0451\-\s]{2,30}$")
 ATTACHMENTS_LIMIT = 5
 CATEGORY_CHOICES: list[tuple[OrderCategory, str]] = [
-    (OrderCategory.ELECTRICS, "Электрика"),
-    (OrderCategory.PLUMBING, "Сантехника"),
-    (OrderCategory.APPLIANCES, "Бытовая техника"),
-    (OrderCategory.WINDOWS, "Окна"),
-    (OrderCategory.HANDYMAN, "Универсал"),
-    (OrderCategory.ROADSIDE, "Автопомощь"),
+    (OrderCategory.ELECTRICS, "Р­Р»РµРєС‚СЂРёРєР°"),
+    (OrderCategory.PLUMBING, "РЎР°РЅС‚РµС…РЅРёРєР°"),
+    (OrderCategory.APPLIANCES, "Р‘С‹С‚РѕРІР°СЏ С‚РµС…РЅРёРєР°"),
+    (OrderCategory.WINDOWS, "РћРєРЅР°"),
+    (OrderCategory.HANDYMAN, "РЈРЅРёРІРµСЂСЃР°Р»"),
+    (OrderCategory.ROADSIDE, "РђРІС‚РѕРїРѕРјРѕС‰СЊ"),
 ]
 CATEGORY_LABELS = {category: label for category, label in CATEGORY_CHOICES}
 CATEGORY_LABELS_BY_VALUE = {category.value: label for category, label in CATEGORY_CHOICES}
@@ -169,9 +270,9 @@ WORKDAY_END_DEFAULT = time_service.parse_time_string(env_settings.workday_end, d
 LATE_ASAP_THRESHOLD = time_service.parse_time_string(env_settings.asap_late_threshold, default=time(19, 30))
 
 REPORT_DEFINITIONS: dict[str, tuple[str, Any, str]] = {
-    "orders": ("заказы", export_service.export_orders, "Orders"),
-    "commissions": ("комиссии", export_service.export_commissions, "Commissions"),
-    "ref_rewards": ("реферальные начисления", export_service.export_referral_rewards, "Referral rewards"),
+    "orders": ("Р·Р°РєР°Р·С‹", export_service.export_orders, "Orders"),
+    "commissions": ("РєРѕРјРёСЃСЃРёРё", export_service.export_commissions, "Commissions"),
+    "ref_rewards": ("СЂРµС„РµСЂР°Р»СЊРЅС‹Рµ РЅР°С‡РёСЃР»РµРЅРёСЏ", export_service.export_referral_rewards, "Referral rewards"),
 }
 
 DATE_INPUT_FORMATS = ("%Y-%m-%d", "%d.%m.%Y")
@@ -197,63 +298,63 @@ class SettingGroupDef:
 SETTING_GROUPS: dict[str, SettingGroupDef] = {
     "workday": SettingGroupDef(
         key="workday",
-        title="?? пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ",
-        description="пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ DEFERRED пїЅ SEARCHING.",
+        title="Р Р°Р±РѕС‡РёР№ РґРµРЅСЊ",
+        description="РќР°СЃС‚СЂРѕР№РєРё СЂР°Р±РѕС‡РµРіРѕ РѕРєРЅР° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РґР»СЏ РїР»Р°РЅРёСЂРѕРІР°РЅРёСЏ СЃР»РѕС‚РѕРІ Рё СЃС‚Р°С‚СѓСЃРѕРІ DEFERRED/SEARCHING.",
         fields=(
             SettingFieldDef(
                 key="working_hours_start",
-                label="пїЅпїЅпїЅпїЅпїЅпїЅ",
+                label="РќР°С‡Р°Р»Рѕ СЂР°Р±РѕС‡РµРіРѕ РґРЅСЏ",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_start,
-                help_text="пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ:пїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ 10:00.",
+                help_text="Р¤РѕСЂРјР°С‚ С‡С‡:РјРј, РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 10:00.",
             ),
             SettingFieldDef(
                 key="working_hours_end",
-                label="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+                label="РљРѕРЅРµС† СЂР°Р±РѕС‡РµРіРѕ РґРЅСЏ",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_end,
-                help_text="пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ:пїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ 20:00.",
+                help_text="Р¤РѕСЂРјР°С‚ С‡С‡:РјРј, РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 20:00.",
             ),
         ),
     ),
     "distribution": SettingGroupDef(
         key="distribution",
-        title="?? пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
-        description="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ SLA пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+        title="Р Р°СЃРїСЂРµРґРµР»РµРЅРёРµ Р·Р°СЏРІРѕРє",
+        description="РќР°СЃС‚СЂРѕР№РєРё РѕС‡РµСЂРµРґРё РѕС‚РїСЂР°РІРєРё РѕС„С„РµСЂРѕРІ Рё SLA СЂР°СЃРїСЂРµРґРµР»РµРЅРёСЏ.",
         fields=(
             SettingFieldDef(
                 key="distribution_tick_seconds",
-                label="пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ)",
+                label="РЁР°Рі РѕС‚РїСЂР°РІРєРё РѕС„С„РµСЂРѕРІ (СЃРµРє)",
                 schema="int",
                 value_type="INT",
                 default=30,
             ),
             SettingFieldDef(
                 key="distribution_sla_seconds",
-                label="SLA пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ)",
+                label="SLA СЂР°СЃРїСЂРµРґРµР»РµРЅРёСЏ (СЃРµРє)",
                 schema="int",
                 value_type="INT",
                 default=env_settings.distribution_sla_seconds,
             ),
             SettingFieldDef(
                 key="distribution_rounds",
-                label="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+                label="РљРѕР»РёС‡РµСЃС‚РІРѕ СЂР°СѓРЅРґРѕРІ",
                 schema="int",
                 value_type="INT",
                 default=env_settings.distribution_rounds,
             ),
             SettingFieldDef(
                 key="escalate_to_admin_after_min",
-                label="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ)",
+                label="Р­СЃРєР°Р»Р°С†РёСЏ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂСѓ (РјРёРЅ)",
                 schema="int_non_negative",
                 value_type="INT",
                 default=10,
             ),
             SettingFieldDef(
                 key="distribution_log_topn",
-                label="пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+                label="Р Р°Р·РјРµСЂ topN РІ Р»РѕРіРµ РїРѕРґР±РѕСЂР°",
                 schema="int",
                 value_type="INT",
                 default=10,
@@ -262,11 +363,11 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "limits": SettingGroupDef(
         key="limits",
-        title="?? пїЅпїЅпїЅпїЅпїЅпїЅ",
+        title="Р›РёРјРёС‚С‹",
         fields=(
             SettingFieldDef(
                 key="max_active_orders",
-                label="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+                label="РњР°РєСЃ. Р°РєС‚РёРІРЅС‹С… Р·Р°РєР°Р·РѕРІ РЅР° РјР°СЃС‚РµСЂР°",
                 schema="int",
                 value_type="INT",
                 default=1,
@@ -275,58 +376,58 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "support": SettingGroupDef(
         key="support",
-        title="?? пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
-        description="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+        title="РџРѕРґРґРµСЂР¶РєР°",
+        description="РљРѕРЅС‚Р°РєС‚С‹ Рё СЃСЃС‹Р»РєРё РґР»СЏ РјР°СЃС‚РµСЂРѕРІ Рё Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂРѕРІ.",
         fields=(
             SettingFieldDef(
                 key="support_contact",
-                label="пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+                label="РљРѕРЅС‚Р°РєС‚ РїРѕРґРґРµСЂР¶РєРё",
                 schema="string",
                 value_type="STR",
-                help_text="пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, @username пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.",
+                help_text="РЈРєР°Р¶РёС‚Рµ @username, РЅРѕРјРµСЂ С‚РµР»РµС„РѕРЅР° РёР»Рё СЃСЃС‹Р»РєСѓ.",
             ),
             SettingFieldDef(
                 key="support_faq_url",
-                label="пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ FAQ",
+                label="РЎСЃС‹Р»РєР° РЅР° FAQ",
                 schema="string_optional",
                 value_type="STR",
-                help_text="пїЅпїЅпїЅпїЅпїЅпїЅпїЅ URL пїЅпїЅпїЅ '-' пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+                help_text="РЈРєР°Р¶РёС‚Рµ URL РёР»Рё '-' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.",
             ),
         ),
     ),
     "geo": SettingGroupDef(
         key="geo",
-        title="??? пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+        title="Р“РµРѕРєРѕРґРµСЂ",
         fields=(
             SettingFieldDef(
                 key="geo_mode",
-                label="пїЅпїЅпїЅпїЅпїЅ",
+                label="Р РµР¶РёРј",
                 schema="choice",
                 value_type="STR",
                 choices=(
-                    ("local_centroids", "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"),
-                    ("yandex", "пїЅпїЅпїЅпїЅпїЅпїЅ"),
+                    ("local_centroids", "Р›РѕРєР°Р»СЊРЅС‹Рµ С†РµРЅС‚СЂРѕРёРґС‹"),
+                    ("yandex", "РЇРЅРґРµРєСЃ"),
                 ),
                 default="local_centroids",
-                help_text="1 пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, 2 пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ API.",
+                help_text="1 вЂ” Р»РѕРєР°Р»СЊРЅРѕ, 2 вЂ” РЇРЅРґРµРєСЃ API.",
             ),
             SettingFieldDef(
                 key="yandex_geocoder_key",
-                label="API пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ",
+                label="API РєР»СЋС‡ РіРµРѕРєРѕРґРµСЂР°",
                 schema="string_optional",
                 value_type="STR",
-                help_text="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ '-' пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+                help_text="РЈРєР°Р¶РёС‚Рµ РєР»СЋС‡ РёР»Рё '-' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.",
             ),
             SettingFieldDef(
                 key="yandex_throttle_rps",
-                label="RPS пїЅпїЅпїЅпїЅпїЅ",
+                label="RPS РѕРіСЂР°РЅРёС‡РµРЅРёРµ",
                 schema="int_non_negative",
                 value_type="INT",
                 default=1,
             ),
             SettingFieldDef(
                 key="yandex_daily_limit",
-                label="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ",
+                label="Р”РЅРµРІРЅРѕР№ Р»РёРјРёС‚ Р·Р°РїСЂРѕСЃРѕРІ",
                 schema="int_non_negative",
                 value_type="INT",
                 default=1000,
@@ -335,29 +436,29 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "channels": SettingGroupDef(
         key="channels",
-        title="?? пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
-        description="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+        title="РљР°РЅР°Р»С‹ СѓРІРµРґРѕРјР»РµРЅРёР№",
+        description="РљР°РЅР°Р»С‹ РґР»СЏ Р°Р»РµСЂС‚РѕРІ, Р»РѕРіРѕРІ Рё РѕС‚С‡С‘С‚РѕРІ.",
         fields=(
             SettingFieldDef(
                 key="alerts_channel_id",
-                label="Alerts / пїЅпїЅпїЅпїЅпїЅпїЅ",
+                label="Alerts / РђР»РµСЂС‚С‹",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ '-' пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+                help_text="ID РєР°РЅР°Р»Р° РёР»Рё '-' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.",
             ),
             SettingFieldDef(
                 key="logs_channel_id",
-                label="пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ",
+                label="РљР°РЅР°Р» Р»РѕРіРѕРІ",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ '-' пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+                help_text="ID РєР°РЅР°Р»Р° РёР»Рё '-' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.",
             ),
             SettingFieldDef(
                 key="reports_channel_id",
-                label="пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+                label="РљР°РЅР°Р» РѕС‚С‡С‘С‚РѕРІ",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ '-' пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+                help_text="ID РєР°РЅР°Р»Р° РёР»Рё '-' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.",
             ),
         ),
     ),
@@ -379,15 +480,15 @@ SETTING_FIELD_GROUP: dict[str, str] = {
 }
 
 
-EMPTY_PLACEHOLDER = "пїЅ"
+EMPTY_PLACEHOLDER = "вЂ”"
 SCHEMA_DEFAULT_HELP = {
-    "time": "пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ:пїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ 10:00.",
-    "int": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 0.",
-    "int_non_negative": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 0.",
-    "string": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.",
-    "string_optional": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ '-' пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
-    "int_optional": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ID пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ '-' пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
-    "choice": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ." ,
+    "time": "Р¤РѕСЂРјР°С‚ С‡С‡:РјРј, РЅР°РїСЂРёРјРµСЂ 10:00.",
+    "int": "Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.",
+    "int_non_negative": "Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ РЅРµ РјРµРЅСЊС€Рµ 0.",
+    "string": "Р’РІРµРґРёС‚Рµ С‚РµРєСЃС‚.",
+    "string_optional": "Р’РІРµРґРёС‚Рµ С‚РµРєСЃС‚ РёР»Рё '-' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.",
+    "int_optional": "Р’РІРµРґРёС‚Рµ ID РёР»Рё '-' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.",
+    "choice": "Р’С‹Р±РµСЂРёС‚Рµ РІР°СЂРёР°РЅС‚ РёР· СЃРїРёСЃРєР°.",
 }
 LOG_ENTRIES_LIMIT = 20
 
@@ -434,8 +535,8 @@ def _choice_help(field: SettingFieldDef) -> str:
 def _build_setting_prompt(field: SettingFieldDef, current_display: str) -> str:
     lines = [f"<b>{field.label}</b>"]
     if current_display and current_display != EMPTY_PLACEHOLDER:
-        lines.append(f"пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: <code>{html.escape(current_display, quote=False)}</code>")
-    base_help = SCHEMA_DEFAULT_HELP.get(field.schema, "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        lines.append(f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: <code>{html.escape(current_display, quote=False)}</code>")
+    base_help = SCHEMA_DEFAULT_HELP.get(field.schema, "Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ.")
     if field.schema == "choice":
         options = _choice_help(field)
         if options:
@@ -445,7 +546,7 @@ def _build_setting_prompt(field: SettingFieldDef, current_display: str) -> str:
             lines.append(base_help)
     else:
         lines.append(field.help_text or base_help)
-    lines.append("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ /cancel пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.")
+    lines.append("РћС‚РїСЂР°РІСЊС‚Рµ /cancel РґР»СЏ РѕС‚РјРµРЅС‹.")
     return "".join(lines)
 
 
@@ -455,32 +556,32 @@ def _parse_setting_input(field: SettingFieldDef, user_input: str) -> tuple[str, 
         return "", field.value_type
     if field.schema == "time":
         if not re.fullmatch(r"^\d{1,2}:\d{2}$", text):
-            raise ValueError("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ:пїЅпїЅ.")
+            raise ValueError("РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РІСЂРµРјРµРЅРё. СЃРїРѕР»СЊР·СѓР№С‚Рµ С‡С‡:РјРј.")
         hh, mm = map(int, text.split(":"))
         if not (0 <= hh < 24 and 0 <= mm < 60):
-            raise ValueError("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+            raise ValueError("Р§Р°СЃС‹ 0вЂ“23 Рё РјРёРЅСѓС‚С‹ 0вЂ“59.")
         return text, field.value_type
     if field.schema == "int":
         try:
             value = int(text)
         except ValueError:
-            raise ValueError("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.")
+            raise ValueError("Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ.")
         if value <= 0:
-            raise ValueError("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 0.")
+            raise ValueError("Р—РЅР°С‡РµРЅРёРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ 0.")
         return str(value), field.value_type
     if field.schema == "int_non_negative":
         try:
             value = int(text)
         except ValueError:
-            raise ValueError("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.")
+            raise ValueError("Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ.")
         if value < 0:
-            raise ValueError("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 0.")
+            raise ValueError("Р—РЅР°С‡РµРЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РјРµРЅСЊС€Рµ 0.")
         return str(value), field.value_type
     if field.schema == "int_optional":
         try:
             value = int(text)
         except ValueError:
-            raise ValueError("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ '-' пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+            raise ValueError("Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ РёР»Рё '-' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.")
         return str(value), field.value_type
     if field.schema == "choice":
         normalized = text.lower()
@@ -488,14 +589,14 @@ def _parse_setting_input(field: SettingFieldDef, user_input: str) -> tuple[str, 
             for idx, (code, label) in enumerate(field.choices, 1):
                 if normalized in {code.lower(), label.lower(), str(idx)}:
                     return code, field.value_type
-        raise ValueError("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.")
+        raise ValueError("Р’С‹Р±РµСЂРёС‚Рµ РІР°СЂРёР°РЅС‚ РёР· СЃРїРёСЃРєР°.")
     if field.schema == "string_optional":
         return text, field.value_type
     if field.schema == "string":
         if not text:
-            raise ValueError("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.")
+            raise ValueError("Р—РЅР°С‡РµРЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.")
         return text, field.value_type
-    raise ValueError("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+    raise ValueError("РќРµРїРѕРґРґРµСЂР¶РёРІР°РµРјС‹Р№ С‚РёРї РїРѕР»СЏ.")
 
 
 async def _build_settings_view(bot, group_key: str) -> tuple[str, InlineKeyboardMarkup]:
@@ -513,9 +614,9 @@ async def _build_settings_view(bot, group_key: str) -> tuple[str, InlineKeyboard
         else:
             value_line = f"{field.label}: <code>{html.escape(display, quote=False)}</code>"
         if from_default and field.default not in (None, ""):
-            value_line += " <i>(пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)</i>"
+            value_line += " <i>(РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ)</i>"
         lines.append(value_line)
-    lines.append("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+    lines.append("Р’С‹Р±РµСЂРёС‚Рµ РїРѕР»Рµ РЅРёР¶Рµ, С‡С‚РѕР±С‹ РёР·РјРµРЅРёС‚СЊ.")
     keyboard = settings_group_keyboard(
         group_key,
         [(field.key, field.label) for field in group.fields],
@@ -524,13 +625,13 @@ async def _build_settings_view(bot, group_key: str) -> tuple[str, InlineKeyboard
 
 def _format_log_entries(entries: Sequence[live_log.LiveLogEntry]) -> str:
     if not entries:
-        return '<b>История пуста</b>'
+        return '<b>СЃС‚РѕСЂРёСЏ РїСѓСЃС‚Р°</b>'
 
-    lines = ['<b>История событий</b>']
+    lines = ['<b>СЃС‚РѕСЂРёСЏ СЃРѕР±С‹С‚РёР№</b>']
     for entry in entries:
         local_time = entry.timestamp.astimezone(LOCAL_TZ)
         body = html.escape(entry.message, quote=False).replace('\n', '<br>')
-        lines.append(f'[{local_time:%H:%M:%S}] <i>{entry.source}</i> — {body}')
+        lines.append(f'[{local_time:%H:%M:%S}] <i>{entry.source}</i> вЂ” {body}')
     return '\n'.join(lines)
 
 def _staff_service(bot):
@@ -610,7 +711,7 @@ def _build_new_order_data(data: dict, staff: StaffUser) -> NewOrderData:
     address_comment = data.get("address_comment") or None
     manual_street = data.get("street_manual")
     if manual_street:
-        extra = f"(???????????????: {manual_street})"
+        extra = f"(СѓР»РёС†Р° РІСЂСѓС‡РЅСѓСЋ: {manual_street})"
         address_comment = f"{address_comment} {extra}".strip() if address_comment else extra
     initial_status_value = data.get("initial_status")
     initial_status = normalize_status(initial_status_value)
@@ -675,9 +776,9 @@ def _slot_options(
         options.append(("ASAP", "ASAP"))
         for bucket_key, start, end in SLOT_BUCKETS:
             if current < start:
-                options.append((f"TODAY:{bucket_key}", f"??????? {start:%H:%M}-{end:%H:%M}"))
+                options.append((f"TODAY:{bucket_key}", f"СЃРµРіРѕРґРЅСЏ {start:%H:%M}-{end:%H:%M}"))
     for bucket_key, start, end in SLOT_BUCKETS:
-        options.append((f"TOM:{bucket_key}", f"?????? {start:%H:%M}-{end:%H:%M}"))
+        options.append((f"TOM:{bucket_key}", f"Р·Р°РІС‚СЂР° {start:%H:%M}-{end:%H:%M}"))
     return options
 
 
@@ -694,7 +795,7 @@ def _format_slot_display(
         computation.end_utc,
         tz=tz,
     )
-    return formatted or "?"
+    return formatted or "вЂ”"
 
 
 
@@ -737,7 +838,7 @@ async def _finalize_slot_selection(
         workday_start=workday_start,
         workday_end=workday_end,
     )
-    slot_display = _format_slot_display(slot_choice, computation, tz)
+    slot_display = _format_slot_display(slot_choice, computation, tz=tz)
 
     await state.update_data(
         timeslot_display=slot_display,
@@ -777,10 +878,30 @@ async def _send_export_documents(
                 caption=note,
             )
 
+
+async def _render_created_order_card(message: Message, order_id: int, staff: StaffUser) -> None:
+    orders_service = _orders_service(message.bot)
+    detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
+    if not detail:
+        await message.answer(f"Р—Р°СЏРІРєР° #{order_id} СЃРѕР·РґР°РЅР°.")
+        return
+    text = format_order_card(detail)
+    markup = order_card_keyboard(
+        detail.id,
+        attachments=detail.attachments,
+        allow_return=(detail.status.upper() not in {"CANCELED", "CLOSED"}),
+        allow_cancel=(detail.status.upper() not in {"CANCELED", "CLOSED"}),
+        show_guarantee=False,
+    )
+    try:
+        await message.edit_text(text, reply_markup=markup)
+    except Exception:
+        await message.answer(text, reply_markup=markup)
+
 @router.message(CommandStart(), StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}))
 async def admin_start(message: Message, staff: StaffUser) -> None:
     await message.answer(
-        "пїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅ Field Service. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ:",
+        "РђРґРјРёРЅ-Р±РѕС‚ Field Service. Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ:",
         reply_markup=main_menu(staff),
     )
 
@@ -792,7 +913,7 @@ async def not_allowed_start(message: Message, state: FSMContext) -> None:
     staff = await staff_service.get_by_tg_id(user_id) if user_id else None
     if staff:
         await state.clear()
-        await message.answer("Вы уже авторизованы.", reply_markup=main_menu(staff))
+        await message.answer("Р’С‹ СѓР¶Рµ Р°РІС‚РѕСЂРёР·РѕРІР°РЅС‹.", reply_markup=main_menu(staff))
         return
     await state.clear()
     await state.set_state(StaffAccessFSM.code)
@@ -803,7 +924,7 @@ async def not_allowed_start(message: Message, state: FSMContext) -> None:
 async def staff_access_enter_code(message: Message, state: FSMContext) -> None:
     code_value = (message.text or "").strip()
     if not code_value:
-        await message.answer("Введите код доступа.")
+        await message.answer("Р’РІРµРґРёС‚Рµ РєРѕРґ РґРѕСЃС‚СѓРїР°.")
         return
     staff_service = _staff_service(message.bot)
     record = await staff_service.validate_access_code_value(code_value)
@@ -819,8 +940,8 @@ async def staff_access_enter_code(message: Message, state: FSMContext) -> None:
         access_city_ids=list(record.city_ids),
     )
     summary_lines = [
-        f"Роль: {role_label}",
-        f"Города: {', '.join(city_names) if city_names else '-'}",
+        f"Р РѕР»СЊ: {role_label}",
+        f"Р“РѕСЂРѕРґР°: {', '.join(city_names) if city_names else '-'}",
     ]
     await message.answer("\n".join(summary_lines))
     await state.set_state(StaffAccessFSM.pdn)
@@ -830,26 +951,26 @@ async def staff_access_enter_code(message: Message, state: FSMContext) -> None:
 @router.message(StateFilter(StaffAccessFSM.pdn))
 async def staff_access_pdn(message: Message, state: FSMContext) -> None:
     text_value = (message.text or "").strip().lower()
-    if text_value in {"не согласен", "нет", "no"}:
+    if text_value in {"РЅРµ СЃРѕРіР»Р°СЃРµРЅ", "РЅРµС‚", "no"}:
         await state.clear()
-        await message.answer("Без согласия продолжить нельзя. Отправьте /start, если передумаете.")
+        await message.answer("Р‘РµР· СЃРѕРіР»Р°СЃРёСЏ РїСЂРѕРґРѕР»Р¶РёС‚СЊ РЅРµР»СЊР·СЏ. РћС‚РїСЂР°РІСЊС‚Рµ /start, РµСЃР»Рё РїРµСЂРµРґСѓРјР°РµС‚Рµ.")
         return
-    if text_value not in {"согласен", "да", "ok", "хорошо"}:
-        await message.answer('Введите "согласен" или "не согласен".')
+    if text_value not in {"СЃРѕРіР»Р°СЃРµРЅ", "РґР°", "ok", "С…РѕСЂРѕС€Рѕ"}:
+        await message.answer('Р’РІРµРґРёС‚Рµ "СЃРѕРіР»Р°СЃРµРЅ" РёР»Рё "РЅРµ СЃРѕРіР»Р°СЃРµРЅ".')
         return
     await state.set_state(StaffAccessFSM.full_name)
-    await message.answer("Введите ФИО полностью (например, Иванов Иван Иванович).")
+    await message.answer("Р’РІРµРґРёС‚Рµ Р¤Рћ РїРѕР»РЅРѕСЃС‚СЊСЋ (РЅР°РїСЂРёРјРµСЂ, РІР°РЅРѕРІ РІР°РЅ РІР°РЅРѕРІРёС‡).")
 
 
 @router.message(StateFilter(StaffAccessFSM.full_name))
 async def staff_access_full_name(message: Message, state: FSMContext) -> None:
     full_name = (message.text or "").strip()
     if len(full_name) < 5:
-        await message.answer("Введите ФИО полностью.")
+        await message.answer("Р’РІРµРґРёС‚Рµ Р¤Рћ РїРѕР»РЅРѕСЃС‚СЊСЋ.")
         return
     await state.update_data(full_name=full_name)
     await state.set_state(StaffAccessFSM.phone)
-    await message.answer("Введите телефон в формате +7XXXXXXXXXX или 8XXXXXXXXXX.")
+    await message.answer("Р’РІРµРґРёС‚Рµ С‚РµР»РµС„РѕРЅ РІ С„РѕСЂРјР°С‚Рµ +7XXXXXXXXXX РёР»Рё 8XXXXXXXXXX.")
 
 
 @router.message(StateFilter(StaffAccessFSM.phone))
@@ -858,7 +979,7 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     try:
         normalized = normalize_phone(raw_phone)
     except ValueError:
-        await message.answer("Неверный формат телефона. Пример: +7XXXXXXXXXX или 8XXXXXXXXXX")
+        await message.answer("РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ С‚РµР»РµС„РѕРЅР°. РџСЂРёРјРµСЂ: +7XXXXXXXXXX РёР»Рё 8XXXXXXXXXX")
         return
     data = await state.get_data()
     code_value = data.get("access_code")
@@ -866,11 +987,11 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     role_token = data.get("access_role")
     if not code_value or not full_name or not role_token:
         await state.clear()
-        await message.answer("Сессия истекла. Отправьте /start и попробуйте снова.")
+        await message.answer("РЎРµСЃСЃРёСЏ РёСЃС‚РµРєР»Р°. РћС‚РїСЂР°РІСЊС‚Рµ /start Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
         return
     user = message.from_user
     if not user:
-        await message.answer("Не удалось получить данные пользователя.")
+        await message.answer("РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РґР°РЅРЅС‹Рµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ.")
         return
     staff_service = _staff_service(message.bot)
     try:
@@ -884,7 +1005,7 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     except AccessCodeError as exc:
         error_text = ACCESS_CODE_ERROR_MESSAGES.get(
             exc.reason,
-            "Не удалось применить код. Обратитесь к глобальному администратору.",
+            "РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРёРјРµРЅРёС‚СЊ РєРѕРґ. РћР±СЂР°С‚РёС‚РµСЃСЊ Рє РіР»РѕР±Р°Р»СЊРЅРѕРјСѓ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂСѓ.",
         )
         await message.answer(error_text)
         await state.set_state(StaffAccessFSM.code)
@@ -894,11 +1015,11 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     role_label = STAFF_ROLE_LABELS.get(staff_user.role, staff_user.role.value)
     city_names = await _resolve_city_names(message.bot, staff_user.city_ids)
     lines = [
-        f"Вы добавлены как {role_label}.",
-        f"Города: {', '.join(city_names) if city_names else '-'}",
+        f"Р’С‹ РґРѕР±Р°РІР»РµРЅС‹ РєР°Рє {role_label}.",
+        f"Р“РѕСЂРѕРґР°: {', '.join(city_names) if city_names else '-'}",
     ]
     await message.answer("\n".join(lines))
-    await message.answer("Готово. Главное меню:", reply_markup=main_menu(staff_user))
+    await message.answer("Р“РѕС‚РѕРІРѕ. Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ:", reply_markup=main_menu(staff_user))
 
 
 @router.callback_query(
@@ -906,7 +1027,7 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
 async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.message.edit_text("Главное меню:", reply_markup=main_menu(staff))
+    await cq.message.edit_text("Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ:", reply_markup=main_menu(staff))
     await cq.answer()
 
 @router.callback_query(
@@ -916,12 +1037,12 @@ async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
 async def cb_masters_menu(cq: CallbackQuery) -> None:
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🛡 Модерация", callback_data="adm:mod")],
-            [InlineKeyboardButton(text="◀️ В меню", callback_data="adm:menu")],
+            [InlineKeyboardButton(text="рџ›Ў РњРѕРґРµСЂР°С†РёСЏ", callback_data="adm:mod")],
+            [InlineKeyboardButton(text="в—ЂпёЏ Р’ РјРµРЅСЋ", callback_data="adm:menu")],
         ]
     )
     await cq.message.edit_text(
-        "Раздел «Мастера». Выберите подпункт:",
+        "Р Р°Р·РґРµР» В«РњР°СЃС‚РµСЂР°В». Р’С‹Р±РµСЂРёС‚Рµ РїРѕРґРїСѓРЅРєС‚:",
         reply_markup=markup,
     )
     await cq.answer()
@@ -934,12 +1055,12 @@ async def cb_masters_menu(cq: CallbackQuery) -> None:
 async def cb_moderation_placeholder(cq: CallbackQuery) -> None:
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="adm:m")],
-            [InlineKeyboardButton(text="🏠 Главное меню", callback_data="adm:menu")],
+            [InlineKeyboardButton(text="в—ЂпёЏ РќР°Р·Р°Рґ", callback_data="adm:m")],
+            [InlineKeyboardButton(text="рџЏ  Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ", callback_data="adm:menu")],
         ]
     )
     await cq.message.edit_text(
-        "Раздел «Модерация» ещё в разработке.",
+        "Р Р°Р·РґРµР» В«РњРѕРґРµСЂР°С†РёСЏВ» РµС‰С‘ РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ.",
         reply_markup=markup,
     )
     await cq.answer()
@@ -952,10 +1073,10 @@ async def cb_moderation_placeholder(cq: CallbackQuery) -> None:
 async def cb_staff_menu_denied(cq: CallbackQuery, staff: StaffUser) -> None:
     if cq.message is not None:
         await cq.message.edit_text(
-            "Недостаточно прав. Главное меню:",
+            "РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РїСЂР°РІ. Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ:",
             reply_markup=main_menu(staff),
         )
-    await cq.answer("Недостаточно прав", show_alert=True)
+    await cq.answer("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РїСЂР°РІ", show_alert=True)
 
 
 @router.callback_query(
@@ -964,7 +1085,7 @@ async def cb_staff_menu_denied(cq: CallbackQuery, staff: StaffUser) -> None:
 )
 async def cb_finance_root(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
-    await cq.message.edit_text("Выберите раздел:", reply_markup=finance_menu(staff))
+    await cq.message.edit_text("Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР»:", reply_markup=finance_menu(staff))
     await cq.answer()
 
 
@@ -987,20 +1108,20 @@ async def _render_finance_segment(
 
     title = FINANCE_SEGMENT_TITLES.get(segment, segment.upper())
     if not rows:
-        text = f"<b>{title}</b>\nКомиссии не найдены."
+        text = f"<b>{title}</b>\nРљРѕРјРёСЃСЃРёРё РЅРµ РЅР°Р№РґРµРЅС‹."
     else:
         lines = [f"<b>{title}</b>", ""]
         for row in rows:
             if isinstance(row, CommissionListItem):
-                lines.append(f"• {html.escape(finance_list_line(row))}")
+                lines.append(f"вЂў {html.escape(finance_list_line(row))}")
             else:
-                lines.append(f"• {html.escape(str(row))}")
+                lines.append(f"вЂў {html.escape(str(row))}")
         text = "\n".join(lines)
 
     button_rows: list[list[InlineKeyboardButton]] = []
     for row in rows:
         if isinstance(row, CommissionListItem):
-            label = f"#{row.id} · {row.amount:.0f} ₽"
+            label = f"#{row.id} В· {row.amount:.0f} в‚Ѕ"
             button_rows.append([
                 InlineKeyboardButton(
                     text=label,
@@ -1083,7 +1204,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
     finance_service = _finance_service(cq.message.bot)
     detail = await finance_service.get_commission_detail(commission_id)
     if not detail:
-        await cq.answer("Комиссия не найдена.", show_alert=True)
+        await cq.answer("РљРѕРјРёСЃСЃРёСЏ РЅРµ РЅР°Р№РґРµРЅР°.", show_alert=True)
         return
 
     data = await state.get_data()
@@ -1105,7 +1226,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
 
     if action == "open":
         if not detail.attachments:
-            await cq.answer("Чеки отсутствуют.", show_alert=True)
+            await cq.answer("Р§РµРєРё РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‚.", show_alert=True)
             return
         for attachment in detail.attachments:
             try:
@@ -1115,7 +1236,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
                 else:
                     await cq.message.answer_document(attachment.file_id, caption=attachment.caption)
             except TelegramBadRequest:
-                await cq.message.answer("Не удалось показать вложение чека.")
+                await cq.message.answer("РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕРєР°Р·Р°С‚СЊ РІР»РѕР¶РµРЅРёРµ С‡РµРєР°.")
         await cq.answer()
         return
 
@@ -1130,8 +1251,8 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             source_message_id=cq.message.message_id,
         )
         prompt = (
-            "Введите фактическую сумму оплаты (по умолчанию {amount:.2f}).\n"
-            "Отправьте /skip, чтобы оставить значение без изменений."
+            "Р’РІРµРґРёС‚Рµ С„Р°РєС‚РёС‡РµСЃРєСѓСЋ СЃСѓРјРјСѓ РѕРїР»Р°С‚С‹ (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ {amount:.2f}).\n"
+            "РћС‚РїСЂР°РІСЊС‚Рµ /skip, С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ Р·РЅР°С‡РµРЅРёРµ Р±РµР· РёР·РјРµРЅРµРЅРёР№."
         ).format(amount=detail.amount)
         await cq.message.edit_text(
             f"{text_body}\n\n{prompt}",
@@ -1147,7 +1268,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             by_staff_id=staff.id,
         )
         await cq.answer(
-            "Мастер заблокирован." if ok else "Не удалось заблокировать мастера.",
+            "РњР°СЃС‚РµСЂ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ." if ok else "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°С‚СЊ РјР°СЃС‚РµСЂР°.",
             show_alert=not ok,
         )
         proxy = _MessageEditProxy(cq.message.bot, cq.message.chat.id, cq.message.message_id)
@@ -1166,7 +1287,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             source_message_id=cq.message.message_id,
         )
         await cq.message.edit_text(
-            "Укажите причину отклонения платежа (текстом) или нажмите «Назад».",
+            "РЈРєР°Р¶РёС‚Рµ РїСЂРёС‡РёРЅСѓ РѕС‚РєР»РѕРЅРµРЅРёСЏ РїР»Р°С‚РµР¶Р° (С‚РµРєСЃС‚РѕРј) РёР»Рё РЅР°Р¶РјРёС‚Рµ В«РќР°Р·Р°РґВ».",
             reply_markup=finance_reject_cancel_keyboard(commission_id),
         )
         await cq.answer()
@@ -1179,7 +1300,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
 async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
     reason = (msg.text or "").strip()
     if len(reason) < 3:
-        await msg.answer("Текст должен содержать не менее 3 символов.")
+        await msg.answer("РўРµРєСЃС‚ РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РЅРµ РјРµРЅРµРµ 3 СЃРёРјРІРѕР»РѕРІ.")
         return
 
     data = await state.get_data()
@@ -1191,7 +1312,7 @@ async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContex
 
     if not commission_id:
         await state.clear()
-        await msg.answer("Сессия истекла. Откройте карточку комиссии заново.")
+        await msg.answer("РЎРµСЃСЃРёСЏ РёСЃС‚РµРєР»Р°. РћС‚РєСЂРѕР№С‚Рµ РєР°СЂС‚РѕС‡РєСѓ РєРѕРјРёСЃСЃРёРё Р·Р°РЅРѕРІРѕ.")
         return
 
     finance_service = _finance_service(msg.bot)
@@ -1199,9 +1320,9 @@ async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContex
     await state.clear()
     if ok:
         live_log.push("finance", f"commission#{commission_id} rejected by staff {staff.id}")
-        await msg.answer("Отправлено мастеру на доработку.")
+        await msg.answer("РћС‚РїСЂР°РІР»РµРЅРѕ РјР°СЃС‚РµСЂСѓ РЅР° РґРѕСЂР°Р±РѕС‚РєСѓ.")
     else:
-        await msg.answer("Не удалось отклонить оплату.")
+        await msg.answer("РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєР»РѕРЅРёС‚СЊ РѕРїР»Р°С‚Сѓ.")
         return
 
     if source_chat_id and source_message_id:
@@ -1215,7 +1336,7 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
     commission_id = data.get("commission_id")
     if not commission_id:
         await state.clear()
-        await msg.answer("Сессия подтверждения истекла. Откройте комиссию заново.")
+        await msg.answer("РЎРµСЃСЃРёСЏ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РёСЃС‚РµРєР»Р°. РћС‚РєСЂРѕР№С‚Рµ РєРѕРјРёСЃСЃРёСЋ Р·Р°РЅРѕРІРѕ.")
         return
 
     segment = data.get("segment", "aw")
@@ -1230,15 +1351,15 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
         if source_chat_id and source_message_id:
             proxy = _MessageEditProxy(msg.bot, source_chat_id, source_message_id)
             await _render_finance_segment(proxy, staff, segment, page, state)
-        await msg.answer("Подтверждение отменено.")
+        await msg.answer("РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РѕС‚РјРµРЅРµРЅРѕ.")
         return
 
-    if text_value.lower() in {"/skip", "skip", "пропустить", ""}:
+    if text_value.lower() in {"/skip", "skip", "РїСЂРѕРїСѓСЃС‚РёС‚СЊ", ""}:
         amount = default_amount
     else:
         normalized = text_value.replace(",", ".")
         if not re.fullmatch(r"^\d{1,7}(?:\.\d{1,2})?$", normalized):
-            await msg.answer("Введите сумму в формате 3500 или 4999.99, либо отправьте /skip.")
+            await msg.answer("Р’РІРµРґРёС‚Рµ СЃСѓРјРјСѓ РІ С„РѕСЂРјР°С‚Рµ 3500 РёР»Рё 4999.99, Р»РёР±Рѕ РѕС‚РїСЂР°РІСЊС‚Рµ /skip.")
             return
         amount = Decimal(normalized)
 
@@ -1247,12 +1368,12 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
     await state.clear()
     if ok:
         live_log.push("finance", f"commission#{commission_id} approved by staff {staff.id} amount={amount}")
-        await msg.answer("Комиссия подтверждена.")
+        await msg.answer("РљРѕРјРёСЃСЃРёСЏ РїРѕРґС‚РІРµСЂР¶РґРµРЅР°.")
         if source_chat_id and source_message_id:
             proxy = _MessageEditProxy(msg.bot, source_chat_id, source_message_id)
             await _render_finance_segment(proxy, staff, segment, page, state)
     else:
-        await msg.answer("Не удалось подтвердить оплату.")
+        await msg.answer("РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕРґС‚РІРµСЂРґРёС‚СЊ РѕРїР»Р°С‚Сѓ.")
 
 @router.callback_query(
     F.data == "adm:r",
@@ -1260,7 +1381,7 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
 )
 async def cb_reports(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
-    await cq.message.edit_text("Отчёты:", reply_markup=reports_menu_keyboard())
+    await cq.message.edit_text("РћС‚С‡С‘С‚С‹:", reply_markup=reports_menu_keyboard())
     await cq.answer()
 
 
@@ -1270,8 +1391,8 @@ async def _prompt_report_period(cq: CallbackQuery, state: FSMContext, report_kin
     await state.set_state(ReportsExportFSM.awaiting_period)
     await state.update_data(report_kind=report_kind)
     await cq.message.answer(
-        "Введите период для выгрузки (" + label + "). Формат: YYYY-MM-DD YYYY-MM-DD.\n"
-        "Можно указать одну дату для одного дня. Для отмены отправьте /cancel."
+        "Р’РІРµРґРёС‚Рµ РїРµСЂРёРѕРґ РґР»СЏ РІС‹РіСЂСѓР·РєРё (" + label + "). Р¤РѕСЂРјР°С‚: YYYY-MM-DD YYYY-MM-DD.\n"
+        "РњРѕР¶РЅРѕ СѓРєР°Р·Р°С‚СЊ РѕРґРЅСѓ РґР°С‚Сѓ РґР»СЏ РѕРґРЅРѕРіРѕ РґРЅСЏ. Р”Р»СЏ РѕС‚РјРµРЅС‹ РѕС‚РїСЂР°РІСЊС‚Рµ /cancel."
     )
     await cq.answer()
 
@@ -1303,7 +1424,7 @@ async def cb_reports_referrals(cq: CallbackQuery, state: FSMContext) -> None:
 @router.message(StateFilter(ReportsExportFSM.awaiting_period), F.text == "/cancel")
 async def reports_cancel(msg: Message, state: FSMContext) -> None:
     await state.clear()
-    await msg.answer("Отмена. Выберите отчёт:", reply_markup=reports_menu_keyboard())
+    await msg.answer("РћС‚РјРµРЅР°. Р’С‹Р±РµСЂРёС‚Рµ РѕС‚С‡С‘С‚:", reply_markup=reports_menu_keyboard())
 
 
 @router.message(StateFilter(ReportsExportFSM.awaiting_period))
@@ -1311,7 +1432,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
     period = _parse_period_input(msg.text or "")
     if not period:
         await msg.answer(
-            "Не удалось разобрать период. Укажите даты в формате YYYY-MM-DD YYYY-MM-DD (пример: 2025-09-01 2025-09-15)."
+            "РќРµ СѓРґР°Р»РѕСЃСЊ СЂР°Р·РѕР±СЂР°С‚СЊ РїРµСЂРёРѕРґ. РЈРєР°Р¶РёС‚Рµ РґР°С‚С‹ РІ С„РѕСЂРјР°С‚Рµ YYYY-MM-DD YYYY-MM-DD (РїСЂРёРјРµСЂ: 2025-09-01 2025-09-15)."
         )
         return
 
@@ -1322,7 +1443,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
     if not definition:
         await state.clear()
         await msg.answer(
-            "Тип отчёта не распознан. Откройте меню отчётов заново:",
+            "РўРёРї РѕС‚С‡С‘С‚Р° РЅРµ СЂР°СЃРїРѕР·РЅР°РЅ. РћС‚РєСЂРѕР№С‚Рµ РјРµРЅСЋ РѕС‚С‡С‘С‚РѕРІ Р·Р°РЅРѕРІРѕ:",
             reply_markup=reports_menu_keyboard(),
         )
         return
@@ -1335,7 +1456,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
     except Exception:
         await state.clear()
         await msg.answer(
-            "Не удалось сформировать отчёт. Попробуйте позже.",
+            "РќРµ СѓРґР°Р»РѕСЃСЊ СЃС„РѕСЂРјРёСЂРѕРІР°С‚СЊ РѕС‚С‡С‘С‚. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.",
             reply_markup=reports_menu_keyboard(),
         )
         return
@@ -1350,7 +1471,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
     if target_chat_id is None:
         await state.clear()
         await msg.answer(
-            "Не удалось определить чат для отправки отчёта.",
+            "РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ С‡Р°С‚ РґР»СЏ РѕС‚РїСЂР°РІРєРё РѕС‚С‡С‘С‚Р°.",
             reply_markup=reports_menu_keyboard(),
         )
         return
@@ -1362,7 +1483,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
         chat_id=target_chat_id,
     )
     await state.clear()
-    await msg.answer("Отчёт отправлен", reply_markup=reports_menu_keyboard())
+    await msg.answer("РћС‚С‡С‘С‚ РѕС‚РїСЂР°РІР»РµРЅ", reply_markup=reports_menu_keyboard())
 
 async def _start_new_order(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
@@ -1380,7 +1501,10 @@ async def _render_city_step(message: Message, state: FSMContext, page: int, quer
     else:
         cities = await orders_service.list_cities(limit=limit)
     if not cities:
-        await message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ /cancel.")
+        try:
+            await message.edit_text("Р“РѕСЂРѕРґР° РЅРµ РЅР°Р№РґРµРЅС‹. РћС‚РїСЂР°РІСЊС‚Рµ /cancel.")
+        except TelegramBadRequest:
+            await message.answer("Р“РѕСЂРѕРґР° РЅРµ РЅР°Р№РґРµРЅС‹. РћС‚РїСЂР°РІСЊС‚Рµ /cancel.")
         return
     per_page = 10
     total_pages = max(1, (len(cities) + per_page - 1) // per_page)
@@ -1388,7 +1512,13 @@ async def _render_city_step(message: Message, state: FSMContext, page: int, quer
     start = (page - 1) * per_page
     chunk = cities[start : start + per_page]
     keyboard = new_order_city_keyboard([(c.id, c.name) for c in chunk], page=page, total_pages=total_pages)
-    await message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ:", reply_markup=keyboard)
+    try:
+        await message.edit_text("Р’С‹Р±РµСЂРёС‚Рµ РіРѕСЂРѕРґ:", reply_markup=keyboard)
+    except TelegramBadRequest:
+        # If we cannot edit (e.g., user text message), send a new one
+        await message.answer("Р’С‹Р±РµСЂРёС‚Рµ РіРѕСЂРѕРґ:", reply_markup=keyboard)
+    except Exception:
+        await message.answer("Р’С‹Р±РµСЂРёС‚Рµ РіРѕСЂРѕРґ:", reply_markup=keyboard)
     await state.update_data(city_query=query, city_page=page)
 
 
@@ -1409,7 +1539,7 @@ async def admin_cancel_command(message: Message, staff: StaffUser, state: FSMCon
     await show_admin_main_menu(
         message,
         staff,
-        notice="Создание заявки отменено. Главное меню:",
+        notice="РЎРѕР·РґР°РЅРёРµ Р·Р°СЏРІРєРё РѕС‚РјРµРЅРµРЅРѕ. Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ:",
     )
 
 
@@ -1421,14 +1551,15 @@ async def cb_new_order_cancel(cq: CallbackQuery, staff: StaffUser, state: FSMCon
             cq.message,
             staff,
             edit=True,
-            notice="Создание заявки отменено. Главное меню:",
+            notice="РЎРѕР·РґР°РЅРёРµ Р·Р°СЏРІРєРё РѕС‚РјРµРЅРµРЅРѕ. Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ:",
         )
-    await cq.answer("Создание заявки отменено")
+    await cq.answer("РЎРѕР·РґР°РЅРёРµ Р·Р°СЏРІРєРё РѕС‚РјРµРЅРµРЅРѕ")
 
 
 @router.callback_query(F.data.startswith("adm:new:city_page:"), StateFilter(NewOrderFSM.city))
 async def cb_new_order_city_page(cq: CallbackQuery, state: FSMContext) -> None:
-    page = int(cq.data.split(":")[2])
+    # adm:new:city_page:{page}
+    page = int(cq.data.split(":")[3])
     data = await state.get_data()
     query = data.get("city_query")
     await state.set_state(NewOrderFSM.city)
@@ -1439,7 +1570,12 @@ async def cb_new_order_city_page(cq: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "adm:new:city_search", StateFilter(NewOrderFSM.city))
 async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.city)
-    await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ). пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ /cancel.")
+    try:
+        await cq.message.edit_text("Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РіРѕСЂРѕРґР° (РјРёРЅ. 2 СЃРёРјРІРѕР»Р°). РћС‚РїСЂР°РІСЊС‚Рµ /cancel РґР»СЏ РѕС‚РјРµРЅС‹.")
+    except TelegramBadRequest:
+        await cq.message.answer("Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РіРѕСЂРѕРґР° (РјРёРЅ. 2 СЃРёРјРІРѕР»Р°). РћС‚РїСЂР°РІСЊС‚Рµ /cancel РґР»СЏ РѕС‚РјРµРЅС‹.")
+    except Exception:
+        await cq.message.answer("Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РіРѕСЂРѕРґР° (РјРёРЅ. 2 СЃРёРјРІРѕР»Р°). РћС‚РїСЂР°РІСЊС‚Рµ /cancel РґР»СЏ РѕС‚РјРµРЅС‹.")
     await cq.answer()
 
 
@@ -1447,18 +1583,19 @@ async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None
 async def new_order_city_input(msg: Message, state: FSMContext) -> None:
     query = msg.text.strip()
     if len(query) < 2:
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("Р’РІРµРґРёС‚Рµ РЅРµ РјРµРЅРµРµ 2 СЃРёРјРІРѕР»РѕРІ.")
         return
     await _render_city_step(msg, state, page=1, query=query)
 
 
 @router.callback_query(F.data.startswith("adm:new:city:"), StateFilter(NewOrderFSM.city))
 async def cb_new_order_city_pick(cq: CallbackQuery, state: FSMContext) -> None:
-    city_id = int(cq.data.split(":")[2])
+    # adm:new:city:{id}
+    city_id = int(cq.data.split(":")[3])
     orders_service = _orders_service(cq.message.bot)
     city = await orders_service.get_city(city_id)
     if not city:
-        await cq.answer("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ", show_alert=True)
+        await cq.answer("Р“РѕСЂРѕРґ РЅРµ РЅР°Р№РґРµРЅ", show_alert=True)
         return
     await state.update_data(city_id=city.id, city_name=city.name)
     await state.set_state(NewOrderFSM.district)
@@ -1473,13 +1610,19 @@ async def _render_district_step(message: Message, state: FSMContext, page: int) 
     districts, has_next = await orders_service.list_districts(city_id, page=page, page_size=5)
     buttons = [(d.id, d.name) for d in districts]
     keyboard = new_order_district_keyboard(buttons, page=page, has_next=has_next)
-    await message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ):", reply_markup=keyboard)
+    try:
+        await message.edit_text("Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р№РѕРЅ (РёР»Рё Р±РµР· СЂР°Р№РѕРЅР°):", reply_markup=keyboard)
+    except TelegramBadRequest:
+        await message.answer("Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р№РѕРЅ (РёР»Рё Р±РµР· СЂР°Р№РѕРЅР°):", reply_markup=keyboard)
+    except Exception:
+        await message.answer("Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р№РѕРЅ (РёР»Рё Р±РµР· СЂР°Р№РѕРЅР°):", reply_markup=keyboard)
     await state.update_data(district_page=page)
 
 
 @router.callback_query(F.data.startswith("adm:new:district_page:"), StateFilter(NewOrderFSM.district))
 async def cb_new_order_district_page(cq: CallbackQuery, state: FSMContext) -> None:
-    page = int(cq.data.split(":")[2])
+    # adm:new:district_page:{page}
+    page = int(cq.data.split(":")[3])
     await state.set_state(NewOrderFSM.district)
     await _render_district_step(cq.message, state, page=page)
     await cq.answer()
@@ -1500,10 +1643,10 @@ async def cb_new_order_city_back(cq: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "adm:new:district:none", StateFilter(NewOrderFSM.district))
 async def cb_new_order_district_none(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(district_id=None, district_name="пїЅ")
+    await state.update_data(district_id=None, district_name="вЂ”")
     await state.set_state(NewOrderFSM.street_mode)
     await cq.message.edit_text(
-        "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ:",
+        "Р’С‹Р±РµСЂРёС‚Рµ СЃРїРѕСЃРѕР± РІРІРѕРґР° СѓР»РёС†С‹:",
         reply_markup=new_order_street_mode_keyboard(),
     )
     await cq.answer()
@@ -1511,23 +1654,24 @@ async def cb_new_order_district_none(cq: CallbackQuery, state: FSMContext) -> No
 
 @router.callback_query(F.data.startswith("adm:new:district:"), StateFilter(NewOrderFSM.district))
 async def cb_new_order_district_pick(cq: CallbackQuery, state: FSMContext) -> None:
-    district_id = int(cq.data.split(":")[2])
+    # adm:new:district:{id}
+    district_id = int(cq.data.split(":")[3])
     orders_service = _orders_service(cq.message.bot)
     district = await orders_service.get_district(district_id)
     if not district:
-        await cq.answer("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ", show_alert=True)
+        await cq.answer("Р Р°Р№РѕРЅ РЅРµ РЅР°Р№РґРµРЅ", show_alert=True)
         return
     await state.update_data(district_id=district.id, district_name=district.name)
     await state.set_state(NewOrderFSM.street_mode)
     await cq.message.edit_text(
-        "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ:",
+        "Р’С‹Р±РµСЂРёС‚Рµ СЃРїРѕСЃРѕР± РІРІРѕРґР° СѓР»РёС†С‹:",
         reply_markup=new_order_street_mode_keyboard(),
     )
     await cq.answer()
 @router.callback_query(F.data == "adm:new:street:search", StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_search(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.street_search)
-    await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.")
+    await cq.message.edit_text("Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ СѓР»РёС†С‹ РґР»СЏ РїРѕРёСЃРєР°.")
     await cq.answer()
 
 
@@ -1535,7 +1679,7 @@ async def cb_new_order_street_search(cq: CallbackQuery, state: FSMContext) -> No
 async def cb_new_order_street_manual(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.street_manual)
     await cq.message.edit_text(
-        "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (2-50 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).",
+        "Р’РІРµРґРёС‚Рµ СѓР»РёС†Сѓ РІСЂСѓС‡РЅСѓСЋ (2вЂ“50 СЃРёРјРІРѕР»РѕРІ).",
         reply_markup=new_order_street_manual_keyboard(),
     )
     await cq.answer()
@@ -1543,9 +1687,9 @@ async def cb_new_order_street_manual(cq: CallbackQuery, state: FSMContext) -> No
 
 @router.callback_query(F.data == "adm:new:street:none", StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_none(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(street_id=None, street_name="пїЅ", street_manual=None)
+    await state.update_data(street_id=None, street_name="вЂ”", street_manual=None)
     await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (1-10 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).")
+    await cq.message.edit_text("Р’РІРµРґРёС‚Рµ РґРѕРј (1вЂ“10 СЃРёРјРІРѕР»РѕРІ).")
     await cq.answer()
 
 
@@ -1561,49 +1705,70 @@ async def cb_new_order_street_back(cq: CallbackQuery, state: FSMContext) -> None
 async def new_order_street_manual_input(msg: Message, state: FSMContext) -> None:
     value = msg.text.strip()
     if not (2 <= len(value) <= 50):
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ 2 пїЅпїЅ 50 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("Р’РІРµРґРёС‚Рµ СЃС‚СЂРѕРєСѓ РґР»РёРЅРѕР№ РѕС‚ 2 РґРѕ 50 СЃРёРјРІРѕР»РѕРІ.")
         return
     await state.update_data(street_id=None, street_name=value, street_manual=value)
     await state.set_state(NewOrderFSM.house)
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (1-10 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).")
+    await msg.answer("Р’РІРµРґРёС‚Рµ РґРѕРј (1вЂ“10 СЃРёРјРІРѕР»РѕРІ).")
 
 
 @router.message(StateFilter(NewOrderFSM.street_search))
 async def new_order_street_search_input(msg: Message, state: FSMContext) -> None:
     query = msg.text.strip()
     if len(query) < 2:
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("Р’РІРµРґРёС‚Рµ РЅРµ РјРµРЅРµРµ 2 СЃРёРјРІРѕР»РѕРІ.")
         return
     data = await state.get_data()
     city_id = data.get("city_id")
     orders_service = _orders_service(msg.bot)
     streets = await orders_service.search_streets(city_id, query)
+    # If nothing found, offer a way back to street mode selection
     if not streets:
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        try:
+            await msg.answer("  .     .")
+        finally:
+            await state.set_state(NewOrderFSM.street_mode)
+            await msg.answer(
+                "   :",
+                reply_markup=new_order_street_mode_keyboard(),
+            )
+        return
+    if not streets:
+        await msg.answer("РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ. Р·РјРµРЅРёС‚Рµ Р·Р°РїСЂРѕСЃ Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
         return
     buttons = [
         (s.id, s.name if s.score is None else f"{s.name} ({int(s.score)}%)")
         for s in streets
     ]
     await msg.answer(
-        "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ:",
+        "Р РµР·СѓР»СЊС‚Р°С‚С‹ РїРѕРёСЃРєР°:",
         reply_markup=new_order_street_keyboard(buttons),
     )
+    await state.set_state(NewOrderFSM.street_mode)
     await state.update_data(street_search_results=buttons)
 
 
 @router.callback_query(F.data.startswith("adm:new:street:"), StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None:
-    tail = cq.data.split(":")[2]
+    # adm:new:street:{id|search_again|manual_back|back}
+    tail = cq.data.split(":")[3]
     if tail == "search_again":
         await state.set_state(NewOrderFSM.street_search)
-        await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ.")
+        await cq.message.edit_text("Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ СѓР»РёС†С‹ РґР»СЏ РїРѕРёСЃРєР°.")
         await cq.answer()
         return
     if tail == "manual_back":
         await state.set_state(NewOrderFSM.street_mode)
         await cq.message.edit_text(
-            "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ:",
+            "Р’С‹Р±РµСЂРёС‚Рµ СЃРїРѕСЃРѕР± РІРІРѕРґР° СѓР»РёС†С‹:",
+            reply_markup=new_order_street_mode_keyboard(),
+        )
+        await cq.answer()
+        return
+    if tail == "back":
+        await state.set_state(NewOrderFSM.street_mode)
+        await cq.message.edit_text(
+            "Р’С‹Р±РµСЂРёС‚Рµ СЃРїРѕСЃРѕР± РІРІРѕРґР° СѓР»РёС†С‹:",
             reply_markup=new_order_street_mode_keyboard(),
         )
         await cq.answer()
@@ -1612,11 +1777,11 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
     orders_service = _orders_service(cq.message.bot)
     street = await orders_service.get_street(street_id)
     if not street:
-        await cq.answer("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ", show_alert=True)
+        await cq.answer("РЈР»РёС†Р° РЅРµ РЅР°Р№РґРµРЅР°", show_alert=True)
         return
     await state.update_data(street_id=street.id, street_name=street.name, street_manual=None)
     await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (1-10 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).")
+    await cq.message.edit_text("Р’РІРµРґРёС‚Рµ РґРѕРј (1вЂ“10 СЃРёРјРІРѕР»РѕРІ).")
     await cq.answer()
 
 
@@ -1624,11 +1789,11 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
 async def new_order_house(msg: Message, state: FSMContext) -> None:
     value = msg.text.strip()
     if not (1 <= len(value) <= 10):
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ 1 пїЅпїЅ 10 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("Р’РІРµРґРёС‚Рµ РѕС‚ 1 РґРѕ 10 СЃРёРјРІРѕР»РѕРІ.")
         return
     await state.update_data(house=value)
     await state.set_state(NewOrderFSM.apartment)
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ '-' пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).")
+    await msg.answer("Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РєРІР°СЂС‚РёСЂС‹ (РёР»Рё '-' С‡С‚РѕР±С‹ РїСЂРѕРїСѓСЃС‚РёС‚СЊ).")
 
 
 @router.message(StateFilter(NewOrderFSM.apartment))
@@ -1637,11 +1802,11 @@ async def new_order_apartment(msg: Message, state: FSMContext) -> None:
     if value == "-":
         value = ""
     if len(value) > 10:
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅ 10 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("РЎР»РёС€РєРѕРј РґР»РёРЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ. Р”Рѕ 10 СЃРёРјРІРѕР»РѕРІ.")
         return
     await state.update_data(apartment=value or None)
     await state.set_state(NewOrderFSM.address_comment)
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ '-' пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).")
+    await msg.answer("РљРѕРјРјРµРЅС‚Р°СЂРёР№ Рє Р°РґСЂРµСЃСѓ (РёР»Рё '-' С‡С‚РѕР±С‹ РїСЂРѕРїСѓСЃС‚РёС‚СЊ).")
 
 
 @router.message(StateFilter(NewOrderFSM.address_comment))
@@ -1651,25 +1816,25 @@ async def new_order_address_comment(msg: Message, state: FSMContext) -> None:
         value = ""
     await state.update_data(address_comment=value or None)
     await state.set_state(NewOrderFSM.client_name)
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (2-30 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).")
+    await msg.answer("Р’РІРµРґРёС‚Рµ Р¤Рћ РєР»РёРµРЅС‚Р° (2вЂ“30 СЃРёРјРІРѕР»РѕРІ, РєРёСЂРёР»Р»РёС†Р°).")
 
 
 @router.message(StateFilter(NewOrderFSM.client_name))
 async def new_order_client_name(msg: Message, state: FSMContext) -> None:
     value = msg.text.strip()
     if not _validate_name(value):
-        await msg.answer("пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ 2-30 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("РјСЏ РґРѕР»Р¶РЅРѕ СЃРѕРґРµСЂР¶Р°С‚СЊ 2вЂ“30 СЃРёРјРІРѕР»РѕРІ (РєРёСЂРёР»Р»РёС†Р°, РїСЂРѕР±РµР»С‹ Рё С‚РёСЂРµ).")
         return
     await state.update_data(client_name=value)
     await state.set_state(NewOrderFSM.client_phone)
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (+7XXXXXXXXXX пїЅпїЅпїЅ 8XXXXXXXXXX).")
+    await msg.answer("Р’РІРµРґРёС‚Рµ С‚РµР»РµС„РѕРЅ РєР»РёРµРЅС‚Р° (+7XXXXXXXXXX РёР»Рё 8XXXXXXXXXX).")
 
 
 @router.message(StateFilter(NewOrderFSM.client_phone))
 async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
     raw = _normalize_phone(msg.text)
     if not _validate_phone(raw):
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅ: +71234567890 пїЅпїЅпїЅ 81234567890.")
+        await msg.answer("РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ С‚РµР»РµС„РѕРЅР°. РџСЂРёРјРµСЂ: +71234567890 РёР»Рё 81234567890.")
         return
     await state.update_data(client_phone=raw)
     await state.set_state(NewOrderFSM.category)
@@ -1679,22 +1844,23 @@ async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
     for category, label in CATEGORY_CHOICES:
         kb.button(text=label, callback_data=f"adm:new:cat:{category.value}")
     kb.adjust(2)
-    await msg.answer("Выберите категорию заявки:", reply_markup=kb.as_markup())
+    await msg.answer("Р’С‹Р±РµСЂРёС‚Рµ РєР°С‚РµРіРѕСЂРёСЋ Р·Р°СЏРІРєРё:", reply_markup=kb.as_markup())
 
 
 @router.callback_query(F.data.startswith("adm:new:cat:"), StateFilter(NewOrderFSM.category))
 async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
-    raw = cq.data.split(":")[2]
+    # adm:new:cat:{value}
+    raw = cq.data.split(":")[3]
     category = normalize_category(raw)
     if category is None:
-        await cq.answer("Неизвестная категория", show_alert=True)
+        await cq.answer("РќРµРёР·РІРµСЃС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ", show_alert=True)
         return
     await state.update_data(
         category=category,
         category_label=CATEGORY_LABELS.get(category, CATEGORY_LABELS_BY_VALUE.get(raw, raw)),
     )
     await state.set_state(NewOrderFSM.description)
-    await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (10-500 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ).")
+    await cq.message.edit_text("Р’РІРµРґРёС‚Рµ РѕРїРёСЃР°РЅРёРµ Р·Р°СЏРІРєРё (10вЂ“500 СЃРёРјРІРѕР»РѕРІ).")
     await cq.answer()
 
 
@@ -1702,12 +1868,12 @@ async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
 async def new_order_description(msg: Message, state: FSMContext) -> None:
     text = msg.text.strip()
     if not (10 <= len(text) <= 500):
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ 10 пїЅпїЅ 500 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("Р’РІРµРґРёС‚Рµ РѕС‚ 10 РґРѕ 500 СЃРёРјРІРѕР»РѕРІ.")
         return
     await state.update_data(description=text)
     await state.set_state(NewOrderFSM.attachments)
     await msg.answer(
-        "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'.",
+        "РћС‚РїСЂР°РІСЊС‚Рµ РІР»РѕР¶РµРЅРёСЏ (С„РѕС‚Рѕ/РґРѕРєСѓРјРµРЅС‚С‹) РёР»Рё РЅР°Р¶РјРёС‚Рµ 'РџСЂРѕРґРѕР»Р¶РёС‚СЊ'.",
         reply_markup=new_order_attachments_keyboard(False),
     )
 
@@ -1715,7 +1881,7 @@ async def new_order_description(msg: Message, state: FSMContext) -> None:
 @router.callback_query(F.data == "adm:new:att:add", StateFilter(NewOrderFSM.attachments))
 async def cb_new_order_att_add(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.attachments)
-    await cq.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
+    await cq.answer("РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р… РїС—Р…РїС—Р…РїС—Р…РїС—Р… РїС—Р…РїС—Р…РїС—Р… РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р… РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…")
 
 
 @router.callback_query(F.data == "adm:new:att:clear", StateFilter(NewOrderFSM.attachments))
@@ -1725,7 +1891,7 @@ async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(**data)
     await state.set_state(NewOrderFSM.attachments)
     await cq.message.edit_text(
-        "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+        "Р’Р»РѕР¶РµРЅРёСЏ РѕС‡РёС‰РµРЅС‹. РњРѕР¶РЅРѕ РѕС‚РїСЂР°РІРёС‚СЊ РЅРѕРІС‹Рµ С„Р°Р№Р»С‹.",
         reply_markup=new_order_attachments_keyboard(False),
     )
     await cq.answer()
@@ -1735,7 +1901,7 @@ async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
 async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
     attachments = _attachments_from_state(await state.get_data())
     if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ РІР»РѕР¶РµРЅРёР№. РЈРґР°Р»РёС‚Рµ Р»РёС€РЅРёРµ С„Р°Р№Р»С‹.")
         return
     photo = msg.photo[-1]
     attachments.append(
@@ -1750,7 +1916,7 @@ async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
     )
     await state.update_data(attachments=attachments)
     await msg.answer(
-        f"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {len(attachments)}.",
+        f"Р¤РѕС‚Рѕ РґРѕР±Р°РІР»РµРЅРѕ. Р’СЃРµРіРѕ РІР»РѕР¶РµРЅРёР№: {len(attachments)}.",
         reply_markup=new_order_attachments_keyboard(True),
     )
 
@@ -1759,7 +1925,7 @@ async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
 async def new_order_attach_doc(msg: Message, state: FSMContext) -> None:
     attachments = _attachments_from_state(await state.get_data())
     if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ РІР»РѕР¶РµРЅРёР№. РЈРґР°Р»РёС‚Рµ Р»РёС€РЅРёРµ С„Р°Р№Р»С‹.")
         return
     doc = msg.document
     attachments.append(
@@ -1774,7 +1940,7 @@ async def new_order_attach_doc(msg: Message, state: FSMContext) -> None:
     )
     await state.update_data(attachments=attachments)
     await msg.answer(
-        f"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {len(attachments)}.",
+        f"Р¤Р°Р№Р» РґРѕР±Р°РІР»РµРЅ. Р’СЃРµРіРѕ РІР»РѕР¶РµРЅРёР№: {len(attachments)}.",
         reply_markup=new_order_attachments_keyboard(True),
     )
 @router.callback_query(F.data == "adm:new:att:done", StateFilter(NewOrderFSM.attachments))
@@ -1783,16 +1949,17 @@ async def cb_new_order_att_done(cq: CallbackQuery, state: FSMContext) -> None:
     from aiogram.utils.keyboard import InlineKeyboardBuilder
 
     kb = InlineKeyboardBuilder()
-    kb.button(text="пїЅпїЅпїЅпїЅпїЅпїЅпїЅ", callback_data="adm:new:type:NORMAL")
-    kb.button(text="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", callback_data="adm:new:type:GUARANTEE")
+    kb.button(text="РћР±С‹С‡РЅР°СЏ", callback_data="adm:new:type:NORMAL")
+    kb.button(text="Р“Р°СЂР°РЅС‚РёР№РЅР°СЏ", callback_data="adm:new:type:GUARANTEE")
     kb.adjust(2)
-    await cq.message.edit_text("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ:", reply_markup=kb.as_markup())
+    await cq.message.edit_text("Р’С‹Р±РµСЂРёС‚Рµ С‚РёРї Р·Р°СЏРІРєРё:", reply_markup=kb.as_markup())
     await cq.answer()
 
 
 @router.callback_query(F.data.startswith("adm:new:type:"), StateFilter(NewOrderFSM.order_type))
 async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
-    code = cq.data.split(":")[2]
+    # adm:new:type:{code}
+    code = cq.data.split(":")[3]
     await state.update_data(
         order_type=code,
         company_payment=2500 if code == "GUARANTEE" else 0,
@@ -1802,35 +1969,37 @@ async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("????? ?? ??????", show_alert=True)
+        await cq.answer("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ РіРѕСЂРѕРґ.", show_alert=True)
         return
     tz = await _resolve_city_timezone(cq.message.bot, city_id)
     workday_start, workday_end = await _resolve_workday_window()
     now_local = time_service.now_in_city(tz)
     options = _slot_options(now_local, workday_start=workday_start, workday_end=workday_end)
+    options = [(k, _maybe_fix_mojibake(lbl)) for (k, lbl) in options]
     await state.update_data(
         slot_options=options,
         city_timezone=_zone_storage_value(tz),
         pending_asap=False,
     )
     keyboard = new_order_slot_keyboard(options)
-    await cq.message.edit_text("???????? ????:", reply_markup=keyboard)
+    await cq.message.edit_text("Р’С‹Р±РµСЂРёС‚Рµ СЃР»РѕС‚:", reply_markup=keyboard)
     await cq.answer()
 
 
 @router.callback_query(F.data.startswith("adm:new:slot:"), StateFilter(NewOrderFSM.slot))
 async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
-    key = cq.data.split(":")[2]
+    # adm:new:slot:{key}
+    key = ":".join(cq.data.split(":")[3:])
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("????? ?? ??????", show_alert=True)
+        await cq.answer("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ РіРѕСЂРѕРґ.", show_alert=True)
         return
     await state.set_state(NewOrderFSM.slot)
     options = data.get("slot_options") or []
     valid_keys = {item[0] for item in options}
     if key not in valid_keys:
-        await cq.answer("???? ??????????", show_alert=True)
+        await cq.answer("РќРµРІРµСЂРЅС‹Р№ РІС‹Р±РѕСЂ СЃР»РѕС‚Р°", show_alert=True)
         return
     tz_value = data.get("city_timezone")
     if tz_value:
@@ -1851,7 +2020,7 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
             await state.update_data(pending_asap=True)
             await state.set_state(NewOrderFSM.slot)
             await cq.message.edit_text(
-                "ASAP ????? 19:30. ????????? ?? ?????? 10-13?",
+                "ASAP РїРѕР·Р¶Рµ 19:30. Р’С‹Р±СЂР°С‚СЊ Р·Р°РІС‚СЂР° 10вЂ“13?",
                 reply_markup=new_order_asap_late_keyboard(),
             )
             await cq.answer()
@@ -1877,13 +2046,14 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
             workday_start=workday_start,
             workday_end=workday_end,
         )
+        refreshed_options = [(k, _maybe_fix_mojibake(lbl)) for (k, lbl) in refreshed_options]
         await state.update_data(slot_options=refreshed_options, pending_asap=False, initial_status=None)
         await state.set_state(NewOrderFSM.slot)
         await cq.message.edit_text(
-            "???? ??????????. ???????? ?????? ????:",
+            "РЎР»РѕС‚ СѓСЃС‚Р°СЂРµР». Р’С‹Р±РµСЂРёС‚Рµ РІР°СЂРёР°РЅС‚ СЃРЅРѕРІР°:",
             reply_markup=new_order_slot_keyboard(refreshed_options),
         )
-        await cq.answer("???? ??????????, ???????? ??????", show_alert=True)
+        await cq.answer("РЎР»РѕС‚ СѓСЃС‚Р°СЂРµР», РІС‹Р±РµСЂРёС‚Рµ СЃРЅРѕРІР°", show_alert=True)
         return
     await cq.answer()
 
@@ -1892,7 +2062,7 @@ async def cb_new_order_slot_lateok(cq: CallbackQuery, state: FSMContext) -> None
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("????? ?? ??????", show_alert=True)
+        await cq.answer("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ РіРѕСЂРѕРґ.", show_alert=True)
         return
     tz_value = data.get("city_timezone")
     if tz_value:
@@ -1918,7 +2088,7 @@ async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("????? ?? ??????", show_alert=True)
+        await cq.answer("РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ РіРѕСЂРѕРґ.", show_alert=True)
         return
     await state.set_state(NewOrderFSM.slot)
     tz_value = data.get("city_timezone")
@@ -1933,26 +2103,34 @@ async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None
         workday_start=workday_start,
         workday_end=workday_end,
     )
+    options = [(k, _maybe_fix_mojibake(lbl)) for (k, lbl) in options]
     await state.update_data(slot_options=options, pending_asap=False, initial_status=None)
-    await cq.message.edit_text("???????? ????:", reply_markup=new_order_slot_keyboard(options))
+    await cq.message.edit_text("Р’С‹Р±РµСЂРёС‚Рµ СЃР»РѕС‚:", reply_markup=new_order_slot_keyboard(options))
     await cq.answer()
 
 
 
 @router.callback_query(F.data == "adm:new:confirm", StateFilter(NewOrderFSM.confirm))
-async def cb_new_order_confirm(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: StaffUser | None = None) -> None:
+    # Be robust if middleware didn't inject staff for some reason
+    if staff is None:
+        staff_service = _staff_service(cq.message.bot)
+        staff = await staff_service.get_by_tg_id(cq.from_user.id if cq.from_user else 0)
+        if staff is None:
+            await cq.answer("РќРµС‚ РґРѕСЃС‚СѓРїР°", show_alert=True)
+            return
     data = await state.get_data()
     try:
         new_order = _build_new_order_data(data, staff)
     except KeyError:
         await state.clear()
-        await cq.answer("пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ", show_alert=True)
+        await cq.answer("РќРµ С…РІР°С‚Р°РµС‚ РґР°РЅРЅС‹С… РґР»СЏ СЃРѕР·РґР°РЅРёСЏ Р·Р°СЏРІРєРё, РїРѕРїСЂРѕР±СѓР№С‚Рµ Р·Р°РЅРѕРІРѕ", show_alert=True)
         return
     orders_service = _orders_service(cq.message.bot)
     order_id = await orders_service.create_order(new_order)
     await state.clear()
-    await cq.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
-    await _render_order_card(cq.message, order_id, staff)
+    await cq.answer("Р—Р°СЏРІРєР° СЃРѕР·РґР°РЅР°")
+    await _render_created_order_card(cq.message, order_id, staff)
 
 
 
@@ -1964,7 +2142,7 @@ async def cb_new_order_confirm(cq: CallbackQuery, staff: StaffUser, state: FSMCo
 )
 async def cb_settings_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     await cq.message.edit_text(
-        "<b>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ</b>\nпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.",
+        "<b>РќР°СЃС‚СЂРѕР№РєРё</b>\nР’С‹Р±РµСЂРёС‚Рµ РіСЂСѓРїРїСѓ РЅР°СЃС‚СЂРѕРµРє РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ.",
         reply_markup=settings_menu_keyboard(),
     )
     await cq.answer()
@@ -1979,7 +2157,7 @@ async def cb_settings_group(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         view_text, keyboard = await _build_settings_view(cq.message.bot, group_key)
     except KeyError:
-        await cq.answer("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", show_alert=True)
+        await cq.answer("РќРµРёР·РІРµСЃС‚РЅР°СЏ РіСЂСѓРїРїР° РЅР°СЃС‚СЂРѕРµРє", show_alert=True)
         return
     await cq.message.edit_text(
         view_text,
@@ -1998,13 +2176,13 @@ async def cb_settings_edit_start(
 ) -> None:
     parts = cq.data.split(":")
     if len(parts) != 5:
-        await cq.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ", show_alert=True)
+        await cq.answer("РќРµРєРѕСЂСЂРµРєС‚РЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹", show_alert=True)
         return
     _, _, _, group_key, field_key = parts
     try:
         field = _get_setting_field(field_key)
     except KeyError:
-        await cq.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ", show_alert=True)
+        await cq.answer("РќРµРёР·РІРµСЃС‚РЅРѕРµ РїРѕР»Рµ РЅР°СЃС‚СЂРѕР№РєРё", show_alert=True)
         return
 
     service = _settings_service(cq.message.bot)
@@ -2031,7 +2209,7 @@ async def cb_settings_edit_start(
 )
 async def settings_edit_cancel(msg: Message, state: FSMContext) -> None:
     await state.clear()
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+    await msg.answer("Р·РјРµРЅРµРЅРёРµ РѕС‚РјРµРЅРµРЅРѕ.")
 
 
 @router.message(
@@ -2049,20 +2227,18 @@ async def settings_edit_value(
 
     if not field_key or not group_key or source_chat_id is None or source_message_id is None:
         await state.clear()
-        await msg.answer(
-            "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ."
-        )
+        await msg.answer("РЎРѕСЃС‚РѕСЏРЅРёРµ СѓСЃС‚Р°СЂРµР»Рѕ. РџРѕРІС‚РѕСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ.")
         return
 
     try:
         field = _get_setting_field(field_key)
     except KeyError:
         await state.clear()
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("РќРµРёР·РІРµСЃС‚РЅРѕРµ РїРѕР»Рµ РЅР°СЃС‚СЂРѕР№РєРё.")
         return
 
     if not msg.text:
-        await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+        await msg.answer("РћС‚РїСЂР°РІСЊС‚Рµ Р·РЅР°С‡РµРЅРёРµ С‚РµРєСЃС‚РѕРј.")
         return
 
     try:
@@ -2074,7 +2250,7 @@ async def settings_edit_value(
     service = _settings_service(msg.bot)
     await service.set_value(field.key, value, value_type=value_type)
     await state.clear()
-    await msg.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.")
+    await msg.answer("РќР°СЃС‚СЂРѕР№РєР° СЃРѕС…СЂР°РЅРµРЅР°.")
 
     try:
         view_text, keyboard = await _build_settings_view(msg.bot, group_key)
@@ -2135,18 +2311,5 @@ async def cb_logs_clear(cq: CallbackQuery, staff: StaffUser) -> None:
         reply_markup=keyboard,
         disable_web_page_preview=True,
     )
-    await cq.answer("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
-
-
-
-
-
-
-
-
-
-
-
-
-
+    await cq.answer("Р“РѕС‚РѕРІРѕ")
 

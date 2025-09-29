@@ -78,7 +78,8 @@ def setup_error_middleware(
         logs_chat_id=logs_chat_id,
         alerts_chat_id=alerts_chat_id,
     )
-    dp.errors.register(handler)
+    # Register a bound coroutine function explicitly to avoid un-awaited coroutine warnings
+    dp.errors.register(handler.__call__)
 
 
 def _detect_update_type(update: Update | TelegramObject | None) -> str:

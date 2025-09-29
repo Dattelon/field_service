@@ -16,9 +16,9 @@ from ..utils import inline_keyboard
 router = Router(name='master_referral')
 
 REFERRAL_STATUS_LABELS = {
-    m.ReferralRewardStatus.ACCRUED.value: 'Начислено',
-    m.ReferralRewardStatus.PAID.value: 'Выплачено',
-    m.ReferralRewardStatus.CANCELED.value: 'Отменено',
+    m.ReferralRewardStatus.ACCRUED.value: '',
+    m.ReferralRewardStatus.PAID.value: '',
+    m.ReferralRewardStatus.CANCELED.value: '',
 }
 
 
@@ -88,40 +88,40 @@ async def _render_referrals(
         bucket['amount'] = Decimal(total or 0)
 
     total_amount = level_stats[1]['amount'] + level_stats[2]['amount']
-    lines: list[str] = ["Реферальная программа"]
+    lines: list[str] = [" "]
     if referral_code:
-        lines.append(f"Ваш код: {referral_code}")
+        lines.append(f" : {referral_code}")
     else:
-        lines.append("Реферальный код пока не выдан.")
-    lines.append("Начисления: L1 — 10%, L2 — 5%")
+        lines.append("    .")
+    lines.append(": L1  10%, L2  5%")
     lines.append('')
     for level in (1, 2):
         bucket = level_stats[level]
         lines.append(
-            f"Уровень {level}: {bucket['count']} начислений, {bucket['amount']:.2f} ₽"
+            f" {level}: {bucket['count']} , {bucket['amount']:.2f} "
         )
     lines.append('')
-    lines.append(f"Всего начислено: {total_amount:.2f} ₽")
+    lines.append(f" : {total_amount:.2f} ")
 
     if latest:
         lines.append('')
-        lines.append("Последние начисления:")
+        lines.append(" :")
         for row in latest:
             level, amount, created_at, status, commission_id, order_id = row
             amount_dec = Decimal(amount or 0)
             status_key = getattr(status, 'value', status)
             status_label = REFERRAL_STATUS_LABELS.get(status_key, status_key)
-            order_hint = f"комиссия №{commission_id}"
+            order_hint = f" {commission_id}"
             if order_id is not None:
-                order_hint += f", заказ №{order_id}"
+                order_hint += f",  {order_id}"
             lines.append(
-                f"{created_at:%d.%m %H:%M} - L{int(level)} - {amount_dec:.2f} ₽ - {status_label} ({order_hint})"
+                f"{created_at:%d.%m %H:%M} - L{int(level)} - {amount_dec:.2f}  - {status_label} ({order_hint})"
             )
     else:
         lines.append('')
-        lines.append("Начислений ещё не было.")
+        lines.append("   .")
 
-    markup = inline_keyboard([[InlineKeyboardButton(text='Меню', callback_data='m:menu')]])
+    markup = inline_keyboard([[InlineKeyboardButton(text='', callback_data='m:menu')]])
     await _respond(event, "\n".join(lines), markup)
 
 
@@ -130,15 +130,15 @@ async def _render_support(event: Message | CallbackQuery, session: AsyncSession)
     contact = (raw_values.get("support_contact", (None, None))[0] or '').strip()
     faq_url = (raw_values.get("support_faq_url", (None, None))[0] or '').strip()
 
-    lines = ["Поддержка"]
+    lines = [""]
     lines.append('')
-    lines.append(f"Контакт: {contact or 'не указан'}")
+    lines.append(f": {contact or ' '}")
     if faq_url and faq_url != '-':
         lines.append(f"FAQ: {faq_url}")
     else:
-        lines.append("FAQ: не указан")
+        lines.append("FAQ:  ")
 
-    markup = inline_keyboard([[InlineKeyboardButton(text='Меню', callback_data='m:menu')]])
+    markup = inline_keyboard([[InlineKeyboardButton(text='', callback_data='m:menu')]])
     await _respond(event, "\n".join(lines), markup)
 
 

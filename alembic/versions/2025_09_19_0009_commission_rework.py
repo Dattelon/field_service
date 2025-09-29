@@ -11,11 +11,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # 1) Расширяем ENUM commission_status
+    # 1)  ENUM commission_status
     op.execute("ALTER TYPE commission_status ADD VALUE IF NOT EXISTS 'WAIT_PAY'")
     op.execute("ALTER TYPE commission_status ADD VALUE IF NOT EXISTS 'REPORTED'")
     op.execute("ALTER TYPE commission_status ADD VALUE IF NOT EXISTS 'APPROVED'")
-    # 2) Добавляем поля в commissions
+    # 2)    commissions
     op.add_column("commissions", sa.Column("rate", sa.Numeric(5, 2)))
     op.add_column(
         "commissions", sa.Column("paid_reported_at", sa.DateTime(timezone=True))
@@ -42,8 +42,8 @@ def upgrade() -> None:
             "pay_to_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=True
         ),
     )
-    # совместимость: переименовывать старые статусы не обязательно — конвертируем значения
-    # индексы под выборки
+    # :        
+    #   
     op.create_index("ix_commissions__ispaid_due", "commissions", ["is_paid", "due_at"])
 
 
@@ -56,4 +56,4 @@ def downgrade() -> None:
     op.drop_column("commissions", "paid_approved_at")
     op.drop_column("commissions", "paid_reported_at")
     op.drop_column("commissions", "rate")
-    # откаты ENUMов не выполняем (риск), значения останутся; код назад совместим
+    #  ENUM   (),  ;   

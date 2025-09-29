@@ -188,7 +188,7 @@ async def test_cb_queue_return_success() -> None:
 
     assert service.return_calls == [(1, staff.id)]
     assert message.edited, "order card was not re-rendered"
-    assert callback.answers[-1] == ("Заявка возвращена в поиск", False)
+    assert callback.answers[-1] == ("   ", False)
     assert any(btn.callback_data == "adm:q:cnl:1" for row in message.reply_markup.inline_keyboard for btn in row)
 
 
@@ -204,7 +204,7 @@ async def test_cb_queue_return_denied_for_city() -> None:
     await queue.cb_queue_return(callback, staff)
 
     assert service.return_calls == []
-    assert callback.answers[-1] == ("Нет доступа к заявке", True)
+    assert callback.answers[-1] == ("   ", True)
     assert not message.edited
 
 
@@ -241,16 +241,16 @@ async def test_queue_cancel_reason_success_updates_card() -> None:
         queue.CANCEL_CHAT_KEY: 100,
         queue.CANCEL_MESSAGE_KEY: 555,
     }, state=QueueActionFSM.cancel_reason.state)
-    message = StubMessage(bot, text="Нужно отменить")
+    message = StubMessage(bot, text=" ")
     staff = StaffUser(id=5, tg_id=5, role=StaffRole.GLOBAL_ADMIN, is_active=True, city_ids=frozenset({1}))
 
     await queue.queue_cancel_reason(message, staff, state)
 
-    assert service.cancel_calls == [(1, "Нужно отменить", staff.id)]
+    assert service.cancel_calls == [(1, " ", staff.id)]
     assert state._state is None
     assert queue.CANCEL_ORDER_KEY not in state._data
     assert bot.edited, "card was not re-rendered"
-    assert message.answered[-1][0] == "Заявка отменена."
+    assert message.answered[-1][0] == " ."
 
 
 @pytest.mark.asyncio
@@ -270,7 +270,7 @@ async def test_queue_cancel_reason_rejects_short_text() -> None:
 
     assert service.cancel_calls == []
     assert state._state == QueueActionFSM.cancel_reason.state
-    assert message.answered[-1][0].startswith("Причина должна содержать")
+    assert message.answered[-1][0].startswith("  ")
     assert not bot.edited
 
 
@@ -293,7 +293,7 @@ async def test_queue_cancel_abort_restores_card() -> None:
     assert state._state is None
     assert queue.CANCEL_ORDER_KEY not in state._data
     assert bot.edited, "Card was not restored"
-    assert message.answered[-1][0] == "Отмена действия."
+    assert message.answered[-1][0] == " ."
 
 
 @pytest.mark.asyncio
@@ -307,12 +307,12 @@ async def test_queue_cancel_reason_service_failure() -> None:
         queue.CANCEL_CHAT_KEY: 100,
         queue.CANCEL_MESSAGE_KEY: 555,
     }, state=QueueActionFSM.cancel_reason.state)
-    message = StubMessage(bot, text="Причина")
+    message = StubMessage(bot, text="")
     staff = StaffUser(id=8, tg_id=8, role=StaffRole.GLOBAL_ADMIN, is_active=True, city_ids=frozenset({1}))
 
     await queue.queue_cancel_reason(message, staff, state)
 
-    assert service.cancel_calls == [(1, "Причина", staff.id)]
-    assert message.answered[-1][0] == "Не удалось отменить заявку."
-    assert bot.edited, "Карточка должна быть обновлена"
+    assert service.cancel_calls == [(1, "", staff.id)]
+    assert message.answered[-1][0] == "   ."
+    assert bot.edited, "   "
     assert state._state is None

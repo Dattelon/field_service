@@ -125,7 +125,7 @@ async def test_onboarding_validations(async_session) -> None:
     record = await validate_access_code(async_session, "ABC123")
     assert record.id == invite.id
 
-    parts = parse_name("Иванов Иван Иванович")
+    parts = parse_name("  ")
     phone = normalize_phone("8 (999) 123-45-67")
 
     master.full_name = " ".join(
@@ -137,7 +137,7 @@ async def test_onboarding_validations(async_session) -> None:
 
     refreshed = await async_session.get(m.masters, master.id)
     assert refreshed is not None
-    assert refreshed.full_name == "Иванов Иван Иванович"
+    assert refreshed.full_name == "  "
     assert refreshed.phone == "+79991234567"
 
     updated_invite = await async_session.get(m.master_invite_codes, invite.id)
