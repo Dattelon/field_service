@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone, timedelta
 from zoneinfo import ZoneInfo
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import json
+import logging
 import secrets
 import string
 from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
@@ -59,6 +60,7 @@ from .dto import (
 from .normalizers import normalize_category, normalize_status
 
 UTC = timezone.utc
+logger = logging.getLogger(__name__)
 PAYMENT_METHOD_LABELS = {
     "card": "💳 Карта",
     "sbp": "СБП",
@@ -119,6 +121,19 @@ QUEUE_STATUSES = {
     m.OrderStatus.PAYMENT,
     m.OrderStatus.GUARANTEE,
 }
+
+ACTIVE_ORDER_STATUSES = (
+    m.OrderStatus.ASSIGNED,
+    m.OrderStatus.EN_ROUTE,
+    m.OrderStatus.WORKING,
+    m.OrderStatus.PAYMENT,
+)
+
+AVG_CHECK_STATUSES = (
+    m.OrderStatus.WORKING,
+    m.OrderStatus.PAYMENT,
+    m.OrderStatus.CLOSED,
+)
 
 
 @dataclass(slots=True)
@@ -1972,83 +1987,232 @@ class DBMastersService:
     def __init__(self, session_factory=SessionLocal) -> None:
         self._session_factory = session_factory
 
+    async def list_active_skills(self) -> list[dict[str, object]]:
+        async with self._session_factory() as session:
+            rows = await session.execute(
+                select(m.skills.id, m.skills.code, m.skills.name)
+                .where(m.skills.is_active.is_(True))
+                .order_by(m.skills.name.asc())
+            )
+            skills: list[dict[str, object]] = []
+            for skill_id, code, name in rows.all():
+                label = str(name or code or skill_id)
+                skills.append(
+                    {
+                        "id": int(skill_id),
+                        "code": str(code or skill_id),
+                        "name": label,
+                    }
+                )
+            return skills
+
+    async def _get_default_master_limit(self, session: AsyncSession) -> int:
+        value = await session.scalar(
+            select(m.settings.value).where(m.settings.key == "max_active_orders")
+        )
+        try:
+            parsed = int(value)
+            if parsed > 0:
+                return parsed
+        except (TypeError, ValueError):
+            pass
+        return 5
+
+    async def _log_admin_action(
+        self,
+        session: AsyncSession,
+        *,
+        admin_id: int,
+        master_id: int,
+        action: str,
+        payload: Mapping[str, Any] | None = None,
+    ) -> None:
+        try:
+            payload_json = dict(payload or {})
+        except Exception:
+            payload_json = {"raw": str(payload)}
+        await session.execute(
+            insert(m.admin_audit_log).values(
+                admin_id=admin_id or None,
+                master_id=master_id,
+                action=action,
+                payload_json=payload_json,
+            )
+        )
+
     async def list_masters(
         self,
         group: str,
         *,
         city_ids: Optional[Iterable[int]],
+        category: Optional[str],
         page: int,
         page_size: int,
-        search: Optional[str] = None,
     ) -> tuple[list[MasterListItem], bool]:
-        group_key = group.lower()
-        filters: list[Any] = []
+        group_key = (group or "ok").lower()
+        filters: list[Any] = [m.masters.is_deleted.is_(False)]
         if city_ids is not None:
             ids = [int(cid) for cid in city_ids]
             if not ids:
                 return [], False
             filters.append(m.masters.city_id.in_(ids))
-        if search:
-            like = f"%{search.lower()}%"
-            filters.append(
-                func.lower(m.masters.full_name).like(like)
-                | func.lower(func.coalesce(m.masters.phone, '')).like(like)
-            )
-        if group_key == "pending":
-            filters.append(m.masters.moderation_status == m.ModerationStatus.PENDING)
-        elif group_key == "approved":
-            filters.append(m.masters.moderation_status == m.ModerationStatus.APPROVED)
-            filters.append(m.masters.is_blocked.is_(False))
-        elif group_key == "blocked":
-            filters.append(m.masters.is_blocked.is_(True))
+
+        if group_key in {"mod", "pending"}:
+            filters.append(m.masters.verified.is_(False))
+        elif group_key in {"blk", "blocked"}:
+            filters.append(m.masters.is_active.is_(False))
         else:
-            filters.append(m.masters.moderation_status == m.ModerationStatus.APPROVED)
+            filters.append(m.masters.verified.is_(True))
+            if group_key in {"ok", "approved"}:
+                filters.append(m.masters.is_active.is_(True))
+
+        category_value = (category or "").strip()
+        if category_value and category_value.lower() != "all":
+            skill_query = (
+                select(m.master_skills.master_id)
+                .join(m.skills, m.skills.id == m.master_skills.skill_id)
+                .where(
+                    m.master_skills.master_id == m.masters.id,
+                    m.skills.is_active.is_(True),
+                )
+            )
+            if category_value.isdigit():
+                skill_query = skill_query.where(
+                    m.master_skills.skill_id == int(category_value)
+                )
+            else:
+                skill_query = skill_query.where(
+                    func.lower(m.skills.code) == category_value.lower()
+                )
+            filters.append(skill_query.exists())
 
         offset = max(page - 1, 0) * page_size
         async with self._session_factory() as session:
+            default_limit = await self._get_default_master_limit(session)
+            active_orders_subq = (
+                select(
+                    m.orders.assigned_master_id.label("master_id"),
+                    func.count(m.orders.id).label("cnt"),
+                )
+                .where(m.orders.status.in_(ACTIVE_ORDER_STATUSES))
+                .group_by(m.orders.assigned_master_id)
+                .subquery()
+            )
+            avg_check_subq = (
+                select(
+                    m.orders.assigned_master_id.label("master_id"),
+                    func.avg(m.orders.total_sum).label("avg_check"),
+                )
+                .where(
+                    m.orders.status.in_(AVG_CHECK_STATUSES),
+                    m.orders.assigned_master_id.is_not(None),
+                )
+                .group_by(m.orders.assigned_master_id)
+                .subquery()
+            )
+            skills_subq = (
+                select(
+                    m.master_skills.master_id.label("master_id"),
+                    func.array_agg(func.distinct(m.skills.name)).label("skills"),
+                )
+                .join(m.skills, m.skills.id == m.master_skills.skill_id)
+                .where(m.skills.is_active.is_(True))
+                .group_by(m.master_skills.master_id)
+                .subquery()
+            )
+
             stmt = (
                 select(
                     m.masters.id,
                     m.masters.full_name,
-                    m.masters.phone,
-                    m.cities.name.label('city_name'),
-                    m.masters.moderation_status,
+                    m.cities.name.label("city_name"),
+                    m.masters.rating,
+                    m.masters.has_vehicle,
+                    m.masters.is_on_shift,
+                    m.masters.shift_status,
+                    m.masters.break_until,
                     m.masters.verified,
                     m.masters.is_active,
-                    m.masters.is_blocked,
-                    m.masters.created_at,
+                    m.masters.is_deleted,
+                    m.masters.max_active_orders_override,
+                    active_orders_subq.c.cnt,
+                    avg_check_subq.c.avg_check,
+                    skills_subq.c.skills,
                 )
                 .select_from(m.masters)
                 .join(m.cities, m.masters.city_id == m.cities.id, isouter=True)
+                .join(
+                    active_orders_subq,
+                    active_orders_subq.c.master_id == m.masters.id,
+                    isouter=True,
+                )
+                .join(
+                    avg_check_subq,
+                    avg_check_subq.c.master_id == m.masters.id,
+                    isouter=True,
+                )
+                .join(
+                    skills_subq,
+                    skills_subq.c.master_id == m.masters.id,
+                    isouter=True,
+                )
                 .where(*filters)
-                .order_by(m.masters.created_at.desc())
+                .order_by(m.masters.full_name.asc())
                 .offset(offset)
                 .limit(page_size + 1)
             )
-            rows = await session.execute(stmt)
-            fetched = rows.all()
-        has_next = len(fetched) > page_size
+            rows = (await session.execute(stmt)).all()
+
+        now_utc = datetime.now(UTC)
         items: list[MasterListItem] = []
-        for row in fetched[:page_size]:
-            created_at_local = _format_created_at(row.created_at)
-            moderation_status = (
-                row.moderation_status.value
-                if hasattr(row.moderation_status, 'value')
-                else str(row.moderation_status)
+        for row in rows[:page_size]:
+            shift_status_value = (
+                row.shift_status.value
+                if hasattr(row.shift_status, "value")
+                else str(row.shift_status or "SHIFT_OFF")
             )
+            break_until = getattr(row, "break_until", None)
+            on_break = False
+            if break_until is not None:
+                if break_until.tzinfo is None:
+                    break_until = break_until.replace(tzinfo=UTC)
+                on_break = break_until > now_utc
+            if not on_break and shift_status_value.upper() == m.ShiftStatus.BREAK.value:
+                on_break = True
+
+            max_limit = row.max_active_orders_override
+            if max_limit is None or int(max_limit) <= 0:
+                max_limit = default_limit
+
+            avg_value = None
+            if row.avg_check is not None:
+                try:
+                    avg_value = Decimal(row.avg_check)
+                except (TypeError, InvalidOperation):
+                    avg_value = Decimal(str(row.avg_check))
+
+            skills = tuple(row.skills or ())
             items.append(
                 MasterListItem(
                     id=int(row.id),
-                    full_name=row.full_name or f" #{row.id}",
-                    phone=row.phone,
+                    full_name=row.full_name or f"#{row.id}",
                     city_name=row.city_name,
-                    moderation_status=moderation_status,
+                    skills=skills,
+                    rating=float(row.rating or 0),
+                    has_vehicle=bool(row.has_vehicle),
+                    is_on_shift=bool(row.is_on_shift),
+                    shift_status=shift_status_value,
+                    on_break=on_break,
                     verified=bool(row.verified),
                     is_active=bool(row.is_active),
-                    is_blocked=bool(row.is_blocked),
-                    created_at_local=created_at_local,
+                    is_deleted=bool(row.is_deleted),
+                    active_orders=int(row.cnt or 0),
+                    max_active_orders=int(max_limit) if max_limit is not None else None,
+                    avg_check=avg_value,
                 )
             )
+
+        has_next = len(rows) > page_size
         return items, has_next
 
     async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
@@ -2079,8 +2243,9 @@ class DBMastersService:
 
     async def get_master_detail(self, master_id: int) -> Optional[MasterDetail]:
         async with self._session_factory() as session:
+            default_limit = await self._get_default_master_limit(session)
             row = await session.execute(
-                select(m.masters, m.cities.name.label('city_name'))
+                select(m.masters, m.cities.name.label("city_name"))
                 .join(m.cities, m.masters.city_id == m.cities.id, isouter=True)
                 .where(m.masters.id == master_id)
             )
@@ -2089,6 +2254,42 @@ class DBMastersService:
                 return None
             master: m.masters = result.masters
             city_name = result.city_name
+
+            active_orders = await session.scalar(
+                select(func.count(m.orders.id)).where(
+                    (m.orders.assigned_master_id == master.id)
+                    & (m.orders.status.in_(ACTIVE_ORDER_STATUSES))
+                )
+            ) or 0
+
+            avg_check_value = await session.scalar(
+                select(func.avg(m.orders.total_sum)).where(
+                    (m.orders.assigned_master_id == master.id)
+                    & (m.orders.status.in_(AVG_CHECK_STATUSES))
+                )
+            )
+            if avg_check_value is not None:
+                try:
+                    avg_check = Decimal(avg_check_value)
+                except (TypeError, InvalidOperation):
+                    avg_check = Decimal(str(avg_check_value))
+            else:
+                avg_check = None
+
+            has_orders = bool(
+                await session.scalar(
+                    select(m.orders.id)
+                    .where(m.orders.assigned_master_id == master.id)
+                    .limit(1)
+                )
+            )
+            has_commissions = bool(
+                await session.scalar(
+                    select(m.commissions.id)
+                    .where(m.commissions.master_id == master.id)
+                    .limit(1)
+                )
+            )
 
             district_rows = await session.execute(
                 select(m.districts.name)
@@ -2119,42 +2320,55 @@ class DBMastersService:
                     m.attachments.file_id,
                     m.attachments.file_name,
                     m.attachments.caption,
+                    m.attachments.document_type,
                 )
                 .where(
                     (m.attachments.entity_type == m.AttachmentEntity.MASTER)
                     & (m.attachments.entity_id == master.id)
+                    & (
+                        (m.attachments.document_type.in_(["passport", "selfie"]))
+                        | (m.attachments.document_type.is_(None))
+                    )
                 )
                 .order_by(m.attachments.created_at.asc())
             )
             documents = tuple(
                 MasterDocument(
                     id=int(doc.id),
-                    file_type=str(doc.file_type),
+                    file_type=str(getattr(doc.file_type, "value", doc.file_type)),
                     file_id=doc.file_id,
                     file_name=doc.file_name,
                     caption=doc.caption,
+                    document_type=doc.document_type,
                 )
                 for doc in doc_rows
             )
 
             moderation_status = (
                 master.moderation_status.value
-                if hasattr(master.moderation_status, 'value')
+                if hasattr(master.moderation_status, "value")
                 else str(master.moderation_status)
             )
             shift_status = (
                 master.shift_status.value
-                if getattr(master, 'shift_status', None) is not None
-                else 'UNKNOWN'
+                if getattr(master, "shift_status", None) is not None
+                else "UNKNOWN"
             )
             payout_method = (
                 master.payout_method.value
-                if getattr(master, 'payout_method', None) is not None
+                if getattr(master, "payout_method", None) is not None
                 else None
             )
             created_at_local = _format_created_at(master.created_at)
             updated_at_local = _format_datetime_local(master.updated_at) or created_at_local
             blocked_at_local = _format_datetime_local(master.blocked_at)
+            verified_at_local = _format_datetime_local(getattr(master, "verified_at", None))
+            moderation_reason = getattr(master, "moderation_reason", None) or getattr(
+                master, "moderation_note", None
+            )
+            current_limit = master.max_active_orders_override
+            if current_limit is None or int(current_limit) <= 0:
+                current_limit = default_limit
 
             return MasterDetail(
                 id=master.id,
@@ -2163,21 +2377,29 @@ class DBMastersService:
                 city_id=master.city_id,
                 city_name=city_name,
                 rating=float(master.rating or 0),
-                has_vehicle=bool(getattr(master, 'has_vehicle', False)),
+                has_vehicle=bool(getattr(master, "has_vehicle", False)),
                 is_active=bool(master.is_active),
                 is_blocked=bool(master.is_blocked),
+                is_deleted=bool(getattr(master, "is_deleted", False)),
                 blocked_reason=master.blocked_reason,
                 blocked_at_local=blocked_at_local,
                 moderation_status=moderation_status,
-                moderation_note=getattr(master, 'moderation_note', None),
+                moderation_reason=moderation_reason,
                 verified=bool(master.verified),
+                verified_at_local=verified_at_local,
+                verified_by=getattr(master, "verified_by", None),
                 is_on_shift=bool(master.is_on_shift),
                 shift_status=shift_status,
                 payout_method=payout_method,
                 payout_data=dict(master.payout_data or {}),
                 referral_code=master.referral_code,
                 referred_by_master_id=master.referred_by_master_id,
-                current_limit=getattr(master, 'max_active_orders_override', None),
+                current_limit=current_limit,
+                active_orders=int(active_orders),
+                avg_check=avg_check,
+                moderation_history=None,
+                has_orders=has_orders,
+                has_commissions=has_commissions,
                 created_at_local=created_at_local,
                 updated_at_local=updated_at_local,
                 district_names=district_names,
@@ -2286,55 +2508,88 @@ class DBMastersService:
         return recipients
 
     async def approve_master(self, master_id: int, by_staff_id: int) -> bool:
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             async with session.begin():
                 result = await session.execute(
                     update(m.masters)
-                    .where(m.masters.id == master_id)
+                    .where(
+                        (m.masters.id == master_id)
+                        & (m.masters.is_deleted.is_(False))
+                    )
                     .values(
                         moderation_status=m.ModerationStatus.APPROVED,
+                        moderation_reason=None,
                         moderation_note=None,
                         verified=True,
                         is_active=True,
-                        updated_at=datetime.now(UTC),
+                        is_blocked=False,
+                        blocked_reason=None,
+                        blocked_at=None,
+                        verified_at=now,
+                        verified_by=by_staff_id,
+                        updated_at=now,
                     )
                     .returning(m.masters.id)
                 )
-                return result.first() is not None
+                row = result.first()
+                if not row:
+                    return False
+                await self._log_admin_action(
+                    session,
+                    admin_id=by_staff_id,
+                    master_id=master_id,
+                    action="master_approved",
+                    payload={"verified_at": now.isoformat()},
+                )
+        return True
 
     async def reject_master(
         self, master_id: int, *, reason: str, by_staff_id: int
     ) -> bool:
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             async with session.begin():
                 result = await session.execute(
                     update(m.masters)
-                    .where(m.masters.id == master_id)
+                    .where(
+                        (m.masters.id == master_id)
+                        & (m.masters.is_deleted.is_(False))
+                    )
                     .values(
                         moderation_status=m.ModerationStatus.REJECTED,
+                        moderation_reason=reason,
                         moderation_note=reason,
                         verified=False,
+                        verified_at=None,
+                        verified_by=None,
                         is_active=False,
-                        updated_at=datetime.now(UTC),
+                        is_blocked=False,
+                        blocked_reason=None,
+                        blocked_at=None,
+                        is_on_shift=False,
+                        shift_status=m.ShiftStatus.SHIFT_OFF,
+                        break_until=None,
+                        updated_at=now,
                     )
                     .returning(m.masters.id)
                 )
-                return result.first() is not None
-
-    async def set_master_active(self, master_id: int, *, is_active: bool) -> bool:
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
-                    update(m.masters)
-                    .where(m.masters.id == master_id)
-                    .values(is_active=is_active, updated_at=datetime.now(UTC))
-                    .returning(m.masters.id)
+                row = result.first()
+                if not row:
+                    return False
+                await self._log_admin_action(
+                    session,
+                    admin_id=by_staff_id,
+                    master_id=master_id,
+                    action="master_rejected",
+                    payload={"reason": reason},
                 )
-                return result.first() is not None
+        return True
 
     async def block_master(
         self, master_id: int, *, reason: str, by_staff_id: int
     ) -> bool:
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             async with session.begin():
                 result = await session.execute(
@@ -2343,14 +2598,40 @@ class DBMastersService:
                     .values(
                         is_blocked=True,
                         blocked_reason=reason,
-                        blocked_at=datetime.now(UTC),
-                        updated_at=datetime.now(UTC),
+                        blocked_at=now,
+                        is_active=False,
+                        is_on_shift=False,
+                        shift_status=m.ShiftStatus.SHIFT_OFF,
+                        break_until=None,
+                        updated_at=now,
                     )
                     .returning(m.masters.id)
                 )
-                return result.first() is not None
+                row = result.first()
+                if not row:
+                    return False
+                await session.execute(
+                    update(m.offers)
+                    .where(
+                        (m.offers.master_id == master_id)
+                        & (m.offers.state == m.OfferState.SENT)
+                    )
+                    .values(
+                        state=m.OfferState.CANCELED,
+                        responded_at=now,
+                    )
+                )
+                await self._log_admin_action(
+                    session,
+                    admin_id=by_staff_id,
+                    master_id=master_id,
+                    action="master_blocked",
+                    payload={"reason": reason},
+                )
+        return True
 
     async def unblock_master(self, master_id: int, *, by_staff_id: int) -> bool:
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             async with session.begin():
                 result = await session.execute(
@@ -2360,32 +2641,163 @@ class DBMastersService:
                         is_blocked=False,
                         blocked_reason=None,
                         blocked_at=None,
-                        updated_at=datetime.now(UTC),
+                        is_active=True,
+                        updated_at=now,
                     )
                     .returning(m.masters.id)
                 )
-                return result.first() is not None
+                row = result.first()
+                if not row:
+                    return False
+                await self._log_admin_action(
+                    session,
+                    admin_id=by_staff_id,
+                    master_id=master_id,
+                    action="master_unblocked",
+                    payload={},
+                )
+        return True
 
     async def set_master_limit(
-        self, master_id: int, *, limit: Optional[int]
+        self, master_id: int, *, limit: Optional[int], by_staff_id: int
     ) -> bool:
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             async with session.begin():
                 result = await session.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
-                    .values(max_active_orders_override=limit)
+                    .values(
+                        max_active_orders_override=limit,
+                        updated_at=now,
+                    )
                     .returning(m.masters.id)
                 )
-                return result.first() is not None
+                row = result.first()
+                if not row:
+                    return False
+                await self._log_admin_action(
+                    session,
+                    admin_id=by_staff_id,
+                    master_id=master_id,
+                    action="master_limit_changed",
+                    payload={"limit": limit},
+                )
+        return True
 
-    async def delete_master(self, master_id: int) -> bool:
+    async def delete_master(
+        self, master_id: int, *, by_staff_id: int
+    ) -> tuple[bool, bool]:
+        now = datetime.now(UTC)
         async with self._session_factory() as session:
             async with session.begin():
-                result = await session.execute(
-                    delete(m.masters).where(m.masters.id == master_id).returning(m.masters.id)
+                has_orders = bool(
+                    await session.scalar(
+                        select(m.orders.id)
+                        .where(m.orders.assigned_master_id == master_id)
+                        .limit(1)
+                    )
                 )
-                return result.first() is not None
+                has_commissions = bool(
+                    await session.scalar(
+                        select(m.commissions.id)
+                        .where(m.commissions.master_id == master_id)
+                        .limit(1)
+                    )
+                )
+                if not has_orders and not has_commissions:
+                    await session.execute(
+                        delete(m.attachments)
+                        .where(m.attachments.entity_type == m.AttachmentEntity.MASTER)
+                        .where(m.attachments.entity_id == master_id)
+                    )
+                    await session.execute(
+                        delete(m.referrals).where(m.referrals.master_id == master_id)
+                    )
+                    await session.execute(
+                        delete(m.referrals).where(m.referrals.referrer_id == master_id)
+                    )
+                    await session.execute(
+                        delete(m.referral_rewards).where(
+                            (m.referral_rewards.referred_master_id == master_id)
+                            | (m.referral_rewards.referrer_id == master_id)
+                        )
+                    )
+                    result = await session.execute(
+                        delete(m.masters)
+                        .where(m.masters.id == master_id)
+                        .returning(m.masters.id)
+                    )
+                    row = result.first()
+                    if not row:
+                        return False, False
+                    await self._log_admin_action(
+                        session,
+                        admin_id=by_staff_id,
+                        master_id=master_id,
+                        action="master_deleted",
+                        payload={"mode": "hard"},
+                    )
+                    return True, False
+
+                result = await session.execute(
+                    update(m.masters)
+                    .where(m.masters.id == master_id)
+                    .values(
+                        is_deleted=True,
+                        is_active=False,
+                        verified=False,
+                        is_blocked=True,
+                        blocked_reason="deleted_by_admin",
+                        blocked_at=now,
+                        is_on_shift=False,
+                        shift_status=m.ShiftStatus.SHIFT_OFF,
+                        break_until=None,
+                        updated_at=now,
+                    )
+                    .returning(m.masters.id)
+                )
+                row = result.first()
+                if not row:
+                    return False, True
+                await session.execute(
+                    update(m.offers)
+                    .where(m.offers.master_id == master_id)
+                    .where(m.offers.state == m.OfferState.SENT)
+                    .values(
+                        state=m.OfferState.CANCELED,
+                        responded_at=now,
+                    )
+                )
+                await self._log_admin_action(
+                    session,
+                    admin_id=by_staff_id,
+                    master_id=master_id,
+                    action="master_soft_deleted",
+                    payload={
+                        "has_orders": has_orders,
+                        "has_commissions": has_commissions,
+                    },
+                )
+                return True, True
+
+    async def enqueue_master_notification(
+        self,
+        master_id: int,
+        message: str,
+        *,
+        event: str = "MASTER_MESSAGE",
+    ) -> None:
+        payload = {"message": message}
+        async with self._session_factory() as session:
+            async with session.begin():
+                await session.execute(
+                    insert(m.notifications_outbox).values(
+                        master_id=master_id,
+                        event=event,
+                        payload=payload,
+                    )
+                )
 class DBFinanceService:
     def __init__(self, session_factory=SessionLocal) -> None:
         self._session_factory = session_factory

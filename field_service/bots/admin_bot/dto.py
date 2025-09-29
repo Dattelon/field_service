@@ -174,13 +174,19 @@ class MasterBrief:
 class MasterListItem:
     id: int
     full_name: str
-    phone: Optional[str]
     city_name: Optional[str]
-    moderation_status: str
+    skills: Tuple[str, ...]
+    rating: float
+    has_vehicle: bool
+    is_on_shift: bool
+    shift_status: str
+    on_break: bool
     verified: bool
     is_active: bool
-    is_blocked: bool
-    created_at_local: str
+    is_deleted: bool
+    active_orders: int
+    max_active_orders: Optional[int]
+    avg_check: Optional[Decimal]
 
 
 @dataclass(frozen=True)
@@ -190,6 +196,7 @@ class MasterDocument:
     file_id: str
     file_name: Optional[str]
     caption: Optional[str]
+    document_type: Optional[str]
 
 
 @dataclass(frozen=True)
@@ -203,11 +210,14 @@ class MasterDetail:
     has_vehicle: bool
     is_active: bool
     is_blocked: bool
+    is_deleted: bool
     blocked_reason: Optional[str]
     blocked_at_local: Optional[str]
     moderation_status: str
-    moderation_note: Optional[str]
+    moderation_reason: Optional[str]
     verified: bool
+    verified_at_local: Optional[str]
+    verified_by: Optional[int]
     is_on_shift: bool
     shift_status: str
     payout_method: Optional[str]
@@ -215,6 +225,11 @@ class MasterDetail:
     referral_code: Optional[str]
     referred_by_master_id: Optional[int]
     current_limit: Optional[int]
+    active_orders: int
+    avg_check: Optional[Decimal]
+    moderation_history: Optional[str]
+    has_orders: bool
+    has_commissions: bool
     created_at_local: str
     updated_at_local: str
     district_names: Tuple[str, ...]

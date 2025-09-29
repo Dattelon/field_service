@@ -19,6 +19,8 @@ from field_service.services.watchdogs import watchdog_commissions_overdue
 
 from .handlers import router as admin_router
 from .handlers_staff import router as admin_staff_router
+from .routers.admin_masters import router as admin_masters_router
+from .routers.admin_moderation import router as admin_moderation_router
 from .middlewares import StaffAccessMiddleware
 from .service_registry import register_services
 from .services_db import (
@@ -42,6 +44,8 @@ async def main() -> int:
     dp = Dispatcher()
     dp.include_router(admin_router)
     dp.include_router(admin_staff_router)
+    dp.include_router(admin_masters_router)
+    dp.include_router(admin_moderation_router)
 
     services = {
         "staff_service": DBStaffService(),

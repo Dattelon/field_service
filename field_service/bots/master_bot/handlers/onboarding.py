@@ -598,6 +598,7 @@ async def onboarding_confirm(
                 entity_id=master.id,
                 file_type=m.AttachmentFileType[passport_info["file_type"]],
                 file_id=passport_info["file_id"],
+                document_type="passport",
                 uploaded_by_master_id=master.id,
             )
         )
@@ -608,6 +609,7 @@ async def onboarding_confirm(
                 entity_id=master.id,
                 file_type=m.AttachmentFileType[selfie_info["file_type"]],
                 file_id=selfie_info["file_id"],
+                document_type="selfie",
                 uploaded_by_master_id=master.id,
             )
         )
