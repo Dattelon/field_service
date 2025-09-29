@@ -1087,42 +1087,6 @@ async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     await cq.answer()
 
 @router.callback_query(
-    F.data == "adm:m",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
-)
-async def cb_masters_menu(cq: CallbackQuery) -> None:
-    markup = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text=" ", callback_data="adm:mod")],
-            [InlineKeyboardButton(text="  ", callback_data="adm:menu")],
-        ]
-    )
-    await cq.message.edit_text(
-        " .  :",
-        reply_markup=markup,
-    )
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data == "adm:mod",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
-)
-async def cb_moderation_placeholder(cq: CallbackQuery) -> None:
-    markup = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text=" ", callback_data="adm:m")],
-            [InlineKeyboardButton(text="  ", callback_data="adm:menu")],
-        ]
-    )
-    await cq.message.edit_text(
-        "    .",
-        reply_markup=markup,
-    )
-    await cq.answer()
-
-
-@router.callback_query(
     F.data == "adm:staff:menu",
     StaffRoleFilter({StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )

@@ -203,6 +203,9 @@ class masters(Base):
     is_blocked: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     is_on_shift: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
@@ -238,6 +241,7 @@ class masters(Base):
         server_default="PENDING",
     )
     moderation_note: Mapped[Optional[str]] = mapped_column(Text)
+    moderation_reason: Mapped[Optional[str]] = mapped_column(Text)
     shift_status: Mapped[ShiftStatus] = mapped_column(
         Enum(ShiftStatus, name="shift_status"),
         nullable=False,
@@ -251,6 +255,10 @@ class masters(Base):
         Enum(PayoutMethod, name="payout_method")
     )
     payout_data: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    verified_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("staff_users.id", ondelete="SET NULL"), nullable=True
+    )
     has_vehicle: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
@@ -261,6 +269,13 @@ class masters(Base):
     __table_args__ = (
         Index("ix_masters__mod_shift", "moderation_status", "shift_status"),
         Index("ix_masters__onshift_verified", "is_on_shift", "verified"),
+        Index(
+            "ix_masters__verified_active_deleted_city",
+            "verified",
+            "is_active",
+            "is_deleted",
+            "city_id",
+        ),
     )
 
 
@@ -557,6 +572,7 @@ class attachments(Base):
     mime_type: Mapped[Optional[str]] = mapped_column(String(128))
     size: Mapped[Optional[int]] = mapped_column(Integer)
     caption: Mapped[Optional[str]] = mapped_column(Text)
+    document_type: Mapped[Optional[str]] = mapped_column(String(32))
     uploaded_by_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL")
     )
@@ -764,6 +780,37 @@ class master_invite_codes(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+
+class admin_audit_log(Base):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    admin_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("staff_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    master_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("masters.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
+class notifications_outbox(Base):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    master_id: Mapped[int] = mapped_column(
+        ForeignKey("masters.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
 
 
