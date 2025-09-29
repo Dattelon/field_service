@@ -16,7 +16,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # 1) orders: заменить CHECK на динамично-нейтральный
+    # 1) orders:  CHECK  -
     op.drop_constraint("ck_orders__slot_in_working_window", "orders", type_="check")
     op.create_check_constraint(
         "ck_orders__slot_interval_valid",
@@ -24,7 +24,7 @@ def upgrade() -> None:
         "(time_slot_start IS NULL AND time_slot_end IS NULL) OR (time_slot_start < time_slot_end)",
     )
 
-    # 2) staff_users: реквизиты админа для комиссий
+    # 2) staff_users:    
     op.add_column(
         "staff_users",
         sa.Column(
@@ -35,24 +35,24 @@ def upgrade() -> None:
         ),
     )
 
-    # 3) settings: базовые ключи
+    # 3) settings:  
     op.execute(
         """
     INSERT INTO settings(key, value, value_type, description) VALUES
-        ('working_hours_start','10:00','TIME','Начало рабочего окна'),
-        ('working_hours_end','20:00','TIME','Конец рабочего окна'),
-        ('slot_step_minutes','120','INT','Шаг генерации слотов (мин)'),
-        ('distribution_sla_seconds','120','INT','SLA оффера (сек)'),
-        ('distribution_rounds','2','INT','Круги до эскалации'),
-        ('commission_deadline_hours','3','INT','Дедлайн оплаты комиссии (часы)'),
-        ('max_active_orders','1','INT','Лимит активных заказов на мастера')
+        ('working_hours_start','10:00','TIME','  '),
+        ('working_hours_end','20:00','TIME','  '),
+        ('slot_step_minutes','120','INT','   ()'),
+        ('distribution_sla_seconds','120','INT','SLA  ()'),
+        ('distribution_rounds','2','INT','  '),
+        ('commission_deadline_hours','3','INT','   ()'),
+        ('max_active_orders','1','INT','    ')
     ON CONFLICT (key) DO NOTHING
     """
     )
 
 
 def downgrade() -> None:
-    # settings — откатывать значения не будем
+    # settings     
     op.drop_column("staff_users", "commission_requisites")
     op.drop_constraint("ck_orders__slot_interval_valid", "orders", type_="check")
-    # возвращать «жёсткий» CHECK небезопасно, поэтому не делаем
+    #   CHECK ,   

@@ -155,7 +155,7 @@ async def _fetch_orders_for_distribution(
 
 
 async def _expire_overdue_offer(session: AsyncSession, order_id: int) -> Optional[int]:
-    """Если есть SENT и он протух — EXPIRED, вернуть master_id для лога timeout; иначе None."""
+    """  SENT     EXPIRED,  master_id   timeout;  None."""
     row = await session.execute(
         text(
             """
@@ -562,7 +562,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                     _dist_log(admin_message, level="WARN")
                     await send_alert(
                         bot,
-                        f"⏱ Заявка #{order.id} не распределена логистом 10 мин. Эскалация администратору.",
+                        f"  #{order.id}    10 .  .",
                         chat_id=alerts_chat_id,
                     )
 
@@ -577,7 +577,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                     if marked:
                         await send_alert(
                             bot,
-                            f"⚠️ Заявка #{order.id} без района в городе {order.city_name}. Требуется ручное назначение.",
+                            f"  #{order.id}     {order.city_name}.   .",
                             chat_id=alerts_chat_id,
                         )
                 await _escalate_logist(order.id)
@@ -612,7 +612,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                 if newly_marked:
                     await send_alert(
                         bot,
-                        f"⚠️ Нет свободных мастеров в городе {order.city_name} по заявке #{order.id}. Эскалация логисту.",
+                        f"      {order.city_name}   #{order.id}.  .",
                         chat_id=alerts_chat_id,
                     )
                 continue
@@ -633,7 +633,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                 if newly_marked:
                     await send_alert(
                         bot,
-                        f"⚠️ Нет доступных мастеров по категории для заявки #{order.id} в городе {order.city_name}. Эскалация логисту.",
+                        f"        #{order.id}   {order.city_name}.  .",
                         chat_id=alerts_chat_id,
                     )
                 continue
@@ -681,7 +681,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                 if newly_marked:
                     await send_alert(
                         bot,
-                        f"⚠️ Нет свободных мастеров в городе {order.city_name} по заявке #{order.id}. Эскалация логисту.",
+                        f"      {order.city_name}   #{order.id}.  .",
                         chat_id=alerts_chat_id,
                     )
                 continue

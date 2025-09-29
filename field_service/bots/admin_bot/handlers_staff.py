@@ -106,9 +106,9 @@ def _build_city_keyboard(
         kb.adjust(1)
     nav_buttons: list[tuple[str, str]] = []
     if start > 0:
-        nav_buttons.append(("⬅️", f"{prefix}:page:{page - 1}"))
+        nav_buttons.append(("", f"{prefix}:page:{page - 1}"))
     if start + CITY_PAGE_SIZE < total:
-        nav_buttons.append(("➡️", f"{prefix}:page:{page + 1}"))
+        nav_buttons.append(("", f"{prefix}:page:{page + 1}"))
     if nav_buttons:
         nav = InlineKeyboardBuilder()
         for text_label, callback_data in nav_buttons:
@@ -117,9 +117,9 @@ def _build_city_keyboard(
         kb.attach(nav)
     control_buttons: list[tuple[str, str]] = []
     if show_done:
-        control_buttons.append(("Готово", f"{prefix}:done"))
+        control_buttons.append(("", f"{prefix}:done"))
     if allow_empty:
-        control_buttons.append(("Отмена", f"{prefix}:cancel"))
+        control_buttons.append(("", f"{prefix}:cancel"))
     if control_buttons:
         controls = InlineKeyboardBuilder()
         for text_label, callback_data in control_buttons:
@@ -194,7 +194,7 @@ async def staff_list(cq: CallbackQuery, state: FSMContext) -> None:
         status = "active" if member.is_active else "inactive"
         city_names = _format_city_line(city_map.get(member.id, []))
         name = member.full_name or "-"
-        lines.append(f"#{member.id} {name} — {status} ({city_names})")
+        lines.append(f"#{member.id} {name}  {status} ({city_names})")
         kb.button(text=str(member.id), callback_data=f"adm:staff:edit:{member.id}")
     kb.adjust(3)
 
@@ -273,7 +273,7 @@ async def staff_toggle_active(cq: CallbackQuery, state: FSMContext) -> None:
     await cq.answer("Updated")
 
 
-# ВАЖНО: этот хэндлер должен ловить ТОЛЬКО выбор роли, а не шаг выбора города.
+# :       ,     .
 @router.callback_query(
     F.data.in_(
         {
@@ -286,7 +286,7 @@ async def staff_toggle_active(cq: CallbackQuery, state: FSMContext) -> None:
 )
 async def access_code_new_start(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
     role_token = cq.data.split(":")[3]
-    # безопасно после ужесточения фильтра
+    #    
     role = StaffRole(role_token)
     await state.clear()
     if role is StaffRole.GLOBAL_ADMIN:

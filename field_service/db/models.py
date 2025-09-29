@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 import enum
 from datetime import datetime, time
 from decimal import Decimal
@@ -22,7 +22,7 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
     func,
-    text,  # ? ���������
+    text,  # SQL text() helper
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -85,7 +85,7 @@ class AttachmentEntity(str, enum.Enum):
     ORDER = "ORDER"
     OFFER = "OFFER"
     COMMISSION = "COMMISSION"
-    MASTER = "MASTER"  # ��������� � �������� 0002
+    MASTER = "MASTER"  #    0002
 
 
 class AttachmentFileType(str, enum.Enum):
@@ -230,7 +230,7 @@ class masters(Base):
         Integer, nullable=False, default=1, server_default="1"
     )
 
-    # ---- ���� �� �������� 0002 ----
+    # ----    0002 ----
     moderation_status: Mapped[ModerationStatus] = mapped_column(
         Enum(ModerationStatus, name="moderation_status"),
         nullable=False,
@@ -527,7 +527,7 @@ class offers(Base):
         UniqueConstraint("order_id", "master_id", name="uq_offers__order_master"),
         Index("ix_offers__order_state", "order_id", "state"),
         Index("ix_offers__master_state", "master_id", "state"),
-        # ��������� ���������� ������: ���� ACCEPTED ����� �� ����� (��� � Alembic 0001)
+        #  :  ACCEPTED       (  Alembic 0001)
         Index(
             "uix_offers__order_accepted_once",
             "order_id",
@@ -636,10 +636,10 @@ class referrals(Base):
         nullable=False,
         unique=True,
         index=True,
-    )  # ������������
+    )  # 
     referrer_id: Mapped[int] = mapped_column(
         ForeignKey("masters.id", ondelete="CASCADE"), nullable=False, index=True
-    )  # ������������ (L1)
+    )  #  (L1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -698,7 +698,7 @@ class settings(Base):
     )
 
 
-# ===== Skills & Master mappings (�� �������� 0002) =====
+# ===== Skills & Master mappings (  0002) =====
 class skills(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
@@ -763,6 +763,8 @@ class master_invite_codes(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
 
 
 

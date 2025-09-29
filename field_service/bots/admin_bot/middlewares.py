@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Iterable, Optional
 
@@ -8,8 +8,8 @@ from aiogram.types import CallbackQuery, Message, TelegramObject
 from field_service.bots.admin_bot.dto import StaffRole, StaffUser
 from field_service.bots.admin_bot.services_db import DBStaffService
 
-ACCESS_PROMPT = "Введите код доступа."
-INACTIVE_PROMPT = "Доступ деактивирован, обратитесь к администратору."
+ACCESS_PROMPT = "  ."
+INACTIVE_PROMPT = " ,   ."
 
 
 def _extract_user_id(event: TelegramObject) -> Optional[int]:

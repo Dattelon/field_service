@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import types
 from decimal import Decimal
@@ -44,7 +44,7 @@ class StubDistributionService:
         by_staff_id: int,
     ) -> tuple[bool, str]:
         self.calls.append((order_id, master_id, by_staff_id))
-        return True, "Оффер отправлен"
+        return True, " "
 
 
 class StubMessage:
@@ -78,10 +78,10 @@ def make_order(**overrides) -> OrderDetail:
     base = dict(
         id=1,
         city_id=1,
-        city_name="Город",
+        city_name="",
         district_id=10,
-        district_name="Район",
-        street_name="Главная",
+        district_name="",
+        street_name="",
         house="10",
         status="SEARCHING",
         order_type=OrderType.NORMAL,
@@ -92,7 +92,7 @@ def make_order(**overrides) -> OrderDetail:
         master_name=None,
         master_phone=None,
         has_attachments=False,
-        client_name="Клиент",
+        client_name="",
         client_phone="+79990000000",
         apartment=None,
         address_comment=None,
@@ -110,7 +110,7 @@ def make_order(**overrides) -> OrderDetail:
 def make_master(**overrides) -> MasterBrief:
     base = dict(
         id=101,
-        full_name="Иван Иванов",
+        full_name=" ",
         city_id=1,
         has_car=False,
         avg_week_check=2500.0,
@@ -150,7 +150,7 @@ async def test_manual_check_requires_confirmation_off_shift() -> None:
     await queue.cb_queue_assign_manual_check(callback, staff)
 
     assert not dist_service.calls
-    assert message.text is not None and "Требуется подтверждение" in message.text
+    assert message.text is not None and " " in message.text
     buttons = [btn for row in message.reply_markup.inline_keyboard for btn in row]
     assert any(btn.callback_data == "adm:q:as:pick:1:1:101" for btn in buttons)
 
@@ -178,7 +178,7 @@ async def test_manual_check_requires_confirmation_at_limit() -> None:
     await queue.cb_queue_assign_manual_check(callback, staff)
 
     assert not dist_service.calls
-    assert message.text is not None and "лимит" in message.text
+    assert message.text is not None and "" in message.text
     buttons = [btn for row in message.reply_markup.inline_keyboard for btn in row]
     assert any(btn.callback_data == "adm:q:as:pick:1:1:101" for btn in buttons)
 
@@ -206,8 +206,8 @@ async def test_manual_check_sends_offer_without_confirmation() -> None:
     await queue.cb_queue_assign_manual_check(callback, staff)
 
     assert dist_service.calls == [(1, 101, staff.id)]
-    assert message.text is not None and "Оффер отправлен" in message.text
-    assert callback.answers and callback.answers[-1][0] == "Оффер отправлен"
+    assert message.text is not None and " " in message.text
+    assert callback.answers and callback.answers[-1][0] == " "
 
 
 @pytest.mark.asyncio
@@ -233,8 +233,8 @@ async def test_manual_pick_confirms_and_sends_offer() -> None:
     await queue.cb_queue_assign_manual_pick(callback, staff)
 
     assert dist_service.calls == [(1, 101, staff.id)]
-    assert message.text is not None and "Оффер отправлен" in message.text
+    assert message.text is not None and " " in message.text
     buttons = [btn for row in message.reply_markup.inline_keyboard for btn in row]
     assert any(btn.callback_data == "adm:q:card:1" for btn in buttons)
     assert any(btn.callback_data == "adm:q:as:man:1:1" for btn in buttons)
-    assert callback.answers and callback.answers[-1][0] == "Оффер отправлен"
+    assert callback.answers and callback.answers[-1][0] == " "

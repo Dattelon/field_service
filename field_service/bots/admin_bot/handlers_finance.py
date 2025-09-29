@@ -22,37 +22,37 @@ from .utils import get_service
 router = Router(name="admin_finance")
 
 PAYMENT_METHOD_LABELS = {
-    "card": "Карта",
-    "sbp": "СБП",
-    "cash": "Наличные",
+    "card": "",
+    "sbp": "",
+    "cash": "",
 }
 
 _METHOD_ALIASES = {
     "card": "card",
-    "карта": "card",
-    "карты": "card",
-    "карточка": "card",
-    "безнал": "card",
+    "": "card",
+    "": "card",
+    "": "card",
+    "": "card",
     "sbp": "sbp",
-    "сбп": "sbp",
-    "система быстрых платежей": "sbp",
+    "": "sbp",
+    "  ": "sbp",
     "qr": "sbp",
-    "нал": "cash",
-    "наличные": "cash",
-    "наличка": "cash",
+    "": "cash",
+    "": "cash",
+    "": "cash",
     "cash": "cash",
 }
 
 _OWNER_FIELDS = {
-    "methods": "Способы оплаты",
-    "card_number": "Номер карты",
-    "card_holder": "Получатель",
-    "card_bank": "Банк карты",
-    "sbp_phone": "Телефон для СБП",
-    "sbp_bank": "Банк для СБП",
-    "sbp_qr_file_id": "QR-код СБП",
-    "other_text": "Дополнительные инструкции",
-    "comment_template": "Шаблон комментария",
+    "methods": " ",
+    "card_number": " ",
+    "card_holder": "",
+    "card_bank": " ",
+    "sbp_phone": "  ",
+    "sbp_bank": "  ",
+    "sbp_qr_file_id": "QR- ",
+    "other_text": " ",
+    "comment_template": " ",
 }
 
 
@@ -82,7 +82,7 @@ async def _render_owner_snapshot(
         if "message is not modified" not in str(exc).lower():
             await bot_message.answer(text, reply_markup=markup)
     if notify_empty:
-        await bot_message.answer("Реквизиты пока пустые.")
+        await bot_message.answer("  .")
     return (bot_message.chat.id, bot_message.message_id)
 
 
@@ -91,10 +91,10 @@ def _format_snapshot_text(snapshot: dict[str, Any], *, for_staff: bool) -> str:
     methods = _format_methods(data.get("methods") or [])
     lines: list[str] = []
     if for_staff:
-        lines.append("<b>Реквизиты владельца сервиса</b>")
+        lines.append("<b>  </b>")
     else:
-        lines.append("<b>Реквизиты для оплаты комиссии</b>")
-    lines.append(f"Способы оплаты: {methods}")
+        lines.append("<b>   </b>")
+    lines.append(f" : {methods}")
 
     card_block = _format_card_block(data)
     sbp_block = _format_sbp_block(data, include_qr=for_staff)
@@ -109,17 +109,17 @@ def _format_snapshot_text(snapshot: dict[str, Any], *, for_staff: bool) -> str:
         lines.extend(sbp_block)
     if other_text:
         lines.append("")
-        lines.append("<b>Дополнительно</b>")
+        lines.append("<b></b>")
         lines.append(html.escape(other_text))
     if comment_template:
         lines.append("")
-        lines.append("<b>Комментарий к переводу</b>")
+        lines.append("<b>  </b>")
         lines.append(html.escape(comment_template))
 
     if not for_staff:
         lines.append("")
         lines.append(
-            "Если реквизиты не подходят или возникли вопросы, напишите, пожалуйста, логисту."
+            "      , , , ."
         )
 
     return "\n".join(lines)
@@ -133,7 +133,7 @@ def _format_methods(methods: Iterable[str]) -> str:
             continue
         label = PAYMENT_METHOD_LABELS.get(key, key.upper())
         items.append(label)
-    return ", ".join(items) if items else "—"
+    return ", ".join(items) if items else ""
 
 
 def _format_card_block(data: dict[str, Any]) -> list[str]:
@@ -142,13 +142,13 @@ def _format_card_block(data: dict[str, Any]) -> list[str]:
     card_bank = data.get("card_bank") or ""
     block: list[str] = []
     if card_number or card_holder or card_bank:
-        block.append("<b>Перевод на карту</b>")
+        block.append("<b>  </b>")
         if card_number:
-            block.append(f"Номер: {html.escape(card_number)}")
+            block.append(f": {html.escape(card_number)}")
         if card_holder:
-            block.append(f"Получатель: {html.escape(card_holder)}")
+            block.append(f": {html.escape(card_holder)}")
         if card_bank:
-            block.append(f"Банк: {html.escape(card_bank)}")
+            block.append(f": {html.escape(card_bank)}")
     return block
 
 
@@ -158,19 +158,19 @@ def _format_sbp_block(data: dict[str, Any], *, include_qr: bool) -> list[str]:
     qr = data.get("sbp_qr_file_id") or ""
     block: list[str] = []
     if phone or bank or (include_qr and qr):
-        block.append("<b>Перевод через СБП</b>")
+        block.append("<b>  </b>")
         if phone:
-            block.append(f"Телефон: {html.escape(phone)}")
+            block.append(f": {html.escape(phone)}")
         if bank:
-            block.append(f"Банк: {html.escape(bank)}")
+            block.append(f": {html.escape(bank)}")
         if include_qr:
-            block.append("QR-код: " + ("загружен" if qr else "не задан"))
+            block.append("QR-: " + ("" if qr else " "))
     return block
 
 
 def _parse_methods_payload(text: str) -> list[str]:
     cleaned = text.strip()
-    if not cleaned or cleaned in {"-", "нет", "none", "пусто"}:
+    if not cleaned or cleaned in {"-", "", "none", ""}:
         return []
     result: list[str] = []
     pieces = re.split(r"[\n;,]+", cleaned)
@@ -185,9 +185,9 @@ def _parse_methods_payload(text: str) -> list[str]:
                 if alias:
                     break
         if not alias:
-            raise ValueError(f"Неизвестный способ оплаты: {piece}")
+            raise ValueError(f"  : {piece}")
         if alias not in owner_requisites_service.ALLOWED_METHODS:
-            raise ValueError(f"Способ оплаты не поддерживается: {piece}")
+            raise ValueError(f"   : {piece}")
         if alias not in result:
             result.append(alias)
     return result
@@ -196,7 +196,7 @@ def _parse_methods_payload(text: str) -> list[str]:
 def _extract_field_value(field: str, message: Message) -> Any:
     if field == "methods":
         if not message.text:
-            raise ValueError("Отправьте текст со списком способов.")
+            raise ValueError("    .")
         return _parse_methods_payload(message.text)
 
     if field == "sbp_qr_file_id":
@@ -305,16 +305,16 @@ async def on_owner_requisites_edit_menu(
         return
     settings_service = _settings_service(cq.message.bot)
     snapshot = await settings_service.get_owner_pay_snapshot()
-    lines = ["<b>Редактирование реквизитов</b>", "Выберите поле для изменения:"]
+    lines = ["<b> </b>", "   :"]
     for field, label in _OWNER_FIELDS.items():
         current = snapshot.get(field)
         if field == "methods":
             rendered = _format_methods(current or [])
         elif isinstance(current, str):
-            rendered = current or "—"
+            rendered = current or ""
         else:
-            rendered = "—"
-        lines.append(f"• {label}: {html.escape(rendered)}")
+            rendered = ""
+        lines.append(f" {label}: {html.escape(rendered)}")
     try:
         await cq.message.edit_text("\n".join(lines), reply_markup=owner_pay_edit_keyboard())
     except TelegramBadRequest as exc:
@@ -338,7 +338,7 @@ async def on_owner_requisites_field_select(
         return
     field = cq.data.split(":", maxsplit=3)[-1]
     if field not in _OWNER_FIELDS:
-        await cq.answer("Неизвестное поле", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     settings_service = _settings_service(cq.message.bot)
     snapshot = await settings_service.get_owner_pay_snapshot()
@@ -346,22 +346,22 @@ async def on_owner_requisites_field_select(
     if field == "methods":
         rendered = _format_methods(current or [])
         prompt = (
-            "Отправьте способы оплаты через запятую (card, sbp, cash).\n"
-            "Чтобы отключить все способы, отправьте дефис."
+            "     (card, sbp, cash).\n"
+            "   ,  ."
         )
     elif field == "sbp_qr_file_id":
-        rendered = "загружен" if current else "не задан"
-        prompt = "Отправьте фото/документ с QR-кодом или текстовый file_id. Для очистки отправьте дефис."
+        rendered = "" if current else " "
+        prompt = " /  QR-   file_id.    ."
     else:
-        rendered = current or "—"
-        prompt = "Отправьте новое значение. Для очистки отправьте дефис."
+        rendered = current or ""
+        prompt = "  .    ."
     await state.set_state(OwnerPayEditFSM.value)
     await state.update_data(
         owner_pay_field=field,
         owner_pay_origin=(cq.message.chat.id, cq.message.message_id),
     )
     await cq.message.answer(
-        f"<b>{_OWNER_FIELDS[field]}</b>\nТекущее значение: {html.escape(str(rendered))}\n\n{prompt}"
+        f"<b>{_OWNER_FIELDS[field]}</b>\n : {html.escape(str(rendered))}\n\n{prompt}"
     )
     await cq.answer()
 
@@ -376,7 +376,7 @@ async def on_owner_requisites_edit_cancel(
     origin = _get_origin(data)
     await state.set_state(None)
     await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer("Изменение отменено.")
+    await msg.answer(" .")
     await _rerender_origin(msg.bot, staff, origin)
 
 
@@ -390,7 +390,7 @@ async def on_owner_requisites_edit_value(
     field = data.get("owner_pay_field")
     if not field or field not in _OWNER_FIELDS:
         await state.set_state(None)
-        await msg.answer("Поле не выбрано, начните заново через меню реквизитов.")
+        await msg.answer("  ,     .")
         return
     origin = _get_origin(data)
     try:
@@ -401,7 +401,7 @@ async def on_owner_requisites_edit_value(
     snapshot = await _update_owner_snapshot(msg.bot, field, value)
     await state.set_state(None)
     await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer("Реквизиты обновлены.")
+    await msg.answer(" .")
     live_log.push("finance", f"owner_pay:{field} updated by staff {staff.id}")
     await _rerender_origin(msg.bot, staff, origin)
 
@@ -423,17 +423,17 @@ async def on_owner_requisites_broadcast(
     snapshot = await settings_service.get_owner_pay_snapshot()
     recipients = await finance_service.list_wait_pay_recipients()
     if not recipients:
-        await cq.answer("Нет мастеров в ожидании оплаты", show_alert=True)
+        await cq.answer("    ", show_alert=True)
         return
     sent, failed = await _broadcast_owner_requisites(cq.message.bot, recipients, snapshot)
     live_log.push(
         "finance",
         f"owner_pay broadcast by staff {staff.id}: sent={sent} failed={failed}",
     )
-    await cq.answer("Рассылка выполнена")
-    summary = f"Реквизиты отправлены {sent} мастерам."
+    await cq.answer(" ")
+    summary = f"  {sent} ."
     if failed:
-        summary += f" Не удалось доставить: {failed}."
+        summary += f"   : {failed}."
     await cq.message.answer(summary, reply_markup=finance_menu(staff))
     await _rerender_origin(cq.message.bot, staff, (cq.message.chat.id, cq.message.message_id))
 

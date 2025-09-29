@@ -1,4 +1,4 @@
-"""master_fsm: доп. поля мастера, навыки, районы, вложения MASTER
+"""master_fsm: .  , , ,  MASTER
 Revision ID: 2025_09_17_0002
 Revises: 2025_09_17_0001
 Create Date: 2025-09-17 15:30:00.000000
@@ -155,4 +155,4 @@ def downgrade():
         op.drop_column("masters", col)
     for enum_name in ("payout_method", "shift_status", "moderation_status"):
         postgresql.ENUM(name=enum_name).drop(op.get_bind(), checkfirst=True)
-    # attachment_entity: enum значение MASTER откатывать не будем (небезопасно)
+    # attachment_entity: enum  MASTER    ()

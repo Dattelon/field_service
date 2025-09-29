@@ -31,7 +31,7 @@ async def test_create_commission_basic_flow(async_session) -> None:
 
     master = m.masters(
         tg_user_id=111,
-        full_name="Иванов Иван",
+        full_name=" ",
         phone="+79990001122",
         city_id=city.id,
         is_active=True,
@@ -86,7 +86,7 @@ async def test_create_commission_high_avg_rate(async_session) -> None:
 
     master = m.masters(
         tg_user_id=222,
-        full_name="Петров Пётр",
+        full_name=" ϸ",
         phone="+79991111111",
         city_id=city.id,
         is_active=True,
@@ -139,7 +139,7 @@ async def test_create_commission_skips_guarantee(async_session) -> None:
 
     master = m.masters(
         tg_user_id=333,
-        full_name="Сидоров Сидор",
+        full_name=" ",
         phone="+79992223344",
         city_id=city.id,
         is_active=True,

@@ -3,7 +3,7 @@
 from alembic import op
 import sqlalchemy as sa
 
-# привяжите к последней у вас версии; если есть 0009, ставим её
+#      ;   0009,  
 revision = "2025_09_19_0011b"
 down_revision = "2025_09_19_0010"
 branch_labels = None
@@ -25,7 +25,7 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
     )
     op.create_index("ix_master_invite_codes__code", "master_invite_codes", ["code"], unique=True)
-    # Удобный частичный индекс «доступные» (не обязателен, но полезен)
+    #     ( ,  )
     # NOTE: PostgreSQL requires IMMUTABLE functions in index predicates; NOW() is not allowed.
     # Use a stable predicate without time dependency; application code should validate expiry.
     op.execute(
@@ -37,6 +37,6 @@ def upgrade() -> None:
     )
 
 def downgrade() -> None:
-    op.drop_index("ix_master_invite_codes__available", table_name=None)  # raw SQL индекс
+    op.drop_index("ix_master_invite_codes__available", table_name=None)  # raw SQL 
     op.drop_index("ix_master_invite_codes__code", table_name="master_invite_codes")
     op.drop_table("master_invite_codes")
