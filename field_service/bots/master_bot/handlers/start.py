@@ -1,7 +1,7 @@
 ﻿from __future__ import annotations
 
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -21,6 +21,11 @@ _STATUS_TITLES = {
 
 @router.message(CommandStart())
 async def handle_start(message: Message, state: FSMContext, master: m.masters) -> None:
+    await state.clear()
+    await _render_start(message, master)
+
+@router.message(Command("cancel"))
+async def handle_cancel(message: Message, state: FSMContext, master: m.masters) -> None:
     await state.clear()
     await _render_start(message, master)
 

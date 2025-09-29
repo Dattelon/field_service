@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any, Iterable, Optional, Sequence
 
 from aiogram import F, Router
@@ -8,6 +9,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from field_service.bots.common import FSMTimeoutConfig, FSMTimeoutMiddleware
+
 from .dto import CityRef, StaffAccessCode, StaffMember, StaffRole, StaffUser
 from .filters import StaffRoleFilter
 from .states import AccessCodeNewFSM, StaffCityEditFSM
@@ -15,6 +18,28 @@ from .utils import get_service
 
 router = Router(name="admin_staff_handlers")
 CITY_PAGE_SIZE = 12
+
+
+async def _fsm_timeout_notice(state: FSMContext) -> None:
+    chat_id = state.key.chat_id
+    if chat_id is None:
+        return
+    try:
+        await state.bot.send_message(
+            chat_id,
+            "Session timed out. Use /start to return to the menu.",
+        )
+    except Exception:
+        pass
+
+
+_STAFF_TIMEOUT = FSMTimeoutMiddleware(
+    FSMTimeoutConfig(timeout=timedelta(minutes=10), callback=_fsm_timeout_notice)
+)
+
+router.message.middleware(_STAFF_TIMEOUT)
+router.callback_query.middleware(_STAFF_TIMEOUT)
+
 
 
 ROLE_LABELS = {

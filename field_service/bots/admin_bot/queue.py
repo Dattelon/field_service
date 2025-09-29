@@ -175,6 +175,7 @@ def _format_order_card_text(
     order: OrderDetail,
     history: Sequence[OrderStatusHistoryItem],
 ) -> str:
+    """Build a human friendly card for an order detail view."""
     address_parts: list[str] = []
     if order.city_name:
         address_parts.append(order.city_name)
@@ -200,60 +201,63 @@ def _format_order_card_text(
     if order.master_name:
         master_bits.append(html.escape(order.master_name))
     elif order.master_id:
-        master_bits.append(f" #{order.master_id}")
+        master_bits.append(f"#{order.master_id}")
     if order.master_phone:
         master_bits.append(html.escape(order.master_phone))
-    master_line = " / ".join(master_bits) if master_bits else "  "
+    master_line = " / ".join(master_bits).strip()
 
     description = order.description.strip() if order.description else ""
     description_line = html.escape(description) if description else "-"
 
     is_guarantee = order.order_type is OrderType.GUARANTEE
-    type_label = order.type if not is_guarantee else f"{order.type}  "
+    type_label = order.type if not is_guarantee else f"{order.type} (гарантия)"
     normalized_category = normalize_category(getattr(order, "category", None))
     if normalized_category is not None:
         category_label = CATEGORY_LABELS.get(normalized_category, normalized_category.value)
     else:
         raw_cat = getattr(order, "category", "")
         category_label = str(raw_cat)
+
     lines_out = [
-        f"<b> #{order.id}</b>",
-        f": {html.escape(order.status)}",
-        f": {html.escape(type_label)}",
-        f": {html.escape(category_label)}",
-        f": {html.escape(order.timeslot_local) if order.timeslot_local else '-'}",
-        f": {html.escape(address)}",
+        f"<b>Заявка #{order.id}</b>",
+        f"Статус: {html.escape(order.status)}",
+        f"Тип: {html.escape(type_label)}",
+        f"Категория: {html.escape(category_label)}",
+        f"Слот: {html.escape(order.timeslot_local) if order.timeslot_local else '-'}",
+        f"Адрес: {html.escape(address)}",
     ]
     if is_guarantee:
-        lines_out.append("<b>  </b>")
-    lines_out.append(f": {len(order.attachments)}")
+        lines_out.append("<b>Гарантия по предыдущему заказу</b>")
+
+    lines_out.append(f"Вложения: {len(order.attachments)}")
     lines_out.append("")
-    lines_out.append("<b></b>")
-    lines_out.append(f": {client_line}")
-    lines_out.append(f": {master_line}")
+    lines_out.append("<b>Клиент</b>")
+    lines_out.append(f"Контакт: {client_line}")
+    master_display = master_line if master_line else "пока не назначен"
+    lines_out.append(f"Мастер: {master_display}")
     lines_out.append("")
-    lines_out.append("<b></b>")
+    lines_out.append("<b>Описание</b>")
     lines_out.append(description_line)
     lines_out.append("")
-    lines_out.append("<b> </b>")
+    lines_out.append("<b>История статусов</b>")
     if history:
         for item in history:
             when = item.changed_at_local or "-"
             transition = item.to_status
             if item.from_status:
-                transition = f"{item.from_status}  {item.to_status}"
+                transition = f"{item.from_status} -> {item.to_status}"
             actors: list[str] = []
             if item.changed_by_staff_id:
                 actors.append(f"staff #{item.changed_by_staff_id}")
             if item.changed_by_master_id:
                 actors.append(f"master #{item.changed_by_master_id}")
             actor_part = f" ({', '.join(actors)})" if actors else ""
-            reason_part = f"  {item.reason}" if item.reason else ""
-            lines_out.append(f" {when}  {transition}{actor_part}{reason_part}")
+            reason_part = f" - {item.reason}" if item.reason else ""
+            lines_out.append(f"- {when}: {transition}{actor_part}{reason_part}")
     else:
-        lines_out.append("   ")
-    return chr(10).join(lines_out)
+        lines_out.append("История пуста")
 
+    return "\n".join(lines_out)
 
 
 def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False) -> InlineKeyboardMarkup:
@@ -506,6 +510,7 @@ async def _render_choice(
 
 
 async def _render_queue_list(message: Message, staff: StaffUser, state: FSMContext, page: int) -> None:
+    """Render the main queue view for the admin bot."""
     orders_service = get_service(message.bot, "orders_service")
     filters = await _load_filters(state)
     page = max(page, 1)
@@ -541,19 +546,21 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
     filters_text = await _format_filters_text(
         staff, filters, orders_service, include_header=False
     )
-    lines = ["<b></b>", filters_text]
+    lines = ["<b>Очередь заявок</b>", filters_text]
     if items:
         lines.append("")
         lines.extend(_format_order_line(item) for item in items)
     else:
         lines.append("")
-        lines.append(" ")
+        lines.append("Список пуст")
     lines.append("")
-    lines.append(f": {page}")
+    lines.append(f"Страница: {page}")
     text = "\n".join(lines)
 
     markup = queue_list_keyboard(items, page=page, has_next=has_next)
     await _edit_or_reply(message, text, markup, state)
+
+
 
 
 

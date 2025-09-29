@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import html
 import json
@@ -12,18 +12,109 @@ from typing import Any, Optional, Sequence
 from zoneinfo import ZoneInfo
 
 from aiogram import F, Router, Bot
+from field_service.bots.common import FSMTimeoutConfig, FSMTimeoutMiddleware
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+# Local router instance for handlers in this module
+router = Router()
+
+async def _fsm_timeout_notice(state: FSMContext) -> None:
+    chat_id = state.key.chat_id
+    if chat_id is None:
+        return
+    try:
+        await state.bot.send_message(
+            chat_id,
+            "Session timed out. Use /start to return to the menu.",
+        )
+    except Exception:
+        pass
+
+
+_TIMEOUT_MIDDLEWARE = FSMTimeoutMiddleware(
+    FSMTimeoutConfig(timeout=timedelta(minutes=10), callback=_fsm_timeout_notice)
+)
+
+router.message.middleware(_TIMEOUT_MIDDLEWARE)
+router.callback_query.middleware(_TIMEOUT_MIDDLEWARE)
+
+
 from field_service.config import settings as env_settings
 from field_service.services import export_service, live_log, time_service
 from field_service.services import settings_service
 from field_service.services.onboarding_service import normalize_phone
+from .filters import StaffRoleFilter
 from field_service.bots.admin_bot.services_db import AccessCodeError
 
-# Fixed Russian texts for segments and staff prompts
+# Auto-fix mojibake in outgoing texts (display-only)
+def _ru_best_fix(text: str) -> str:
+    if not isinstance(text, str) or not text:
+        return text
+    suspect_chars = "ÐÑРС�â€™�“”•—‹›"
+    suspect = any(ch in text for ch in suspect_chars) or "\u0014" in text
+    if not suspect:
+        return text
+    def score(s: str) -> tuple[int, int]:
+        vowels = set("аеёиоуыэюяАЕЁИОУЫЭЮЯ")
+        return (sum(1 for ch in s if ch in vowels), sum(1 for ch in s if ch in suspect_chars))
+    base = text
+    base_score = score(base)
+    candidates = []
+    for enc, dec in (("cp1251","utf-8"),("utf-8","cp1251"),("latin1","utf-8"),("utf-8","latin1")):
+        try:
+            candidates.append(text.encode(enc, errors="ignore").decode(dec, errors="ignore"))
+        except Exception:
+            pass
+    best = base
+    best_tuple = (base_score[0], -base_score[1])
+    for cand in candidates:
+        sc = score(cand)
+        tup = (sc[0], -sc[1])
+        if tup > best_tuple:
+            best, best_tuple = cand, tup
+    return best
+
+# Monkey-patch common send/edit helpers to fix text at the edge
+try:
+    from aiogram.types import Message as _AioMessage, CallbackQuery as _AioCallbackQuery
+    from aiogram import Bot as _AioBot
+
+    _orig_msg_answer = _AioMessage.answer
+    _orig_msg_edit_text = _AioMessage.edit_text
+    _orig_cq_answer = _AioCallbackQuery.answer
+    _orig_bot_send_message = _AioBot.send_message
+
+    async def _fx_msg_answer(self, text: str, *args, **kwargs):
+        return await _orig_msg_answer(self, _ru_best_fix(text), *args, **kwargs)
+
+    async def _fx_msg_edit_text(self, text: str, *args, **kwargs):
+        return await _orig_msg_edit_text(self, _ru_best_fix(text), *args, **kwargs)
+
+    async def _fx_cq_answer(self, text: str | None = None, *args, **kwargs):
+        if isinstance(text, str):
+            text = _ru_best_fix(text)
+        return await _orig_cq_answer(self, text, *args, **kwargs)
+
+    async def _fx_bot_send_message(self, chat_id, text: str, *args, **kwargs):
+        return await _orig_bot_send_message(self, chat_id, _ru_best_fix(text), *args, **kwargs)
+
+    _AioMessage.answer = _fx_msg_answer  # type: ignore[assignment]
+    _AioMessage.edit_text = _fx_msg_edit_text  # type: ignore[assignment]
+    _AioCallbackQuery.answer = _fx_cq_answer  # type: ignore[assignment]
+    _AioBot.send_message = _fx_bot_send_message  # type: ignore[assignment]
+except Exception:
+    pass
+
+def _maybe_fix_mojibake(s: Any) -> Any:
+    return _ru_best_fix(s) if isinstance(s, str) else s
+
+# ---------- Читаемые русские константы (override) ----------
+# Эти присваивания гарантируют, что пользователь увидит нормальные строки,
+# даже если где-то в файле остались кракозябры из старых литералов.
+
 FINANCE_SEGMENT_TITLES = {
     "aw": "Ожидают оплаты",
     "pd": "Оплаченные",
@@ -32,55 +123,17 @@ FINANCE_SEGMENT_TITLES = {
 STAFF_CODE_PROMPT = "Введите код доступа, который выдали администраторы."
 STAFF_CODE_ERROR = "Код не найден / истёк / уже использован / вам недоступен."
 STAFF_PDN_TEXT = (
-    "Согласие на обработку персональных данных.\n"
-    "Согласие включает обработку ФИО, телефона и данных о заказах для допуска к работе и обеспечения безопасности сервиса. "
+    "Согласие на обработку персональных данных.",
+    "Согласие включает обработку ФИО, телефона и данных о заказах для допуска к работе и обеспечения безопасности сервиса. ",
     "Отправьте \"Согласен\" для продолжения или \"Не согласен\" для отмены."
 )
-
-FINANCE_SEGMENT_TITLES = {
-    "aw": "Ожидают оплаты",
-    "pd": "Оплаченные",
-    "ov": "Просроченные",
-}
-
-# Overrides to fix mojibake in Russian labels
-FINANCE_SEGMENT_TITLES = {"aw": "Ожидают оплаты", "pd": "Оплаченные", "ov": "Просроченные"}
-STAFF_CODE_PROMPT = "Введите код доступа, который выдали администраторы."
-STAFF_CODE_ERROR = "Код не найден / истёк / уже использован / вам недоступен."
-STAFF_PDN_TEXT = (
-    "Согласие на обработку персональных данных.\n"
-    "Согласие включает обработку ФО, телефона и данных о заказах для допуска к работе и обеспечения безопасности сервиса. "
-    "Отправьте \"Согласен\" для продолжения или \"Не согласен\" для отмены."
-)
-
-
-#    
-FINANCE_SEGMENT_TITLES = {"aw": " ", "pd": "", "ov": ""}
-STAFF_CODE_PROMPT = "  ,   ."
-STAFF_CODE_ERROR = "   /  /   /  ."
-STAFF_PDN_TEXT = ("    .\n"
-    "   ,             . "
-    " \"\"    \" \"  .")
-
-WORKDAY_START_DEFAULT = time_service.parse_time_string(env_settings.workday_start, default=time(10, 0))
-WORKDAY_END_DEFAULT = time_service.parse_time_string(env_settings.workday_end, default=time(20, 0))
-LATE_ASAP_THRESHOLD = time_service.parse_time_string(env_settings.asap_late_threshold, default=time(19, 30))
-
-REPORT_DEFINITIONS: dict[str, tuple[str, Any, str]] = {
-    "orders": ("заказы", export_service.export_orders, "Orders"),
-    "commissions": ("комиссии", export_service.export_commissions, "Commissions"),
-    "ref_rewards": ("реферальные начисления", export_service.export_referral_rewards, "Referral rewards"),
-}
-
-
-DATE_INPUT_FORMATS = ("%Y-%m-%d", "%d.%m.%Y")
-
-# Читабельные названия отчётов
 REPORT_DEFINITIONS: dict[str, tuple[str, Any, str]] = {
     "orders": ("Заказы", export_service.export_orders, "Orders"),
     "commissions": ("Комиссии", export_service.export_commissions, "Commissions"),
     "ref_rewards": ("Реферальные начисления", export_service.export_referral_rewards, "Referral rewards"),
 }
+
+DATE_INPUT_FORMATS = ("%Y-%m-%d", "%d.%m.%Y")
 @dataclass(frozen=True)
 class SettingFieldDef:
     key: str
@@ -100,66 +153,65 @@ class SettingGroupDef:
     description: str = ""
 
 
+"""
 SETTING_GROUPS: dict[str, SettingGroupDef] = {
     "workday": SettingGroupDef(
         key="workday",
-        title="Р В Р В°Р В±Р С•РЎвЂЎР СР в„– Р ТР ВµР Р…РЎРЉ",
-        description="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С РЎР‚Р В°Р В±Р С•РЎвЂЎР ВµР С–Р С• Р С•Р С”Р Р…Р В° Р С—Р С• РЎС“Р СР С•Р В»РЎвЂЎР В°Р Р…Р СРЎР‹ Р ТР В»РЎРЏ Р С—Р В»Р В°Р Р…Р СРЎР‚Р С•Р Р†Р В°Р Р…Р СРЎРЏ РЎРѓР В»Р С•РЎвЂљР С•Р Р† Р С РЎРѓРЎвЂљР В°РЎвЂљРЎС“РЎРѓР С•Р Р† DEFERRED/SEARCHING.",
+        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
         fields=(
             SettingFieldDef(
                 key="working_hours_start",
-                label="Р СњР В°РЎвЂЎР В°Р В»Р С• РЎР‚Р В°Р В±Р С•РЎвЂЎР ВµР С–Р С• Р ТР Р…РЎРЏ",
+                label="Начало рабочего дня",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_start,
-                help_text="Р В¤Р С•РЎР‚Р СР В°РЎвЂљ РЎвЂЎРЎвЂЎ:Р СР С, Р С—Р С• РЎС“Р СР С•Р В»РЎвЂЎР В°Р Р…Р СРЎР‹ 10:00.",
+                help_text="Формат ЧЧ:ММ, по умолчанию 10:00.",
             ),
             SettingFieldDef(
                 key="working_hours_end",
-                label="Р С™Р С•Р Р…Р ВµРЎвЂ  РЎР‚Р В°Р В±Р С•РЎвЂЎР ВµР С–Р С• Р ТР Р…РЎРЏ",
+                label="Конец рабочего дня",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_end,
-                help_text="Р В¤Р С•РЎР‚Р СР В°РЎвЂљ РЎвЂЎРЎвЂЎ:Р СР С, Р С—Р С• РЎС“Р СР С•Р В»РЎвЂЎР В°Р Р…Р СРЎР‹ 20:00.",
+                help_text="Формат ЧЧ:ММ, по умолчанию 20:00.",
             ),
         ),
     ),
     "distribution": SettingGroupDef(
         key="distribution",
-        title="Р В Р В°РЎРѓР С—РЎР‚Р ВµР ТР ВµР В»Р ВµР Р…Р СР Вµ Р В·Р В°РЎРЏР Р†Р С•Р С”",
-        description="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С Р С•РЎвЂЎР ВµРЎР‚Р ВµР ТР С Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р С”Р С Р С•РЎвЂћРЎвЂћР ВµРЎР‚Р С•Р Р† Р С SLA РЎР‚Р В°РЎРѓР С—РЎР‚Р ВµР ТР ВµР В»Р ВµР Р…Р СРЎРЏ.",
+        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
         fields=(
             SettingFieldDef(
                 key="distribution_tick_seconds",
-                label="Р РЃР В°Р С– Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р С”Р С Р С•РЎвЂћРЎвЂћР ВµРЎР‚Р С•Р Р† (РЎРѓР ВµР С”)",
+                label="   ()",
                 schema="int",
                 value_type="INT",
                 default=30,
             ),
             SettingFieldDef(
                 key="distribution_sla_seconds",
-                label="SLA РЎР‚Р В°РЎРѓР С—РЎР‚Р ВµР ТР ВµР В»Р ВµР Р…Р СРЎРЏ (РЎРѓР ВµР С”)",
+                label="SLA  ()",
                 schema="int",
                 value_type="INT",
                 default=env_settings.distribution_sla_seconds,
             ),
             SettingFieldDef(
                 key="distribution_rounds",
-                label="Р С™Р С•Р В»Р СРЎвЂЎР ВµРЎРѓРЎвЂљР Р†Р С• РЎР‚Р В°РЎС“Р Р…Р ТР С•Р Р†",
+                label=" ",
                 schema="int",
                 value_type="INT",
                 default=env_settings.distribution_rounds,
             ),
             SettingFieldDef(
                 key="escalate_to_admin_after_min",
-                label="Р В­РЎРѓР С”Р В°Р В»Р В°РЎвЂ Р СРЎРЏ Р В°Р ТР СР СР Р…Р СРЎРѓРЎвЂљРЎР‚Р В°РЎвЂљР С•РЎР‚РЎС“ (Р СР СР Р…)",
+                label="  ()",
                 schema="int_non_negative",
                 value_type="INT",
                 default=10,
             ),
             SettingFieldDef(
                 key="distribution_log_topn",
-                label="Р В Р В°Р В·Р СР ВµРЎР‚ topN Р Р† Р В»Р С•Р С–Р Вµ Р С—Р С•Р ТР В±Р С•РЎР‚Р В°",
+                label=" topN   ",
                 schema="int",
                 value_type="INT",
                 default=10,
@@ -168,11 +220,11 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "limits": SettingGroupDef(
         key="limits",
-        title="Р вЂєР СР СР СРЎвЂљРЎвЂ№",
+        title="",
         fields=(
             SettingFieldDef(
                 key="max_active_orders",
-                label="Р СљР В°Р С”РЎРѓ. Р В°Р С”РЎвЂљР СР Р†Р Р…РЎвЂ№РЎвЂ¦ Р В·Р В°Р С”Р В°Р В·Р С•Р Р† Р Р…Р В° Р СР В°РЎРѓРЎвЂљР ВµРЎР‚Р В°",
+                label=".    ",
                 schema="int",
                 value_type="INT",
                 default=1,
@@ -181,58 +233,57 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "support": SettingGroupDef(
         key="support",
-        title="Р СџР С•Р ТР ТР ВµРЎР‚Р В¶Р С”Р В°",
-        description="Р С™Р С•Р Р…РЎвЂљР В°Р С”РЎвЂљРЎвЂ№ Р С РЎРѓРЎРѓРЎвЂ№Р В»Р С”Р С Р ТР В»РЎРЏ Р СР В°РЎРѓРЎвЂљР ВµРЎР‚Р С•Р Р† Р С Р В°Р ТР СР СР Р…Р СРЎРѓРЎвЂљРЎР‚Р В°РЎвЂљР С•РЎР‚Р С•Р Р†.",
+        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
         fields=(
             SettingFieldDef(
                 key="support_contact",
-                label="Р С™Р С•Р Р…РЎвЂљР В°Р С”РЎвЂљ Р С—Р С•Р ТР ТР ВµРЎР‚Р В¶Р С”Р С",
+                label=" ",
                 schema="string",
                 value_type="STR",
-                help_text="Р Р€Р С”Р В°Р В¶Р СРЎвЂљР Вµ @username, Р Р…Р С•Р СР ВµРЎР‚ РЎвЂљР ВµР В»Р ВµРЎвЂћР С•Р Р…Р В° Р СР В»Р С РЎРѓРЎРѓРЎвЂ№Р В»Р С”РЎС“.",
+                help_text=" @username,    .",
             ),
             SettingFieldDef(
                 key="support_faq_url",
-                label="РЎСЃС‹Р»РєР° РЅР° FAQ",
+                label="  FAQ",
                 schema="string_optional",
                 value_type="STR",
-                help_text="Р Р€Р С”Р В°Р В¶Р СРЎвЂљР Вµ URL Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С•РЎвЂЎР СРЎРѓРЎвЂљР СРЎвЂљРЎРЉ.",
+                help_text=" URL  '-'  .",
             ),
         ),
     ),
     "geo": SettingGroupDef(
         key="geo",
-        title="Р вЂњР ВµР С•Р С”Р С•Р ТР ВµРЎР‚",
+        title="",
         fields=(
             SettingFieldDef(
                 key="geo_mode",
-                label="Р В Р ВµР В¶Р СР С",
+                label="",
                 schema="choice",
                 value_type="STR",
                 choices=(
-                    ("local_centroids", "Р вЂєР С•Р С”Р В°Р В»РЎРЉР Р…РЎвЂ№Р Вµ РЎвЂ Р ВµР Р…РЎвЂљРЎР‚Р С•Р СР ТРЎвЂ№"),
-                    ("yandex", "Р Р‡Р Р…Р ТР ВµР С”РЎРѓ"),
+                    ("local_centroids", " "),
+                    ("yandex", ""),
                 ),
                 default="local_centroids",
-                help_text="1 РІР‚вЂќ Р В»Р С•Р С”Р В°Р В»РЎРЉР Р…Р С•, 2 РІР‚вЂќ Р Р‡Р Р…Р ТР ВµР С”РЎРѓ API.",
+                help_text="1  , 2   API.",
             ),
             SettingFieldDef(
                 key="yandex_geocoder_key",
-                label="API Р С”Р В»РЎР‹РЎвЂЎ Р С–Р ВµР С•Р С”Р С•Р ТР ВµРЎР‚Р В°",
+                label="API  ",
                 schema="string_optional",
                 value_type="STR",
-                help_text="Р Р€Р С”Р В°Р В¶Р СРЎвЂљР Вµ Р С”Р В»РЎР‹РЎвЂЎ Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С•РЎвЂЎР СРЎРѓРЎвЂљР СРЎвЂљРЎРЉ.",
+                help_text="   '-'  .",
             ),
             SettingFieldDef(
                 key="yandex_throttle_rps",
-                label="RPS Р С•Р С–РЎР‚Р В°Р Р…Р СРЎвЂЎР ВµР Р…Р СР Вµ",
+                label="RPS ",
                 schema="int_non_negative",
                 value_type="INT",
                 default=1,
             ),
             SettingFieldDef(
                 key="yandex_daily_limit",
-                label="Р вЂќР Р…Р ВµР Р†Р Р…Р С•Р в„– Р В»Р СР СР СРЎвЂљ Р В·Р В°Р С—РЎР‚Р С•РЎРѓР С•Р Р†",
+                label="  ",
                 schema="int_non_negative",
                 value_type="INT",
                 default=1000,
@@ -241,29 +292,202 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "channels": SettingGroupDef(
         key="channels",
-        title="Р С™Р В°Р Р…Р В°Р В»РЎвЂ№ РЎС“Р Р†Р ВµР ТР С•Р СР В»Р ВµР Р…Р СР в„–",
-        description="Р С™Р В°Р Р…Р В°Р В»РЎвЂ№ Р ТР В»РЎРЏ Р В°Р В»Р ВµРЎР‚РЎвЂљР С•Р Р†, Р В»Р С•Р С–Р С•Р Р† Р С Р С•РЎвЂљРЎвЂЎРЎвЂРЎвЂљР С•Р Р†.",
+        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
         fields=(
             SettingFieldDef(
                 key="alerts_channel_id",
-                label="Alerts / РђР»РµСЂС‚С‹",
+                label="Alerts / ",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID Р С”Р В°Р Р…Р В°Р В»Р В° Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С•РЎвЂЎР СРЎРѓРЎвЂљР СРЎвЂљРЎРЉ.",
+                help_text="ID   '-'  .",
             ),
             SettingFieldDef(
                 key="logs_channel_id",
-                label="РљР°РЅР°Р» Р»РѕРіРѕРІ",
+                label=" ",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID Р С”Р В°Р Р…Р В°Р В»Р В° Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С•РЎвЂЎР СРЎРѓРЎвЂљР СРЎвЂљРЎРЉ.",
+                help_text="ID   '-'  .",
             ),
             SettingFieldDef(
                 key="reports_channel_id",
-                label="Р С™Р В°Р Р…Р В°Р В» Р С•РЎвЂљРЎвЂЎРЎвЂРЎвЂљР С•Р Р†",
+                label=" ",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID Р С”Р В°Р Р…Р В°Р В»Р В° Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С•РЎвЂЎР СРЎРѓРЎвЂљР СРЎвЂљРЎРЉ.",
+                help_text="ID   '-'  .",
+            ),
+        ),
+    ),
+}
+SETTINGS_GROUPS = SETTING_GROUPS
+"""
+
+# Cleaned settings groups (mojibake-free)
+SETTING_GROUPS: dict[str, SettingGroupDef] = {
+    "workday": SettingGroupDef(
+        key="workday",
+        title="Рабочий день",
+        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
+        fields=(
+            SettingFieldDef(
+                key="working_hours_start",
+                label="Начало рабочего дня",
+                schema="time",
+                value_type="TIME",
+                default=env_settings.working_hours_start,
+                help_text="Формат ЧЧ:ММ, по умолчанию 10:00.",
+            ),
+            SettingFieldDef(
+                key="working_hours_end",
+                label="Конец рабочего дня",
+                schema="time",
+                value_type="TIME",
+                default=env_settings.working_hours_end,
+                help_text="Формат ЧЧ:ММ, по умолчанию 20:00.",
+            ),
+        ),
+    ),
+    "distribution": SettingGroupDef(
+        key="distribution",
+        title="Распределение",
+        description="Настройки автораспределения заявок (частота, SLA, раунды).",
+        fields=(
+            SettingFieldDef(
+                key="distribution_tick_seconds",
+                label="Шаг цикла (сек.)",
+                schema="int",
+                value_type="INT",
+                default=30,
+            ),
+            SettingFieldDef(
+                key="distribution_sla_seconds",
+                label="SLA ответа мастера (сек.)",
+                schema="int",
+                value_type="INT",
+                default=env_settings.distribution_sla_seconds,
+            ),
+            SettingFieldDef(
+                key="distribution_rounds",
+                label="Количество раундов",
+                schema="int",
+                value_type="INT",
+                default=env_settings.distribution_rounds,
+            ),
+            SettingFieldDef(
+                key="escalate_to_admin_after_min",
+                label="Эскалация к админу через (мин.)",
+                schema="int_non_negative",
+                value_type="INT",
+                default=10,
+            ),
+            SettingFieldDef(
+                key="distribution_log_topn",
+                label="Логировать topN кандидатов",
+                schema="int",
+                value_type="INT",
+                default=10,
+            ),
+        ),
+    ),
+    "limits": SettingGroupDef(
+        key="limits",
+        title="Лимиты",
+        description="Ограничения сервиса для мастеров и процессов.",
+        fields=(
+            SettingFieldDef(
+                key="max_active_orders",
+                label="Макс. активных заказов на мастера",
+                schema="int",
+                value_type="INT",
+                default=1,
+            ),
+        ),
+    ),
+    "support": SettingGroupDef(
+        key="support",
+        title="Поддержка",
+        description="Контакты поддержки и материалы.",
+        fields=(
+            SettingFieldDef(
+                key="support_contact",
+                label="Контакт поддержки",
+                schema="string",
+                value_type="STR",
+                help_text="Например, @username, если доступно.",
+            ),
+            SettingFieldDef(
+                key="support_faq_url",
+                label="Ссылка на FAQ",
+                schema="string_optional",
+                value_type="STR",
+                help_text="Укажите URL или '-' чтобы очистить.",
+            ),
+        ),
+    ),
+    "geo": SettingGroupDef(
+        key="geo",
+        title="Гео",
+        description="Режим и лимиты геокодера.",
+        fields=(
+            SettingFieldDef(
+                key="geo_mode",
+                label="Режим геокодера",
+                schema="choice",
+                value_type="STR",
+                choices=(
+                    ("local_centroids", "Локальные центроиды"),
+                    ("yandex", "Яндекс"),
+                ),
+                default="local_centroids",
+                help_text="1 — локально, 2 — через API.",
+            ),
+            SettingFieldDef(
+                key="yandex_geocoder_key",
+                label="API‑ключ Яндекс",
+                schema="string_optional",
+                value_type="STR",
+                help_text="Оставьте '-' чтобы очистить.",
+            ),
+            SettingFieldDef(
+                key="yandex_throttle_rps",
+                label="RPS ограничение",
+                schema="int_non_negative",
+                value_type="INT",
+                default=1,
+            ),
+            SettingFieldDef(
+                key="yandex_daily_limit",
+                label="Суточный лимит запросов",
+                schema="int_non_negative",
+                value_type="INT",
+                default=1000,
+            ),
+        ),
+    ),
+    "channels": SettingGroupDef(
+        key="channels",
+        title="Каналы",
+        description="ID каналов Telegram для уведомлений и отчётов.",
+        fields=(
+            SettingFieldDef(
+                key="alerts_channel_id",
+                label="Канал алертов (ID)",
+                schema="int_optional",
+                value_type="STR",
+                help_text="ID или '-' чтобы очистить.",
+            ),
+            SettingFieldDef(
+                key="logs_channel_id",
+                label="Канал логов (ID)",
+                schema="int_optional",
+                value_type="STR",
+                help_text="ID или '-' чтобы очистить.",
+            ),
+            SettingFieldDef(
+                key="reports_channel_id",
+                label="Канал отчётов (ID)",
+                schema="int_optional",
+                value_type="STR",
+                help_text="ID или '-' чтобы очистить.",
             ),
         ),
     ),
@@ -285,15 +509,15 @@ SETTING_FIELD_GROUP: dict[str, str] = {
 }
 
 
-EMPTY_PLACEHOLDER = "вЂ”"
+EMPTY_PLACEHOLDER = ""
 SCHEMA_DEFAULT_HELP = {
-    "time": "Р В¤Р С•РЎР‚Р СР В°РЎвЂљ РЎвЂЎРЎвЂЎ:Р СР С, Р Р…Р В°Р С—РЎР‚Р СР СР ВµРЎР‚ 10:00.",
-    "int": "Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂ Р ВµР В»Р С•Р Вµ РЎвЂЎР СРЎРѓР В»Р С• Р В±Р С•Р В»РЎРЉРЎв‚¬Р Вµ 0.",
-    "int_non_negative": "Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂ Р ВµР В»Р С•Р Вµ РЎвЂЎР СРЎРѓР В»Р С• Р Р…Р Вµ Р СР ВµР Р…РЎРЉРЎв‚¬Р Вµ 0.",
-    "string": "Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂљР ВµР С”РЎРѓРЎвЂљ.",
-    "string_optional": "Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂљР ВµР С”РЎРѓРЎвЂљ Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С•РЎвЂЎР СРЎРѓРЎвЂљР СРЎвЂљРЎРЉ.",
-    "int_optional": "Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ ID Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С•РЎвЂЎР СРЎРѓРЎвЂљР СРЎвЂљРЎРЉ.",
-    "choice": "Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р Р†Р В°РЎР‚Р СР В°Р Р…РЎвЂљ Р СР В· РЎРѓР С—Р СРЎРѓР С”Р В°.",
+    "time": " :,  10:00.",
+    "int": "    0.",
+    "int_non_negative": "     0.",
+    "string": " .",
+    "string_optional": "   '-'  .",
+    "int_optional": " ID  '-'  .",
+    "choice": "   .",
 }
 LOG_ENTRIES_LIMIT = 20
 
@@ -340,8 +564,8 @@ def _choice_help(field: SettingFieldDef) -> str:
 def _build_setting_prompt(field: SettingFieldDef, current_display: str) -> str:
     lines = [f"<b>{field.label}</b>"]
     if current_display and current_display != EMPTY_PLACEHOLDER:
-        lines.append(f"Р СћР ВµР С”РЎС“РЎвЂ°Р ВµР Вµ Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р СР Вµ: <code>{html.escape(current_display, quote=False)}</code>")
-    base_help = SCHEMA_DEFAULT_HELP.get(field.schema, "Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р СР Вµ.")
+        lines.append(f" : <code>{html.escape(current_display, quote=False)}</code>")
+    base_help = SCHEMA_DEFAULT_HELP.get(field.schema, " .")
     if field.schema == "choice":
         options = _choice_help(field)
         if options:
@@ -351,7 +575,7 @@ def _build_setting_prompt(field: SettingFieldDef, current_display: str) -> str:
             lines.append(base_help)
     else:
         lines.append(field.help_text or base_help)
-    lines.append("Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /cancel Р ТР В»РЎРЏ Р С•РЎвЂљР СР ВµР Р…РЎвЂ№.")
+    lines.append(" /cancel  .")
     return "".join(lines)
 
 
@@ -361,32 +585,32 @@ def _parse_setting_input(field: SettingFieldDef, user_input: str) -> tuple[str, 
         return "", field.value_type
     if field.schema == "time":
         if not re.fullmatch(r"^\d{1,2}:\d{2}$", text):
-            raise ValueError("Р СњР ВµР Р†Р ВµРЎР‚Р Р…РЎвЂ№Р в„– РЎвЂћР С•РЎР‚Р СР В°РЎвЂљ Р Р†РЎР‚Р ВµР СР ВµР Р…Р С. РЎРѓР С—Р С•Р В»РЎРЉР В·РЎС“Р в„–РЎвЂљР Вµ РЎвЂЎРЎвЂЎ:Р СР С.")
+            raise ValueError("  .  :.")
         hh, mm = map(int, text.split(":"))
         if not (0 <= hh < 24 and 0 <= mm < 60):
-            raise ValueError("Р В§Р В°РЎРѓРЎвЂ№ 0РІР‚вЂњ23 Р С Р СР СР Р…РЎС“РЎвЂљРЎвЂ№ 0РІР‚вЂњ59.")
+            raise ValueError(" 023   059.")
         return text, field.value_type
     if field.schema == "int":
         try:
             value = int(text)
         except ValueError:
-            raise ValueError("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂ Р ВµР В»Р С•Р Вµ РЎвЂЎР СРЎРѓР В»Р С•.")
+            raise ValueError("  .")
         if value <= 0:
-            raise ValueError("Р вЂ”Р Р…Р В°РЎвЂЎР ВµР Р…Р СР Вµ Р ТР С•Р В»Р В¶Р Р…Р С• Р В±РЎвЂ№РЎвЂљРЎРЉ Р В±Р С•Р В»РЎРЉРЎв‚¬Р Вµ 0.")
+            raise ValueError("    0.")
         return str(value), field.value_type
     if field.schema == "int_non_negative":
         try:
             value = int(text)
         except ValueError:
-            raise ValueError("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂ Р ВµР В»Р С•Р Вµ РЎвЂЎР СРЎРѓР В»Р С•.")
+            raise ValueError("  .")
         if value < 0:
-            raise ValueError("Р вЂ”Р Р…Р В°РЎвЂЎР ВµР Р…Р СР Вµ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљ Р В±РЎвЂ№РЎвЂљРЎРЉ Р СР ВµР Р…РЎРЉРЎв‚¬Р Вµ 0.")
+            raise ValueError("     0.")
         return str(value), field.value_type
     if field.schema == "int_optional":
         try:
             value = int(text)
         except ValueError:
-            raise ValueError("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂ Р ВµР В»Р С•Р Вµ РЎвЂЎР СРЎРѓР В»Р С• Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С•РЎвЂЎР СРЎРѓРЎвЂљР СРЎвЂљРЎРЉ.")
+            raise ValueError("    '-'  .")
         return str(value), field.value_type
     if field.schema == "choice":
         normalized = text.lower()
@@ -394,49 +618,77 @@ def _parse_setting_input(field: SettingFieldDef, user_input: str) -> tuple[str, 
             for idx, (code, label) in enumerate(field.choices, 1):
                 if normalized in {code.lower(), label.lower(), str(idx)}:
                     return code, field.value_type
-        raise ValueError("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р Р†Р В°РЎР‚Р СР В°Р Р…РЎвЂљ Р СР В· РЎРѓР С—Р СРЎРѓР С”Р В°.")
+        raise ValueError("   .")
     if field.schema == "string_optional":
         return text, field.value_type
     if field.schema == "string":
         if not text:
-            raise ValueError("Р вЂ”Р Р…Р В°РЎвЂЎР ВµР Р…Р СР Вµ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљ Р В±РЎвЂ№РЎвЂљРЎРЉ Р С—РЎС“РЎРѓРЎвЂљРЎвЂ№Р С.")
+            raise ValueError("    .")
         return text, field.value_type
-    raise ValueError("Р СњР ВµР С—Р С•Р ТР ТР ВµРЎР‚Р В¶Р СР Р†Р В°Р ВµР СРЎвЂ№Р в„– РЎвЂљР СР С— Р С—Р С•Р В»РЎРЏ.")
+    raise ValueError("  .")
 
+
+"""
+async def _build_settings_view(bot, group_key: str) -> tuple[str, InlineKeyboardMarkup]:
+    group = _get_setting_group(group_key)
+    service = _settings_service(bot)
+    raw_map = await service.get_values([field.key for field in group.fields])
+    title = _RU_GROUP_TITLES.get(group.key, getattr(group, "title", group.key))
+    desc = _RU_GROUP_DESCRIPTIONS.get(group.key, getattr(group, "description", ""))
+    lines: list[str] = [f"<b>{title}</b>"]
+    if desc:\n        lines.append(desc)
+    for field in group.fields:
+        raw_value = raw_map.get(field.key, (None, None))[0]
+        display, from_default = _format_setting_value(field, raw_value)\n        label = _RU_FIELD_LABELS.get(field.key, _RU_FIELD_LABELS.get(field.key, field.label))
+        if display == EMPTY_PLACEHOLDER:\n            value_line = f"{label}: {EMPTY_PLACEHOLDER}"
+        else:
+            value_line = f"{label}: <code>{html.escape(display, quote=False)}</code>"
+        if from_default and field.default not in (None, ""):
+            value_line += " <i>( )</i>"
+        lines.append(value_line)\n    lines.append("Выберите поле ниже, чтобы отредактировать значение.")
+    keyboard = settings_group_keyboard(
+        group_key,
+        [(field.key, _RU_FIELD_LABELS.get(field.key, field.label)) for field in group.fields],
+    )
+    return "".join(lines), keyboard
+"""
 
 async def _build_settings_view(bot, group_key: str) -> tuple[str, InlineKeyboardMarkup]:
     group = _get_setting_group(group_key)
     service = _settings_service(bot)
     raw_map = await service.get_values([field.key for field in group.fields])
-    lines: list[str] = [f"<b>{group.title}</b>"]
-    if group.description:
-        lines.append(group.description)
+    title = _RU_GROUP_TITLES.get(group.key, getattr(group, "title", group.key))
+    desc = _RU_GROUP_DESCRIPTIONS.get(group.key, getattr(group, "description", ""))
+    lines: list[str] = [f"<b>{title}</b>"]
+    if desc:
+        lines.append(desc)
     for field in group.fields:
         raw_value = raw_map.get(field.key, (None, None))[0]
         display, from_default = _format_setting_value(field, raw_value)
+        label = _RU_FIELD_LABELS.get(field.key, _RU_FIELD_LABELS.get(field.key, field.label))
         if display == EMPTY_PLACEHOLDER:
-            value_line = f"{field.label}: {EMPTY_PLACEHOLDER}"
+            value_line = f"{label}: {EMPTY_PLACEHOLDER}"
         else:
-            value_line = f"{field.label}: <code>{html.escape(display, quote=False)}</code>"
+            value_line = f"{label}: <code>{html.escape(display, quote=False)}</code>"
         if from_default and field.default not in (None, ""):
-            value_line += " <i>(Р С—Р С• РЎС“Р СР С•Р В»РЎвЂЎР В°Р Р…Р СРЎР‹)</i>"
+            value_line += " <i>(по умолчанию)</i>"
         lines.append(value_line)
-    lines.append("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С—Р С•Р В»Р Вµ Р Р…Р СР В¶Р Вµ, РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р СР В·Р СР ВµР Р…Р СРЎвЂљРЎРЉ.")
+    lines.append("Выберите поле ниже, чтобы отредактировать значение.")
     keyboard = settings_group_keyboard(
         group_key,
-        [(field.key, field.label) for field in group.fields],
+        [(field.key, _RU_FIELD_LABELS.get(field.key, field.label)) for field in group.fields],
     )
     return "".join(lines), keyboard
 
 def _format_log_entries(entries: Sequence[live_log.LiveLogEntry]) -> str:
     if not entries:
-        return '<b>РЎРѓРЎвЂљР С•РЎР‚Р СРЎРЏ Р С—РЎС“РЎРѓРЎвЂљР В°</b>'
+        return '<b> </b>'
 
-    lines = ['<b>РЎРѓРЎвЂљР С•РЎР‚Р СРЎРЏ РЎРѓР С•Р В±РЎвЂ№РЎвЂљР СР в„–</b>']
+    lines = ['<b> </b>']
     for entry in entries:
         local_time = entry.timestamp.astimezone(LOCAL_TZ)
         body = html.escape(entry.message, quote=False).replace('\n', '<br>')
-        lines.append(f'[{local_time:%H:%M:%S}] <i>{entry.source}</i> вЂ” {body}')
+        lines.append(f'[{local_time:%H:%M:%S}] <i>{entry.source}</i>  {body}')
     return '\n'.join(lines)
 
 def _staff_service(bot):
@@ -516,7 +768,7 @@ def _build_new_order_data(data: dict, staff: StaffUser) -> NewOrderData:
     address_comment = data.get("address_comment") or None
     manual_street = data.get("street_manual")
     if manual_street:
-        extra = f"(РЎС“Р В»Р СРЎвЂ Р В° Р Р†РЎР‚РЎС“РЎвЂЎР Р…РЎС“РЎР‹: {manual_street})"
+        extra = f"( : {manual_street})"
         address_comment = f"{address_comment} {extra}".strip() if address_comment else extra
     initial_status_value = data.get("initial_status")
     initial_status = normalize_status(initial_status_value)
@@ -581,9 +833,9 @@ def _slot_options(
         options.append(("ASAP", "ASAP"))
         for bucket_key, start, end in SLOT_BUCKETS:
             if current < start:
-                options.append((f"TODAY:{bucket_key}", f"РЎРѓР ВµР С–Р С•Р ТР Р…РЎРЏ {start:%H:%M}-{end:%H:%M}"))
+                options.append((f"TODAY:{bucket_key}", f" {start:%H:%M}-{end:%H:%M}"))
     for bucket_key, start, end in SLOT_BUCKETS:
-        options.append((f"TOM:{bucket_key}", f"Р·Р°РІС‚СЂР° {start:%H:%M}-{end:%H:%M}"))
+        options.append((f"TOM:{bucket_key}", f" {start:%H:%M}-{end:%H:%M}"))
     return options
 
 
@@ -600,7 +852,7 @@ def _format_slot_display(
         computation.end_utc,
         tz=tz,
     )
-    return formatted or "вЂ”"
+    return formatted or ""
 
 
 
@@ -688,7 +940,7 @@ async def _render_created_order_card(message: Message, order_id: int, staff: Sta
     orders_service = _orders_service(message.bot)
     detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
     if not detail:
-        await message.answer(f"Р вЂ”Р В°РЎРЏР Р†Р С”Р В° #{order_id} РЎРѓР С•Р В·Р ТР В°Р Р…Р В°.")
+        await message.answer(f" #{order_id} .")
         return
     text = format_order_card(detail)
     markup = order_card_keyboard(
@@ -717,7 +969,7 @@ async def not_allowed_start(message: Message, state: FSMContext) -> None:
     staff = await staff_service.get_by_tg_id(user_id) if user_id else None
     if staff:
         await state.clear()
-        await message.answer("Р вЂ™РЎвЂ№ РЎС“Р В¶Р Вµ Р В°Р Р†РЎвЂљР С•РЎР‚Р СР В·Р С•Р Р†Р В°Р Р…РЎвЂ№.", reply_markup=main_menu(staff))
+        await message.answer("  .", reply_markup=main_menu(staff))
         return
     await state.clear()
     await state.set_state(StaffAccessFSM.code)
@@ -728,7 +980,7 @@ async def not_allowed_start(message: Message, state: FSMContext) -> None:
 async def staff_access_enter_code(message: Message, state: FSMContext) -> None:
     code_value = (message.text or "").strip()
     if not code_value:
-        await message.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р С”Р С•Р Т Р ТР С•РЎРѓРЎвЂљРЎС“Р С—Р В°.")
+        await message.answer("  .")
         return
     staff_service = _staff_service(message.bot)
     record = await staff_service.validate_access_code_value(code_value)
@@ -744,8 +996,8 @@ async def staff_access_enter_code(message: Message, state: FSMContext) -> None:
         access_city_ids=list(record.city_ids),
     )
     summary_lines = [
-        f"Р РѕР»СЊ: {role_label}",
-        f"Р вЂњР С•РЎР‚Р С•Р ТР В°: {', '.join(city_names) if city_names else '-'}",
+        f": {role_label}",
+        f": {', '.join(city_names) if city_names else '-'}",
     ]
     await message.answer("\n".join(summary_lines))
     await state.set_state(StaffAccessFSM.pdn)
@@ -755,26 +1007,26 @@ async def staff_access_enter_code(message: Message, state: FSMContext) -> None:
 @router.message(StateFilter(StaffAccessFSM.pdn))
 async def staff_access_pdn(message: Message, state: FSMContext) -> None:
     text_value = (message.text or "").strip().lower()
-    if text_value in {"РЅРµ СЃРѕРіР»Р°СЃРµРЅ", "РЅРµС‚", "no"}:
+    if text_value in {" ", "", "no"}:
         await state.clear()
-        await message.answer("Р вЂР ВµР В· РЎРѓР С•Р С–Р В»Р В°РЎРѓР СРЎРЏ Р С—РЎР‚Р С•Р ТР С•Р В»Р В¶Р СРЎвЂљРЎРЉ Р Р…Р ВµР В»РЎРЉР В·РЎРЏ. Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /start, Р ВµРЎРѓР В»Р С Р С—Р ВµРЎР‚Р ВµР ТРЎС“Р СР В°Р ВµРЎвЂљР Вµ.")
+        await message.answer("   .  /start,  .")
         return
-    if text_value not in {"РЎРѓР С•Р С–Р В»Р В°РЎРѓР ВµР Р…", "Р ТР В°", "ok", "РЎвЂ¦Р С•РЎР‚Р С•РЎв‚¬Р С•"}:
-        await message.answer('Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ "РЎРѓР С•Р С–Р В»Р В°РЎРѓР ВµР Р…" Р СР В»Р С "Р Р…Р Вµ РЎРѓР С•Р С–Р В»Р В°РЎРѓР ВµР Р…".')
+    if text_value not in {"", "", "ok", ""}:
+        await message.answer(' ""  " ".')
         return
     await state.set_state(StaffAccessFSM.full_name)
-    await message.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р В¤Р С› Р С—Р С•Р В»Р Р…Р С•РЎРѓРЎвЂљРЎРЉРЎР‹ (Р Р…Р В°Р С—РЎР‚Р СР СР ВµРЎР‚, Р Р†Р В°Р Р…Р С•Р Р† Р Р†Р В°Р Р… Р Р†Р В°Р Р…Р С•Р Р†Р СРЎвЂЎ).")
+    await message.answer("   (,   ).")
 
 
 @router.message(StateFilter(StaffAccessFSM.full_name))
 async def staff_access_full_name(message: Message, state: FSMContext) -> None:
     full_name = (message.text or "").strip()
     if len(full_name) < 5:
-        await message.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р В¤Р С› Р С—Р С•Р В»Р Р…Р С•РЎРѓРЎвЂљРЎРЉРЎР‹.")
+        await message.answer("  .")
         return
     await state.update_data(full_name=full_name)
     await state.set_state(StaffAccessFSM.phone)
-    await message.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂљР ВµР В»Р ВµРЎвЂћР С•Р Р… Р Р† РЎвЂћР С•РЎР‚Р СР В°РЎвЂљР Вµ +7XXXXXXXXXX Р СР В»Р С 8XXXXXXXXXX.")
+    await message.answer("    +7XXXXXXXXXX  8XXXXXXXXXX.")
 
 
 @router.message(StateFilter(StaffAccessFSM.phone))
@@ -783,7 +1035,7 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     try:
         normalized = normalize_phone(raw_phone)
     except ValueError:
-        await message.answer("Р СњР ВµР Р†Р ВµРЎР‚Р Р…РЎвЂ№Р в„– РЎвЂћР С•РЎР‚Р СР В°РЎвЂљ РЎвЂљР ВµР В»Р ВµРЎвЂћР С•Р Р…Р В°. Р СџРЎР‚Р СР СР ВµРЎР‚: +7XXXXXXXXXX Р СР В»Р С 8XXXXXXXXXX")
+        await message.answer("  . : +7XXXXXXXXXX  8XXXXXXXXXX")
         return
     data = await state.get_data()
     code_value = data.get("access_code")
@@ -791,11 +1043,11 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     role_token = data.get("access_role")
     if not code_value or not full_name or not role_token:
         await state.clear()
-        await message.answer("Р РЋР ВµРЎРѓРЎРѓР СРЎРЏ Р СРЎРѓРЎвЂљР ВµР С”Р В»Р В°. Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /start Р С Р С—Р С•Р С—РЎР‚Р С•Р В±РЎС“Р в„–РЎвЂљР Вµ РЎРѓР Р…Р С•Р Р†Р В°.")
+        await message.answer(" .  /start   .")
         return
     user = message.from_user
     if not user:
-        await message.answer("Р СњР Вµ РЎС“Р ТР В°Р В»Р С•РЎРѓРЎРЉ Р С—Р С•Р В»РЎС“РЎвЂЎР СРЎвЂљРЎРЉ Р ТР В°Р Р…Р Р…РЎвЂ№Р Вµ Р С—Р С•Р В»РЎРЉР В·Р С•Р Р†Р В°РЎвЂљР ВµР В»РЎРЏ.")
+        await message.answer("    .")
         return
     staff_service = _staff_service(message.bot)
     try:
@@ -809,7 +1061,7 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     except AccessCodeError as exc:
         error_text = ACCESS_CODE_ERROR_MESSAGES.get(
             exc.reason,
-            "Р СњР Вµ РЎС“Р ТР В°Р В»Р С•РЎРѓРЎРЉ Р С—РЎР‚Р СР СР ВµР Р…Р СРЎвЂљРЎРЉ Р С”Р С•Р Т. Р С›Р В±РЎР‚Р В°РЎвЂљР СРЎвЂљР ВµРЎРѓРЎРЉ Р С” Р С–Р В»Р С•Р В±Р В°Р В»РЎРЉР Р…Р С•Р СРЎС“ Р В°Р ТР СР СР Р…Р СРЎРѓРЎвЂљРЎР‚Р В°РЎвЂљР С•РЎР‚РЎС“.",
+            "   .    .",
         )
         await message.answer(error_text)
         await state.set_state(StaffAccessFSM.code)
@@ -819,11 +1071,11 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     role_label = STAFF_ROLE_LABELS.get(staff_user.role, staff_user.role.value)
     city_names = await _resolve_city_names(message.bot, staff_user.city_ids)
     lines = [
-        f"Р вЂ™РЎвЂ№ Р ТР С•Р В±Р В°Р Р†Р В»Р ВµР Р…РЎвЂ№ Р С”Р В°Р С” {role_label}.",
-        f"Р вЂњР С•РЎР‚Р С•Р ТР В°: {', '.join(city_names) if city_names else '-'}",
+        f"   {role_label}.",
+        f": {', '.join(city_names) if city_names else '-'}",
     ]
     await message.answer("\n".join(lines))
-    await message.answer("Р вЂњР С•РЎвЂљР С•Р Р†Р С•. Р вЂњР В»Р В°Р Р†Р Р…Р С•Р Вµ Р СР ВµР Р…РЎР‹:", reply_markup=main_menu(staff_user))
+    await message.answer(".  :", reply_markup=main_menu(staff_user))
 
 
 @router.callback_query(
@@ -831,7 +1083,7 @@ async def staff_access_phone(message: Message, state: FSMContext) -> None:
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
 async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.message.edit_text("Р вЂњР В»Р В°Р Р†Р Р…Р С•Р Вµ Р СР ВµР Р…РЎР‹:", reply_markup=main_menu(staff))
+    await cq.message.edit_text(" :", reply_markup=main_menu(staff))
     await cq.answer()
 
 @router.callback_query(
@@ -841,12 +1093,12 @@ async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
 async def cb_masters_menu(cq: CallbackQuery) -> None:
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="СЂСџвЂєРЋ Р СљР С•Р ТР ВµРЎР‚Р В°РЎвЂ Р СРЎРЏ", callback_data="adm:mod")],
-            [InlineKeyboardButton(text="РІвЂ”Р‚РїСРЏ Р вЂ™ Р СР ВµР Р…РЎР‹", callback_data="adm:menu")],
+            [InlineKeyboardButton(text=" ", callback_data="adm:mod")],
+            [InlineKeyboardButton(text="  ", callback_data="adm:menu")],
         ]
     )
     await cq.message.edit_text(
-        "Р В Р В°Р В·Р ТР ВµР В» Р’В«Р СљР В°РЎРѓРЎвЂљР ВµРЎР‚Р В°Р’В». Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С—Р С•Р ТР С—РЎС“Р Р…Р С”РЎвЂљ:",
+        " .  :",
         reply_markup=markup,
     )
     await cq.answer()
@@ -859,12 +1111,12 @@ async def cb_masters_menu(cq: CallbackQuery) -> None:
 async def cb_moderation_placeholder(cq: CallbackQuery) -> None:
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="РІвЂ”Р‚РїСРЏ Р СњР В°Р В·Р В°Р Т", callback_data="adm:m")],
-            [InlineKeyboardButton(text="СЂСџРЏВ  Р вЂњР В»Р В°Р Р†Р Р…Р С•Р Вµ Р СР ВµР Р…РЎР‹", callback_data="adm:menu")],
+            [InlineKeyboardButton(text=" ", callback_data="adm:m")],
+            [InlineKeyboardButton(text="  ", callback_data="adm:menu")],
         ]
     )
     await cq.message.edit_text(
-        "Р В Р В°Р В·Р ТР ВµР В» Р’В«Р СљР С•Р ТР ВµРЎР‚Р В°РЎвЂ Р СРЎРЏР’В» Р ВµРЎвЂ°РЎвЂ Р Р† РЎР‚Р В°Р В·РЎР‚Р В°Р В±Р С•РЎвЂљР С”Р Вµ.",
+        "    .",
         reply_markup=markup,
     )
     await cq.answer()
@@ -877,10 +1129,10 @@ async def cb_moderation_placeholder(cq: CallbackQuery) -> None:
 async def cb_staff_menu_denied(cq: CallbackQuery, staff: StaffUser) -> None:
     if cq.message is not None:
         await cq.message.edit_text(
-            "Р СњР ВµР ТР С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• Р С—РЎР‚Р В°Р Р†. Р вЂњР В»Р В°Р Р†Р Р…Р С•Р Вµ Р СР ВµР Р…РЎР‹:",
+            " .  :",
             reply_markup=main_menu(staff),
         )
-    await cq.answer("Р СњР ВµР ТР С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• Р С—РЎР‚Р В°Р Р†", show_alert=True)
+    await cq.answer(" ", show_alert=True)
 
 
 @router.callback_query(
@@ -889,7 +1141,7 @@ async def cb_staff_menu_denied(cq: CallbackQuery, staff: StaffUser) -> None:
 )
 async def cb_finance_root(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
-    await cq.message.edit_text("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎР‚Р В°Р В·Р ТР ВµР В»:", reply_markup=finance_menu(staff))
+    await cq.message.edit_text(" :", reply_markup=finance_menu(staff))
     await cq.answer()
 
 
@@ -912,20 +1164,20 @@ async def _render_finance_segment(
 
     title = FINANCE_SEGMENT_TITLES.get(segment, segment.upper())
     if not rows:
-        text = f"<b>{title}</b>\nР С™Р С•Р СР СРЎРѓРЎРѓР СР С Р Р…Р Вµ Р Р…Р В°Р в„–Р ТР ВµР Р…РЎвЂ№."
+        text = f"<b>{title}</b>\n  ."
     else:
         lines = [f"<b>{title}</b>", ""]
         for row in rows:
             if isinstance(row, CommissionListItem):
-                lines.append(f"вЂў {html.escape(finance_list_line(row))}")
+                lines.append(f" {html.escape(finance_list_line(row))}")
             else:
-                lines.append(f"вЂў {html.escape(str(row))}")
+                lines.append(f" {html.escape(str(row))}")
         text = "\n".join(lines)
 
     button_rows: list[list[InlineKeyboardButton]] = []
     for row in rows:
         if isinstance(row, CommissionListItem):
-            label = f"#{row.id} В· {row.amount:.0f} в‚Ѕ"
+            label = f"#{row.id}  {row.amount:.0f} "
             button_rows.append([
                 InlineKeyboardButton(
                     text=label,
@@ -1008,7 +1260,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
     finance_service = _finance_service(cq.message.bot)
     detail = await finance_service.get_commission_detail(commission_id)
     if not detail:
-        await cq.answer("Р С™Р С•Р СР СРЎРѓРЎРѓР СРЎРЏ Р Р…Р Вµ Р Р…Р В°Р в„–Р ТР ВµР Р…Р В°.", show_alert=True)
+        await cq.answer("  .", show_alert=True)
         return
 
     data = await state.get_data()
@@ -1030,7 +1282,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
 
     if action == "open":
         if not detail.attachments:
-            await cq.answer("Р В§Р ВµР С”Р С Р С•РЎвЂљРЎРѓРЎС“РЎвЂљРЎРѓРЎвЂљР Р†РЎС“РЎР‹РЎвЂљ.", show_alert=True)
+            await cq.answer(" .", show_alert=True)
             return
         for attachment in detail.attachments:
             try:
@@ -1040,7 +1292,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
                 else:
                     await cq.message.answer_document(attachment.file_id, caption=attachment.caption)
             except TelegramBadRequest:
-                await cq.message.answer("Р СњР Вµ РЎС“Р ТР В°Р В»Р С•РЎРѓРЎРЉ Р С—Р С•Р С”Р В°Р В·Р В°РЎвЂљРЎРЉ Р Р†Р В»Р С•Р В¶Р ВµР Р…Р СР Вµ РЎвЂЎР ВµР С”Р В°.")
+                await cq.message.answer("    .")
         await cq.answer()
         return
 
@@ -1055,8 +1307,8 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             source_message_id=cq.message.message_id,
         )
         prompt = (
-            "Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂћР В°Р С”РЎвЂљР СРЎвЂЎР ВµРЎРѓР С”РЎС“РЎР‹ РЎРѓРЎС“Р СР СРЎС“ Р С•Р С—Р В»Р В°РЎвЂљРЎвЂ№ (Р С—Р С• РЎС“Р СР С•Р В»РЎвЂЎР В°Р Р…Р СРЎР‹ {amount:.2f}).\n"
-            "Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /skip, РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С•РЎРѓРЎвЂљР В°Р Р†Р СРЎвЂљРЎРЉ Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р СР Вµ Р В±Р ВµР В· Р СР В·Р СР ВµР Р…Р ВµР Р…Р СР в„–."
+            "    (  {amount:.2f}).\n"
+            " /skip,     ."
         ).format(amount=detail.amount)
         await cq.message.edit_text(
             f"{text_body}\n\n{prompt}",
@@ -1072,7 +1324,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             by_staff_id=staff.id,
         )
         await cq.answer(
-            "Р СљР В°РЎРѓРЎвЂљР ВµРЎР‚ Р В·Р В°Р В±Р В»Р С•Р С”Р СРЎР‚Р С•Р Р†Р В°Р Р…." if ok else "Р СњР Вµ РЎС“Р ТР В°Р В»Р С•РЎРѓРЎРЉ Р В·Р В°Р В±Р В»Р С•Р С”Р СРЎР‚Р С•Р Р†Р В°РЎвЂљРЎРЉ Р СР В°РЎРѓРЎвЂљР ВµРЎР‚Р В°.",
+            " ." if ok else "   .",
             show_alert=not ok,
         )
         proxy = _MessageEditProxy(cq.message.bot, cq.message.chat.id, cq.message.message_id)
@@ -1091,7 +1343,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             source_message_id=cq.message.message_id,
         )
         await cq.message.edit_text(
-            "Р Р€Р С”Р В°Р В¶Р СРЎвЂљР Вµ Р С—РЎР‚Р СРЎвЂЎР СР Р…РЎС“ Р С•РЎвЂљР С”Р В»Р С•Р Р…Р ВµР Р…Р СРЎРЏ Р С—Р В»Р В°РЎвЂљР ВµР В¶Р В° (РЎвЂљР ВµР С”РЎРѓРЎвЂљР С•Р С) Р СР В»Р С Р Р…Р В°Р В¶Р СР СРЎвЂљР Вµ Р’В«Р СњР В°Р В·Р В°Р ТР’В».",
+            "    ()   .",
             reply_markup=finance_reject_cancel_keyboard(commission_id),
         )
         await cq.answer()
@@ -1104,7 +1356,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
 async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
     reason = (msg.text or "").strip()
     if len(reason) < 3:
-        await msg.answer("Р СћР ВµР С”РЎРѓРЎвЂљ Р ТР С•Р В»Р В¶Р ВµР Р… РЎРѓР С•Р ТР ВµРЎР‚Р В¶Р В°РЎвЂљРЎРЉ Р Р…Р Вµ Р СР ВµР Р…Р ВµР Вµ 3 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†.")
+        await msg.answer("Редактирование отменено.")
         return
 
     data = await state.get_data()
@@ -1116,7 +1368,7 @@ async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContex
 
     if not commission_id:
         await state.clear()
-        await msg.answer("Р РЋР ВµРЎРѓРЎРѓР СРЎРЏ Р СРЎРѓРЎвЂљР ВµР С”Р В»Р В°. Р С›РЎвЂљР С”РЎР‚Р С•Р в„–РЎвЂљР Вµ Р С”Р В°РЎР‚РЎвЂљР С•РЎвЂЎР С”РЎС“ Р С”Р С•Р СР СРЎРѓРЎРѓР СР С Р В·Р В°Р Р…Р С•Р Р†Р С•.")
+        await msg.answer("Редактирование отменено.")
         return
 
     finance_service = _finance_service(msg.bot)
@@ -1124,9 +1376,9 @@ async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContex
     await state.clear()
     if ok:
         live_log.push("finance", f"commission#{commission_id} rejected by staff {staff.id}")
-        await msg.answer("Р С›РЎвЂљР С—РЎР‚Р В°Р Р†Р В»Р ВµР Р…Р С• Р СР В°РЎРѓРЎвЂљР ВµРЎР‚РЎС“ Р Р…Р В° Р ТР С•РЎР‚Р В°Р В±Р С•РЎвЂљР С”РЎС“.")
+        await msg.answer("Редактирование отменено.")
     else:
-        await msg.answer("Р СњР Вµ РЎС“Р ТР В°Р В»Р С•РЎРѓРЎРЉ Р С•РЎвЂљР С”Р В»Р С•Р Р…Р СРЎвЂљРЎРЉ Р С•Р С—Р В»Р В°РЎвЂљРЎС“.")
+        await msg.answer("Редактирование отменено.")
         return
 
     if source_chat_id and source_message_id:
@@ -1140,7 +1392,7 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
     commission_id = data.get("commission_id")
     if not commission_id:
         await state.clear()
-        await msg.answer("Р РЋР ВµРЎРѓРЎРѓР СРЎРЏ Р С—Р С•Р ТРЎвЂљР Р†Р ВµРЎР‚Р В¶Р ТР ВµР Р…Р СРЎРЏ Р СРЎРѓРЎвЂљР ВµР С”Р В»Р В°. Р С›РЎвЂљР С”РЎР‚Р С•Р в„–РЎвЂљР Вµ Р С”Р С•Р СР СРЎРѓРЎРѓР СРЎР‹ Р В·Р В°Р Р…Р С•Р Р†Р С•.")
+        await msg.answer("Редактирование отменено.")
         return
 
     segment = data.get("segment", "aw")
@@ -1155,15 +1407,15 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
         if source_chat_id and source_message_id:
             proxy = _MessageEditProxy(msg.bot, source_chat_id, source_message_id)
             await _render_finance_segment(proxy, staff, segment, page, state)
-        await msg.answer("Р СџР С•Р ТРЎвЂљР Р†Р ВµРЎР‚Р В¶Р ТР ВµР Р…Р СР Вµ Р С•РЎвЂљР СР ВµР Р…Р ВµР Р…Р С•.")
+        await msg.answer("Редактирование отменено.")
         return
 
-    if text_value.lower() in {"/skip", "skip", "Р С—РЎР‚Р С•Р С—РЎС“РЎРѓРЎвЂљР СРЎвЂљРЎРЉ", ""}:
+    if text_value.lower() in {"/skip", "skip", "", ""}:
         amount = default_amount
     else:
         normalized = text_value.replace(",", ".")
         if not re.fullmatch(r"^\d{1,7}(?:\.\d{1,2})?$", normalized):
-            await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎРѓРЎС“Р СР СРЎС“ Р Р† РЎвЂћР С•РЎР‚Р СР В°РЎвЂљР Вµ 3500 Р СР В»Р С 4999.99, Р В»Р СР В±Р С• Р С•РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /skip.")
+            await msg.answer("Редактирование отменено.")
             return
         amount = Decimal(normalized)
 
@@ -1172,12 +1424,12 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
     await state.clear()
     if ok:
         live_log.push("finance", f"commission#{commission_id} approved by staff {staff.id} amount={amount}")
-        await msg.answer("Р С™Р С•Р СР СРЎРѓРЎРѓР СРЎРЏ Р С—Р С•Р ТРЎвЂљР Р†Р ВµРЎР‚Р В¶Р ТР ВµР Р…Р В°.")
+        await msg.answer("Редактирование отменено.")
         if source_chat_id and source_message_id:
             proxy = _MessageEditProxy(msg.bot, source_chat_id, source_message_id)
             await _render_finance_segment(proxy, staff, segment, page, state)
     else:
-        await msg.answer("Р СњР Вµ РЎС“Р ТР В°Р В»Р С•РЎРѓРЎРЉ Р С—Р С•Р ТРЎвЂљР Р†Р ВµРЎР‚Р ТР СРЎвЂљРЎРЉ Р С•Р С—Р В»Р В°РЎвЂљРЎС“.")
+        await msg.answer("Редактирование отменено.")
 
 @router.callback_query(
     F.data == "adm:r",
@@ -1185,7 +1437,7 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
 )
 async def cb_reports(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
-    await cq.message.edit_text("Р С›РЎвЂљРЎвЂЎРЎвЂРЎвЂљРЎвЂ№:", reply_markup=reports_menu_keyboard())
+    await cq.message.edit_text(":", reply_markup=reports_menu_keyboard())
     await cq.answer()
 
 
@@ -1195,8 +1447,8 @@ async def _prompt_report_period(cq: CallbackQuery, state: FSMContext, report_kin
     await state.set_state(ReportsExportFSM.awaiting_period)
     await state.update_data(report_kind=report_kind)
     await cq.message.answer(
-        "Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р С—Р ВµРЎР‚Р СР С•Р Т Р ТР В»РЎРЏ Р Р†РЎвЂ№Р С–РЎР‚РЎС“Р В·Р С”Р С (" + label + "). Р В¤Р С•РЎР‚Р СР В°РЎвЂљ: YYYY-MM-DD YYYY-MM-DD.\n"
-        "Р СљР С•Р В¶Р Р…Р С• РЎС“Р С”Р В°Р В·Р В°РЎвЂљРЎРЉ Р С•Р ТР Р…РЎС“ Р ТР В°РЎвЂљРЎС“ Р ТР В»РЎРЏ Р С•Р ТР Р…Р С•Р С–Р С• Р ТР Р…РЎРЏ. Р вЂќР В»РЎРЏ Р С•РЎвЂљР СР ВµР Р…РЎвЂ№ Р С•РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /cancel."
+        "    (" + label + "). : YYYY-MM-DD YYYY-MM-DD.\n"
+        "      .    /cancel."
     )
     await cq.answer()
 
@@ -1228,7 +1480,7 @@ async def cb_reports_referrals(cq: CallbackQuery, state: FSMContext) -> None:
 @router.message(StateFilter(ReportsExportFSM.awaiting_period), F.text == "/cancel")
 async def reports_cancel(msg: Message, state: FSMContext) -> None:
     await state.clear()
-    await msg.answer("Р С›РЎвЂљР СР ВµР Р…Р В°. Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С•РЎвЂљРЎвЂЎРЎвЂРЎвЂљ:", reply_markup=reports_menu_keyboard())
+    await msg.answer("Редактирование отменено.")
 
 
 @router.message(StateFilter(ReportsExportFSM.awaiting_period))
@@ -1236,7 +1488,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
     period = _parse_period_input(msg.text or "")
     if not period:
         await msg.answer(
-            "Р СњР Вµ РЎС“Р ТР В°Р В»Р С•РЎРѓРЎРЉ РЎР‚Р В°Р В·Р С•Р В±РЎР‚Р В°РЎвЂљРЎРЉ Р С—Р ВµРЎР‚Р СР С•Р Т. Р Р€Р С”Р В°Р В¶Р СРЎвЂљР Вµ Р ТР В°РЎвЂљРЎвЂ№ Р Р† РЎвЂћР С•РЎР‚Р СР В°РЎвЂљР Вµ YYYY-MM-DD YYYY-MM-DD (Р С—РЎР‚Р СР СР ВµРЎР‚: 2025-09-01 2025-09-15)."
+            "   .     YYYY-MM-DD YYYY-MM-DD (: 2025-09-01 2025-09-15)."
         )
         return
 
@@ -1247,7 +1499,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
     if not definition:
         await state.clear()
         await msg.answer(
-            "Р СћР СР С— Р С•РЎвЂљРЎвЂЎРЎвЂРЎвЂљР В° Р Р…Р Вµ РЎР‚Р В°РЎРѓР С—Р С•Р В·Р Р…Р В°Р Р…. Р С›РЎвЂљР С”РЎР‚Р С•Р в„–РЎвЂљР Вµ Р СР ВµР Р…РЎР‹ Р С•РЎвЂљРЎвЂЎРЎвЂРЎвЂљР С•Р Р† Р В·Р В°Р Р…Р С•Р Р†Р С•:",
+            "   .    :",
             reply_markup=reports_menu_keyboard(),
         )
         return
@@ -1260,7 +1512,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
     except Exception:
         await state.clear()
         await msg.answer(
-            "Р СњР Вµ РЎС“Р ТР В°Р В»Р С•РЎРѓРЎРЉ РЎРѓРЎвЂћР С•РЎР‚Р СР СРЎР‚Р С•Р Р†Р В°РЎвЂљРЎРЉ Р С•РЎвЂљРЎвЂЎРЎвЂРЎвЂљ. Р СџР С•Р С—РЎР‚Р С•Р В±РЎС“Р в„–РЎвЂљР Вµ Р С—Р С•Р В·Р В¶Р Вµ.",
+            "   .  .",
             reply_markup=reports_menu_keyboard(),
         )
         return
@@ -1275,7 +1527,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
     if target_chat_id is None:
         await state.clear()
         await msg.answer(
-            "Р СњР Вµ РЎС“Р ТР В°Р В»Р С•РЎРѓРЎРЉ Р С•Р С—РЎР‚Р ВµР ТР ВµР В»Р СРЎвЂљРЎРЉ РЎвЂЎР В°РЎвЂљ Р ТР В»РЎРЏ Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р С”Р С Р С•РЎвЂљРЎвЂЎРЎвЂРЎвЂљР В°.",
+            "      .",
             reply_markup=reports_menu_keyboard(),
         )
         return
@@ -1287,7 +1539,7 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
         chat_id=target_chat_id,
     )
     await state.clear()
-    await msg.answer("Р С›РЎвЂљРЎвЂЎРЎвЂРЎвЂљ Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р В»Р ВµР Р…", reply_markup=reports_menu_keyboard())
+    await msg.answer("Редактирование отменено.")
 
 async def _start_new_order(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
@@ -1306,9 +1558,9 @@ async def _render_city_step(message: Message, state: FSMContext, page: int, quer
         cities = await orders_service.list_cities(limit=limit)
     if not cities:
         try:
-            await message.edit_text("Р вЂњР С•РЎР‚Р С•Р ТР В° Р Р…Р Вµ Р Р…Р В°Р в„–Р ТР ВµР Р…РЎвЂ№. Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /cancel.")
+            await message.edit_text("  .  /cancel.")
         except TelegramBadRequest:
-            await message.answer("Р вЂњР С•РЎР‚Р С•Р ТР В° Р Р…Р Вµ Р Р…Р В°Р в„–Р ТР ВµР Р…РЎвЂ№. Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /cancel.")
+            await message.answer("  .  /cancel.")
         return
     per_page = 10
     total_pages = max(1, (len(cities) + per_page - 1) // per_page)
@@ -1317,12 +1569,12 @@ async def _render_city_step(message: Message, state: FSMContext, page: int, quer
     chunk = cities[start : start + per_page]
     keyboard = new_order_city_keyboard([(c.id, c.name) for c in chunk], page=page, total_pages=total_pages)
     try:
-        await message.edit_text("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С–Р С•РЎР‚Р С•Р Т:", reply_markup=keyboard)
+        await message.edit_text(" :", reply_markup=keyboard)
     except TelegramBadRequest:
         # If we cannot edit (e.g., user text message), send a new one
-        await message.answer("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С–Р С•РЎР‚Р С•Р Т:", reply_markup=keyboard)
+        await message.answer(" :", reply_markup=keyboard)
     except Exception:
-        await message.answer("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С–Р С•РЎР‚Р С•Р Т:", reply_markup=keyboard)
+        await message.answer(" :", reply_markup=keyboard)
     await state.update_data(city_query=query, city_page=page)
 
 
@@ -1343,7 +1595,7 @@ async def admin_cancel_command(message: Message, staff: StaffUser, state: FSMCon
     await show_admin_main_menu(
         message,
         staff,
-        notice="Р РЋР С•Р В·Р ТР В°Р Р…Р СР Вµ Р В·Р В°РЎРЏР Р†Р С”Р С Р С•РЎвЂљР СР ВµР Р…Р ВµР Р…Р С•. Р вЂњР В»Р В°Р Р†Р Р…Р С•Р Вµ Р СР ВµР Р…РЎР‹:",
+        notice="  .  :",
     )
 
 
@@ -1355,9 +1607,9 @@ async def cb_new_order_cancel(cq: CallbackQuery, staff: StaffUser, state: FSMCon
             cq.message,
             staff,
             edit=True,
-            notice="Р РЋР С•Р В·Р ТР В°Р Р…Р СР Вµ Р В·Р В°РЎРЏР Р†Р С”Р С Р С•РЎвЂљР СР ВµР Р…Р ВµР Р…Р С•. Р вЂњР В»Р В°Р Р†Р Р…Р С•Р Вµ Р СР ВµР Р…РЎР‹:",
+            notice="  .  :",
         )
-    await cq.answer("Р РЋР С•Р В·Р ТР В°Р Р…Р СР Вµ Р В·Р В°РЎРЏР Р†Р С”Р С Р С•РЎвЂљР СР ВµР Р…Р ВµР Р…Р С•")
+    await cq.answer("  ")
 
 
 @router.callback_query(F.data.startswith("adm:new:city_page:"), StateFilter(NewOrderFSM.city))
@@ -1375,11 +1627,11 @@ async def cb_new_order_city_page(cq: CallbackQuery, state: FSMContext) -> None:
 async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.city)
     try:
-        await cq.message.edit_text("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р Р…Р В°Р В·Р Р†Р В°Р Р…Р СР Вµ Р С–Р С•РЎР‚Р С•Р ТР В° (Р СР СР Р…. 2 РЎРѓР СР СР Р†Р С•Р В»Р В°). Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /cancel Р ТР В»РЎРЏ Р С•РЎвЂљР СР ВµР Р…РЎвЂ№.")
+        await cq.message.edit_text("   (. 2 ).  /cancel  .")
     except TelegramBadRequest:
-        await cq.message.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р Р…Р В°Р В·Р Р†Р В°Р Р…Р СР Вµ Р С–Р С•РЎР‚Р С•Р ТР В° (Р СР СР Р…. 2 РЎРѓР СР СР Р†Р С•Р В»Р В°). Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /cancel Р ТР В»РЎРЏ Р С•РЎвЂљР СР ВµР Р…РЎвЂ№.")
+        await cq.message.answer("   (. 2 ).  /cancel  .")
     except Exception:
-        await cq.message.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р Р…Р В°Р В·Р Р†Р В°Р Р…Р СР Вµ Р С–Р С•РЎР‚Р С•Р ТР В° (Р СР СР Р…. 2 РЎРѓР СР СР Р†Р С•Р В»Р В°). Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ /cancel Р ТР В»РЎРЏ Р С•РЎвЂљР СР ВµР Р…РЎвЂ№.")
+        await cq.message.answer("   (. 2 ).  /cancel  .")
     await cq.answer()
 
 
@@ -1387,7 +1639,7 @@ async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None
 async def new_order_city_input(msg: Message, state: FSMContext) -> None:
     query = msg.text.strip()
     if len(query) < 2:
-        await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р Р…Р Вµ Р СР ВµР Р…Р ВµР Вµ 2 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†.")
+        await msg.answer("Редактирование отменено.")
         return
     await _render_city_step(msg, state, page=1, query=query)
 
@@ -1399,7 +1651,7 @@ async def cb_new_order_city_pick(cq: CallbackQuery, state: FSMContext) -> None:
     orders_service = _orders_service(cq.message.bot)
     city = await orders_service.get_city(city_id)
     if not city:
-        await cq.answer("Р вЂњР С•РЎР‚Р С•Р Т Р Р…Р Вµ Р Р…Р В°Р в„–Р ТР ВµР Р…", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await state.update_data(city_id=city.id, city_name=city.name)
     await state.set_state(NewOrderFSM.district)
@@ -1415,11 +1667,11 @@ async def _render_district_step(message: Message, state: FSMContext, page: int) 
     buttons = [(d.id, d.name) for d in districts]
     keyboard = new_order_district_keyboard(buttons, page=page, has_next=has_next)
     try:
-        await message.edit_text("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎР‚Р В°Р в„–Р С•Р Р… (Р СР В»Р С Р В±Р ВµР В· РЎР‚Р В°Р в„–Р С•Р Р…Р В°):", reply_markup=keyboard)
+        await message.edit_text("  (  ):", reply_markup=keyboard)
     except TelegramBadRequest:
-        await message.answer("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎР‚Р В°Р в„–Р С•Р Р… (Р СР В»Р С Р В±Р ВµР В· РЎР‚Р В°Р в„–Р С•Р Р…Р В°):", reply_markup=keyboard)
+        await message.answer("  (  ):", reply_markup=keyboard)
     except Exception:
-        await message.answer("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎР‚Р В°Р в„–Р С•Р Р… (Р СР В»Р С Р В±Р ВµР В· РЎР‚Р В°Р в„–Р С•Р Р…Р В°):", reply_markup=keyboard)
+        await message.answer("  (  ):", reply_markup=keyboard)
     await state.update_data(district_page=page)
 
 
@@ -1447,10 +1699,10 @@ async def cb_new_order_city_back(cq: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "adm:new:district:none", StateFilter(NewOrderFSM.district))
 async def cb_new_order_district_none(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(district_id=None, district_name="вЂ”")
+    await state.update_data(district_id=None, district_name="")
     await state.set_state(NewOrderFSM.street_mode)
     await cq.message.edit_text(
-        "Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎРѓР С—Р С•РЎРѓР С•Р В± Р Р†Р Р†Р С•Р ТР В° РЎС“Р В»Р СРЎвЂ РЎвЂ№:",
+        "   :",
         reply_markup=new_order_street_mode_keyboard(),
     )
     await cq.answer()
@@ -1463,19 +1715,19 @@ async def cb_new_order_district_pick(cq: CallbackQuery, state: FSMContext) -> No
     orders_service = _orders_service(cq.message.bot)
     district = await orders_service.get_district(district_id)
     if not district:
-        await cq.answer("Р В Р В°Р в„–Р С•Р Р… Р Р…Р Вµ Р Р…Р В°Р в„–Р ТР ВµР Р…", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await state.update_data(district_id=district.id, district_name=district.name)
     await state.set_state(NewOrderFSM.street_mode)
     await cq.message.edit_text(
-        "Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎРѓР С—Р С•РЎРѓР С•Р В± Р Р†Р Р†Р С•Р ТР В° РЎС“Р В»Р СРЎвЂ РЎвЂ№:",
+        "   :",
         reply_markup=new_order_street_mode_keyboard(),
     )
     await cq.answer()
 @router.callback_query(F.data == "adm:new:street:search", StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_search(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.street_search)
-    await cq.message.edit_text("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р Р…Р В°Р В·Р Р†Р В°Р Р…Р СР Вµ РЎС“Р В»Р СРЎвЂ РЎвЂ№ Р ТР В»РЎРЏ Р С—Р С•Р СРЎРѓР С”Р В°.")
+    await cq.message.edit_text("    .")
     await cq.answer()
 
 
@@ -1483,7 +1735,7 @@ async def cb_new_order_street_search(cq: CallbackQuery, state: FSMContext) -> No
 async def cb_new_order_street_manual(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.street_manual)
     await cq.message.edit_text(
-        "Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎС“Р В»Р СРЎвЂ РЎС“ Р Р†РЎР‚РЎС“РЎвЂЎР Р…РЎС“РЎР‹ (2РІР‚вЂњ50 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†).",
+        "   (250 ).",
         reply_markup=new_order_street_manual_keyboard(),
     )
     await cq.answer()
@@ -1491,9 +1743,9 @@ async def cb_new_order_street_manual(cq: CallbackQuery, state: FSMContext) -> No
 
 @router.callback_query(F.data == "adm:new:street:none", StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_none(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(street_id=None, street_name="вЂ”", street_manual=None)
+    await state.update_data(street_id=None, street_name="", street_manual=None)
     await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р ТР С•Р С (1РІР‚вЂњ10 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†).")
+    await cq.message.edit_text("  (110 ).")
     await cq.answer()
 
 
@@ -1509,18 +1761,15 @@ async def cb_new_order_street_back(cq: CallbackQuery, state: FSMContext) -> None
 async def new_order_street_manual_input(msg: Message, state: FSMContext) -> None:
     value = msg.text.strip()
     if not (2 <= len(value) <= 50):
-        await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎРѓРЎвЂљРЎР‚Р С•Р С”РЎС“ Р ТР В»Р СР Р…Р С•Р в„– Р С•РЎвЂљ 2 Р ТР С• 50 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†.")
+        await msg.answer("Редактирование отменено.")
         return
     await state.update_data(street_id=None, street_name=value, street_manual=value)
     await state.set_state(NewOrderFSM.house)
-    await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р ТР С•Р С (1РІР‚вЂњ10 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†).")
-
-
-@router.message(StateFilter(NewOrderFSM.street_search))
+    await msg.answer("Редактирование отменено.")
 async def new_order_street_search_input(msg: Message, state: FSMContext) -> None:
     query = msg.text.strip()
     if len(query) < 2:
-        await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р Р…Р Вµ Р СР ВµР Р…Р ВµР Вµ 2 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†.")
+        await msg.answer("Редактирование отменено.")
         return
     data = await state.get_data()
     city_id = data.get("city_id")
@@ -1529,7 +1778,7 @@ async def new_order_street_search_input(msg: Message, state: FSMContext) -> None
     # If nothing found, offer a way back to street mode selection
     if not streets:
         try:
-            await msg.answer("  .     .")
+            await msg.answer("Редактирование отменено.")
         finally:
             await state.set_state(NewOrderFSM.street_mode)
             await msg.answer(
@@ -1538,14 +1787,14 @@ async def new_order_street_search_input(msg: Message, state: FSMContext) -> None
             )
         return
     if not streets:
-        await msg.answer("Р СњР СРЎвЂЎР ВµР С–Р С• Р Р…Р Вµ Р Р…Р В°Р в„–Р ТР ВµР Р…Р С•. Р В·Р СР ВµР Р…Р СРЎвЂљР Вµ Р В·Р В°Р С—РЎР‚Р С•РЎРѓ Р С Р С—Р С•Р С—РЎР‚Р С•Р В±РЎС“Р в„–РЎвЂљР Вµ РЎРѓР Р…Р С•Р Р†Р В°.")
+        await msg.answer("Редактирование отменено.")
         return
     buttons = [
         (s.id, s.name if s.score is None else f"{s.name} ({int(s.score)}%)")
         for s in streets
     ]
     await msg.answer(
-        "Р В Р ВµР В·РЎС“Р В»РЎРЉРЎвЂљР В°РЎвЂљРЎвЂ№ Р С—Р С•Р СРЎРѓР С”Р В°:",
+        " :",
         reply_markup=new_order_street_keyboard(buttons),
     )
     await state.set_state(NewOrderFSM.street_mode)
@@ -1558,13 +1807,13 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
     tail = cq.data.split(":")[3]
     if tail == "search_again":
         await state.set_state(NewOrderFSM.street_search)
-        await cq.message.edit_text("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р Р…Р В°Р В·Р Р†Р В°Р Р…Р СР Вµ РЎС“Р В»Р СРЎвЂ РЎвЂ№ Р ТР В»РЎРЏ Р С—Р С•Р СРЎРѓР С”Р В°.")
+        await cq.message.edit_text("    .")
         await cq.answer()
         return
     if tail == "manual_back":
         await state.set_state(NewOrderFSM.street_mode)
         await cq.message.edit_text(
-            "Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎРѓР С—Р С•РЎРѓР С•Р В± Р Р†Р Р†Р С•Р ТР В° РЎС“Р В»Р СРЎвЂ РЎвЂ№:",
+            "   :",
             reply_markup=new_order_street_mode_keyboard(),
         )
         await cq.answer()
@@ -1572,7 +1821,7 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
     if tail == "back":
         await state.set_state(NewOrderFSM.street_mode)
         await cq.message.edit_text(
-            "Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎРѓР С—Р С•РЎРѓР С•Р В± Р Р†Р Р†Р С•Р ТР В° РЎС“Р В»Р СРЎвЂ РЎвЂ№:",
+            "   :",
             reply_markup=new_order_street_mode_keyboard(),
         )
         await cq.answer()
@@ -1581,11 +1830,11 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
     orders_service = _orders_service(cq.message.bot)
     street = await orders_service.get_street(street_id)
     if not street:
-        await cq.answer("Р Р€Р В»Р СРЎвЂ Р В° Р Р…Р Вµ Р Р…Р В°Р в„–Р ТР ВµР Р…Р В°", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await state.update_data(street_id=street.id, street_name=street.name, street_manual=None)
     await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р ТР С•Р С (1РІР‚вЂњ10 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†).")
+    await cq.message.edit_text("  (110 ).")
     await cq.answer()
 
 
@@ -1593,52 +1842,43 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
 async def new_order_house(msg: Message, state: FSMContext) -> None:
     value = msg.text.strip()
     if not (1 <= len(value) <= 10):
-        await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р С•РЎвЂљ 1 Р ТР С• 10 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†.")
+        await msg.answer("Редактирование отменено.")
         return
     await state.update_data(house=value)
     await state.set_state(NewOrderFSM.apartment)
-    await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р Р…Р С•Р СР ВµРЎР‚ Р С”Р Р†Р В°РЎР‚РЎвЂљР СРЎР‚РЎвЂ№ (Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С—РЎР‚Р С•Р С—РЎС“РЎРѓРЎвЂљР СРЎвЂљРЎРЉ).")
-
-
-@router.message(StateFilter(NewOrderFSM.apartment))
+    await msg.answer("Редактирование отменено.")
 async def new_order_apartment(msg: Message, state: FSMContext) -> None:
     value = msg.text.strip()
     if value == "-":
         value = ""
     if len(value) > 10:
-        await msg.answer("Р РЋР В»Р СРЎв‚¬Р С”Р С•Р С Р ТР В»Р СР Р…Р Р…Р С•Р Вµ Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р СР Вµ. Р вЂќР С• 10 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†.")
+        await msg.answer("Редактирование отменено.")
         return
     await state.update_data(apartment=value or None)
     await state.set_state(NewOrderFSM.address_comment)
-    await msg.answer("Р С™Р С•Р СР СР ВµР Р…РЎвЂљР В°РЎР‚Р СР в„– Р С” Р В°Р ТРЎР‚Р ВµРЎРѓРЎС“ (Р СР В»Р С '-' РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С—РЎР‚Р С•Р С—РЎС“РЎРѓРЎвЂљР СРЎвЂљРЎРЉ).")
-
-
-@router.message(StateFilter(NewOrderFSM.address_comment))
+    await msg.answer("Редактирование отменено.")
 async def new_order_address_comment(msg: Message, state: FSMContext) -> None:
     value = msg.text.strip()
     if value == "-":
         value = ""
     await state.update_data(address_comment=value or None)
     await state.set_state(NewOrderFSM.client_name)
-    await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р В¤Р С› Р С”Р В»Р СР ВµР Р…РЎвЂљР В° (2РІР‚вЂњ30 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†, Р С”Р СРЎР‚Р СР В»Р В»Р СРЎвЂ Р В°).")
-
-
-@router.message(StateFilter(NewOrderFSM.client_name))
+    await msg.answer("Редактирование отменено.")
 async def new_order_client_name(msg: Message, state: FSMContext) -> None:
     value = msg.text.strip()
     if not _validate_name(value):
-        await msg.answer("Р СРЎРЏ Р ТР С•Р В»Р В¶Р Р…Р С• РЎРѓР С•Р ТР ВµРЎР‚Р В¶Р В°РЎвЂљРЎРЉ 2РІР‚вЂњ30 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р† (Р С”Р СРЎР‚Р СР В»Р В»Р СРЎвЂ Р В°, Р С—РЎР‚Р С•Р В±Р ВµР В»РЎвЂ№ Р С РЎвЂљР СРЎР‚Р Вµ).")
+        await msg.answer("Редактирование отменено.")
         return
     await state.update_data(client_name=value)
     await state.set_state(NewOrderFSM.client_phone)
-    await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ РЎвЂљР ВµР В»Р ВµРЎвЂћР С•Р Р… Р С”Р В»Р СР ВµР Р…РЎвЂљР В° (+7XXXXXXXXXX Р СР В»Р С 8XXXXXXXXXX).")
+    await msg.answer("Редактирование отменено.")
 
 
 @router.message(StateFilter(NewOrderFSM.client_phone))
 async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
     raw = _normalize_phone(msg.text)
     if not _validate_phone(raw):
-        await msg.answer("Р СњР ВµР Р†Р ВµРЎР‚Р Р…РЎвЂ№Р в„– РЎвЂћР С•РЎР‚Р СР В°РЎвЂљ РЎвЂљР ВµР В»Р ВµРЎвЂћР С•Р Р…Р В°. Р СџРЎР‚Р СР СР ВµРЎР‚: +71234567890 Р СР В»Р С 81234567890.")
+        await msg.answer("Редактирование отменено.")
         return
     await state.update_data(client_phone=raw)
     await state.set_state(NewOrderFSM.category)
@@ -1648,7 +1888,7 @@ async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
     for category, label in CATEGORY_CHOICES:
         kb.button(text=label, callback_data=f"adm:new:cat:{category.value}")
     kb.adjust(2)
-    await msg.answer("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С”Р В°РЎвЂљР ВµР С–Р С•РЎР‚Р СРЎР‹ Р В·Р В°РЎРЏР Р†Р С”Р С:", reply_markup=kb.as_markup())
+    await msg.answer("Редактирование отменено.")
 
 
 @router.callback_query(F.data.startswith("adm:new:cat:"), StateFilter(NewOrderFSM.category))
@@ -1657,14 +1897,14 @@ async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
     raw = cq.data.split(":")[3]
     category = normalize_category(raw)
     if category is None:
-        await cq.answer("Р СњР ВµР СР В·Р Р†Р ВµРЎРѓРЎвЂљР Р…Р В°РЎРЏ Р С”Р В°РЎвЂљР ВµР С–Р С•РЎР‚Р СРЎРЏ", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     await state.update_data(
         category=category,
         category_label=CATEGORY_LABELS.get(category, CATEGORY_LABELS_BY_VALUE.get(raw, raw)),
     )
     await state.set_state(NewOrderFSM.description)
-    await cq.message.edit_text("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р С•Р С—Р СРЎРѓР В°Р Р…Р СР Вµ Р В·Р В°РЎРЏР Р†Р С”Р С (10РІР‚вЂњ500 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†).")
+    await cq.message.edit_text("   (10500 ).")
     await cq.answer()
 
 
@@ -1672,12 +1912,12 @@ async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
 async def new_order_description(msg: Message, state: FSMContext) -> None:
     text = msg.text.strip()
     if not (10 <= len(text) <= 500):
-        await msg.answer("Р вЂ™Р Р†Р ВµР ТР СРЎвЂљР Вµ Р С•РЎвЂљ 10 Р ТР С• 500 РЎРѓР СР СР Р†Р С•Р В»Р С•Р Р†.")
+        await msg.answer("Редактирование отменено.")
         return
     await state.update_data(description=text)
     await state.set_state(NewOrderFSM.attachments)
     await msg.answer(
-        "Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ Р Р†Р В»Р С•Р В¶Р ВµР Р…Р СРЎРЏ (РЎвЂћР С•РЎвЂљР С•/Р ТР С•Р С”РЎС“Р СР ВµР Р…РЎвЂљРЎвЂ№) Р СР В»Р С Р Р…Р В°Р В¶Р СР СРЎвЂљР Вµ 'Р СџРЎР‚Р С•Р ТР С•Р В»Р В¶Р СРЎвЂљРЎРЉ'.",
+        "  (/)   ''.",
         reply_markup=new_order_attachments_keyboard(False),
     )
 
@@ -1685,7 +1925,7 @@ async def new_order_description(msg: Message, state: FSMContext) -> None:
 @router.callback_query(F.data == "adm:new:att:add", StateFilter(NewOrderFSM.attachments))
 async def cb_new_order_att_add(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.attachments)
-    await cq.answer("РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р… РїС—Р…РїС—Р…РїС—Р…РїС—Р… РїС—Р…РїС—Р…РїС—Р… РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р… РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…РїС—Р…")
+    await cq.answer("    ")
 
 
 @router.callback_query(F.data == "adm:new:att:clear", StateFilter(NewOrderFSM.attachments))
@@ -1695,7 +1935,7 @@ async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(**data)
     await state.set_state(NewOrderFSM.attachments)
     await cq.message.edit_text(
-        "Р вЂ™Р В»Р С•Р В¶Р ВµР Р…Р СРЎРЏ Р С•РЎвЂЎР СРЎвЂ°Р ВµР Р…РЎвЂ№. Р СљР С•Р В¶Р Р…Р С• Р С•РЎвЂљР С—РЎР‚Р В°Р Р†Р СРЎвЂљРЎРЉ Р Р…Р С•Р Р†РЎвЂ№Р Вµ РЎвЂћР В°Р в„–Р В»РЎвЂ№.",
+        " .    .",
         reply_markup=new_order_attachments_keyboard(False),
     )
     await cq.answer()
@@ -1705,7 +1945,7 @@ async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
 async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
     attachments = _attachments_from_state(await state.get_data())
     if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("Р вЂќР С•РЎРѓРЎвЂљР СР С–Р Р…РЎС“РЎвЂљ Р В»Р СР СР СРЎвЂљ Р Р†Р В»Р С•Р В¶Р ВµР Р…Р СР в„–. Р Р€Р ТР В°Р В»Р СРЎвЂљР Вµ Р В»Р СРЎв‚¬Р Р…Р СР Вµ РЎвЂћР В°Р в„–Р В»РЎвЂ№.")
+        await msg.answer("Редактирование отменено.")
         return
     photo = msg.photo[-1]
     attachments.append(
@@ -1720,7 +1960,7 @@ async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
     )
     await state.update_data(attachments=attachments)
     await msg.answer(
-        f"Р В¤Р С•РЎвЂљР С• Р ТР С•Р В±Р В°Р Р†Р В»Р ВµР Р…Р С•. Р вЂ™РЎРѓР ВµР С–Р С• Р Р†Р В»Р С•Р В¶Р ВµР Р…Р СР в„–: {len(attachments)}.",
+        f" .  : {len(attachments)}.",
         reply_markup=new_order_attachments_keyboard(True),
     )
 
@@ -1729,7 +1969,7 @@ async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
 async def new_order_attach_doc(msg: Message, state: FSMContext) -> None:
     attachments = _attachments_from_state(await state.get_data())
     if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("Р вЂќР С•РЎРѓРЎвЂљР СР С–Р Р…РЎС“РЎвЂљ Р В»Р СР СР СРЎвЂљ Р Р†Р В»Р С•Р В¶Р ВµР Р…Р СР в„–. Р Р€Р ТР В°Р В»Р СРЎвЂљР Вµ Р В»Р СРЎв‚¬Р Р…Р СР Вµ РЎвЂћР В°Р в„–Р В»РЎвЂ№.")
+        await msg.answer("Редактирование отменено.")
         return
     doc = msg.document
     attachments.append(
@@ -1744,7 +1984,7 @@ async def new_order_attach_doc(msg: Message, state: FSMContext) -> None:
     )
     await state.update_data(attachments=attachments)
     await msg.answer(
-        f"Р В¤Р В°Р в„–Р В» Р ТР С•Р В±Р В°Р Р†Р В»Р ВµР Р…. Р вЂ™РЎРѓР ВµР С–Р С• Р Р†Р В»Р С•Р В¶Р ВµР Р…Р СР в„–: {len(attachments)}.",
+        f" .  : {len(attachments)}.",
         reply_markup=new_order_attachments_keyboard(True),
     )
 @router.callback_query(F.data == "adm:new:att:done", StateFilter(NewOrderFSM.attachments))
@@ -1753,10 +1993,10 @@ async def cb_new_order_att_done(cq: CallbackQuery, state: FSMContext) -> None:
     from aiogram.utils.keyboard import InlineKeyboardBuilder
 
     kb = InlineKeyboardBuilder()
-    kb.button(text="РћР±С‹С‡РЅР°СЏ", callback_data="adm:new:type:NORMAL")
-    kb.button(text="Р вЂњР В°РЎР‚Р В°Р Р…РЎвЂљР СР в„–Р Р…Р В°РЎРЏ", callback_data="adm:new:type:GUARANTEE")
+    kb.button(text="", callback_data="adm:new:type:NORMAL")
+    kb.button(text="", callback_data="adm:new:type:GUARANTEE")
     kb.adjust(2)
-    await cq.message.edit_text("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎвЂљР СР С— Р В·Р В°РЎРЏР Р†Р С”Р С:", reply_markup=kb.as_markup())
+    await cq.message.edit_text("  :", reply_markup=kb.as_markup())
     await cq.answer()
 
 
@@ -1773,7 +2013,7 @@ async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Р РЋР Р…Р В°РЎвЂЎР В°Р В»Р В° Р Р†РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С–Р С•РЎР‚Р С•Р Т.", show_alert=True)
+        await cq.answer("  .", show_alert=True)
         return
     tz = await _resolve_city_timezone(cq.message.bot, city_id)
     workday_start, workday_end = await _resolve_workday_window()
@@ -1786,7 +2026,7 @@ async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
         pending_asap=False,
     )
     keyboard = new_order_slot_keyboard(options)
-    await cq.message.edit_text("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎРѓР В»Р С•РЎвЂљ:", reply_markup=keyboard)
+    await cq.message.edit_text(" :", reply_markup=keyboard)
     await cq.answer()
 
 
@@ -1797,13 +2037,13 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Р РЋР Р…Р В°РЎвЂЎР В°Р В»Р В° Р Р†РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С–Р С•РЎР‚Р С•Р Т.", show_alert=True)
+        await cq.answer("  .", show_alert=True)
         return
     await state.set_state(NewOrderFSM.slot)
     options = data.get("slot_options") or []
     valid_keys = {item[0] for item in options}
     if key not in valid_keys:
-        await cq.answer("РќРµРІРµСЂРЅС‹Р№ РІС‹Р±РѕСЂ СЃР»РѕС‚Р°", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     tz_value = data.get("city_timezone")
     if tz_value:
@@ -1824,7 +2064,7 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
             await state.update_data(pending_asap=True)
             await state.set_state(NewOrderFSM.slot)
             await cq.message.edit_text(
-                "ASAP позже 19:30. Выбрать завтра 10–13?",
+                "ASAP  19:30.   1013?",
                 reply_markup=new_order_asap_late_keyboard(),
             )
             await cq.answer()
@@ -1854,10 +2094,10 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
         await state.update_data(slot_options=refreshed_options, pending_asap=False, initial_status=None)
         await state.set_state(NewOrderFSM.slot)
         await cq.message.edit_text(
-            "Р РЋР В»Р С•РЎвЂљ РЎС“РЎРѓРЎвЂљР В°РЎР‚Р ВµР В». Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р Р†Р В°РЎР‚Р СР В°Р Р…РЎвЂљ РЎРѓР Р…Р С•Р Р†Р В°:",
+            " .   :",
             reply_markup=new_order_slot_keyboard(refreshed_options),
         )
-        await cq.answer("Р РЋР В»Р С•РЎвЂљ РЎС“РЎРѓРЎвЂљР В°РЎР‚Р ВµР В», Р Р†РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎРѓР Р…Р С•Р Р†Р В°", show_alert=True)
+        await cq.answer(" ,  ", show_alert=True)
         return
     await cq.answer()
 
@@ -1866,7 +2106,7 @@ async def cb_new_order_slot_lateok(cq: CallbackQuery, state: FSMContext) -> None
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Р РЋР Р…Р В°РЎвЂЎР В°Р В»Р В° Р Р†РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С–Р С•РЎР‚Р С•Р Т.", show_alert=True)
+        await cq.answer("  .", show_alert=True)
         return
     tz_value = data.get("city_timezone")
     if tz_value:
@@ -1892,7 +2132,7 @@ async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Р РЋР Р…Р В°РЎвЂЎР В°Р В»Р В° Р Р†РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С–Р С•РЎР‚Р С•Р Т.", show_alert=True)
+        await cq.answer("  .", show_alert=True)
         return
     await state.set_state(NewOrderFSM.slot)
     tz_value = data.get("city_timezone")
@@ -1909,7 +2149,7 @@ async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None
     )
     options = [(k, _maybe_fix_mojibake(lbl)) for (k, lbl) in options]
     await state.update_data(slot_options=options, pending_asap=False, initial_status=None)
-    await cq.message.edit_text("Р вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ РЎРѓР В»Р С•РЎвЂљ:", reply_markup=new_order_slot_keyboard(options))
+    await cq.message.edit_text(" :", reply_markup=new_order_slot_keyboard(options))
     await cq.answer()
 
 
@@ -1921,19 +2161,19 @@ async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: Staf
         staff_service = _staff_service(cq.message.bot)
         staff = await staff_service.get_by_tg_id(cq.from_user.id if cq.from_user else 0)
         if staff is None:
-            await cq.answer("Р СњР ВµРЎвЂљ Р ТР С•РЎРѓРЎвЂљРЎС“Р С—Р В°", show_alert=True)
+            await cq.answer(" ", show_alert=True)
             return
     data = await state.get_data()
     try:
         new_order = _build_new_order_data(data, staff)
     except KeyError:
         await state.clear()
-        await cq.answer("Р СњР Вµ РЎвЂ¦Р Р†Р В°РЎвЂљР В°Р ВµРЎвЂљ Р ТР В°Р Р…Р Р…РЎвЂ№РЎвЂ¦ Р ТР В»РЎРЏ РЎРѓР С•Р В·Р ТР В°Р Р…Р СРЎРЏ Р В·Р В°РЎРЏР Р†Р С”Р С, Р С—Р С•Р С—РЎР‚Р С•Р В±РЎС“Р в„–РЎвЂљР Вµ Р В·Р В°Р Р…Р С•Р Р†Р С•", show_alert=True)
+        await cq.answer("     ,  ", show_alert=True)
         return
     orders_service = _orders_service(cq.message.bot)
     order_id = await orders_service.create_order(new_order)
     await state.clear()
-    await cq.answer("Р вЂ”Р В°РЎРЏР Р†Р С”Р В° РЎРѓР С•Р В·Р ТР В°Р Р…Р В°")
+    await cq.answer(" ")
     await _render_created_order_card(cq.message, order_id, staff)
 
 
@@ -1946,7 +2186,7 @@ async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: Staf
 )
 async def cb_settings_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     await cq.message.edit_text(
-        "<b>Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С</b>\nР вЂ™РЎвЂ№Р В±Р ВµРЎР‚Р СРЎвЂљР Вµ Р С–РЎР‚РЎС“Р С—Р С—РЎС“ Р Р…Р В°РЎРѓРЎвЂљРЎР‚Р С•Р ВµР С” Р ТР В»РЎРЏ РЎР‚Р ВµР ТР В°Р С”РЎвЂљР СРЎР‚Р С•Р Р†Р В°Р Р…Р СРЎРЏ.",
+        "<b></b>\n    .",
         reply_markup=settings_menu_keyboard(),
     )
     await cq.answer()
@@ -1961,7 +2201,7 @@ async def cb_settings_group(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         view_text, keyboard = await _build_settings_view(cq.message.bot, group_key)
     except KeyError:
-        await cq.answer("Р СњР ВµР СР В·Р Р†Р ВµРЎРѓРЎвЂљР Р…Р В°РЎРЏ Р С–РЎР‚РЎС“Р С—Р С—Р В° Р Р…Р В°РЎРѓРЎвЂљРЎР‚Р С•Р ВµР С”", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await cq.message.edit_text(
         view_text,
@@ -1980,13 +2220,13 @@ async def cb_settings_edit_start(
 ) -> None:
     parts = cq.data.split(":")
     if len(parts) != 5:
-        await cq.answer("Р СњР ВµР С”Р С•РЎР‚РЎР‚Р ВµР С”РЎвЂљР Р…РЎвЂ№Р Вµ Р С—Р В°РЎР‚Р В°Р СР ВµРЎвЂљРЎР‚РЎвЂ№", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     _, _, _, group_key, field_key = parts
     try:
         field = _get_setting_field(field_key)
     except KeyError:
-        await cq.answer("Р СњР ВµР СР В·Р Р†Р ВµРЎРѓРЎвЂљР Р…Р С•Р Вµ Р С—Р С•Р В»Р Вµ Р Р…Р В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
 
     service = _settings_service(cq.message.bot)
@@ -2011,15 +2251,15 @@ async def cb_settings_edit_start(
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
     F.text == "/cancel",
 )
-async def settings_edit_cancel(msg: Message, state: FSMContext) -> None:
-    await state.clear()
-    await msg.answer("Редактирование отменено.")
-
 
 @router.message(
     StateFilter(SettingsEditFSM.awaiting_value),
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
 )
+async def settings_edit_cancel(msg: Message, state: FSMContext) -> None:
+    await state.clear()
+    await msg.answer("Редактирование отменено.")
+
 async def settings_edit_value(
     msg: Message, staff: StaffUser, state: FSMContext
 ) -> None:
@@ -2031,18 +2271,18 @@ async def settings_edit_value(
 
     if not field_key or not group_key or source_chat_id is None or source_message_id is None:
         await state.clear()
-        await msg.answer("Настройка сохранена.")
+        await msg.answer("Редактирование отменено.")
         return
 
     try:
         field = _get_setting_field(field_key)
     except KeyError:
         await state.clear()
-        await msg.answer("Р СњР ВµР СР В·Р Р†Р ВµРЎРѓРЎвЂљР Р…Р С•Р Вµ Р С—Р С•Р В»Р Вµ Р Р…Р В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С.")
+        await msg.answer("Редактирование отменено.")
         return
 
     if not msg.text:
-        await msg.answer("Р С›РЎвЂљР С—РЎР‚Р В°Р Р†РЎРЉРЎвЂљР Вµ Р В·Р Р…Р В°РЎвЂЎР ВµР Р…Р СР Вµ РЎвЂљР ВµР С”РЎРѓРЎвЂљР С•Р С.")
+        await msg.answer("Редактирование отменено.")
         return
 
     try:
@@ -2054,7 +2294,7 @@ async def settings_edit_value(
     service = _settings_service(msg.bot)
     await service.set_value(field.key, value, value_type=value_type)
     await state.clear()
-    await msg.answer("РќР°СЃС‚СЂРѕР№РєР° СЃРѕС…СЂР°РЅРµРЅР°.")
+    await msg.answer("Редактирование отменено.")
 
     try:
         view_text, keyboard = await _build_settings_view(msg.bot, group_key)
@@ -2115,4 +2355,75 @@ async def cb_logs_clear(cq: CallbackQuery, staff: StaffUser) -> None:
         reply_markup=keyboard,
         disable_web_page_preview=True,
     )
-    await cq.answer("Готово")
+    await cq.answer("")
+
+# -------- Final overrides to fix mojibake in constants --------
+# These assignments ensure readable Russian texts regardless of earlier literals.
+FINANCE_SEGMENT_TITLES = {
+    "aw": "Ожидают оплаты",
+    "pd": "Оплаченные",
+    "ov": "Просроченные",
+}
+STAFF_CODE_PROMPT = "Введите код доступа, который выдали администраторы."
+STAFF_CODE_ERROR = "Код не найден / истёк / уже использован / вам недоступен."
+STAFF_PDN_TEXT = (
+    "Согласие на обработку персональных данных.\n"
+    "Согласие включает обработку ФИО, телефона и данных о заказах для допуска к работе и обеспечения безопасности сервиса. "
+    "Отправьте \"Согласен\" для продолжения или \"Не согласен\" для отмены."
+)
+
+REPORT_DEFINITIONS: dict[str, tuple[str, Any, str]] = {
+    "orders": ("Заказы", export_service.export_orders, "Orders"),
+    "commissions": ("Комиссии", export_service.export_commissions, "Commissions"),
+    "ref_rewards": ("Реферальные начисления", export_service.export_referral_rewards, "Referral rewards"),
+}
+
+_RU_GROUP_TITLES = {
+    "workday": "Рабочий день",
+    "distribution": "Распределение",
+    "limits": "Лимиты",
+    "support": "Поддержка",
+    "geo": "Гео",
+    "channels": "Каналы",
+}
+_RU_GROUP_DESCRIPTIONS = {
+    "workday": "Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
+    "distribution": "Настройки автораспределения заявок (частота, SLA, раунды).",
+    "limits": "Ограничения сервиса для мастеров и процессов.",
+    "support": "Контакты поддержки и материалы.",
+    "geo": "Режим и лимиты геокодера.",
+    "channels": "ID каналов Telegram для уведомлений и отчётов.",
+}
+_RU_FIELD_LABELS = {
+    "working_hours_start": "Начало рабочего дня",
+    "working_hours_end": "Конец рабочего дня",
+    "distribution_tick_seconds": "Шаг цикла (сек.)",
+    "distribution_sla_seconds": "SLA ответа мастера (сек.)",
+    "distribution_rounds": "Количество раундов",
+    "escalate_to_admin_after_min": "Эскалация к админу через (мин.)",
+    "distribution_log_topn": "Логировать topN кандидатов",
+    "max_active_orders": "Макс. активных заказов на мастера",
+    "support_contact": "Контакт поддержки",
+    "support_faq_url": "Ссылка на FAQ",
+    "geo_mode": "Режим геокодера",
+    "yandex_geocoder_key": "API‑ключ Яндекс",
+    "yandex_throttle_rps": "RPS ограничение",
+    "yandex_daily_limit": "Суточный лимит запросов",
+    "alerts_channel_id": "Канал алертов (ID)",
+    "logs_channel_id": "Канал логов (ID)",
+    "reports_channel_id": "Канал отчётов (ID)",
+}
+
+SCHEMA_DEFAULT_HELP = {
+    "time": "Формат ЧЧ:ММ, по умолчанию 10:00.",
+    "int": "Введите положительное целое число.",
+    "int_non_negative": "Введите целое число 0 или больше.",
+    "string": "Введите текстовое значение.",
+    "string_optional": "Введите текст или '-' чтобы очистить значение.",
+    "int_optional": "Введите число или '-' чтобы очистить значение.",
+    "choice": "Выберите один из предложенных вариантов.",
+}
+
+
+
+
