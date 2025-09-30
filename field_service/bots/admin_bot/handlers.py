@@ -48,6 +48,8 @@ from field_service.services import export_service, live_log, time_service
 from field_service.services import settings_service
 from field_service.db.models import StaffRole
 from field_service.services.onboarding_service import normalize_phone
+from .access import visible_city_ids_for
+from .dto import StaffUser
 from .filters import StaffRoleFilter
 from .keyboards import (
     main_menu,
@@ -2478,4 +2480,3 @@ SCHEMA_DEFAULT_HELP = {
     "int_optional": "Введите число или '-' чтобы очистить значение.",
     "choice": "Выберите один из предложенных вариантов.",
 }
-
