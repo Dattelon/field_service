@@ -6,12 +6,20 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from field_service.db import models as m
 
+from .texts import MAIN_MENU_BUTTONS
 from .utils import inline_keyboard
 
 
 def start_onboarding_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
-        [[InlineKeyboardButton(text="Заполнить анкету", callback_data="m:onboarding:start")]]
+        [
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["start_onboarding"],
+                    callback_data="m:onboarding:start",
+                )
+            ]
+        ]
     )
 
 
@@ -93,8 +101,8 @@ def payout_methods_keyboard(methods: Iterable[m.PayoutMethod]) -> InlineKeyboard
 def home_geo_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
         [
-            [InlineKeyboardButton(text="Отправить геопозицию", callback_data="m:onboarding:home_geo_share")],
-            [InlineKeyboardButton(text="Пропустить", callback_data="m:onboarding:home_geo_skip")],
+        [InlineKeyboardButton(text="Отправить геопозицию", callback_data="m:onboarding:home_geo_share")],
+        [InlineKeyboardButton(text="Пропустить", callback_data="m:onboarding:home_geo_skip")],
         ]
     )
 
@@ -104,20 +112,97 @@ def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
     if getattr(master, "verified", False):
         shift_status = getattr(master, "shift_status", m.ShiftStatus.SHIFT_OFF)
         if shift_status is m.ShiftStatus.SHIFT_OFF:
-            rows.append([InlineKeyboardButton(text="Начать смену", callback_data="m:sh:on")])
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_on"],
+                        callback_data="m:sh:on",
+                    )
+                ]
+            )
         elif shift_status is m.ShiftStatus.SHIFT_ON:
-            rows.append([InlineKeyboardButton(text="Перерыв 20 мин", callback_data="m:sh:brk")])
-            rows.append([InlineKeyboardButton(text="Завершить смену", callback_data="m:sh:off")])
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_break"],
+                        callback_data="m:sh:brk",
+                    )
+                ]
+            )
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_off"],
+                        callback_data="m:sh:off",
+                    )
+                ]
+            )
         elif shift_status is m.ShiftStatus.BREAK:
-            rows.append([InlineKeyboardButton(text="Вернуться на смену", callback_data="m:sh:brk:ok")])
-            rows.append([InlineKeyboardButton(text="Завершить смену", callback_data="m:sh:off")])
-        rows.append([InlineKeyboardButton(text="Новые заказы", callback_data="m:new")])
-        rows.append([InlineKeyboardButton(text="Мои заказы", callback_data="m:act")])
-        rows.append([InlineKeyboardButton(text="Выплаты", callback_data="m:fin")])
-        rows.append([InlineKeyboardButton(text="Рефералы", callback_data="m:rf")])
-        rows.append([InlineKeyboardButton(text="Помощь", callback_data="m:kb")])
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_break_end"],
+                        callback_data="m:sh:brk:ok",
+                    )
+                ]
+            )
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_off"],
+                        callback_data="m:sh:off",
+                    )
+                ]
+            )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["new_orders"],
+                    callback_data="m:new",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["active_order"],
+                    callback_data="m:act",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["finance"],
+                    callback_data="m:fin",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["referral"],
+                    callback_data="m:rf",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["knowledge"],
+                    callback_data="m:kb",
+                )
+            ]
+        )
     else:
-        rows.append([InlineKeyboardButton(text="Заполнить анкету", callback_data="m:onboarding:start")])
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["start_onboarding"],
+                    callback_data="m:onboarding:start",
+                )
+            ]
+        )
     return inline_keyboard(rows)
 
 
