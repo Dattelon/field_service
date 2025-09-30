@@ -30,8 +30,8 @@ from ..texts import (
     CLOSE_DOCUMENT_RECEIVED,
     CLOSE_PAYMENT_TEMPLATE,
     CLOSE_SUCCESS_TEMPLATE,
-    BACK_TO_MENU,
-    BACK_TO_OFFERS,
+    NAV_BACK,
+    NAV_MENU,
     OFFERS_EMPTY,
     OFFERS_HEADER_TEMPLATE,
     OFFERS_REFRESH_BUTTON,
@@ -59,6 +59,17 @@ from ..utils import escape_html, inline_keyboard, normalize_money, now_utc
 router = Router(name="master_orders")
 _log = logging.getLogger("master_bot.orders")
 
+
+def _callback_uid(callback: CallbackQuery) -> int | None:
+    return getattr(getattr(callback, "from_user", None), "id", None)
+
+
+def _nav_row(back_callback: str, menu_callback: str = "m:menu") -> list[InlineKeyboardButton]:
+    return [
+        InlineKeyboardButton(text=NAV_BACK, callback_data=back_callback),
+        InlineKeyboardButton(text=NAV_MENU, callback_data=menu_callback),
+    ]
+
 OFFERS_PAGE_SIZE = 5
 ACTIVE_STATUSES: tuple[m.OrderStatus, ...] = (
     m.OrderStatus.ASSIGNED,
@@ -83,7 +94,7 @@ async def offers_root(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
-    _log.info("offers_root: uid=%s", getattr(getattr(callback, 'from_user', None), 'id', None))
+    _log.info("offers_root: uid=%s order_id=%s", _callback_uid(callback), None)
     await _render_offers(callback, session, master, page=1)
     await safe_answer_callback(callback)
 
@@ -108,6 +119,7 @@ async def offers_card(
     parts = callback.data.split(":")
     order_id = int(parts[2])
     page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+    _log.info("offers_card: uid=%s order_id=%s", _callback_uid(callback), order_id)
     await _render_offer_card(callback, session, master, order_id, page)
     await safe_answer_callback(callback)
 
@@ -238,7 +250,7 @@ async def active_order_entry(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
-    _log.info("active_order_entry: uid=%s", getattr(getattr(callback, 'from_user', None), 'id', None))
+    _log.info("active_order_entry: uid=%s order_id=%s", _callback_uid(callback), None)
     await _render_active_order(callback, session, master, order_id=None)
     await safe_answer_callback(callback)
 
@@ -250,6 +262,7 @@ async def active_order_card(
     master: m.masters,
 ) -> None:
     order_id = int(callback.data.split(":")[-1])
+    _log.info("active_order_card: uid=%s order_id=%s", _callback_uid(callback), order_id)
     await _render_active_order(callback, session, master, order_id=order_id)
     await safe_answer_callback(callback)
 
@@ -261,6 +274,7 @@ async def active_set_enroute(
     master: m.masters,
 ) -> None:
     order_id = int(callback.data.split(":")[-1])
+    _log.info("active_set_enroute: uid=%s order_id=%s", _callback_uid(callback), order_id)
     changed = await _update_order_status(
         session,
         master.id,
@@ -283,6 +297,7 @@ async def active_set_working(
     master: m.masters,
 ) -> None:
     order_id = int(callback.data.split(":")[-1])
+    _log.info("active_set_working: uid=%s order_id=%s", _callback_uid(callback), order_id)
     changed = await _update_order_status(
         session,
         master.id,
@@ -306,6 +321,7 @@ async def active_close_start(
     master: m.masters,
 ) -> None:
     order_id = int(callback.data.split(":")[-1])
+    _log.info("active_close_start: uid=%s order_id=%s", _callback_uid(callback), order_id)
     order = await session.get(m.orders, order_id)
     if order is None or order.assigned_master_id != master.id:
         await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
@@ -430,7 +446,10 @@ async def _render_offers(
     offers = await _load_offers(session, master.id)
     if not offers:
         keyboard = inline_keyboard(
-            [[InlineKeyboardButton(text=OFFERS_REFRESH_BUTTON, callback_data="m:new")]]
+            [
+                [InlineKeyboardButton(text=OFFERS_REFRESH_BUTTON, callback_data="m:new")],
+                _nav_row("m:menu"),
+            ]
         )
         await safe_edit_or_send(event, OFFERS_EMPTY, keyboard)
         return
@@ -481,6 +500,8 @@ async def _render_offers(
         if nav_row:
             keyboard_rows.append(nav_row)
 
+    keyboard_rows.append(_nav_row("m:menu"))
+
     keyboard = inline_keyboard(keyboard_rows)
     text = "\n".join(lines)
     try:
@@ -504,9 +525,9 @@ async def _render_offer_card(
         await safe_edit_or_send(
             event,
             OFFER_NOT_FOUND,
-            inline_keyboard(
-                [[InlineKeyboardButton(text=BACK_TO_OFFERS, callback_data="m:new")]]
-            ),
+            inline_keyboard([
+                _nav_row("m:new")
+            ]),
         )
         return
 
@@ -544,7 +565,7 @@ async def _render_offer_card(
                     callback_data=f"m:new:dec:{order.id}:{page}",
                 ),
             ],
-            [InlineKeyboardButton(text=BACK_TO_OFFERS, callback_data="m:new")],
+            _nav_row(f"m:new:{page}" if page > 1 else "m:new"),
         ]
     )
     await safe_edit_or_send(event, card_text, keyboard)
@@ -561,9 +582,9 @@ async def _render_active_order(
         await safe_edit_or_send(
             event,
             NO_ACTIVE_ORDERS,
-            inline_keyboard(
-                [[InlineKeyboardButton(text=BACK_TO_MENU, callback_data="m:menu")]]
-            ),
+            inline_keyboard([
+                _nav_row("m:menu")
+            ]),
         )
         return
 
@@ -604,7 +625,7 @@ async def _render_active_order(
             [InlineKeyboardButton(text=title, callback_data=f"{prefix}:{order.id}")]
         )
 
-    keyboard_rows.append([InlineKeyboardButton(text=BACK_TO_MENU, callback_data="m:menu")])
+    keyboard_rows.append(_nav_row("m:act"))
     keyboard = inline_keyboard(keyboard_rows)
     text = "\n".join(text_lines)
     try:

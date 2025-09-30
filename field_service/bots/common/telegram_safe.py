@@ -40,6 +40,45 @@ class _SendQueue:
 _SEND_QUEUES: dict[int, _SendQueue] = {}
 
 
+def _normalize_markup(markup: InlineKeyboardMarkup | None) -> Any:
+    if markup is None:
+        return None
+    for attr in ("model_dump", "to_python", "dict"):
+        method = getattr(markup, attr, None)
+        if callable(method):
+            try:
+                return method(exclude_none=True) if attr != "to_python" else method()
+            except TypeError:
+                try:
+                    return method()
+                except TypeError:
+                    continue
+    inline_keyboard = getattr(markup, "inline_keyboard", None)
+    if inline_keyboard is None:
+        return repr(markup)
+    normalized: list[list[Any]] = []
+    for row in inline_keyboard:
+        row_payload: list[Any] = []
+        for button in row:
+            payload: Any = button
+            for attr in ("model_dump", "to_python", "dict"):
+                method = getattr(button, attr, None)
+                if callable(method):
+                    try:
+                        payload = (
+                            method(exclude_none=True) if attr != "to_python" else method()
+                        )
+                    except TypeError:
+                        try:
+                            payload = method()
+                        except TypeError:
+                            continue
+                    break
+            row_payload.append(payload)
+        normalized.append(row_payload)
+    return normalized
+
+
 def _queue_for(bot: Bot) -> _SendQueue:
     key = id(bot)
     queue = _SEND_QUEUES.get(key)
@@ -73,7 +112,29 @@ async def safe_edit_or_send(
             except TelegramBadRequest as exc:
                 message_text = (exc.message or "").lower()
                 if "message is not modified" in message_text:
-                    return message
+                    if reply_markup is not None:
+                        current_markup = _normalize_markup(message.reply_markup)
+                        new_markup = _normalize_markup(reply_markup)
+                        if current_markup != new_markup:
+                            _LOGGER.debug("safe_edit_or_send: updating reply markup only")
+                            try:
+                                await _queue_call(
+                                    message.bot,
+                                    lambda: message.edit_reply_markup(
+                                        reply_markup=reply_markup
+                                    ),
+                                )
+                            except TelegramBadRequest as markup_exc:
+                                _LOGGER.debug(
+                                    "safe_edit_or_send markup edit failed: %s",
+                                    markup_exc,
+                                    exc_info=True,
+                                )
+                            else:
+                                return message
+                    _LOGGER.debug(
+                        "safe_edit_or_send: text unchanged, sending new message"
+                    )
                 if "message to edit not found" not in message_text and "message can't be edited" not in message_text:
                     _LOGGER.debug("safe_edit_or_send edit failed: %s", exc, exc_info=True)
                 target_chat = message.chat.id
