@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import math
 from typing import Sequence
@@ -634,7 +634,7 @@ async def onboarding_confirm(
     await clear_step_messages(callback.message.bot, state, callback.message.chat.id)
     await state.clear()
     await callback.message.answer(ONBOARDING_SENT)
-    await callback.answer("")
+    await callback.answer("Анкета отправлена на модерацию.")
 
 
 async def _load_districts(session: AsyncSession, city_id: int) -> list[dict[str, int | str]]:
@@ -706,5 +706,6 @@ def _format_payout_summary(method_value: str | None, payload: dict | None) -> st
         last4 = account[-4:] if account else ''
         return f"  {last4}" if last4 else " "
     return method.value
+
 
 

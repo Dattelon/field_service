@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import Any, Iterable, Optional
 
@@ -56,8 +56,13 @@ class StaffAccessMiddleware(BaseMiddleware):
 
         staff: Optional[StaffUser] = data.get("staff")
         if tg_id in self._superusers:
+            # Try to resolve real staff from DB to keep FK references valid
             if not isinstance(staff, StaffUser):
-                staff = StaffUser(
+                try:
+                    resolved = await self._staff_service.get_by_tg_id(tg_id)
+                except Exception:
+                    resolved = None
+                staff = resolved or StaffUser(
                     id=0,
                     tg_id=tg_id,
                     role=StaffRole.GLOBAL_ADMIN,
@@ -84,3 +89,4 @@ class StaffAccessMiddleware(BaseMiddleware):
             return None
 
         return await handler(event, data)
+

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
@@ -10,6 +10,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from aiogram import Bot
+from aiogram.types import FSInputFile
+from field_service.config import settings as env_settings
 
 from field_service.bots.common import FSMTimeoutConfig, FSMTimeoutMiddleware
 
@@ -152,8 +157,13 @@ def build_list_kb(
             text="▶️ Вперёд",
             callback_data=f"{prefix}:list:{group}:{category}:{page + 1}",
         )
-    if nav.buttons:
-        nav.adjust(len(nav.buttons))
+    nav_count = 0
+    if page > 1:
+        nav_count += 1
+    if has_next:
+        nav_count += 1
+    if nav_count:
+        nav.adjust(nav_count)
         kb.attach(nav)
 
     categories = InlineKeyboardBuilder()
@@ -167,8 +177,9 @@ def build_list_kb(
             text=label,
             callback_data=f"{prefix}:list:{group}:{skill_id}:1",
         )
-    if categories.buttons:
-        categories.adjust(min(len(categories.buttons), 3))
+    categories_count = 1 + min(len(skills), 6)
+    if categories_count:
+        categories.adjust(min(categories_count, 3))
         kb.attach(categories)
 
     kb.button(text="⬅️ В меню", callback_data="adm:menu")
@@ -631,34 +642,71 @@ async def change_limit(message: Message, state: FSMContext, staff: StaffUser) ->
     F.data.startswith("adm:m:docs"),
     StaffRoleFilter(VIEW_ROLES),
 )
+async def _relay_document(current_bot, *, chat_id: int, file_id: str, file_type: str, caption: str = "", filename: str | None = None) -> bool:
+    token = getattr(env_settings, 'master_bot_token', None)
+    if not token:
+        return False
+    try:
+        async with Bot(token) as source_bot:
+            with TemporaryDirectory() as tmpdir:
+                # Resolve filename from Telegram file info or fallback by type
+                try:
+                    info = await source_bot.get_file(file_id)
+                    suggested = Path(getattr(info, "file_path", "") or "").name or None
+                except Exception:
+                    suggested = None
+                if not filename and suggested:
+                    filename_use = suggested
+                elif filename:
+                    filename_use = filename
+                else:
+                    ext = ".jpg" if file_type.upper() == "PHOTO" else (".pdf" if file_type.upper() == "DOCUMENT" else ".bin")
+                    filename_use = f"doc{ext}"
+                tmp = Path(tmpdir) / filename_use
+                await source_bot.download(file_id, destination=tmp)
+                if file_type.upper() == "PHOTO":
+                    await current_bot.send_photo(chat_id, FSInputFile(tmp, filename=filename_use), caption=caption)
+                else:
+                    await current_bot.send_document(chat_id, FSInputFile(tmp, filename=filename_use), caption=caption)
+        return True
+    except Exception:
+        logger.warning('Relay via master bot failed', exc_info=True)
+        return False
+
 async def show_documents(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         master_id = int(cq.data.split(":")[-1])
     except ValueError:
         await cq.answer("Некорректный идентификатор", show_alert=True)
         return
+    try:
+        await cq.answer()
+    except Exception:
+        pass
     service = _masters_service(cq.bot)
     detail = await service.get_master_detail(master_id)
     if not detail or not detail.documents:
-        await cq.answer("Документы отсутствуют", show_alert=True)
+        if cq.message:
+            await cq.message.answer("Документы отсутствуют")
         return
+    chat_id = cq.message.chat.id if cq.message else None
     for document in detail.documents:
-        caption = document.caption or document.document_type or ""
-        file_type = (document.file_type or "").upper()
+        caption = document.caption or document.document_type or ''
+        file_type = (document.file_type or '').upper()
         try:
-            if file_type == "PHOTO":
+            if file_type == 'PHOTO':
                 await cq.message.answer_photo(document.file_id, caption=caption)
-            elif file_type == "DOCUMENT":
+            elif file_type == 'DOCUMENT':
                 await cq.message.answer_document(document.file_id, caption=caption)
             else:
-                await cq.message.answer(
-                    f"Недопустимый формат документа: {document.file_type}"
-                )
+                await cq.message.answer(f"Неизвестный тип файла: {document.file_type}")
         except Exception:
-            logger.warning("Failed to send document", exc_info=True)
-    await cq.answer()
-
-
+            if chat_id is not None:
+                ok = await _relay_document(cq.bot, chat_id=chat_id, file_id=document.file_id, file_type=file_type, caption=caption, filename=(document.file_name or None))
+                if not ok:
+                    logger.warning('Failed to send document', exc_info=True)
+            else:
+                logger.warning('Failed to send document', exc_info=True)
 @router.callback_query(
     F.data.startswith("adm:m:del"),
     StaffRoleFilter(MANAGE_ROLES),
@@ -715,3 +763,7 @@ __all__ = [
     "notify_master",
     "RejectReasonState",
 ]
+
+
+
+

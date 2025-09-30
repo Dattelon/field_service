@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import Iterable, Sequence
 
@@ -11,15 +11,15 @@ from .utils import inline_keyboard
 
 def start_onboarding_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
-        [[InlineKeyboardButton(text=" ", callback_data="m:onboarding:start")]]
+        [[InlineKeyboardButton(text="Заполнить анкету", callback_data="m:onboarding:start")]]
     )
 
 
 def pdn_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
         [
-            [InlineKeyboardButton(text="", callback_data="m:onboarding:pdn_accept")],
-            [InlineKeyboardButton(text=" ", callback_data="m:onboarding:pdn_decline")],
+            [InlineKeyboardButton(text="Согласен", callback_data="m:onboarding:pdn_accept")],
+            [InlineKeyboardButton(text="Не согласен", callback_data="m:onboarding:pdn_decline")],
         ]
     )
 
@@ -27,8 +27,8 @@ def pdn_keyboard() -> InlineKeyboardMarkup:
 def vehicle_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
         [
-            [InlineKeyboardButton(text=",  ", callback_data="m:onboarding:vehicle_yes")],
-            [InlineKeyboardButton(text=",  ", callback_data="m:onboarding:vehicle_no")],
+            [InlineKeyboardButton(text="Есть авто", callback_data="m:onboarding:vehicle_yes")],
+            [InlineKeyboardButton(text="Нет авто", callback_data="m:onboarding:vehicle_no")],
         ]
     )
 
@@ -41,7 +41,7 @@ def districts_keyboard(
 ) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     for district_id, title, selected in options:
-        label = (" " if selected else " ") + title
+        label = ("✅ " if selected else "▫️ ") + title
         rows.append(
             [InlineKeyboardButton(text=label, callback_data=f"m:onboarding:district:{district_id}")]
         )
@@ -50,16 +50,16 @@ def districts_keyboard(
     if total_pages > 1:
         if page > 1:
             controls.append(
-                InlineKeyboardButton(text="", callback_data=f"m:onboarding:districts_page:{page - 1}")
+                InlineKeyboardButton(text="‹ Назад", callback_data=f"m:onboarding:districts_page:{page - 1}")
             )
         controls.append(
             InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="m:onboarding:districts_page:noop")
         )
         if page < total_pages:
             controls.append(
-                InlineKeyboardButton(text="", callback_data=f"m:onboarding:districts_page:{page + 1}")
+                InlineKeyboardButton(text="Вперёд ›", callback_data=f"m:onboarding:districts_page:{page + 1}")
             )
-    controls.append(InlineKeyboardButton(text="", callback_data="m:onboarding:districts_done"))
+    controls.append(InlineKeyboardButton(text="Готово", callback_data="m:onboarding:districts_done"))
     if controls:
         rows.append(controls)
     return inline_keyboard(rows)
@@ -68,11 +68,11 @@ def districts_keyboard(
 def skills_keyboard(skills: Sequence[tuple[int, str, bool]]) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     for skill_id, title, selected in skills:
-        label = (" " if selected else " ") + title
+        label = ("✅ " if selected else "▫️ ") + title
         rows.append(
             [InlineKeyboardButton(text=label, callback_data=f"m:onboarding:skill:{skill_id}")]
         )
-    rows.append([InlineKeyboardButton(text="", callback_data="m:onboarding:skills_done")])
+    rows.append([InlineKeyboardButton(text="Готово", callback_data="m:onboarding:skills_done")])
     return inline_keyboard(rows)
 
 
@@ -93,8 +93,8 @@ def payout_methods_keyboard(methods: Iterable[m.PayoutMethod]) -> InlineKeyboard
 def home_geo_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
         [
-            [InlineKeyboardButton(text=" ", callback_data="m:onboarding:home_geo_share")],
-            [InlineKeyboardButton(text="", callback_data="m:onboarding:home_geo_skip")],
+            [InlineKeyboardButton(text="Отправить геопозицию", callback_data="m:onboarding:home_geo_share")],
+            [InlineKeyboardButton(text="Пропустить", callback_data="m:onboarding:home_geo_skip")],
         ]
     )
 
@@ -104,28 +104,28 @@ def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
     if getattr(master, "verified", False):
         shift_status = getattr(master, "shift_status", m.ShiftStatus.SHIFT_OFF)
         if shift_status is m.ShiftStatus.SHIFT_OFF:
-            rows.append([InlineKeyboardButton(text=" ", callback_data="m:sh:on")])
+            rows.append([InlineKeyboardButton(text="Начать смену", callback_data="m:sh:on")])
         elif shift_status is m.ShiftStatus.SHIFT_ON:
-            rows.append([InlineKeyboardButton(text=" 2 ", callback_data="m:sh:brk")])
-            rows.append([InlineKeyboardButton(text=" ", callback_data="m:sh:off")])
+            rows.append([InlineKeyboardButton(text="Перерыв 20 мин", callback_data="m:sh:brk")])
+            rows.append([InlineKeyboardButton(text="Завершить смену", callback_data="m:sh:off")])
         elif shift_status is m.ShiftStatus.BREAK:
-            rows.append([InlineKeyboardButton(text="  ", callback_data="m:sh:brk:ok")])
-            rows.append([InlineKeyboardButton(text=" ", callback_data="m:sh:off")])
-        rows.append([InlineKeyboardButton(text=" ", callback_data="m:new")])
-        rows.append([InlineKeyboardButton(text=" ", callback_data="m:act")])
-        rows.append([InlineKeyboardButton(text="", callback_data="m:fin")])
-        rows.append([InlineKeyboardButton(text=" ", callback_data="m:rf")])
-        rows.append([InlineKeyboardButton(text=" ", callback_data="m:kb")])
+            rows.append([InlineKeyboardButton(text="Вернуться на смену", callback_data="m:sh:brk:ok")])
+            rows.append([InlineKeyboardButton(text="Завершить смену", callback_data="m:sh:off")])
+        rows.append([InlineKeyboardButton(text="Новые заказы", callback_data="m:new")])
+        rows.append([InlineKeyboardButton(text="Мои заказы", callback_data="m:act")])
+        rows.append([InlineKeyboardButton(text="Выплаты", callback_data="m:fin")])
+        rows.append([InlineKeyboardButton(text="Рефералы", callback_data="m:rf")])
+        rows.append([InlineKeyboardButton(text="Помощь", callback_data="m:kb")])
     else:
-        rows.append([InlineKeyboardButton(text=" ", callback_data="m:onboarding:start")])
+        rows.append([InlineKeyboardButton(text="Заполнить анкету", callback_data="m:onboarding:start")])
     return inline_keyboard(rows)
 
 
 def _method_title(method: m.PayoutMethod) -> str:
     mapping = {
-        m.PayoutMethod.CARD: " ",
-        m.PayoutMethod.SBP: "",
-        m.PayoutMethod.YOOMONEY: "Money",
-        m.PayoutMethod.BANK_ACCOUNT: " ",
+        m.PayoutMethod.CARD: "Банковская карта",
+        m.PayoutMethod.SBP: "СБП",
+        m.PayoutMethod.YOOMONEY: "ЮMoney",
+        m.PayoutMethod.BANK_ACCOUNT: "Банковский счёт",
     }
     return mapping.get(method, method.value.title())

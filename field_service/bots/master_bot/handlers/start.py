@@ -61,3 +61,5 @@ async def _render_start(message: Message, master: m.masters) -> None:
         text,
     ]
     await message.answer("\n".join(lines), reply_markup=keyboard)
+
+

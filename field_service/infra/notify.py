@@ -1,8 +1,9 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import logging
 import traceback
 from typing import Any
+import html
 
 from aiogram import Bot
 
@@ -43,7 +44,7 @@ async def _safe_send(
 ) -> None:
     if bot is None or chat_id is None:
         return
-    payload = _trim_message(text)
+    payload = html.escape(_trim_message(text), quote=False)
     if not payload:
         return
     try:
@@ -78,3 +79,4 @@ async def send_alert(
     target = chat_id if chat_id is not None else settings.alerts_channel_id
     payload = _compose_alert(text, exc)
     await _safe_send(bot, target, payload, **kwargs)
+

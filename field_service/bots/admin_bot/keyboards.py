@@ -28,20 +28,18 @@ def main_menu(staff: StaffUser) -> InlineKeyboardMarkup:
     kb.button(text="👷 Мастера", callback_data="adm:m:grp:ok")
     kb.button(text="🛠 Модерация", callback_data="adm:mod:list:1")
     kb.button(text="💰 Финансы", callback_data="adm:f")
-    kb.button(text="📊 Отчеты", callback_data="adm:r")
+    kb.button(text="📊 Отчёты", callback_data="adm:r")
     kb.button(text="⚙️ Настройки", callback_data="adm:s")
     if staff.role is StaffRole.GLOBAL_ADMIN:
-        kb.button(text="👤 Сотрудники/Доступ", callback_data="adm:staff:menu")
+        kb.button(text="👤 Персонал и доступ", callback_data="adm:staff:menu")
     kb.button(text="🧾 Логи", callback_data="adm:l")
     kb.adjust(2, 2, 2, 2, 1)
     return kb.as_markup()
 
-
 def back_to_menu() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="⬅️ В меню", callback_data="adm:menu")
+    kb.button(text="⬅️ Назад в меню", callback_data="adm:menu")
     return kb.as_markup()
-
 
 def queue_list_keyboard(
     items: Sequence[OrderListItem], *, page: int, has_next: bool

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -96,7 +96,17 @@ async def moderation_approve(cq: CallbackQuery, staff: StaffUser) -> None:
         await cq.answer("Некорректный идентификатор", show_alert=True)
         return
     service = _masters_service(cq.bot)
-    if not await service.approve_master(master_id, staff.id):
+    by_id = staff.id
+    if by_id == 0:
+        try:
+            staff_service = get_service(cq.bot, "staff_service", required=False)
+            if staff_service and cq.from_user:
+                resolved = await staff_service.get_by_tg_id(cq.from_user.id)
+                if resolved:
+                    by_id = resolved.id
+        except Exception:
+            pass
+    if not await service.approve_master(master_id, by_id):
         await cq.answer("Не удалось одобрить", show_alert=True)
         return
     await admin_masters.notify_master(
@@ -148,3 +158,4 @@ async def disable_delete(cq: CallbackQuery, staff: StaffUser) -> None:
 
 
 __all__ = ["router"]
+

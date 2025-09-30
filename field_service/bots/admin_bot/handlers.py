@@ -45,8 +45,35 @@ router.callback_query.middleware(_TIMEOUT_MIDDLEWARE)
 from field_service.config import settings as env_settings
 from field_service.services import export_service, live_log, time_service
 from field_service.services import settings_service
+from field_service.db.models import StaffRole
 from field_service.services.onboarding_service import normalize_phone
 from .filters import StaffRoleFilter
+from .keyboards import (
+    main_menu,
+    order_card_keyboard,
+    finance_reject_cancel_keyboard,
+    finance_segment_keyboard,
+    finance_menu,
+    logs_menu_keyboard,
+    settings_menu_keyboard,
+    reports_menu_keyboard,
+    new_order_city_keyboard,
+    new_order_district_keyboard,
+    new_order_street_mode_keyboard,
+    new_order_street_keyboard,
+    new_order_street_manual_keyboard,
+    new_order_attachments_keyboard,
+    new_order_confirm_keyboard,
+    new_order_asap_late_keyboard,
+)
+
+from .states import (
+    FinanceActionFSM,
+    NewOrderFSM,
+    ReportsExportFSM,
+    SettingsEditFSM,
+    StaffAccessFSM,
+)
 from field_service.bots.admin_bot.services_db import AccessCodeError
 
 # Auto-fix mojibake in outgoing texts (display-only)
@@ -79,7 +106,11 @@ def _ru_best_fix(text: str) -> str:
 
 # Monkey-patch common send/edit helpers to fix text at the edge
 try:
-    from aiogram.types import Message as _AioMessage, CallbackQuery as _AioCallbackQuery
+    from aiogram.types import (
+        Message as _AioMessage,
+        CallbackQuery as _AioCallbackQuery,
+        InlineKeyboardButton as _AioInlineButton,
+    )
     from aiogram import Bot as _AioBot
 
     _orig_msg_answer = _AioMessage.answer
@@ -101,10 +132,19 @@ try:
     async def _fx_bot_send_message(self, chat_id, text: str, *args, **kwargs):
         return await _orig_bot_send_message(self, chat_id, _ru_best_fix(text), *args, **kwargs)
 
+    _orig_inline_button_init = _AioInlineButton.__init__
+
+    def _fx_inline_button_init(self, **data):
+        text = data.get("text")
+        if isinstance(text, str):
+            data["text"] = _ru_best_fix(text)
+        _orig_inline_button_init(self, **data)
+
     _AioMessage.answer = _fx_msg_answer  # type: ignore[assignment]
     _AioMessage.edit_text = _fx_msg_edit_text  # type: ignore[assignment]
     _AioCallbackQuery.answer = _fx_cq_answer  # type: ignore[assignment]
     _AioBot.send_message = _fx_bot_send_message  # type: ignore[assignment]
+    _AioInlineButton.__init__ = _fx_inline_button_init  # type: ignore[assignment]
 except Exception:
     pass
 
@@ -120,7 +160,7 @@ FINANCE_SEGMENT_TITLES = {
     "pd": "Оплаченные",
     "ov": "Просроченные",
 }
-STAFF_CODE_PROMPT = "Введите код доступа, который выдали администраторы."
+STAFF_CODE_PROMPT = "Введите код доступа, который выдал администратор."
 STAFF_CODE_ERROR = "Код не найден / истёк / уже использован / вам недоступен."
 STAFF_PDN_TEXT = (
     "Согласие на обработку персональных данных.",
@@ -958,7 +998,7 @@ async def _render_created_order_card(message: Message, order_id: int, staff: Sta
 @router.message(CommandStart(), StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}))
 async def admin_start(message: Message, staff: StaffUser) -> None:
     #  ,    
-    await message.answer("- Field Service.  :", reply_markup=main_menu(staff))
+    await message.answer("Добро пожаловать в Field Service. Выберите раздел:", reply_markup=main_menu(staff))
     return
 
 
@@ -1487,23 +1527,50 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
         operator_chat_id = msg.chat.id
     elif msg.from_user:
         operator_chat_id = msg.from_user.id
-    target_chat_id = env_settings.reports_channel_id or operator_chat_id
+    configured_chat_id: Optional[int] = None
+    try:
+        raw_channel_id = await settings_service.get_value("reports_channel_id")
+    except Exception:
+        raw_channel_id = None
+    if raw_channel_id:
+        candidate = raw_channel_id.strip()
+        if candidate and candidate != "-":
+            try:
+                configured_chat_id = int(candidate)
+            except ValueError:
+                configured_chat_id = None
+    target_chat_id = configured_chat_id or env_settings.reports_channel_id or operator_chat_id
     if target_chat_id is None:
         await state.clear()
         await msg.answer(
-            "      .",
+            "Report channel is not configured.",
             reply_markup=reports_menu_keyboard(),
         )
         return
 
-    await _send_export_documents(
-        msg.bot,
-        bundle,
-        f"{caption_prefix} {period_label}",
-        chat_id=target_chat_id,
-    )
+    try:
+        await _send_export_documents(
+            msg.bot,
+            bundle,
+            f"{caption_prefix} {period_label}",
+            chat_id=target_chat_id,
+        )
+    except TelegramBadRequest:
+        if operator_chat_id is not None and target_chat_id != operator_chat_id:
+            await _send_export_documents(
+                msg.bot,
+                bundle,
+                f"{caption_prefix} {period_label}",
+                chat_id=operator_chat_id,
+            )
+            await msg.answer("Report sent to your chat because the reports channel is unavailable.")
+        else:
+            await state.clear()
+            await msg.answer("Failed to deliver report.")
+            return
+    else:
+        await msg.answer("Report sent.")
     await state.clear()
-    await msg.answer("Редактирование отменено.")
 
 async def _start_new_order(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
@@ -2328,7 +2395,7 @@ FINANCE_SEGMENT_TITLES = {
     "pd": "Оплаченные",
     "ov": "Просроченные",
 }
-STAFF_CODE_PROMPT = "Введите код доступа, который выдали администраторы."
+STAFF_CODE_PROMPT = "Введите код доступа, который выдал администратор."
 STAFF_CODE_ERROR = "Код не найден / истёк / уже использован / вам недоступен."
 STAFF_PDN_TEXT = (
     "Согласие на обработку персональных данных.\n"
@@ -2387,6 +2454,7 @@ SCHEMA_DEFAULT_HELP = {
     "int_optional": "Введите число или '-' чтобы очистить значение.",
     "choice": "Выберите один из предложенных вариантов.",
 }
+
 
 
 
