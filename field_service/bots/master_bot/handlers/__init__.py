@@ -8,7 +8,11 @@ from aiogram.fsm.context import FSMContext
 from field_service.bots.common import FSMTimeoutConfig, FSMTimeoutMiddleware, safe_send_message
 
 from ..texts import FSM_TIMEOUT_MESSAGE
-from ..middlewares import DbSessionMiddleware, MasterContextMiddleware
+from ..middlewares import (
+    DbSessionMiddleware,
+    MasterContextMiddleware,
+    DebugLoggingMiddleware,
+)
 from .finance import router as finance_router
 from .onboarding import router as onboarding_router
 from .orders import router as orders_router
@@ -33,6 +37,8 @@ _fsm_timeout = FSMTimeoutMiddleware(
     FSMTimeoutConfig(timeout=timedelta(minutes=7), callback=_notify_timeout)
 )
 
+router.message.middleware(DebugLoggingMiddleware())
+router.callback_query.middleware(DebugLoggingMiddleware())
 router.message.middleware(DbSessionMiddleware())
 router.callback_query.middleware(DbSessionMiddleware())
 router.message.middleware(MasterContextMiddleware())

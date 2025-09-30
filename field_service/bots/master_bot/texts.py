@@ -6,6 +6,11 @@ from typing import Iterable, Mapping
 
 from field_service.db import models as m
 
+# Onboarding flow texts (missing constants used by handlers)
+ONBOARDING_ALREADY_VERIFIED = "Вы уже верифицированы."
+ONBOARDING_SENT = "Заявка отправлена на модерацию."
+ONBOARDING_SUMMARY_HEADER = "Проверьте данные анкеты:"
+
 MASTER_PDN_CONSENT = (
     "Согласие на обработку персональных данных.",
     "Я разрешаю Field Service обрабатывать мои ФИО, телефон и сведения о заказах для заключения договора и организации работы.",

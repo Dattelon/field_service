@@ -9,6 +9,7 @@ from field_service.db import models as m
 
 from ..keyboards import main_menu_keyboard, start_onboarding_keyboard
 from ..texts import START_APPROVED, START_BLOCKED, START_NOT_APPROVED
+from ..utils import escape_html
 
 router = Router(name="master_start")
 
@@ -53,13 +54,18 @@ async def _render_start(message: Message, master: m.masters) -> None:
         text = START_APPROVED
         keyboard = main_menu_keyboard(master)
 
+    # Normalize tuple/list texts to a single string
+    if isinstance(text, (tuple, list)):
+        text = "\n".join(str(part) for part in text)
+
     status_label = _STATUS_TITLES.get(moderation, str(moderation))
     lines = [
         "<b>Field Service — мастер</b>",
         f"Статус анкеты: {status_label}",
         "",
-        text,
+        escape_html(text),
     ]
     await message.answer("\n".join(lines), reply_markup=keyboard)
+
 
 

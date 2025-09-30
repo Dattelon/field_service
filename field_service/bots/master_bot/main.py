@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
+import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -21,6 +22,16 @@ logger = logging.getLogger(__name__)
 
 
 async def main() -> int:
+    # Basic logging to console; allow override via LOG_LEVEL env
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=getattr(logging, log_level, logging.INFO),
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
+    # Reduce aiohttp noise but keep aiogram useful
+    logging.getLogger("aiogram").setLevel(getattr(logging, log_level, logging.INFO))
+    logging.getLogger("aiohttp").setLevel(logging.WARNING)
     bot = Bot(
         settings.master_bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
@@ -46,6 +57,7 @@ async def main() -> int:
 
     exit_code = 0
     try:
+        logger.info("Starting master bot; allowed updates: %s", dp.resolve_used_update_types())
         await poll_with_single_instance_guard(
             dp,
             bot,

@@ -7,6 +7,7 @@ from typing import Optional
 from types import SimpleNamespace
 
 from aiogram import F, Router
+import logging
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, ContentType, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import and_, func, insert, select, update
@@ -56,6 +57,7 @@ from ..texts import (
 from ..utils import escape_html, inline_keyboard, normalize_money, now_utc
 
 router = Router(name="master_orders")
+_log = logging.getLogger("master_bot.orders")
 
 OFFERS_PAGE_SIZE = 5
 ACTIVE_STATUSES: tuple[m.OrderStatus, ...] = (
@@ -81,6 +83,7 @@ async def offers_root(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
+    _log.info("offers_root: uid=%s", getattr(getattr(callback, 'from_user', None), 'id', None))
     await _render_offers(callback, session, master, page=1)
     await safe_answer_callback(callback)
 
@@ -235,6 +238,7 @@ async def active_order_entry(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
+    _log.info("active_order_entry: uid=%s", getattr(getattr(callback, 'from_user', None), 'id', None))
     await _render_active_order(callback, session, master, order_id=None)
     await safe_answer_callback(callback)
 
@@ -478,7 +482,14 @@ async def _render_offers(
             keyboard_rows.append(nav_row)
 
     keyboard = inline_keyboard(keyboard_rows)
-    await safe_edit_or_send(event, "\n".join(lines), keyboard)
+    text = "\n".join(lines)
+    try:
+        await safe_edit_or_send(event, text, keyboard)
+    except Exception as exc:  # telemetry for hard-to-reproduce UI issues
+        _log.exception("render_offers failed: %s", exc)
+        # Fallback: send minimal plain text without keyboard
+        if isinstance(event, CallbackQuery) and event.message is not None:
+            await event.message.answer(text)
 
 
 async def _render_offer_card(
@@ -595,8 +606,13 @@ async def _render_active_order(
 
     keyboard_rows.append([InlineKeyboardButton(text=BACK_TO_MENU, callback_data="m:menu")])
     keyboard = inline_keyboard(keyboard_rows)
-
-    await safe_edit_or_send(event, "\n".join(text_lines), keyboard)
+    text = "\n".join(text_lines)
+    try:
+        await safe_edit_or_send(event, text, keyboard)
+    except Exception as exc:
+        _log.exception("render_active failed: %s", exc)
+        if isinstance(event, CallbackQuery) and event.message is not None:
+            await event.message.answer(text)
 
 
 async def _update_order_status(
@@ -643,7 +659,7 @@ async def _load_offers(session: AsyncSession, master_id: int) -> list[SimpleName
             m.cities.name.label("city"),
             m.districts.name.label("district"),
             m.orders.category,
-            m.cities.timezone.label("city_tz"),
+            func.null().label("city_tz"),
             m.orders.timeslot_start_utc,
             m.orders.timeslot_end_utc,
         )
@@ -683,7 +699,7 @@ async def _load_offer_detail(
         select(
             m.orders,
             m.cities.name.label("city"),
-            m.cities.timezone.label("city_tz"),
+            func.null().label("city_tz"),
             m.districts.name.label("district"),
             m.streets.name.label("street"),
         )
@@ -709,7 +725,7 @@ async def _load_active_order(
         select(
             m.orders,
             m.cities.name.label("city"),
-            m.cities.timezone.label("city_tz"),
+            func.null().label("city_tz"),
             m.districts.name.label("district"),
             m.streets.name.label("street"),
         )
@@ -754,4 +770,3 @@ async def _count_active_orders(session: AsyncSession, master_id: int) -> int:
         )
     )
     return int((await session.execute(stmt)).scalar_one())
-
