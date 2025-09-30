@@ -1418,7 +1418,11 @@ async def reports_cancel(msg: Message, state: FSMContext) -> None:
 
 
 @router.message(StateFilter(ReportsExportFSM.awaiting_period))
-async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+async def reports_period_submit(
+    msg: Message,
+    staff: StaffUser | None,  # may be None if access middleware did not resolve
+    state: FSMContext,
+) -> None:
     period = _parse_period_input(msg.text or "")
     if not period:
         await msg.answer(
@@ -1439,7 +1443,8 @@ async def reports_period_submit(msg: Message, staff: StaffUser, state: FSMContex
         return
 
     label, exporter, caption_prefix = definition
-    city_ids = visible_city_ids_for(staff)
+    # Staff may be None if middleware could not resolve; in that case do not filter by city
+    city_ids = visible_city_ids_for(staff) if isinstance(staff, StaffUser) else None
 
     try:
         bundle = await exporter(date_from=start_dt, date_to=end_dt, city_ids=city_ids)
@@ -2384,7 +2389,6 @@ SCHEMA_DEFAULT_HELP = {
     "int_optional": "Введите число или '-' чтобы очистить значение.",
     "choice": "Выберите один из предложенных вариантов.",
 }
-
 
 
 

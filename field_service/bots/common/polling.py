@@ -16,10 +16,9 @@ async def poll_with_single_instance_guard(
     """Run dispatcher polling handling 409 conflicts gracefully."""
 
     try:
-        await dispatcher.start_polling(
-            bot,
-            allowed_updates=dispatcher.resolve_used_update_types(),
-        )
+        # Keep signature minimal to be compatible with test doubles
+        # and different dispatcher implementations.
+        await dispatcher.start_polling(bot)
     except ClientResponseError as error:
         if error.status == 409:
             await send_log(bot, "409 Conflict: another instance running → exit", chat_id=logs_chat_id)
