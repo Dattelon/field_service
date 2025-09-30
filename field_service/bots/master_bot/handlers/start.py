@@ -5,6 +5,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
+from field_service.bots.common import safe_answer_callback, safe_edit_or_send
 from field_service.db import models as m
 
 from ..keyboards import main_menu_keyboard, start_onboarding_keyboard
@@ -36,7 +37,7 @@ async def handle_menu(callback: CallbackQuery, state: FSMContext, master: m.mast
     await state.clear()
     if callback.message:
         await _render_start(callback.message, master)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 async def _render_start(message: Message, master: m.masters) -> None:
@@ -65,7 +66,7 @@ async def _render_start(message: Message, master: m.masters) -> None:
         "",
         escape_html(text),
     ]
-    await message.answer("\n".join(lines), reply_markup=keyboard)
+    await safe_edit_or_send(message, "\n".join(lines), keyboard)
 
 
 

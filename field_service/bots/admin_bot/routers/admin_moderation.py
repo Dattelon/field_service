@@ -70,15 +70,19 @@ async def moderation_list(cq: CallbackQuery, staff: StaffUser) -> None:
 )
 async def moderation_card(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
-        master_id = int(cq.data.split(":")[-1])
+        action = admin_masters.parse_master_action(cq.data)
     except ValueError:
         await cq.answer("Некорректный идентификатор", show_alert=True)
         return
     text, markup = await admin_masters.render_master_card(
         cq.bot,
-        master_id,
+        action.master_id,
         staff=staff,
-        mode="moderation",
+        mode=action.mode,
+        prefix=action.prefix,
+        group=action.group,
+        category=action.category,
+        page=action.page,
     )
     if cq.message:
         await cq.message.edit_text(text, reply_markup=markup)
@@ -91,10 +95,11 @@ async def moderation_card(cq: CallbackQuery, staff: StaffUser) -> None:
 )
 async def moderation_approve(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
-        master_id = int(cq.data.split(":")[-1])
+        action = admin_masters.parse_master_action(cq.data)
     except ValueError:
         await cq.answer("Некорректный идентификатор", show_alert=True)
         return
+    master_id = action.master_id
     service = _masters_service(cq.bot)
     by_id = staff.id
     if by_id == 0:
@@ -114,7 +119,16 @@ async def moderation_approve(cq: CallbackQuery, staff: StaffUser) -> None:
         master_id,
         "Анкета одобрена. Вам доступна смена.",
     )
-    await admin_masters.refresh_card(cq, master_id, staff)
+    await admin_masters.refresh_card(
+        cq,
+        master_id,
+        staff,
+        mode=action.mode,
+        prefix=action.prefix,
+        group=action.group,
+        category=action.category,
+        page=action.page,
+    )
     await cq.answer("Одобрено")
 
 
@@ -124,16 +138,21 @@ async def moderation_approve(cq: CallbackQuery, staff: StaffUser) -> None:
 )
 async def moderation_reject(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
     try:
-        master_id = int(cq.data.split(":")[-1])
+        action = admin_masters.parse_master_action(cq.data)
     except ValueError:
         await cq.answer("Некорректный идентификатор", show_alert=True)
         return
     await state.set_state(admin_masters.RejectReasonState.waiting)
     await state.update_data(
-        master_id=master_id,
+        master_id=action.master_id,
         action="reject",
         origin_chat_id=cq.message.chat.id if cq.message else None,
         origin_message_id=cq.message.message_id if cq.message else None,
+        prefix=action.prefix,
+        group=action.group,
+        category=action.category,
+        page=action.page,
+        mode=action.mode,
     )
     if cq.message:
         await cq.message.answer("Укажите причину отклонения (1–200 символов).")

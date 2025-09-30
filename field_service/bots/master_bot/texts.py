@@ -42,7 +42,7 @@ MAIN_MENU_BUTTONS = {
     "shift_break": "☕ Перерыв 2 часа",
     "shift_break_end": "🟢 Включить смену",
     "shift_off": "🔴 Выключить смену",
-    "new_orders": "🆕 Новые заявки",
+    "new_orders": "🆕 Новые заказы",
     "active_order": "📦 Активный заказ",
     "finance": "💳 Финансы",
     "referral": "🎁 Реферальная программа",
@@ -76,7 +76,7 @@ SHIFT_MESSAGES = {
 
 OFFERS_EMPTY = "Нет новых предложений"
 OFFERS_REFRESH_BUTTON = "🔄 Обновить"
-OFFERS_HEADER_TEMPLATE = "<b>🆕 Новые заявки</b>\nСтраница {page}/{pages} • всего: {total}"
+OFFERS_HEADER_TEMPLATE = "<b>🆕 Новые заказы</b>\nСтраница {page}/{pages} • всего: {total}"
 
 
 def _escape(value: str | None) -> str:
@@ -170,8 +170,8 @@ CLOSE_DOCUMENT_RECEIVED = "Документ получен. Проверим и 
 CLOSE_DOCUMENT_ERROR = "Нужен один файл: фото или PDF. Попробуйте ещё раз."
 
 OFFER_NOT_FOUND = "Заявка не найдена. Возможно, её уже приняли другим мастером."
-BACK_TO_OFFERS = "⬅️ К списку"
-BACK_TO_MENU = "⬅️ В главное меню"
+NAV_BACK = "⬅️ Назад"
+NAV_MENU = "🏠 Меню"
 NO_ACTIVE_ORDERS = "Сейчас нет активных заказов."
 
 ALERT_ACCOUNT_BLOCKED = "Ваш аккаунт заблокирован. Обратитесь в поддержку."
