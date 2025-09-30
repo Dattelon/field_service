@@ -346,6 +346,20 @@ def reports_menu_keyboard() -> InlineKeyboardMarkup:
     kb.adjust(1)
     return kb.as_markup()
 
+
+def reports_periods_keyboard() -> InlineKeyboardMarkup:
+    """Quick period choices for reports export."""
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Сегодня", callback_data="adm:r:pd:today")
+    kb.button(text="Вчера", callback_data="adm:r:pd:yesterday")
+    kb.button(text="Последние 7 дней", callback_data="adm:r:pd:last7")
+    kb.button(text="Текущий месяц", callback_data="adm:r:pd:this_month")
+    kb.button(text="Прошлый месяц", callback_data="adm:r:pd:prev_month")
+    kb.button(text="Выбрать вручную", callback_data="adm:r:pd:custom")
+    kb.button(text="⬅️ Назад", callback_data="adm:r")
+    kb.adjust(2, 2, 2, 1, 1)
+    return kb.as_markup()
+
 def settings_menu_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text="🕙 Рабочий день", callback_data="adm:s:group:workday")
@@ -389,6 +403,8 @@ __all__ = [
     "finance_reject_cancel_keyboard",
     "finance_segment_keyboard",
     "main_menu",
+    "reports_menu_keyboard",
+    "reports_periods_keyboard",
     "manual_candidates_keyboard",
     "manual_confirm_keyboard",
     "new_order_attachments_keyboard",

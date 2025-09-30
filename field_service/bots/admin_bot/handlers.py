@@ -58,6 +58,7 @@ from .keyboards import (
     logs_menu_keyboard,
     settings_menu_keyboard,
     reports_menu_keyboard,
+    reports_periods_keyboard,
     new_order_city_keyboard,
     new_order_district_keyboard,
     new_order_street_mode_keyboard,
@@ -1381,8 +1382,8 @@ async def _prompt_report_period(cq: CallbackQuery, state: FSMContext, report_kin
     await state.set_state(ReportsExportFSM.awaiting_period)
     await state.update_data(report_kind=report_kind)
     await cq.message.answer(
-        "    (" + label + "). : YYYY-MM-DD YYYY-MM-DD.\n"
-        "      .    /cancel."
+        f"Выберите период для отчёта ({label}) или укажите вручную:",
+        reply_markup=reports_periods_keyboard(),
     )
     await cq.answer()
 
@@ -1426,7 +1427,8 @@ async def reports_period_submit(
     period = _parse_period_input(msg.text or "")
     if not period:
         await msg.answer(
-            "   .     YYYY-MM-DD YYYY-MM-DD (: 2025-09-01 2025-09-15)."
+            "Неверный формат. Введите даты как 'YYYY-MM-DD YYYY-MM-DD' или воспользуйтесь кнопками.",
+            reply_markup=reports_periods_keyboard(),
         )
         return
 
@@ -1506,6 +1508,93 @@ async def reports_period_submit(
     else:
         await msg.answer("Report sent.")
     await state.clear()
+
+
+def _compute_quick_period(key: str, *, tz: str) -> tuple[date, date] | None:
+    now = time_service.now_in_city(tz)
+    today = now.date()
+    if key == "today":
+        return today, today
+    if key == "yesterday":
+        y = today - timedelta(days=1)
+        return y, y
+    if key == "last7":
+        return today - timedelta(days=6), today
+    if key == "this_month":
+        start = today.replace(day=1)
+        return start, today
+    if key == "prev_month":
+        first_this = today.replace(day=1)
+        prev_last = first_this - timedelta(days=1)
+        start = prev_last.replace(day=1)
+        end = prev_last
+        return start, end
+    return None
+
+
+@router.callback_query(F.data.regexp(r"^adm:r:pd:(today|yesterday|last7|this_month|prev_month|custom)$"))
+async def reports_quick_period_choice(
+    cq: CallbackQuery,
+    state: FSMContext,
+    staff: StaffUser | None = None,
+) -> None:
+    key = (cq.data or "").rsplit(":", 1)[-1]
+    data = await state.get_data()
+    report_kind = data.get("report_kind")
+    definition = REPORT_DEFINITIONS.get(report_kind or "")
+    if not definition:
+        await state.clear()
+        if cq.message:
+            await cq.message.edit_text("Выберите отчёт:", reply_markup=reports_menu_keyboard())
+        await cq.answer()
+        return
+    if key == "custom":
+        if cq.message:
+            await cq.message.answer(
+                "Введите период в формате: YYYY-MM-DD YYYY-MM-DD\nИли нажмите /cancel для отмены."
+            )
+        await cq.answer()
+        return
+    period = _compute_quick_period(key, tz=env_settings.timezone)
+    if not period:
+        await cq.answer("Неверный период", show_alert=True)
+        return
+    start_dt, end_dt = period
+    label, exporter, caption_prefix = definition
+    city_ids = visible_city_ids_for(staff) if isinstance(staff, StaffUser) else None
+    try:
+        bundle = await exporter(date_from=start_dt, date_to=end_dt, city_ids=city_ids)
+    except Exception:
+        if cq.message:
+            await cq.message.answer("Не удалось сформировать отчёт.", reply_markup=reports_menu_keyboard())
+        await cq.answer()
+        return
+    period_label = _format_period_label(start_dt, end_dt)
+    target_chat_id = env_settings.reports_channel_id or (cq.message.chat.id if cq.message else None)
+    if target_chat_id is None and cq.from_user:
+        target_chat_id = cq.from_user.id
+    if target_chat_id is None:
+        if cq.message:
+            await cq.message.answer("Канал для отчётов не настроен.", reply_markup=reports_menu_keyboard())
+        await cq.answer()
+        return
+    try:
+        await _send_export_documents(cq.bot, bundle, f"{caption_prefix} {period_label}", chat_id=target_chat_id)
+    except TelegramBadRequest:
+        if cq.from_user:
+            await _send_export_documents(cq.bot, bundle, f"{caption_prefix} {period_label}", chat_id=cq.from_user.id)
+            if cq.message:
+                await cq.message.answer("Отчёт отправлен вам в чат (канал недоступен).")
+        else:
+            if cq.message:
+                await cq.message.answer("Не удалось доставить отчёт.")
+            await cq.answer()
+            return
+    else:
+        if cq.message:
+            await cq.message.answer("Отчёт отправлен.")
+    await state.clear()
+    await cq.answer()
 
 async def _start_new_order(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.clear()
@@ -2389,7 +2478,4 @@ SCHEMA_DEFAULT_HELP = {
     "int_optional": "Введите число или '-' чтобы очистить значение.",
     "choice": "Выберите один из предложенных вариантов.",
 }
-
-
-
 
