@@ -13,6 +13,9 @@ from .dto import (
     OrderListItem,
 )
 
+FSM_TIMEOUT_MESSAGE = "Сессия истекла. Нажмите /start"
+
+
 COMMISSION_STATUS_LABELS = {
     'WAIT_PAY': 'Ожидает оплаты',
     'REPORTED': 'Проверяется',

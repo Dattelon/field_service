@@ -7,18 +7,52 @@ from typing import Optional
 from types import SimpleNamespace
 
 from aiogram import F, Router
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, ContentType, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import and_, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from field_service.bots.common import safe_answer_callback, safe_edit_or_send
 from field_service.db import models as m
 from field_service.config import settings
 from field_service.services import time_service
 from field_service.services.commission_service import CommissionService
 
 from ..states import CloseOrderStates
+from ..texts import (
+    ACTIVE_STATUS_ACTIONS,
+    ActiveOrderCard,
+    CLOSE_ACT_PROMPT,
+    CLOSE_AMOUNT_ERROR,
+    CLOSE_AMOUNT_PROMPT,
+    CLOSE_DOCUMENT_ERROR,
+    CLOSE_DOCUMENT_RECEIVED,
+    CLOSE_PAYMENT_TEMPLATE,
+    CLOSE_SUCCESS_TEMPLATE,
+    BACK_TO_MENU,
+    BACK_TO_OFFERS,
+    OFFERS_EMPTY,
+    OFFERS_HEADER_TEMPLATE,
+    OFFERS_REFRESH_BUTTON,
+    NO_ACTIVE_ORDERS,
+    ORDER_STATUS_TITLES,
+    ALERT_ACCEPT_SUCCESS,
+    ALERT_ACCOUNT_BLOCKED,
+    ALERT_ALREADY_TAKEN,
+    ALERT_CLOSE_NOT_ALLOWED,
+    ALERT_CLOSE_NOT_FOUND,
+    ALERT_CLOSE_STATUS,
+    ALERT_DECLINE_SUCCESS,
+    ALERT_EN_ROUTE_FAIL,
+    ALERT_EN_ROUTE_SUCCESS,
+    ALERT_LIMIT_REACHED,
+    ALERT_ORDER_NOT_FOUND,
+    ALERT_WORKING_FAIL,
+    ALERT_WORKING_SUCCESS,
+    offer_card,
+    offer_line,
+    OFFER_NOT_FOUND,
+)
 from ..utils import escape_html, inline_keyboard, normalize_money, now_utc
 
 router = Router(name="master_orders")
@@ -30,7 +64,6 @@ ACTIVE_STATUSES: tuple[m.OrderStatus, ...] = (
     m.OrderStatus.WORKING,
     m.OrderStatus.PAYMENT,
 )
-
 
 
 def _timeslot_text(
@@ -49,7 +82,7 @@ async def offers_root(
     master: m.masters,
 ) -> None:
     await _render_offers(callback, session, master, page=1)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:new:(\d+)$"))
@@ -60,7 +93,7 @@ async def offers_page(
 ) -> None:
     page = int(callback.data.rsplit(":", 1)[-1])
     await _render_offers(callback, session, master, page=page)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:new:card:(\d+)(?::(\d+))?$"))
@@ -73,7 +106,7 @@ async def offers_card(
     order_id = int(parts[2])
     page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
     await _render_offer_card(callback, session, master, order_id, page)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:new:acc:(\d+)(?::(\d+))?$"))
@@ -87,13 +120,38 @@ async def offer_accept(
     page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
 
     if master.is_blocked:
-        await callback.answer(" :  .", show_alert=True)
+        await safe_answer_callback(callback, ALERT_ACCOUNT_BLOCKED, show_alert=True)
         return
 
     limit = await _get_active_limit(session, master)
     active_orders = await _count_active_orders(session, master.id)
     if limit and active_orders >= limit:
-        await callback.answer("   .", show_alert=True)
+        await safe_answer_callback(callback, ALERT_LIMIT_REACHED, show_alert=True)
+        return
+
+    order_snapshot = await session.execute(
+        select(m.orders.status, m.orders.assigned_master_id, m.orders.version)
+        .where(m.orders.id == order_id)
+        .limit(1)
+    )
+    row = order_snapshot.first()
+    if row is None:
+        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
+        await _render_offers(callback, session, master, page=page)
+        return
+
+    current_status: m.OrderStatus = row.status
+    assigned_master_id = row.assigned_master_id
+    current_version = row.version or 1
+    allowed_statuses = {
+        m.OrderStatus.SEARCHING,
+        m.OrderStatus.GUARANTEE,
+        m.OrderStatus.CREATED,
+    }
+
+    if assigned_master_id is not None or current_status not in allowed_statuses:
+        await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
+        await _render_offers(callback, session, master, page=page)
         return
 
     updated = await session.execute(
@@ -102,20 +160,21 @@ async def offer_accept(
             and_(
                 m.orders.id == order_id,
                 m.orders.assigned_master_id.is_(None),
-                m.orders.status.in_(
-                    (m.OrderStatus.CREATED, m.OrderStatus.SEARCHING, m.OrderStatus.GUARANTEE)
-                ),
+                m.orders.status == current_status,
+                m.orders.version == current_version,
             )
         )
         .values(
             assigned_master_id=master.id,
             status=m.OrderStatus.ASSIGNED,
             updated_at=func.now(),
+            version=current_version + 1,
         )
         .returning(m.orders.id)
     )
     if not updated.first():
-        await callback.answer("    .", show_alert=True)
+        await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
+        await _render_offers(callback, session, master, page=page)
         return
 
     await session.execute(
@@ -137,7 +196,7 @@ async def offer_accept(
     await session.execute(
         insert(m.order_status_history).values(
             order_id=order_id,
-            from_status=m.OrderStatus.SEARCHING,
+            from_status=current_status,
             to_status=m.OrderStatus.ASSIGNED,
             changed_by_master_id=master.id,
             reason="accepted_by_master",
@@ -145,7 +204,7 @@ async def offer_accept(
     )
     await session.commit()
 
-    await callback.answer(" .")
+    await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=True)
     await _render_offers(callback, session, master, page=page)
 
 
@@ -166,7 +225,7 @@ async def offer_decline(
     )
     await session.commit()
 
-    await callback.answer(" .")
+    await safe_answer_callback(callback, ALERT_DECLINE_SUCCESS)
     await _render_offers(callback, session, master, page=page)
 
 
@@ -177,7 +236,7 @@ async def active_order_entry(
     master: m.masters,
 ) -> None:
     await _render_active_order(callback, session, master, order_id=None)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:act:card:(\d+)$"))
@@ -188,7 +247,7 @@ async def active_order_card(
 ) -> None:
     order_id = int(callback.data.split(":")[-1])
     await _render_active_order(callback, session, master, order_id=order_id)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:act:enr:(\d+)$"))
@@ -207,9 +266,9 @@ async def active_set_enroute(
         reason="master_en_route",
     )
     if not changed:
-        await callback.answer("   .", show_alert=True)
+        await safe_answer_callback(callback, ALERT_EN_ROUTE_FAIL, show_alert=True)
         return
-    await callback.answer(" .")
+    await safe_answer_callback(callback, ALERT_EN_ROUTE_SUCCESS)
     await _render_active_order(callback, session, master, order_id=order_id)
 
 
@@ -229,9 +288,9 @@ async def active_set_working(
         reason="master_working",
     )
     if not changed:
-        await callback.answer("   .", show_alert=True)
+        await safe_answer_callback(callback, ALERT_WORKING_FAIL, show_alert=True)
         return
-    await callback.answer(" .")
+    await safe_answer_callback(callback, ALERT_WORKING_SUCCESS)
     await _render_active_order(callback, session, master, order_id=order_id)
 
 
@@ -245,32 +304,32 @@ async def active_close_start(
     order_id = int(callback.data.split(":")[-1])
     order = await session.get(m.orders, order_id)
     if order is None or order.assigned_master_id != master.id:
-        await callback.answer("  .", show_alert=True)
+        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
         return
     if order.status != m.OrderStatus.WORKING:
-        await callback.answer("      .", show_alert=True)
+        await safe_answer_callback(callback, ALERT_CLOSE_NOT_ALLOWED, show_alert=True)
         return
 
     await state.update_data(close_order_id=order_id)
     if order.order_type == m.OrderType.GUARANTEE:
         await state.update_data(close_order_amount=str(Decimal("0")))
         await state.set_state(CloseOrderStates.act)
-        await callback.message.answer("  (  PDF).")
+        await callback.message.answer(CLOSE_ACT_PROMPT)
     else:
         await state.set_state(CloseOrderStates.amount)
-        await callback.message.answer("  ,  3500  4999.99.")
-    await callback.answer()
+        await callback.message.answer(CLOSE_AMOUNT_PROMPT)
+    await safe_answer_callback(callback)
 
 
 @router.message(CloseOrderStates.amount)
 async def active_close_amount(message: Message, state: FSMContext) -> None:
     amount = normalize_money(message.text or "")
     if amount is None:
-        await message.answer("  . : 3500  4999.99.")
+        await message.answer(CLOSE_AMOUNT_ERROR)
         return
     await state.update_data(close_order_amount=str(amount))
     await state.set_state(CloseOrderStates.act)
-    await message.answer("  (  PDF).")
+    await message.answer(CLOSE_ACT_PROMPT)
 
 
 @router.message(
@@ -289,11 +348,11 @@ async def active_close_act(
 
     order = await session.get(m.orders, order_id)
     if order is None or order.assigned_master_id != master.id:
-        await message.answer("     .")
+        await message.answer(ALERT_CLOSE_NOT_FOUND)
         await state.clear()
         return
     if order.status != m.OrderStatus.WORKING:
-        await message.answer("     .")
+        await message.answer(ALERT_CLOSE_STATUS)
         await state.clear()
         return
 
@@ -345,15 +404,16 @@ async def active_close_act(
     await state.clear()
 
     if is_guarantee:
-        await message.answer(f" #{order_id}   .")
+        await message.answer(CLOSE_SUCCESS_TEMPLATE.format(order_id=order_id))
     else:
-        await message.answer(f" #{order_id} . : {amount:.2f} ")
+        payment_text = CLOSE_PAYMENT_TEMPLATE.format(order_id=order_id, amount=amount)
+        await message.answer(f"{payment_text}\n{CLOSE_DOCUMENT_RECEIVED}")
     await _render_active_order(message, session, master, order_id=order_id)
 
 
 @router.message(CloseOrderStates.act)
 async def active_close_act_invalid(message: Message) -> None:
-    await message.answer(",       PDF.")
+    await message.answer(CLOSE_DOCUMENT_ERROR)
 
 
 async def _render_offers(
@@ -365,8 +425,10 @@ async def _render_offers(
 ) -> None:
     offers = await _load_offers(session, master.id)
     if not offers:
-        keyboard = inline_keyboard([[InlineKeyboardButton(text="", callback_data="m:new")]])
-        await _respond(event, "  .", keyboard)
+        keyboard = inline_keyboard(
+            [[InlineKeyboardButton(text=OFFERS_REFRESH_BUTTON, callback_data="m:new")]]
+        )
+        await safe_edit_or_send(event, OFFERS_EMPTY, keyboard)
         return
 
     total = len(offers)
@@ -375,34 +437,48 @@ async def _render_offers(
     start = (page - 1) * OFFERS_PAGE_SIZE
     chunk = offers[start : start + OFFERS_PAGE_SIZE]
 
-    lines = ["<b> </b>"]
+    lines = [OFFERS_HEADER_TEMPLATE.format(page=page, pages=pages, total=total), ""]
     keyboard_rows: list[list[InlineKeyboardButton]] = []
     for item in chunk:
         order_id = item.order_id
-        city = escape_html(item.city or "N/A")
-        district = f" / {escape_html(item.district)}" if item.district else ""
-        category = item.category.value if isinstance(item.category, m.OrderCategory) else str(item.category or "N/A")
-        lines.append(f"#{order_id} - {city}{district} - {category}")
+        category_value = (
+            item.category.value
+            if isinstance(item.category, m.OrderCategory)
+            else str(item.category or "—")
+        )
+        lines.append(
+            offer_line(
+                order_id,
+                item.city or "—",
+                item.district,
+                category_value,
+                item.timeslot_text,
+            )
+        )
         keyboard_rows.append(
             [
                 InlineKeyboardButton(
-                    text=f"#{order_id} - {category}",
+                    text=f"Открыть #{order_id}",
                     callback_data=f"m:new:card:{order_id}:{page}",
                 )
             ]
         )
 
-    nav: list[InlineKeyboardButton] = []
-    if page > 1:
-        nav.append(InlineKeyboardButton(text="<", callback_data=f"m:new:{page - 1}"))
-    nav.append(InlineKeyboardButton(text=f"{page}/{pages}", callback_data="m:new"))
-    if page < pages:
-        nav.append(InlineKeyboardButton(text=">", callback_data=f"m:new:{page + 1}"))
-    if nav:
-        keyboard_rows.append(nav)
+    if pages > 1:
+        nav_row: list[InlineKeyboardButton] = []
+        if page > 1:
+            nav_row.append(
+                InlineKeyboardButton(text="◀️", callback_data=f"m:new:{page - 1}")
+            )
+        if page < pages:
+            nav_row.append(
+                InlineKeyboardButton(text="▶️", callback_data=f"m:new:{page + 1}")
+            )
+        if nav_row:
+            keyboard_rows.append(nav_row)
 
     keyboard = inline_keyboard(keyboard_rows)
-    await _respond(event, "\n".join(lines), keyboard)
+    await safe_edit_or_send(event, "\n".join(lines), keyboard)
 
 
 async def _render_offer_card(
@@ -414,38 +490,53 @@ async def _render_offer_card(
 ) -> None:
     row = await _load_offer_detail(session, master.id, order_id)
     if row is None:
-        await _respond(event, "????? ??????????.", None)
+        await safe_edit_or_send(
+            event,
+            OFFER_NOT_FOUND,
+            inline_keyboard(
+                [[InlineKeyboardButton(text=BACK_TO_OFFERS, callback_data="m:new")]]
+            ),
+        )
         return
 
     order = row.order
-    city = escape_html(row.city or "N/A")
-    district = escape_html(row.district) if row.district else None
-    street = escape_html(row.street) if row.street else None
-
-    lines = [f"<b>????? #{order.id}</b>", f"?????: {city}"]
-    if district:
-        lines.append(f"?????: {district}")
-    if street or order.house:
-        parts = [street or "", escape_html(order.house or "")]
-        lines.append(f"?????: {' '.join(p for p in parts if p).strip() or 'N/A'}")
-    slot_text = _timeslot_text(order.timeslot_start_utc, order.timeslot_end_utc, getattr(row, 'city_tz', None))
-    if slot_text:
-        lines.append(f"????: {escape_html(slot_text)}")
-    category = order.category.value if isinstance(order.category, m.OrderCategory) else order.category
-    lines.append(f"?????????: {category or 'N/A'}")
-    if order.description:
-        lines.extend(["", escape_html(order.description)])
+    slot_text = _timeslot_text(
+        order.timeslot_start_utc,
+        order.timeslot_end_utc,
+        getattr(row, "city_tz", None),
+    )
+    category = (
+        order.category.value
+        if isinstance(order.category, m.OrderCategory)
+        else str(order.category or "—")
+    )
+    card_text = offer_card(
+        order_id=order.id,
+        city=row.city or "—",
+        district=row.district,
+        street=row.street,
+        house=order.house,
+        timeslot=slot_text,
+        category=str(category),
+        description=order.description or "",
+    )
 
     keyboard = inline_keyboard(
         [
             [
-                InlineKeyboardButton(text="?????", callback_data=f"m:new:acc:{order.id}:{page}"),
-                InlineKeyboardButton(text="??????????", callback_data=f"m:new:dec:{order.id}:{page}"),
+                InlineKeyboardButton(
+                    text="✅ Взять",
+                    callback_data=f"m:new:acc:{order.id}:{page}",
+                ),
+                InlineKeyboardButton(
+                    text="✖️ Отказаться",
+                    callback_data=f"m:new:dec:{order.id}:{page}",
+                ),
             ],
-            [InlineKeyboardButton(text="?????", callback_data=f"m:new:{page}")],
+            [InlineKeyboardButton(text=BACK_TO_OFFERS, callback_data="m:new")],
         ]
     )
-    await _respond(event, "\n".join(lines), keyboard)
+    await safe_edit_or_send(event, card_text, keyboard)
 
 
 async def _render_active_order(
@@ -456,47 +547,56 @@ async def _render_active_order(
 ) -> None:
     row = await _load_active_order(session, master.id, order_id)
     if row is None:
-        await _respond(event, "? ??? ??? ???????? ???????.", None)
+        await safe_edit_or_send(
+            event,
+            NO_ACTIVE_ORDERS,
+            inline_keyboard(
+                [[InlineKeyboardButton(text=BACK_TO_MENU, callback_data="m:menu")]]
+            ),
+        )
         return
 
     order = row.order
-    text_lines = [f"<b>????? #{order.id}</b>", f"??????: {order.status.value}"]
-    text_lines.append(f"?????: {escape_html(row.city or 'N/A')}")
-    if row.district:
-        text_lines.append(f"?????: {escape_html(row.district)}")
-    if row.street or order.house:
-        parts = [escape_html(row.street or ''), escape_html(order.house or '')]
-        text_lines.append(f"?????: {' '.join(p for p in parts if p).strip() or 'N/A'}")
-    slot_text = _timeslot_text(order.timeslot_start_utc, order.timeslot_end_utc, getattr(row, 'city_tz', None))
-    if slot_text:
-        text_lines.append(f"????: {escape_html(slot_text)}")
+    slot_text = _timeslot_text(
+        order.timeslot_start_utc,
+        order.timeslot_end_utc,
+        getattr(row, "city_tz", None),
+    )
+    card = ActiveOrderCard(
+        order_id=order.id,
+        city=row.city or "—",
+        district=row.district,
+        street=row.street,
+        house=order.house,
+        timeslot=slot_text,
+        status=order.status,
+        category=order.category.value if isinstance(order.category, m.OrderCategory) else str(order.category or ""),
+    )
+    text_lines = card.lines()
 
-    if order.status in {m.OrderStatus.ASSIGNED, m.OrderStatus.EN_ROUTE, m.OrderStatus.WORKING, m.OrderStatus.PAYMENT}:
-        text_lines.append(f"??????: {escape_html(order.client_name or 'N/A')}")
-        text_lines.append(f"???????: {escape_html(order.client_phone or 'N/A')}")
+    if order.status in ACTIVE_STATUSES or order.status == m.OrderStatus.PAYMENT:
+        text_lines.append(
+            f"👤 Клиент: {escape_html(order.client_name or '—')}"
+        )
+        text_lines.append(
+            f"📞 Телефон: {escape_html(order.client_phone or '—')}"
+        )
 
     if order.description:
         text_lines.extend(["", escape_html(order.description)])
 
     keyboard_rows: list[list[InlineKeyboardButton]] = []
-    if order.status == m.OrderStatus.ASSIGNED:
-        keyboard_rows.append([
-            InlineKeyboardButton(text="? ????", callback_data=f"m:act:enr:{order.id}"),
-        ])
-    if order.status == m.OrderStatus.EN_ROUTE:
-        keyboard_rows.append([
-            InlineKeyboardButton(text="???????", callback_data=f"m:act:wrk:{order.id}"),
-        ])
-    if order.status == m.OrderStatus.WORKING:
-        keyboard_rows.append([
-            InlineKeyboardButton(text="???????", callback_data=f"m:act:cls:{order.id}"),
-        ])
-    keyboard_rows.append([
-        InlineKeyboardButton(text="?????", callback_data="m:menu"),
-    ])
+    action = ACTIVE_STATUS_ACTIONS.get(order.status)
+    if action:
+        title, prefix = action
+        keyboard_rows.append(
+            [InlineKeyboardButton(text=title, callback_data=f"{prefix}:{order.id}")]
+        )
+
+    keyboard_rows.append([InlineKeyboardButton(text=BACK_TO_MENU, callback_data="m:menu")])
     keyboard = inline_keyboard(keyboard_rows)
 
-    await _respond(event, "\n".join(text_lines), keyboard)
+    await safe_edit_or_send(event, "\n".join(text_lines), keyboard)
 
 
 async def _update_order_status(
@@ -655,20 +755,3 @@ async def _count_active_orders(session: AsyncSession, master_id: int) -> int:
     )
     return int((await session.execute(stmt)).scalar_one())
 
-
-async def _respond(
-    event: Message | CallbackQuery,
-    text: str,
-    keyboard: InlineKeyboardMarkup | None,
-) -> None:
-    if isinstance(event, CallbackQuery) and event.message:
-        try:
-            await event.message.edit_text(text, reply_markup=keyboard)
-            return
-        except TelegramBadRequest:
-            await event.message.answer(text, reply_markup=keyboard)
-            return
-    if isinstance(event, Message):
-        await event.answer(text, reply_markup=keyboard)
-    elif isinstance(event, CallbackQuery) and event.message:
-        await event.message.answer(text, reply_markup=keyboard)

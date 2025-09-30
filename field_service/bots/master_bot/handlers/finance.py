@@ -16,28 +16,32 @@ from field_service.db import models as m
 
 from ..finance import format_pay_snapshot
 from ..states import FinanceUploadStates
+from field_service.bots.common import safe_answer_callback, safe_edit_or_send
 from ..utils import inline_keyboard, now_utc
 
 router = Router(name="master_finance")
 
 COMMISSIONS_PAGE_SIZE = 5
 FINANCE_MODES: dict[str, tuple[str, tuple[m.CommissionStatus, ...]]] = {
-    "aw": (" ", (m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED)),
-    "pd": ("", (m.CommissionStatus.APPROVED,)),
-    "ov": ("", (m.CommissionStatus.OVERDUE,)),
+    "aw": (
+        "💳 К оплате",
+        (m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED),
+    ),
+    "pd": ("✅ Выплачено", (m.CommissionStatus.APPROVED,)),
+    "ov": ("⚠️ Просрочено", (m.CommissionStatus.OVERDUE,)),
 }
 MODE_ORDER = ("aw", "pd", "ov")
 
 STATUS_LABELS: dict[m.CommissionStatus, str] = {
-    m.CommissionStatus.WAIT_PAY: " ",
-    m.CommissionStatus.REPORTED: "  ",
-    m.CommissionStatus.APPROVED: "",
-    m.CommissionStatus.OVERDUE: "",
+    m.CommissionStatus.WAIT_PAY: "Ожидает оплаты",
+    m.CommissionStatus.REPORTED: "Отправлен отчёт",
+    m.CommissionStatus.APPROVED: "Оплата подтверждена",
+    m.CommissionStatus.OVERDUE: "Просрочено",
 }
 
 ORDER_TYPE_LABELS: dict[m.OrderType, str] = {
-    m.OrderType.NORMAL: "",
-    m.OrderType.GUARANTEE: "",
+    m.OrderType.NORMAL: "Обычный заказ",
+    m.OrderType.GUARANTEE: "Гарантийный визит",
 }
 
 
@@ -49,7 +53,7 @@ async def finances_root(
     master: m.masters,
 ) -> None:
     await _render_commission_list(callback, session, master, mode="aw", page=1, state=state)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:fin:(aw|pd|ov):(\d+)$"))
@@ -62,7 +66,7 @@ async def finances_page(
     _, _, mode, page_str = callback.data.split(":")
     page = int(page_str)
     await _render_commission_list(callback, session, master, mode=mode, page=page, state=state)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:fin:cm:(\d+)$"))
@@ -74,7 +78,7 @@ async def finances_card(
 ) -> None:
     commission_id = int(callback.data.split(":")[-1])
     await _render_commission_card(callback, session, master, commission_id, state)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:fin:cm:pt:(\d+)$"))
@@ -86,22 +90,22 @@ async def finances_show_payto(
     commission_id = int(callback.data.split(":")[-1])
     commission = await _get_commission(session, master.id, commission_id)
     if commission is None:
-        await callback.answer("  .", show_alert=True)
+        await safe_answer_callback(callback, "Комиссия не найдена.", show_alert=True)
         return
 
     snapshot_text = format_pay_snapshot(commission.pay_to_snapshot)
     if snapshot_text:
         await callback.message.answer(snapshot_text)
     else:
-        await callback.message.answer(" .")
+        await callback.message.answer("Реквизиты для оплаты пока недоступны.")
 
     qr_id = commission.pay_to_snapshot.get("sbp_qr_file_id") if commission.pay_to_snapshot else None
     if qr_id:
         try:
             await callback.message.answer_photo(qr_id)
         except TelegramBadRequest:
-            await callback.message.answer("   QR-.")
-    await callback.answer()
+            await callback.message.answer("Не удалось отправить QR-код.")
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:fin:cm:chk:(\d+)$"))
@@ -114,13 +118,13 @@ async def finances_request_check(
     commission_id = int(callback.data.split(":")[-1])
     commission = await _get_commission(session, master.id, commission_id)
     if commission is None:
-        await callback.answer("  .", show_alert=True)
+        await safe_answer_callback(callback, "Комиссия не найдена.", show_alert=True)
         return
 
     await state.update_data(fin_upload={"commission_id": commission_id})
     await state.set_state(FinanceUploadStates.check)
-    await callback.message.answer("    (  PDF).")
-    await callback.answer()
+    await callback.message.answer("Загрузите чек (фото или PDF одним файлом).")
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data.regexp(r"^m:fin:cm:ip:(\d+)$"))
@@ -133,14 +137,14 @@ async def finances_mark_paid(
     commission_id = int(callback.data.split(":")[-1])
     commission = await _get_commission(session, master.id, commission_id)
     if commission is None:
-        await callback.answer("  .", show_alert=True)
+        await safe_answer_callback(callback, "Комиссия не найдена.", show_alert=True)
         return
 
     commission.paid_reported_at = now_utc()
     if commission.status == m.CommissionStatus.WAIT_PAY:
         commission.status = m.CommissionStatus.REPORTED
     await session.commit()
-    await callback.answer(" .  .", show_alert=True)
+    await safe_answer_callback(callback, "Спасибо! Отметили платёж.", show_alert=True)
     await _render_commission_card(callback, session, master, commission_id, state)
 
 
@@ -158,13 +162,15 @@ async def finances_upload_check(
     upload = data.get("fin_upload") or {}
     commission_id = upload.get("commission_id")
     if commission_id is None:
-        await message.answer("-   .     .")
+        await message.answer(
+            "Не удалось определить комиссию. Вернитесь к списку финансов и попробуйте снова."
+        )
         await state.clear()
         return
 
     commission = await _get_commission(session, master.id, int(commission_id))
     if commission is None:
-        await message.answer("  .")
+        await message.answer("Комиссия не найдена.")
         await state.clear()
         return
 
@@ -184,13 +190,13 @@ async def finances_upload_check(
 
     await state.set_state(None)
     await state.update_data(fin_upload=None)
-    await message.answer(" .")
+    await message.answer("Чек загружен. Спасибо!")
     await _render_commission_card(message, session, master, commission.id, state)
 
 
 @router.message(FinanceUploadStates.check)
 async def finances_upload_invalid(message: Message) -> None:
-    await message.answer("    PDF-.")
+    await message.answer("Пожалуйста, отправьте фото или PDF-файл чека.")
 
 
 async def _render_commission_list(
@@ -212,31 +218,33 @@ async def _render_commission_list(
     start = (page - 1) * COMMISSIONS_PAGE_SIZE
     current = rows[start : start + COMMISSIONS_PAGE_SIZE]
 
-    lines: list[str] = [f"{title}"]
+    lines: list[str] = [f"<b>{title}</b>"]
     buttons: list[list[InlineKeyboardButton]] = []
 
     mode_buttons: list[InlineKeyboardButton] = []
     for code in MODE_ORDER:
         caption, _ = FINANCE_MODES[code]
-        label = f"* {caption}" if code == mode else caption
+        label = f"• {caption}" if code == mode else caption
         mode_buttons.append(InlineKeyboardButton(text=label, callback_data=f"m:fin:{code}:1"))
     buttons.append(mode_buttons)
 
     if not current:
-        lines.append("No commissions in this section.")
+        lines.append("Комиссий в этом разделе пока нет.")
     else:
         for commission in current:
             lines.append(_commission_summary_line(commission))
-            lines.append(f"Status: {STATUS_LABELS.get(commission.status, commission.status.value)}")
+            lines.append(
+                f"Статус: {STATUS_LABELS.get(commission.status, commission.status.value)}"
+            )
             if commission.deadline_at:
                 lines.append(
-                    f": {commission.deadline_at.strftime('%d.%m %H:%M')}"
+                    f"Оплатить до: {commission.deadline_at.strftime('%d.%m %H:%M')}"
                 )
             lines.append("")
             buttons.append(
                 [
                     InlineKeyboardButton(
-                        text=f" #{commission.id}",
+                        text=f"Открыть #{commission.id}",
                         callback_data=f"m:fin:cm:{commission.id}",
                     )
                 ]
@@ -244,15 +252,17 @@ async def _render_commission_list(
 
         nav: list[InlineKeyboardButton] = []
         if page > 1:
-            nav.append(InlineKeyboardButton(text="<", callback_data=f"m:fin:{mode}:{page - 1}"))
-        nav.append(InlineKeyboardButton(text=f"{page}/{pages}", callback_data="noop"))
+            nav.append(InlineKeyboardButton(text="◀️", callback_data=f"m:fin:{mode}:{page - 1}"))
+        nav.append(
+            InlineKeyboardButton(text=f"{page}/{pages}", callback_data=f"m:fin:{mode}:{page}")
+        )
         if page < pages:
-            nav.append(InlineKeyboardButton(text=">", callback_data=f"m:fin:{mode}:{page + 1}"))
+            nav.append(InlineKeyboardButton(text="▶️", callback_data=f"m:fin:{mode}:{page + 1}"))
         if nav:
             buttons.append(nav)
 
-    buttons.append([InlineKeyboardButton(text="", callback_data="m:menu")])
-    await _respond(event, "\n".join([line for line in lines if line]), inline_keyboard(buttons))
+    buttons.append([InlineKeyboardButton(text="⬅️ В главное меню", callback_data="m:menu")])
+    await safe_edit_or_send(event, "\n".join([line for line in lines if line]), inline_keyboard(buttons))
 
 
 async def _render_commission_card(
@@ -264,62 +274,68 @@ async def _render_commission_card(
 ) -> None:
     row = await _load_commission_detail(session, master.id, commission_id)
     if row is None:
-        if isinstance(event, Message):
-            await event.answer("  .")
-        elif isinstance(event, CallbackQuery) and event.message:
-            await event.message.answer("  .")
+        await safe_edit_or_send(
+            event,
+            "Комиссия не найдена.",
+            inline_keyboard([[InlineKeyboardButton(text="⬅️ В главное меню", callback_data="m:menu")]]),
+        )
         return
 
     commission = row.commission
     order = row.order
     status_label = STATUS_LABELS.get(commission.status, commission.status.value)
 
-    lines = [f" #{commission.id}", status_label]
+    lines = [
+        f"<b>💳 Комиссия #{commission.id}</b>",
+        f"Статус: {status_label}",
+        f"Сумма к оплате: {Decimal(commission.amount):.2f} ₽",
+    ]
     if order:
         order_label = ORDER_TYPE_LABELS.get(order.order_type, order.order_type.value)
-        lines.append(f" {order.id} ({order_label})")
+        lines.append(f"Заказ #{order.id} ({order_label})")
         if order.total_sum is not None:
-            lines.append(f" : {Decimal(order.total_sum):.2f} ")
-    lines.append(f": {Decimal(commission.amount):.2f} ")
+            lines.append(f"Сумма заказа: {Decimal(order.total_sum):.2f} ₽")
 
     rate = commission.rate or commission.percent
     if rate is not None:
         rate_decimal = Decimal(str(rate))
         rate_percent = rate_decimal * 100 if rate_decimal <= 1 else rate_decimal
-        lines.append(f": {rate_percent:.2f}%")
+        lines.append(f"Ставка: {rate_percent:.2f}%")
 
     if commission.deadline_at:
-        lines.append(f": {commission.deadline_at.strftime('%d.%m %H:%M')}")
+        lines.append(f"Оплатить до: {commission.deadline_at.strftime('%d.%m %H:%M')}")
     if commission.paid_reported_at:
-        lines.append(f"  : {commission.paid_reported_at.strftime('%d.%m %H:%M')}")
+        lines.append(f"Отправлено: {commission.paid_reported_at.strftime('%d.%m %H:%M')}")
     if commission.paid_approved_at:
-        lines.append(f": {commission.paid_approved_at.strftime('%d.%m %H:%M')}")
+        lines.append(f"Подтверждено: {commission.paid_approved_at.strftime('%d.%m %H:%M')}")
     if commission.paid_amount is not None:
-        lines.append(f" : {Decimal(commission.paid_amount):.2f} ")
-    lines.append(f" : {'' if commission.has_checks else ''}")
+        lines.append(f"Оплачено: {Decimal(commission.paid_amount):.2f} ₽")
+    lines.append(
+        "Чеки загружены." if commission.has_checks else "Чеки ещё не загружены."
+    )
 
     buttons: list[list[InlineKeyboardButton]] = []
     buttons.append([
-        InlineKeyboardButton(text="", callback_data=f"m:fin:cm:pt:{commission.id}")
+        InlineKeyboardButton(text="📄 Реквизиты", callback_data=f"m:fin:cm:pt:{commission.id}")
     ])
     buttons.append([
-        InlineKeyboardButton(text=" ", callback_data=f"m:fin:cm:chk:{commission.id}")
+        InlineKeyboardButton(text="📎 Прикрепить чек", callback_data=f"m:fin:cm:chk:{commission.id}")
     ])
     if commission.status in {m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED}:
         buttons.append([
-            InlineKeyboardButton(text=" ", callback_data=f"m:fin:cm:ip:{commission.id}")
+            InlineKeyboardButton(text="✅ Я оплатил", callback_data=f"m:fin:cm:ip:{commission.id}")
         ])
 
     ctx = await state.get_data()
     fin_ctx = ctx.get("fin_ctx", {"mode": "aw", "page": 1})
     buttons.append([
         InlineKeyboardButton(
-            text="",
+            text="⬅️ Назад",
             callback_data=f"m:fin:{fin_ctx.get('mode', 'aw')}:{fin_ctx.get('page', 1)}",
         )
     ])
 
-    await _respond(event, "\n".join([line for line in lines if line]), inline_keyboard(buttons))
+    await safe_edit_or_send(event, "\n".join([line for line in lines if line]), inline_keyboard(buttons))
 
 
 async def _load_commissions(
@@ -383,25 +399,7 @@ async def _get_commission(
 
 def _commission_summary_line(commission: m.commissions) -> str:
     amount = Decimal(commission.amount)
-    summary = f" {commission.id}  {amount:.2f} "
+    summary = f"#{commission.id} • {amount:.2f} ₽"
     if commission.deadline_at:
-        summary += f"   {commission.deadline_at.strftime('%d.%m %H:%M')}"
+        summary += f" • оплатить до {commission.deadline_at.strftime('%d.%m %H:%M')}"
     return summary
-
-
-async def _respond(
-    event: Message | CallbackQuery,
-    text: str,
-    markup: InlineKeyboardMarkup | None,
-) -> None:
-    if isinstance(event, CallbackQuery) and event.message:
-        try:
-            await event.message.edit_text(text, reply_markup=markup)
-            return
-        except TelegramBadRequest:
-            await event.message.answer(text, reply_markup=markup)
-            return
-    if isinstance(event, Message):
-        await event.answer(text, reply_markup=markup)
-    elif isinstance(event, CallbackQuery) and event.message:
-        await event.message.answer(text, reply_markup=markup)

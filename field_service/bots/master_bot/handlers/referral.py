@@ -3,11 +3,11 @@ from __future__ import annotations
 from decimal import Decimal
 
 from aiogram import F, Router
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from field_service.bots.common import safe_answer_callback, safe_edit_or_send
 from field_service.db import models as m
 from field_service.services import settings_service
 
@@ -16,22 +16,22 @@ from ..utils import inline_keyboard
 router = Router(name='master_referral')
 
 REFERRAL_STATUS_LABELS = {
-    m.ReferralRewardStatus.ACCRUED.value: '',
-    m.ReferralRewardStatus.PAID.value: '',
-    m.ReferralRewardStatus.CANCELED.value: '',
+    m.ReferralRewardStatus.ACCRUED.value: "Начислено",
+    m.ReferralRewardStatus.PAID.value: "Выплачено",
+    m.ReferralRewardStatus.CANCELED.value: "Отменено",
 }
 
 
 @router.callback_query(F.data == 'm:rf')
 async def referrals_root(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
     await _render_referrals(callback, session, master)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 @router.callback_query(F.data == 'm:kb')
 async def knowledge_base(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
     await _render_support(callback, session)
-    await callback.answer()
+    await safe_answer_callback(callback)
 
 
 async def _render_referrals(
@@ -88,41 +88,41 @@ async def _render_referrals(
         bucket['amount'] = Decimal(total or 0)
 
     total_amount = level_stats[1]['amount'] + level_stats[2]['amount']
-    lines: list[str] = [" "]
+    lines: list[str] = ["<b>🎁 Реферальная программа</b>"]
     if referral_code:
-        lines.append(f" : {referral_code}")
+        lines.append(f"Ваш код: <code>{referral_code}</code>")
     else:
-        lines.append("    .")
-    lines.append(": L1  10%, L2  5%")
-    lines.append('')
+        lines.append("Код появится после активации аккаунта.")
+    lines.append("Приглашайте мастеров: уровень 1 — 10%, уровень 2 — 5% от комиссии.")
+    lines.append("")
     for level in (1, 2):
         bucket = level_stats[level]
         lines.append(
-            f" {level}: {bucket['count']} , {bucket['amount']:.2f} "
+            f"Уровень {level}: {bucket['count']} приглашений • {bucket['amount']:.2f} ₽"
         )
-    lines.append('')
-    lines.append(f" : {total_amount:.2f} ")
+    lines.append("")
+    lines.append(f"Всего начислено: {total_amount:.2f} ₽")
 
     if latest:
-        lines.append('')
-        lines.append(" :")
+        lines.append("")
+        lines.append("Последние начисления:")
         for row in latest:
             level, amount, created_at, status, commission_id, order_id = row
             amount_dec = Decimal(amount or 0)
             status_key = getattr(status, 'value', status)
             status_label = REFERRAL_STATUS_LABELS.get(status_key, status_key)
-            order_hint = f" {commission_id}"
+            order_hint = f"комиссия #{commission_id}"
             if order_id is not None:
-                order_hint += f",  {order_id}"
+                order_hint += f", заказ #{order_id}"
             lines.append(
-                f"{created_at:%d.%m %H:%M} - L{int(level)} - {amount_dec:.2f}  - {status_label} ({order_hint})"
+                f"{created_at:%d.%m %H:%M} • L{int(level)} • {amount_dec:.2f} ₽ • {status_label} ({order_hint})"
             )
     else:
-        lines.append('')
-        lines.append("   .")
+        lines.append("")
+        lines.append("Начислений пока не было.")
 
-    markup = inline_keyboard([[InlineKeyboardButton(text='', callback_data='m:menu')]])
-    await _respond(event, "\n".join(lines), markup)
+    markup = inline_keyboard([[InlineKeyboardButton(text='⬅️ В главное меню', callback_data='m:menu')]])
+    await safe_edit_or_send(event, "\n".join(lines), markup)
 
 
 async def _render_support(event: Message | CallbackQuery, session: AsyncSession) -> None:
@@ -130,31 +130,13 @@ async def _render_support(event: Message | CallbackQuery, session: AsyncSession)
     contact = (raw_values.get("support_contact", (None, None))[0] or '').strip()
     faq_url = (raw_values.get("support_faq_url", (None, None))[0] or '').strip()
 
-    lines = [""]
-    lines.append('')
-    lines.append(f": {contact or ' '}")
+    lines = ["<b>📚 База знаний</b>"]
+    lines.append(f"Поддержка: {contact or '—'}")
     if faq_url and faq_url != '-':
         lines.append(f"FAQ: {faq_url}")
     else:
-        lines.append("FAQ:  ")
+        lines.append("FAQ: ссылка пока недоступна")
 
-    markup = inline_keyboard([[InlineKeyboardButton(text='', callback_data='m:menu')]])
-    await _respond(event, "\n".join(lines), markup)
+    markup = inline_keyboard([[InlineKeyboardButton(text='⬅️ В главное меню', callback_data='m:menu')]])
+    await safe_edit_or_send(event, "\n".join(lines), markup)
 
-
-async def _respond(
-    event: Message | CallbackQuery,
-    text: str,
-    markup: InlineKeyboardMarkup,
-) -> None:
-    if isinstance(event, CallbackQuery) and event.message:
-        try:
-            await event.message.edit_text(text, reply_markup=markup)
-            return
-        except TelegramBadRequest:
-            await event.message.answer(text, reply_markup=markup)
-            return
-    if isinstance(event, Message):
-        await event.answer(text, reply_markup=markup)
-    elif isinstance(event, CallbackQuery) and event.message:
-        await event.message.answer(text, reply_markup=markup)

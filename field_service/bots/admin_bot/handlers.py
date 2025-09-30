@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import html
 import json
@@ -12,7 +12,11 @@ from typing import Any, Optional, Sequence
 from zoneinfo import ZoneInfo
 
 from aiogram import F, Router, Bot
-from field_service.bots.common import FSMTimeoutConfig, FSMTimeoutMiddleware
+from field_service.bots.common import (
+    FSMTimeoutConfig,
+    FSMTimeoutMiddleware,
+    safe_send_message,
+)
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -26,10 +30,7 @@ async def _fsm_timeout_notice(state: FSMContext) -> None:
     if chat_id is None:
         return
     try:
-        await state.bot.send_message(
-            chat_id,
-            "Session timed out. Use /start to return to the menu.",
-        )
+        await safe_send_message(state.bot, chat_id, FSM_TIMEOUT_MESSAGE)
     except Exception:
         pass
 
@@ -75,81 +76,10 @@ from .states import (
     StaffAccessFSM,
 )
 from field_service.bots.admin_bot.services_db import AccessCodeError
-
-# Auto-fix mojibake in outgoing texts (display-only)
-def _ru_best_fix(text: str) -> str:
-    if not isinstance(text, str) or not text:
-        return text
-    suspect_chars = "ÐÑРС�â€™�“”•—‹›"
-    suspect = any(ch in text for ch in suspect_chars) or "\u0014" in text
-    if not suspect:
-        return text
-    def score(s: str) -> tuple[int, int]:
-        vowels = set("аеёиоуыэюяАЕЁИОУЫЭЮЯ")
-        return (sum(1 for ch in s if ch in vowels), sum(1 for ch in s if ch in suspect_chars))
-    base = text
-    base_score = score(base)
-    candidates = []
-    for enc, dec in (("cp1251","utf-8"),("utf-8","cp1251"),("latin1","utf-8"),("utf-8","latin1")):
-        try:
-            candidates.append(text.encode(enc, errors="ignore").decode(dec, errors="ignore"))
-        except Exception:
-            pass
-    best = base
-    best_tuple = (base_score[0], -base_score[1])
-    for cand in candidates:
-        sc = score(cand)
-        tup = (sc[0], -sc[1])
-        if tup > best_tuple:
-            best, best_tuple = cand, tup
-    return best
-
-# Monkey-patch common send/edit helpers to fix text at the edge
-try:
-    from aiogram.types import (
-        Message as _AioMessage,
-        CallbackQuery as _AioCallbackQuery,
-        InlineKeyboardButton as _AioInlineButton,
-    )
-    from aiogram import Bot as _AioBot
-
-    _orig_msg_answer = _AioMessage.answer
-    _orig_msg_edit_text = _AioMessage.edit_text
-    _orig_cq_answer = _AioCallbackQuery.answer
-    _orig_bot_send_message = _AioBot.send_message
-
-    async def _fx_msg_answer(self, text: str, *args, **kwargs):
-        return await _orig_msg_answer(self, _ru_best_fix(text), *args, **kwargs)
-
-    async def _fx_msg_edit_text(self, text: str, *args, **kwargs):
-        return await _orig_msg_edit_text(self, _ru_best_fix(text), *args, **kwargs)
-
-    async def _fx_cq_answer(self, text: str | None = None, *args, **kwargs):
-        if isinstance(text, str):
-            text = _ru_best_fix(text)
-        return await _orig_cq_answer(self, text, *args, **kwargs)
-
-    async def _fx_bot_send_message(self, chat_id, text: str, *args, **kwargs):
-        return await _orig_bot_send_message(self, chat_id, _ru_best_fix(text), *args, **kwargs)
-
-    _orig_inline_button_init = _AioInlineButton.__init__
-
-    def _fx_inline_button_init(self, **data):
-        text = data.get("text")
-        if isinstance(text, str):
-            data["text"] = _ru_best_fix(text)
-        _orig_inline_button_init(self, **data)
-
-    _AioMessage.answer = _fx_msg_answer  # type: ignore[assignment]
-    _AioMessage.edit_text = _fx_msg_edit_text  # type: ignore[assignment]
-    _AioCallbackQuery.answer = _fx_cq_answer  # type: ignore[assignment]
-    _AioBot.send_message = _fx_bot_send_message  # type: ignore[assignment]
-    _AioInlineButton.__init__ = _fx_inline_button_init  # type: ignore[assignment]
-except Exception:
-    pass
+from .texts import FSM_TIMEOUT_MESSAGE
 
 def _maybe_fix_mojibake(s: Any) -> Any:
-    return _ru_best_fix(s) if isinstance(s, str) else s
+    return s
 
 # ---------- Читаемые русские константы (override) ----------
 # Эти присваивания гарантируют, что пользователь увидит нормальные строки,
