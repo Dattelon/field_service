@@ -59,12 +59,8 @@ from field_service.services import settings_service
 from field_service.db.models import OrderType, StaffRole
 from field_service.services.onboarding_service import normalize_phone
 from .access import visible_city_ids_for
-<<<<<<< HEAD
-from .dto import StaffUser
-=======
 from .dto import NewOrderAttachment, NewOrderData, StaffUser
 from .normalizers import normalize_category, normalize_status
->>>>>>> 7f87067 (Админ-бот: выбор способа распределения после создания заявки)
 from .filters import StaffRoleFilter
 from .keyboards import (
     main_menu,
