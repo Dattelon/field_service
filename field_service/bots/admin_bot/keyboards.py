@@ -112,9 +112,10 @@ def queue_cancel_keyboard(order_id: int) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def assign_menu_keyboard(order_id: int) -> InlineKeyboardMarkup:
+def assign_menu_keyboard(order_id: int, *, allow_auto: bool = True) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text='⚡️ Автораспределение', callback_data=f'adm:q:as:auto:{order_id}')
+    if allow_auto:
+        kb.button(text='⚡️ Автораспределение', callback_data=f'adm:q:as:auto:{order_id}')
     kb.button(text='👤 Выбрать мастера', callback_data=f'adm:q:as:man:{order_id}:1')
     kb.button(text='⬅️ Назад', callback_data=f'adm:q:card:{order_id}')
     kb.adjust(1)
@@ -237,11 +238,11 @@ def new_order_city_keyboard(
     kb.adjust(2)
     nav = InlineKeyboardBuilder()
     if page > 1:
-        nav.button(text="", callback_data=f"adm:new:city_page:{page - 1}")
+        nav.button(text="◀️ Назад", callback_data=f"adm:new:city_page:{page - 1}")
     if page < total_pages:
-        nav.button(text="", callback_data=f"adm:new:city_page:{page + 1}")
-    nav.button(text=" ", callback_data="adm:new:city_search")
-    nav.button(text=" ", callback_data="adm:new:cancel")
+        nav.button(text="▶️ Далее", callback_data=f"adm:new:city_page:{page + 1}")
+    nav.button(text="🔍 Поиск", callback_data="adm:new:city_search")
+    nav.button(text="✖️ Отменить", callback_data="adm:new:cancel")
     kb.attach(nav)
     return kb.as_markup()
 
@@ -255,23 +256,25 @@ def new_order_district_keyboard(
     kb = InlineKeyboardBuilder()
     for district_id, name in districts:
         kb.button(text=name, callback_data=f"adm:new:district:{district_id}")
-    kb.button(text="   ", callback_data="adm:new:district:none")
+    if districts:
+        kb.adjust(1)
+    kb.button(text="🚫 Без района", callback_data="adm:new:district:none")
     nav = InlineKeyboardBuilder()
     if page > 1:
-        nav.button(text="", callback_data=f"adm:new:district_page:{page - 1}")
+        nav.button(text="◀️ Назад", callback_data=f"adm:new:district_page:{page - 1}")
     if has_next:
-        nav.button(text="", callback_data=f"adm:new:district_page:{page + 1}")
-    nav.button(text=" ", callback_data="adm:new:city_back")
+        nav.button(text="▶️ Далее", callback_data=f"adm:new:district_page:{page + 1}")
+    nav.button(text="⬅️ Назад", callback_data="adm:new:city_back")
     kb.attach(nav)
     return kb.as_markup()
 
 
 def new_order_street_mode_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="  ", callback_data="adm:new:street:search")
-    kb.button(text="  ", callback_data="adm:new:street:manual")
-    kb.button(text="   ", callback_data="adm:new:street:none")
-    kb.button(text=" ", callback_data="adm:new:district_back")
+    kb.button(text="🔍 Найти улицу", callback_data="adm:new:street:search")
+    kb.button(text="✏️ Ввести вручную", callback_data="adm:new:street:manual")
+    kb.button(text="🚫 Без улицы", callback_data="adm:new:street:none")
+    kb.button(text="⬅️ Назад", callback_data="adm:new:district_back")
     kb.adjust(1)
     return kb.as_markup()
 

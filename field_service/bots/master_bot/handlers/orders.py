@@ -10,7 +10,7 @@ from aiogram import F, Router
 import logging
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, ContentType, InlineKeyboardButton, InlineKeyboardMarkup, Message
-from sqlalchemy import and_, func, insert, select, update
+from sqlalchemy import and_, func, insert, null, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.bots.common import safe_answer_callback, safe_edit_or_send
@@ -680,7 +680,7 @@ async def _load_offers(session: AsyncSession, master_id: int) -> list[SimpleName
             m.cities.name.label("city"),
             m.districts.name.label("district"),
             m.orders.category,
-            func.null().label("city_tz"),
+            null().label("city_tz"),
             m.orders.timeslot_start_utc,
             m.orders.timeslot_end_utc,
         )
@@ -720,7 +720,7 @@ async def _load_offer_detail(
         select(
             m.orders,
             m.cities.name.label("city"),
-            func.null().label("city_tz"),
+            null().label("city_tz"),
             m.districts.name.label("district"),
             m.streets.name.label("street"),
         )
@@ -746,7 +746,7 @@ async def _load_active_order(
         select(
             m.orders,
             m.cities.name.label("city"),
-            func.null().label("city_tz"),
+            null().label("city_tz"),
             m.districts.name.label("district"),
             m.streets.name.label("street"),
         )

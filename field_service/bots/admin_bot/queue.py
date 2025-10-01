@@ -144,12 +144,12 @@ def _manual_candidates_text(order: OrderCard, masters: Sequence[MasterBrief], pa
 
 
 CATEGORY_CHOICES: tuple[tuple[OrderCategory, str], ...] = (
-    (OrderCategory.ELECTRICS, ""),
-    (OrderCategory.PLUMBING, ""),
-    (OrderCategory.APPLIANCES, " "),
-    (OrderCategory.WINDOWS, ""),
-    (OrderCategory.HANDYMAN, ""),
-    (OrderCategory.ROADSIDE, ""),
+    (OrderCategory.ELECTRICS, "Электрика"),
+    (OrderCategory.PLUMBING, "Сантехника"),
+    (OrderCategory.APPLIANCES, "Бытовая техника"),
+    (OrderCategory.WINDOWS, "Окна и двери"),
+    (OrderCategory.HANDYMAN, "Мастер на час"),
+    (OrderCategory.ROADSIDE, "Автопомощь"),
 )
 CATEGORY_LABELS = {category: label for category, label in CATEGORY_CHOICES}
 CATEGORY_LABELS_BY_VALUE = {category.value: label for category, label in CATEGORY_CHOICES}
@@ -835,7 +835,8 @@ async def cb_queue_assign_menu(cq: CallbackQuery, staff: StaffUser) -> None:
         f": {address_label}\n"
         "  ."
     )
-    markup = assign_menu_keyboard(order.id)
+    allow_auto = bool(order.district_id)
+    markup = assign_menu_keyboard(order.id, allow_auto=allow_auto)
     try:
         await cq.message.edit_text(text, reply_markup=markup)
     except TelegramBadRequest as exc:

@@ -131,9 +131,9 @@ def _build_city_keyboard(
         kb.adjust(1)
     nav_buttons: list[tuple[str, str]] = []
     if start > 0:
-        nav_buttons.append(("", f"{prefix}:page:{page - 1}"))
+        nav_buttons.append(("◀️ Назад", f"{prefix}:page:{page - 1}"))
     if start + CITY_PAGE_SIZE < total:
-        nav_buttons.append(("", f"{prefix}:page:{page + 1}"))
+        nav_buttons.append(("▶️ Далее", f"{prefix}:page:{page + 1}"))
     if nav_buttons:
         nav = InlineKeyboardBuilder()
         for text_label, callback_data in nav_buttons:
@@ -142,9 +142,9 @@ def _build_city_keyboard(
         kb.attach(nav)
     control_buttons: list[tuple[str, str]] = []
     if show_done:
-        control_buttons.append(("", f"{prefix}:done"))
+        control_buttons.append(("✅ Готово", f"{prefix}:done"))
     if allow_empty:
-        control_buttons.append(("", f"{prefix}:cancel"))
+        control_buttons.append(("✖️ Отмена", f"{prefix}:cancel"))
     if control_buttons:
         controls = InlineKeyboardBuilder()
         for text_label, callback_data in control_buttons:
