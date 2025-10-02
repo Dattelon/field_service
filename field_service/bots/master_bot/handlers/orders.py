@@ -6,14 +6,14 @@ from decimal import Decimal
 from typing import Optional
 from types import SimpleNamespace
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 import logging
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, ContentType, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import and_, func, insert, null, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from field_service.bots.common import safe_answer_callback, safe_edit_or_send
+from field_service.bots.common import safe_answer_callback, safe_edit_or_send, safe_send_message
 from field_service.db import models as m
 from field_service.config import settings
 from field_service.services import time_service
@@ -58,6 +58,7 @@ from ..utils import escape_html, inline_keyboard, normalize_money, now_utc
 
 router = Router(name="master_orders")
 _log = logging.getLogger("master_bot.orders")
+_log.info("master_bot.orders module loaded from %s", __file__)
 
 
 def _callback_uid(callback: CallbackQuery) -> int | None:
@@ -344,12 +345,68 @@ async def active_set_working(
     await _render_active_order(callback, session, master, order_id=order_id)
 
 
+async def _send_close_prompt(bot: Bot | None, master: m.masters, callback: CallbackQuery, text: str) -> None:
+    """Send the next-step prompt reliably regardless of callback message availability.
+
+    In some environments callback.message may be present but lack a bound bot instance,
+    which makes Message.answer() a no-op or raises. To be robust, always resolve the
+    target chat id and use safe_send_message with an explicit bot instance.
+    """
+    # First try the simplest path: answer directly to the source message if possible.
+    try:
+        if getattr(callback, "message", None) is not None:
+            sent_message = await callback.message.answer(text)
+            _log.info(
+                "active_close_start: prompt via message.answer chat=%s message_id=%s",
+                getattr(getattr(callback.message, "chat", None), "id", None),
+                getattr(sent_message, "message_id", None),
+            )
+            return
+    except Exception as exc:
+        _log.debug("active_close_start: message.answer failed, will fallback: %s", exc, exc_info=True)
+
+    # Resolve target chat id: prefer message.chat.id, then callback.from_user.id, then master.tg_user_id
+    target_id = None
+    if getattr(callback, "message", None) is not None and getattr(callback.message, "chat", None) is not None:
+        target_id = getattr(callback.message.chat, "id", None)
+    if target_id is None:
+        target_id = getattr(getattr(callback, "from_user", None), "id", None)
+    if target_id is None:
+        target_id = getattr(master, "tg_user_id", None)
+    if target_id is None:
+        _log.warning(
+            "active_close_start: no target chat for callback id=%s",
+            getattr(callback, "id", None),
+        )
+        return
+
+    # Resolve bot instance: prefer injected bot, then callback.bot, then message.bot
+    bot_instance = bot or getattr(callback, "bot", None)
+    if bot_instance is None and getattr(callback, "message", None) is not None:
+        bot_instance = getattr(callback.message, "bot", None)
+    if bot_instance is None:
+        _log.warning(
+            "active_close_start: no bot instance for callback id=%s",
+            getattr(callback, "id", None),
+        )
+        return
+
+    _log.info(
+        "active_close_start: prompt sent target=%s from_user=%s master_id=%s",
+        target_id,
+        getattr(getattr(callback, "from_user", None), "id", None),
+        getattr(master, "id", None),
+    )
+    await safe_send_message(bot_instance, target_id, text)
+
+
 @router.callback_query(F.data.regexp(r"^m:act:cls:(\d+)$"))
 async def active_close_start(
     callback: CallbackQuery,
     state: FSMContext,
     session: AsyncSession,
     master: m.masters,
+    bot: Bot | None = None,
 ) -> None:
     order_id = int(callback.data.split(":")[-1])
     _log.info("active_close_start: uid=%s order_id=%s", _callback_uid(callback), order_id)
@@ -361,15 +418,33 @@ async def active_close_start(
         await safe_answer_callback(callback, ALERT_CLOSE_NOT_ALLOWED, show_alert=True)
         return
 
-    await state.update_data(close_order_id=order_id)
+    await state.update_data(close_order_id=order_id, close_order_amount=None)
+
+    bot_instance = bot or getattr(callback, "bot", None)
+    if bot_instance is None and callback.message is not None:
+        bot_instance = callback.message.bot
+
     if order.order_type == m.OrderType.GUARANTEE:
         await state.update_data(close_order_amount=str(Decimal("0")))
         await state.set_state(CloseOrderStates.act)
-        await callback.message.answer(CLOSE_ACT_PROMPT)
+        prompt_text = CLOSE_ACT_PROMPT
     else:
         await state.set_state(CloseOrderStates.amount)
-        await callback.message.answer(CLOSE_AMOUNT_PROMPT)
-    await safe_answer_callback(callback)
+        prompt_text = CLOSE_AMOUNT_PROMPT
+
+    state_snapshot = await state.get_data()
+    try:
+        current_state = await state.get_state()
+    except AttributeError:
+        current_state = getattr(state, "state", None)
+    _log.info(
+        "active_close_start: state=%s data=%s",
+        current_state,
+        state_snapshot,
+    )
+
+    await _send_close_prompt(bot_instance, master, callback, prompt_text)
+    await safe_answer_callback(callback, prompt_text)
 
 
 @router.message(CloseOrderStates.amount)
@@ -378,6 +453,7 @@ async def active_close_amount(message: Message, state: FSMContext) -> None:
     if amount is None:
         await message.answer(CLOSE_AMOUNT_ERROR)
         return
+    _log.info("active_close_amount: uid=%s amount=%s", getattr(getattr(message, "from_user", None), "id", None), amount)
     await state.update_data(close_order_amount=str(amount))
     await state.set_state(CloseOrderStates.act)
     await message.answer(CLOSE_ACT_PROMPT)
@@ -396,6 +472,14 @@ async def active_close_act(
     data = await state.get_data()
     order_id = int(data.get("close_order_id"))
     amount = Decimal(str(data.get("close_order_amount", "0")))
+
+    _log.info(
+        "active_close_act: uid=%s order_id=%s amount=%s content_type=%s",
+        getattr(getattr(message, "from_user", None), "id", None),
+        order_id,
+        amount,
+        getattr(message, "content_type", None),
+    )
 
     order = await session.get(m.orders, order_id)
     if order is None or order.assigned_master_id != master.id:
