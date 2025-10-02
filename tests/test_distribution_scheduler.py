@@ -431,3 +431,39 @@ async def test_guarantee_decline_blocks_master_and_advances_round(async_session,
     assert len(offers) == 2
     assert offers[1].master_id == master_two.id
     assert offers[1].round_number == 2
+
+@pytest.mark.asyncio
+async def test_wakeup_uses_city_timezone(async_session, monkeypatch) -> None:
+    await async_session.execute(
+        m.cities.__table__.insert().values(
+            id=3,
+            name="Zone City",
+            is_active=True,
+            timezone="Asia/Yekaterinburg",
+        )
+    )
+    await async_session.execute(
+        m.orders.__table__.insert().values(
+            id=300,
+            city_id=3,
+            status=m.OrderStatus.DEFERRED,
+            timeslot_start_utc=None,
+            timeslot_end_utc=None,
+        )
+    )
+    await async_session.commit()
+
+    monkeypatch.setattr(
+        wakeup.settings_service,
+        "get_working_window",
+        AsyncMock(return_value=(time(10, 0), time(20, 0))),
+    )
+    wakeup._DEFERRED_LOGGED.clear()
+
+    now_utc = datetime(2025, 9, 15, 5, 0, tzinfo=timezone.utc)
+    awake, notices = await wakeup.run(async_session, now_utc=now_utc)
+
+    assert not notices
+    assert len(awake) == 1
+    assert awake[0].order_id == 300
+    assert awake[0].target_local.tzinfo == ZoneInfo("Asia/Yekaterinburg")

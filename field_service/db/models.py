@@ -123,6 +123,9 @@ class StaffRole(str, enum.Enum):
 class cities(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    centroid_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    centroid_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
@@ -144,6 +147,8 @@ class districts(Base):
         ForeignKey("cities.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    centroid_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    centroid_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -167,6 +172,8 @@ class streets(Base):
         ForeignKey("districts.id", ondelete="SET NULL"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    centroid_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    centroid_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -178,6 +185,18 @@ class streets(Base):
         UniqueConstraint(
             "city_id", "district_id", "name", name="uq_streets__city_district_name"
         ),
+    )
+
+
+
+class geocache(Base):
+    query: Mapped[str] = mapped_column(String(255), primary_key=True)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
 
 
@@ -387,6 +406,8 @@ class orders(Base):
 
     lat: Mapped[Optional[float]] = mapped_column(Float(asdecimal=False))
     lon: Mapped[Optional[float]] = mapped_column(Float(asdecimal=False))
+    geocode_provider: Mapped[Optional[str]] = mapped_column(String(32))
+    geocode_confidence: Mapped[Optional[int]] = mapped_column(Integer)
 
     house: Mapped[Optional[str]] = mapped_column(String(32))
     apartment: Mapped[Optional[str]] = mapped_column(String(32))
@@ -811,6 +832,7 @@ class notifications_outbox(Base):
         DateTime(timezone=True), server_default=func.now(), index=True
     )
     processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
 
 
 

@@ -6,10 +6,11 @@ from typing import Any
 import html
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 
 from field_service.config import settings
 
-__all__ = ["send_log", "send_alert"]
+__all__ = ["send_log", "send_alert", "send_report"]
 
 _MAX_MESSAGE_LEN = 4096
 _logger = logging.getLogger(__name__)
@@ -49,6 +50,8 @@ async def _safe_send(
         return
     try:
         await bot.send_message(chat_id, payload, **kwargs)
+    except TelegramBadRequest as exc:
+        _logger.warning("Failed to deliver message to chat_id=%s: %s", chat_id, exc)
     except Exception:
         _logger.warning("Failed to deliver message to chat_id=%s", chat_id, exc_info=True)
 
@@ -80,3 +83,16 @@ async def send_alert(
     payload = _compose_alert(text, exc)
     await _safe_send(bot, target, payload, **kwargs)
 
+
+
+async def send_report(
+    bot: Bot | None,
+    text: str,
+    *,
+    chat_id: int | None = None,
+    **kwargs: Any,
+) -> None:
+    """Send report notification to the configured channel."""
+
+    target = chat_id if chat_id is not None else settings.reports_channel_id
+    await _safe_send(bot, target, text, **kwargs)

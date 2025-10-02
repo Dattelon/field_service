@@ -70,6 +70,25 @@ def _nav_row(back_callback: str, menu_callback: str = "m:menu") -> list[InlineKe
         InlineKeyboardButton(text=NAV_MENU, callback_data=menu_callback),
     ]
 
+
+def _parse_offer_callback_payload(data: str, action: str) -> tuple[int, int]:
+    parts = data.split(":")
+    if len(parts) < 4 or parts[0] != "m" or parts[1] != "new" or parts[2] != action:
+        raise ValueError(f"callback mismatch for {action}: {data}")
+    try:
+        order_id = int(parts[3])
+    except ValueError as exc:
+        raise ValueError(f"invalid order id in callback: {data}") from exc
+    page = 1
+    if len(parts) > 4:
+        try:
+            page_candidate = int(parts[4])
+        except ValueError:
+            page_candidate = 1
+        if page_candidate > 0:
+            page = page_candidate
+    return order_id, page
+
 OFFERS_PAGE_SIZE = 5
 ACTIVE_STATUSES: tuple[m.OrderStatus, ...] = (
     m.OrderStatus.ASSIGNED,
@@ -116,9 +135,13 @@ async def offers_card(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
-    parts = callback.data.split(":")
-    order_id = int(parts[2])
-    page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+    try:
+        order_id, page = _parse_offer_callback_payload(callback.data, "card")
+    except ValueError as exc:
+        _log.warning("offers_card invalid callback: %s", exc)
+        await safe_answer_callback(callback, OFFER_NOT_FOUND, show_alert=True)
+        await _render_offers(callback, session, master, page=1)
+        return
     _log.info("offers_card: uid=%s order_id=%s", _callback_uid(callback), order_id)
     await _render_offer_card(callback, session, master, order_id, page)
     await safe_answer_callback(callback)
@@ -130,9 +153,13 @@ async def offer_accept(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
-    parts = callback.data.split(":")
-    order_id = int(parts[2])
-    page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+    try:
+        order_id, page = _parse_offer_callback_payload(callback.data, "acc")
+    except ValueError as exc:
+        _log.warning("offer_accept invalid callback: %s", exc)
+        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
+        await _render_offers(callback, session, master, page=1)
+        return
 
     if master.is_blocked:
         await safe_answer_callback(callback, ALERT_ACCOUNT_BLOCKED, show_alert=True)
@@ -229,9 +256,13 @@ async def offer_decline(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
-    parts = callback.data.split(":")
-    order_id = int(parts[2])
-    page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+    try:
+        order_id, page = _parse_offer_callback_payload(callback.data, "dec")
+    except ValueError as exc:
+        _log.warning("offer_decline invalid callback: %s", exc)
+        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
+        await _render_offers(callback, session, master, page=1)
+        return
 
     await session.execute(
         update(m.offers)
@@ -680,7 +711,7 @@ async def _load_offers(session: AsyncSession, master_id: int) -> list[SimpleName
             m.cities.name.label("city"),
             m.districts.name.label("district"),
             m.orders.category,
-            null().label("city_tz"),
+            m.cities.timezone.label("city_tz"),
             m.orders.timeslot_start_utc,
             m.orders.timeslot_end_utc,
         )
@@ -720,7 +751,7 @@ async def _load_offer_detail(
         select(
             m.orders,
             m.cities.name.label("city"),
-            null().label("city_tz"),
+            m.cities.timezone.label("city_tz"),
             m.districts.name.label("district"),
             m.streets.name.label("street"),
         )
@@ -746,7 +777,7 @@ async def _load_active_order(
         select(
             m.orders,
             m.cities.name.label("city"),
-            null().label("city_tz"),
+            m.cities.timezone.label("city_tz"),
             m.districts.name.label("district"),
             m.streets.name.label("street"),
         )

@@ -15,7 +15,7 @@ from field_service.config import settings as env_settings
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import live_log, time_service, settings_service as settings_store
-from field_service.infra.notify import send_alert
+from field_service.infra.notify import send_alert, send_report
 from field_service.services.settings_service import (
     get_int,
 )
@@ -40,6 +40,7 @@ DEFAULT_MAX_ACTIVE_LIMIT = 5
 
 
 logger = logging.getLogger("distribution")
+
 ADVISORY_LOCK_KEY = 982734
 DEFERRED_LOGGED: set[int] = set()
 WORKDAY_START_DEFAULT = time_service.parse_time_string(env_settings.workday_start, default=time(10, 0))
@@ -50,6 +51,12 @@ def _dist_log(message: str, *, level: str = "INFO") -> None:
         live_log.push("dist", message, level=level)
     except Exception:
         pass
+
+
+async def _report(bot: Bot | None, message: str) -> None:
+    if bot is None:
+        return
+    await send_report(bot, message)
 
 
 @dataclass
@@ -560,6 +567,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                     admin_message = f"[dist] order={order.id} escalate=admin"
                     logger.warning(admin_message)
                     _dist_log(admin_message, level="WARN")
+                    await _report(bot, admin_message)
                     await send_alert(
                         bot,
                         f"  #{order.id}    10 .  .",
@@ -572,15 +580,18 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                 )
                 logger.info(message)
                 _dist_log(message)
+                newly_marked = False
                 if order.escalated_logist_at is None:
                     marked = await _set_logist_escalation(session, order)
-                    if marked:
-                        await send_alert(
-                            bot,
-                            f"  #{order.id}     {order.city_name}.   .",
-                            chat_id=alerts_chat_id,
-                        )
+                    newly_marked = marked is not None
                 await _escalate_logist(order.id)
+                if newly_marked:
+                    await _report(bot, message)
+                    await send_alert(
+                        bot,
+                        f"      {order.city_name}   #{order.id}.   .",
+                        chat_id=alerts_chat_id,
+                    )
                 continue
 
             timed_out_mid = await _expire_overdue_offer(session, order.id)
@@ -610,6 +621,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                     newly_marked = marked is not None
                 await _escalate_logist(order.id)
                 if newly_marked:
+                    await _report(bot, message)
                     await send_alert(
                         bot,
                         f"      {order.city_name}   #{order.id}.  .",
@@ -631,6 +643,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                     newly_marked = marked is not None
                 await _escalate_logist(order.id)
                 if newly_marked:
+                    await _report(bot, message)
                     await send_alert(
                         bot,
                         f"        #{order.id}   {order.city_name}.  .",
@@ -679,6 +692,7 @@ async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optiona
                     newly_marked = marked is not None
                 await _escalate_logist(order.id)
                 if newly_marked:
+                    await _report(bot, message)
                     await send_alert(
                         bot,
                         f"      {order.city_name}   #{order.id}.  .",

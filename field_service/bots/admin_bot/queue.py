@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import html
 from datetime import datetime, date
@@ -46,6 +46,14 @@ from .normalizers import normalize_category, normalize_status
 
 queue_router = Router(name="admin_queue")
 
+
+async def _safe_answer(cq: CallbackQuery, *args, **kwargs) -> None:
+    try:
+        await cq.answer(*args, **kwargs)
+    except TelegramBadRequest:
+        pass
+
+
 _ALLOWED_ROLES = {StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}
 
 QUEUE_PAGE_SIZE = 10
@@ -83,42 +91,50 @@ async def _call_service(method, *args, city_ids=None, **kwargs):
 
 
 def _format_order_line(order: OrderListItem) -> str:
-    address_parts = [order.city_name] if order.city_name else []
+    address_parts: list[str] = []
+    if order.city_name:
+        address_parts.append(order.city_name)
     if order.district_name:
         address_parts.append(order.district_name)
-    street_parts: list[str] = []
+    street_segments: list[str] = []
     if order.street_name:
-        street_parts.append(order.street_name)
+        street_segments.append(order.street_name)
     if order.house:
-        street_parts.append(str(order.house))
-    if street_parts:
-        address_parts.append(' '.join(street_parts))
+        street_segments.append(str(order.house))
+    if street_segments:
+        street = ' '.join(street_segments)
+        address_parts.append(street)
     address = ', '.join(address_parts) if address_parts else '-'
+
     normalized_category = normalize_category(getattr(order, "category", None))
     if normalized_category is not None:
         category = CATEGORY_LABELS.get(normalized_category, normalized_category.value)
     else:
-        category = str(getattr(order, "category", ""))
-    status = order.status or '-'
+        raw_category = getattr(order, "category", "")
+        category = CATEGORY_LABELS_BY_VALUE.get(str(raw_category), str(raw_category)) if raw_category else '-'
+
+    status_value = getattr(order, "status", None)
+    status_text = getattr(status_value, "value", None) or str(status_value or '-')
     if order.order_type is OrderType.GUARANTEE:
-        status = f"{status}  "
-    slot = order.timeslot_local or '-'
+        status_text = f"{status_text} (Guarantee)"
+
+    slot_text = order.timeslot_local or '-'
+
     if order.master_name:
         master_label = order.master_name
     elif order.master_id:
-        master_label = f" #{order.master_id}"
+        master_label = f"Master #{order.master_id}"
     else:
-        master_label = ' '
-    return (
-        f"#{order.id} - {html.escape(address, quote=False)} | "
-        f"{html.escape(category, quote=False)} | "
-        f"{html.escape(status, quote=False)} | "
-        f"{html.escape(slot, quote=False)} | "
-        f"{html.escape(master_label, quote=False)}"
-    )
+        master_label = "No master"
 
-
-
+    columns = [
+        html.escape(address, quote=False),
+        html.escape(category or '-', quote=False),
+        html.escape(status_text or '-', quote=False),
+        html.escape(slot_text or '-', quote=False),
+        html.escape(master_label, quote=False),
+    ]
+    return f"#{order.id} - " + ' | '.join(columns)
 
 def _manual_candidates_text(order: OrderCard, masters: Sequence[MasterBrief], page: int) -> str:
     address_parts: list[str] = []
@@ -126,29 +142,26 @@ def _manual_candidates_text(order: OrderCard, masters: Sequence[MasterBrief], pa
         address_parts.append(order.city_name)
     if order.district_name:
         address_parts.append(order.district_name)
-    address_label = " / ".join(address_parts) if address_parts else "-"
+    address_label = ' / '.join(address_parts) if address_parts else '-'
+
     lines = [
-        f" #{order.id}",
-        f": {address_label}",
-        f" {page}",
-        "    :",
+        f"Order #{order.id}",
+        f"Address: {address_label}",
+        f"Page: {page}",
+        "Available masters:",
     ]
     if masters:
-        lines.append("")
-        lines.extend(master_brief_line(m) for m in masters)
+        lines.extend(master_brief_line(master) for master in masters)
     else:
-        lines.append("")
-        lines.append("   .")
+        lines.append("No available masters.")
     return "\n".join(lines)
-
-
 
 CATEGORY_CHOICES: tuple[tuple[OrderCategory, str], ...] = (
     (OrderCategory.ELECTRICS, "Электрика"),
     (OrderCategory.PLUMBING, "Сантехника"),
     (OrderCategory.APPLIANCES, "Бытовая техника"),
     (OrderCategory.WINDOWS, "Окна и двери"),
-    (OrderCategory.HANDYMAN, "Мастер на час"),
+    (OrderCategory.HANDYMAN, "Универсал на час"),
     (OrderCategory.ROADSIDE, "Автопомощь"),
 )
 CATEGORY_LABELS = {category: label for category, label in CATEGORY_CHOICES}
@@ -570,12 +583,12 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
 )
 async def cb_queue_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     builder = InlineKeyboardBuilder()
-    builder.button(text="", callback_data="adm:q:flt")
-    builder.button(text="", callback_data="adm:q:list:1")
-    builder.button(text=" ", callback_data="adm:menu")
+    builder.button(text="Filters", callback_data="adm:q:flt")
+    builder.button(text="Open queue", callback_data="adm:q:list:1")
+    builder.button(text="Back", callback_data="adm:menu")
     builder.adjust(1)
-    await cq.message.edit_text(":", reply_markup=builder.as_markup())
-    await cq.answer()
+    await cq.message.edit_text("Queue menu", reply_markup=builder.as_markup())
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -585,7 +598,7 @@ async def cb_queue_menu(cq: CallbackQuery, staff: StaffUser) -> None:
 async def cb_queue_filters_root(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await _load_filters(state)
     await _render_filters_menu(cq.message, staff, state)
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -594,7 +607,7 @@ async def cb_queue_filters_root(cq: CallbackQuery, staff: StaffUser, state: FSMC
 )
 async def cb_queue_filters_city(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await _render_city_selection(cq.message, staff, state)
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -610,11 +623,11 @@ async def cb_queue_filters_city_pick(cq: CallbackQuery, staff: StaffUser, state:
         try:
             filters["city_id"] = int(payload)
         except ValueError:
-            await cq.answer(" ", show_alert=True)
+            await _safe_answer(cq, " ", show_alert=True)
             return
     await _save_filters(state, filters)
     await _render_filters_menu(cq.message, staff, state)
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -631,7 +644,7 @@ async def cb_queue_filters_category(cq: CallbackQuery, staff: StaffUser, state: 
         state=state,
         title=" ",
     )
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -645,12 +658,12 @@ async def cb_queue_filters_category_pick(cq: CallbackQuery, staff: StaffUser, st
         filters["category"] = None
     else:
         if value not in CATEGORY_VALUE_MAP:
-            await cq.answer(" ", show_alert=True)
+            await _safe_answer(cq, " ", show_alert=True)
             return
         filters["category"] = value
     await _save_filters(state, filters)
     await _render_filters_menu(cq.message, staff, state)
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -667,7 +680,7 @@ async def cb_queue_filters_status(cq: CallbackQuery, staff: StaffUser, state: FS
         state=state,
         title=" ",
     )
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -682,12 +695,12 @@ async def cb_queue_filters_status_pick(cq: CallbackQuery, staff: StaffUser, stat
     else:
         status_enum = normalize_status(value)
         if not status_enum:
-            await cq.answer(" ", show_alert=True)
+            await _safe_answer(cq, " ", show_alert=True)
             return
         filters["status"] = status_enum.value
     await _save_filters(state, filters)
     await _render_filters_menu(cq.message, staff, state)
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -696,7 +709,7 @@ async def cb_queue_filters_status_pick(cq: CallbackQuery, staff: StaffUser, stat
 )
 async def cb_queue_filters_master(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.set_state(QueueFiltersFSM.master)
-    await cq.answer(" ID  ", show_alert=True)
+    await _safe_answer(cq, " ID  ", show_alert=True)
 
 
 @queue_router.message(
@@ -727,7 +740,7 @@ async def cb_queue_filters_master_input(msg: Message, staff: StaffUser, state: F
 )
 async def cb_queue_filters_date(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await state.set_state(QueueFiltersFSM.date)
-    await cq.answer("  YYYY-MM-DD  '-'  ", show_alert=True)
+    await _safe_answer(cq, "  YYYY-MM-DD  '-'  ", show_alert=True)
 
 
 @queue_router.message(
@@ -762,7 +775,7 @@ async def cb_queue_filters_reset(cq: CallbackQuery, staff: StaffUser, state: FSM
     filters = _default_filters()
     await _save_filters(state, filters)
     await _render_filters_menu(cq.message, staff, state)
-    await cq.answer(" ")
+    await _safe_answer(cq, " ")
 
 
 @queue_router.callback_query(
@@ -771,7 +784,7 @@ async def cb_queue_filters_reset(cq: CallbackQuery, staff: StaffUser, state: FSM
 )
 async def cb_queue_filters_apply(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     await _render_queue_list(cq.message, staff, state, page=1)
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -782,10 +795,10 @@ async def cb_queue_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     try:
         page = int(cq.data.split(":")[3])
     except (IndexError, ValueError):
-        await cq.answer(" ", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
     await _render_queue_list(cq.message, staff, state, page=page)
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -797,20 +810,20 @@ async def cb_queue_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     try:
         order_id = int(parts[3])
     except (IndexError, ValueError):
-        await cq.answer('  ', show_alert=True)
+        await _safe_answer(cq, '  ', show_alert=True)
         return
     orders_service = get_service(cq.message.bot, 'orders_service')
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer('  ', show_alert=True)
+        await _safe_answer(cq, '  ', show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer('   ', show_alert=True)
+        await _safe_answer(cq, '   ', show_alert=True)
         return
     history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
     show_guarantee = await _should_show_guarantee_button(order, orders_service, visible_city_ids_for(staff))
     await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee)
-    await cq.answer()
+    await _safe_answer(cq)
 
 @queue_router.callback_query(
     F.data.regexp(r'^adm:q:as:\d+$'),
@@ -821,10 +834,10 @@ async def cb_queue_assign_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     orders_service = get_service(cq.message.bot, 'orders_service')
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer('  ', show_alert=True)
+        await _safe_answer(cq, '  ', show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer('   ', show_alert=True)
+        await _safe_answer(cq, '   ', show_alert=True)
         return
     address_bits = [bit for bit in (order.city_name, order.district_name, order.street_name) if bit]
     if order.house:
@@ -841,10 +854,10 @@ async def cb_queue_assign_menu(cq: CallbackQuery, staff: StaffUser) -> None:
         await cq.message.edit_text(text, reply_markup=markup)
     except TelegramBadRequest as exc:
         if exc.message == 'Message is not modified':
-            await cq.answer()
+            await _safe_answer(cq)
             return
         await cq.message.answer(text, reply_markup=markup)
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 
@@ -862,17 +875,17 @@ async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         order_id = int(parts[4])
     except (IndexError, ValueError):
-        await cq.answer(" ", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
     distribution_service = get_service(cq.message.bot, "distribution_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
 
     ok, result = await distribution_service.assign_auto(order_id, staff.id)
@@ -899,10 +912,10 @@ async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
             await cq.message.answer(text_body, reply_markup=builder.as_markup())
 
     if ok:
-        await cq.answer(" ", show_alert=False)
+        await _safe_answer(cq, " ", show_alert=False)
     else:
         alert_codes = {"no_district", "no_category", "forbidden", "not_found", "offer_conflict"}
-        await cq.answer(result.message, show_alert=result.code in alert_codes)
+        await _safe_answer(cq, result.message, show_alert=result.code in alert_codes)
 
 
 @queue_router.callback_query(
@@ -918,16 +931,16 @@ async def cb_queue_assign_manual_list(
         order_id = int(parts[4])
         page = int(parts[5])
     except (IndexError, ValueError):
-        await cq.answer(" ", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
 
     masters, has_next = await orders_service.manual_candidates(
@@ -951,7 +964,7 @@ async def cb_queue_assign_manual_list(
                 reply_markup=markup,
                 disable_web_page_preview=True,
             )
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -968,16 +981,16 @@ async def cb_queue_assign_manual_check(
         page = int(parts[5])
         master_id = int(parts[6])
     except (IndexError, ValueError):
-        await cq.answer(" ", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
 
     masters, _ = await orders_service.manual_candidates(
@@ -988,7 +1001,7 @@ async def cb_queue_assign_manual_check(
     )
     candidate = next((m for m in masters if m.id == master_id), None)
     if candidate is None:
-        await cq.answer("    .  .", show_alert=True)
+        await _safe_answer(cq, "    .  .", show_alert=True)
         return
 
     reasons: list[str] = []
@@ -1014,7 +1027,7 @@ async def cb_queue_assign_manual_check(
             staff.id,
         )
         if not ok:
-            await cq.answer(message, show_alert=True)
+            await _safe_answer(cq, message, show_alert=True)
             return
 
         builder = InlineKeyboardBuilder()
@@ -1041,7 +1054,7 @@ async def cb_queue_assign_manual_check(
                     "\n".join(text_lines),
                     reply_markup=builder.as_markup(),
                 )
-        await cq.answer(" ")
+        await _safe_answer(cq, " ")
         return
 
     text_lines = [
@@ -1067,7 +1080,7 @@ async def cb_queue_assign_manual_check(
                 reply_markup=markup,
                 disable_web_page_preview=True,
             )
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -1084,16 +1097,16 @@ async def cb_queue_assign_manual_pick(
         page = int(parts[5])
         master_id = int(parts[6])
     except (IndexError, ValueError):
-        await cq.answer(" ", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
     order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
 
     distribution_service = get_service(cq.message.bot, "distribution_service")
@@ -1103,7 +1116,7 @@ async def cb_queue_assign_manual_pick(
         staff.id,
     )
     if not ok:
-        await cq.answer(message, show_alert=True)
+        await _safe_answer(cq, message, show_alert=True)
         return
 
     masters, _ = await orders_service.manual_candidates(
@@ -1139,7 +1152,7 @@ async def cb_queue_assign_manual_pick(
                 "\n".join(text_lines),
                 reply_markup=builder.as_markup(),
             )
-    await cq.answer(" ")
+    await _safe_answer(cq, " ")
 
 
 
@@ -1153,36 +1166,36 @@ async def cb_queue_guarantee(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         order_id = int(parts[3])
     except (IndexError, ValueError):
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
     order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
 
     status = (order.status or "").upper()
     if status != "CLOSED":
-        await cq.answer("      ", show_alert=True)
+        await _safe_answer(cq, "      ", show_alert=True)
         return
     if order.order_type is OrderType.GUARANTEE:
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
     if not order.master_id:
-        await cq.answer("    ", show_alert=True)
+        await _safe_answer(cq, "    ", show_alert=True)
         return
     if await _call_service(orders_service.has_active_guarantee, order.id, city_ids=visible_city_ids_for(staff)):
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
 
     try:
         new_order_id = await orders_service.create_guarantee_order(order.id, staff.id)
     except GuaranteeError as exc:
-        await cq.answer(str(exc), show_alert=True)
+        await _safe_answer(cq, str(exc), show_alert=True)
         return
 
     updated = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
@@ -1192,7 +1205,7 @@ async def cb_queue_guarantee(cq: CallbackQuery, staff: StaffUser) -> None:
     await cq.message.answer(
         f"  #{new_order_id}     ."
     )
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -1204,28 +1217,28 @@ async def cb_queue_return(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         order_id = int(parts[3])
     except (IndexError, ValueError):
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     orders_service = get_service(cq.message.bot, "orders_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
     ok = await orders_service.return_to_search(order_id, staff.id)
     if not ok:
-        await cq.answer("     ", show_alert=True)
+        await _safe_answer(cq, "     ", show_alert=True)
         return
     updated = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not updated:
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
     show_guarantee = await _should_show_guarantee_button(updated, orders_service, visible_city_ids_for(staff))
     await _render_order_card(cq.message, updated, history, show_guarantee=show_guarantee)
-    await cq.answer("   ")
+    await _safe_answer(cq, "   ")
 
 
 @queue_router.callback_query(
@@ -1237,15 +1250,15 @@ async def cb_queue_cancel_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
     try:
         order_id = int(parts[3])
     except (IndexError, ValueError):
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     orders_service = get_service(cq.message.bot, "orders_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
     await state.set_state(QueueActionFSM.cancel_reason)
     await state.update_data(
@@ -1259,7 +1272,7 @@ async def cb_queue_cancel_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
         "   ( 3  200 ).  /cancel  .",
         reply_markup=queue_cancel_keyboard(order_id),
     )
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.callback_query(
@@ -1271,23 +1284,23 @@ async def cb_queue_cancel_back(cq: CallbackQuery, staff: StaffUser, state: FSMCo
     try:
         order_id = int(parts[4])
     except (IndexError, ValueError):
-        await cq.answer(" ", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
     orders_service = get_service(cq.message.bot, "orders_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
         await _clear_cancel_state(state)
-        await cq.answer("  ", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
         await _clear_cancel_state(state)
-        await cq.answer("   ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
     history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
     show_guarantee = await _should_show_guarantee_button(order, orders_service, visible_city_ids_for(staff))
     await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee)
     await _clear_cancel_state(state)
-    await cq.answer()
+    await _safe_answer(cq)
 
 
 @queue_router.message(
@@ -1392,19 +1405,19 @@ async def cb_queue_attachment(cq: CallbackQuery, staff: StaffUser) -> None:
         order_id = int(parts[3])
         attachment_id = int(parts[4])
     except (IndexError, ValueError):
-        await cq.answer(' ', show_alert=True)
+        await _safe_answer(cq, ' ', show_alert=True)
         return
     orders_service = get_service(cq.message.bot, 'orders_service')
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await cq.answer('  ', show_alert=True)
+        await _safe_answer(cq, '  ', show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await cq.answer('   ', show_alert=True)
+        await _safe_answer(cq, '   ', show_alert=True)
         return
     attachment = await _call_service(orders_service.get_order_attachment, order_id, attachment_id, city_ids=visible_city_ids_for(staff))
     if not attachment:
-        await cq.answer('  ', show_alert=True)
+        await _safe_answer(cq, '  ', show_alert=True)
         return
     caption = attachment.caption or None
     file_type = (attachment.file_type or '').upper()
@@ -1414,9 +1427,9 @@ async def cb_queue_attachment(cq: CallbackQuery, staff: StaffUser) -> None:
         else:
             await cq.message.answer_document(attachment.file_id, caption=caption)
     except TelegramBadRequest as exc:
-        await cq.answer(f'   : {exc.message}', show_alert=True)
+        await _safe_answer(cq, f'   : {exc.message}', show_alert=True)
         return
-    await cq.answer()
+    await _safe_answer(cq)
 
 @queue_router.callback_query(
     F.data == "adm:q:bk",
@@ -1429,4 +1442,4 @@ async def cb_queue_back(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     builder.button(text="", callback_data="adm:menu")
     builder.adjust(1)
     await cq.message.edit_text(" ", reply_markup=builder.as_markup())
-    await cq.answer()
+    await _safe_answer(cq)

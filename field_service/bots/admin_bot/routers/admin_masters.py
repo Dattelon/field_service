@@ -45,6 +45,8 @@ GROUP_LABELS = {
     "blk": "Неактивные",
 }
 
+MASTER_GROUP_ORDER = ("ok", "mod", "blk")
+
 logger = logging.getLogger(__name__)
 UTC = timezone.utc
 
@@ -182,13 +184,31 @@ def build_list_kb(
     prefix: str = "adm:m",
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
+
+    if prefix == "adm:m":
+        active_group = (group or "ok").lower()
+        buttons: list[InlineKeyboardButton] = []
+        for key in MASTER_GROUP_ORDER:
+            label = _group_label(key)
+            text_label = label if key != active_group else f"[{label}]"
+            buttons.append(
+                InlineKeyboardButton(
+                    text=text_label,
+                    callback_data=f"adm:m:grp:{key}",
+                )
+            )
+        if buttons:
+            kb.row(*buttons)
+
+    list_builder = InlineKeyboardBuilder()
     for item in items:
-        kb.button(
+        list_builder.button(
             text=f"Открыть #{item.id}",
             callback_data=f"{prefix}:card:{group}:{category}:{page}:{item.id}",
         )
     if items:
-        kb.adjust(1)
+        list_builder.adjust(1)
+        kb.attach(list_builder)
 
     nav = InlineKeyboardBuilder()
     if page > 1:
@@ -226,13 +246,12 @@ def build_list_kb(
         categories.adjust(min(categories_count, 3))
         kb.attach(categories)
 
-    kb.row(
-        InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data="adm:menu",
-        ),
-        InlineKeyboardButton(text="🏠 Меню", callback_data="adm:menu"),
-    )
+    footer = InlineKeyboardBuilder()
+    footer.button(text="⬅️ Назад", callback_data="adm:menu")
+    footer.button(text="🏠 Меню", callback_data="adm:menu")
+    footer.adjust(2)
+    kb.attach(footer)
+
     return kb.as_markup()
 
 

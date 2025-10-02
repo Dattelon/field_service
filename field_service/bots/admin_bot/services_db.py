@@ -5,14 +5,15 @@ from datetime import date, datetime, time, timezone, timedelta
 from zoneinfo import ZoneInfo
 from decimal import Decimal, InvalidOperation
 import json
+import re
 import logging
 import secrets
 import string
 from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
 from types import SimpleNamespace
 
-from sqlalchemy import and_, delete, func, insert, select, text, update
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import and_, delete, func, insert, select, text, update, inspect
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rapidfuzz import fuzz, process
@@ -29,6 +30,7 @@ from field_service.services import owner_requisites_service as owner_reqs
 from field_service.services import guarantee_service
 from field_service.services.guarantee_service import GuaranteeError
 from field_service.services.referral_service import apply_rewards_for_commission
+from field_service.data import cities as city_catalog
 
 from .dto import (
     CityRef,
@@ -80,6 +82,63 @@ OWNER_PAY_SETTING_FIELDS: dict[str, tuple[str, str]] = {
 }
 
 LOCAL_TZ = settings_store.get_timezone()
+
+
+HAS_STREET_CENTROIDS: bool | None = None
+HAS_DISTRICT_CENTROIDS: bool | None = None
+HAS_CITY_CENTROIDS: bool | None = None
+
+async def _ensure_centroid_flag(session: AsyncSession, scope: str) -> bool:
+    global HAS_STREET_CENTROIDS, HAS_DISTRICT_CENTROIDS, HAS_CITY_CENTROIDS
+
+    flags = {
+        'street': 'HAS_STREET_CENTROIDS',
+        'district': 'HAS_DISTRICT_CENTROIDS',
+        'city': 'HAS_CITY_CENTROIDS',
+    }
+    column_sets = {
+        'street': (m.streets.centroid_lat, m.streets.centroid_lon),
+        'district': (m.districts.centroid_lat, m.districts.centroid_lon),
+        'city': (m.cities.centroid_lat, m.cities.centroid_lon),
+    }
+
+    flag_name = flags[scope]
+    current = globals()[flag_name]
+    if current is not None:
+        return current
+
+    selectors = column_sets[scope]
+    try:
+        await session.execute(select(*selectors).limit(1))
+    except ProgrammingError as exc:
+        if _is_column_missing_error(exc):
+            globals()[flag_name] = False
+            await session.rollback()
+            return False
+        raise
+    else:
+        globals()[flag_name] = True
+        return True
+
+
+def _is_column_missing_error(exc: Exception) -> bool:
+    original = getattr(exc, "orig", None)
+    if original is None:
+        return False
+    message = str(original).lower()
+    return (
+        original.__class__.__name__ == "UndefinedColumnError"
+        or "undefined column" in message
+        or "does not exist" in message
+    )
+
+STREET_DUPLICATE_THRESHOLD = 93
+STREET_MIN_SCORE = 60
+
+
+
+def _normalize_street_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
 
 def _format_datetime_local(value: Optional[datetime]) -> Optional[str]:
     if not value:
@@ -820,19 +879,25 @@ class DBOrdersService:
     async def list_cities(
             self, *, query: Optional[str] = None, limit: int = 20
         ) -> list[CityRef]:
+            matching = city_catalog.match_cities(query)
+            if limit is not None and limit > 0:
+                matching = matching[:limit]
+            if not matching:
+                return []
             async with self._session_factory() as session:
-                stmt = (
+                rows = await session.execute(
                     select(m.cities.id, m.cities.name)
-                    .where(m.cities.is_active == True)  # noqa: E712
-                    .order_by(m.cities.name)
-                    .limit(limit)
+                    .where(
+                        m.cities.is_active == True,  # noqa: E712
+                        m.cities.name.in_(matching),
+                    )
                 )
-                if query:
-                    pattern = f"%{query.lower()}%"
-                    stmt = stmt.where(func.lower(m.cities.name).like(pattern))
-                rows = await session.execute(stmt)
-                fetched = rows.all()
-                return [CityRef(id=int(row.id), name=row.name) for row in fetched]
+                fetched = {row.name: int(row.id) for row in rows}
+            return [
+                CityRef(id=fetched[name], name=name)
+                for name in matching
+                if name in fetched
+            ]
 
     async def get_city(self, city_id: int) -> Optional[CityRef]:
             async with self._session_factory() as session:
@@ -890,6 +955,8 @@ class DBOrdersService:
                         m.streets.id,
                         m.streets.name,
                         m.streets.district_id,
+                        m.streets.centroid_lat,
+                        m.streets.centroid_lon,
                     )
                     .where(m.streets.city_id == city_id)
                     .order_by(m.streets.name)
@@ -905,14 +972,28 @@ class DBOrdersService:
                 list(choices.keys()),
                 scorer=fuzz.WRatio,
                 processor=lambda s: s.lower(),
-                limit=min(limit, len(choices)),
+                limit=min(limit * 3, len(choices)),
             )
+            matches = sorted(matches, key=lambda item: (-item[1], -len(item[0])))
             result: list[StreetRef] = []
-            used: set[int] = set()
+            used_ids: set[int] = set()
+            used_norms: list[str] = []
             for name, score, _ in matches:
+                if score is None or score < STREET_MIN_SCORE:
+                    continue
                 row = choices[name]
                 street_id = int(row.id)
-                if street_id in used:
+                if street_id in used_ids:
+                    continue
+                normalized_candidate = _normalize_street_name(name)
+                if any(
+                    max(
+                        fuzz.WRatio(normalized_candidate, existing),
+                        fuzz.partial_ratio(normalized_candidate, existing),
+                        fuzz.partial_ratio(existing, normalized_candidate),
+                    ) >= STREET_DUPLICATE_THRESHOLD
+                    for existing in used_norms
+                ):
                     continue
                 result.append(
                     StreetRef(
@@ -923,9 +1004,11 @@ class DBOrdersService:
                         score=float(score),
                     )
                 )
-                used.add(street_id)
+                used_ids.add(street_id)
+                used_norms.append(normalized_candidate)
+                if len(result) >= limit:
+                    break
             return result
-
     async def get_street(self, street_id: int) -> Optional[StreetRef]:
             async with self._session_factory() as session:
                 row = await session.execute(
@@ -1302,6 +1385,133 @@ class DBOrdersService:
                 )
             return tuple(attachments)
 
+    @staticmethod
+    def _coerce_float(value: Optional[float]) -> Optional[float]:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+
+    async def _resolve_order_coordinates(
+        self,
+        session: AsyncSession,
+        *,
+        city_id: int,
+        district_id: Optional[int],
+        street_id: Optional[int],
+        raw_lat: Optional[float],
+        raw_lon: Optional[float],
+    ) -> tuple[Optional[float], Optional[float], Optional[str], Optional[int], Optional[int]]:
+        lat = self._coerce_float(raw_lat)
+        lon = self._coerce_float(raw_lon)
+        resolved_district = district_id
+        if lat is not None and lon is not None:
+            return lat, lon, "user_location", 100, resolved_district
+
+        street_has_centroids = False
+        if street_id:
+            street_has_centroids = await _ensure_centroid_flag(session, "street")
+            street_columns = [m.streets.district_id]
+            if street_has_centroids:
+                street_columns.extend([m.streets.centroid_lat, m.streets.centroid_lon])
+            try:
+                row = await session.execute(
+                    select(*street_columns).where(m.streets.id == street_id)
+                )
+            except ProgrammingError as exc:
+                if street_has_centroids and _is_column_missing_error(exc):
+                    globals()["HAS_STREET_CENTROIDS"] = False
+                    await session.rollback()
+                    row = await session.execute(
+                        select(m.streets.district_id).where(m.streets.id == street_id)
+                    )
+                    street_has_centroids = False
+                else:
+                    raise
+            data = row.mappings().first()
+            if data is not None:
+                district_val = data.get("district_id")
+                if resolved_district is None and district_val is not None:
+                    resolved_district = int(district_val)
+                if street_has_centroids:
+                    lat_val = data.get("centroid_lat")
+                    lon_val = data.get("centroid_lon")
+                    if lat_val is not None and lon_val is not None:
+                        return (
+                            float(lat_val),
+                            float(lon_val),
+                            "street_centroid",
+                            80,
+                            resolved_district,
+                        )
+
+        district_has_centroids = False
+        if resolved_district is not None:
+            district_has_centroids = await _ensure_centroid_flag(session, "district")
+            if district_has_centroids:
+                try:
+                    row = await session.execute(
+                        select(
+                            m.districts.centroid_lat,
+                            m.districts.centroid_lon,
+                        ).where(m.districts.id == resolved_district)
+                    )
+                except ProgrammingError as exc:
+                    if _is_column_missing_error(exc):
+                        globals()["HAS_DISTRICT_CENTROIDS"] = False
+                        await session.rollback()
+                        district_has_centroids = False
+                    else:
+                        raise
+                else:
+                    data = row.mappings().first()
+                    if data:
+                        lat_val = data.get("centroid_lat")
+                        lon_val = data.get("centroid_lon")
+                        if lat_val is not None and lon_val is not None:
+                            return (
+                                float(lat_val),
+                                float(lon_val),
+                                "district_centroid",
+                                60,
+                                resolved_district,
+                            )
+
+        city_has_centroids = await _ensure_centroid_flag(session, "city")
+        if city_has_centroids:
+            try:
+                row = await session.execute(
+                    select(
+                        m.cities.centroid_lat,
+                        m.cities.centroid_lon,
+                    ).where(m.cities.id == city_id)
+                )
+            except ProgrammingError as exc:
+                if _is_column_missing_error(exc):
+                    globals()["HAS_CITY_CENTROIDS"] = False
+                    await session.rollback()
+                    city_has_centroids = False
+                else:
+                    raise
+            else:
+                data = row.mappings().first()
+                if data:
+                    lat_val = data.get("centroid_lat")
+                    lon_val = data.get("centroid_lon")
+                    if lat_val is not None and lon_val is not None:
+                        return (
+                            float(lat_val),
+                            float(lon_val),
+                            "city_centroid",
+                            40,
+                            resolved_district,
+                        )
+
+        return None, None, None, None, resolved_district
+
     async def create_order(self, data: NewOrderData) -> int:
             async with self._session_factory() as session:
                 async with session.begin():
@@ -1316,9 +1526,24 @@ class DBOrdersService:
                     status_provided = normalized_status is not None
                     if not status_provided and current_time >= workday_end:
                         initial_status = m.OrderStatus.DEFERRED
-                    order = m.orders(
+                    (
+                        resolved_lat,
+                        resolved_lon,
+                        geocode_provider,
+                        geocode_confidence,
+                        resolved_district,
+                    ) = await self._resolve_order_coordinates(
+                        session,
                         city_id=data.city_id,
                         district_id=data.district_id,
+                        street_id=data.street_id,
+                        raw_lat=data.lat,
+                        raw_lon=data.lon,
+                    )
+                    no_district_flag = bool(data.no_district or resolved_district is None)
+                    order = m.orders(
+                        city_id=data.city_id,
+                        district_id=resolved_district,
                         street_id=data.street_id,
                         house=data.house,
                         apartment=data.apartment,
@@ -1330,9 +1555,11 @@ class DBOrdersService:
                         type=_map_order_type_to_db(data.order_type),
                         timeslot_start_utc=data.timeslot_start_utc,
                         timeslot_end_utc=data.timeslot_end_utc,
-                        lat=data.lat,
-                        lon=data.lon,
-                        no_district=data.no_district,
+                        lat=resolved_lat,
+                        lon=resolved_lon,
+                        geocode_provider=geocode_provider,
+                        geocode_confidence=geocode_confidence,
+                        no_district=no_district_flag,
                         preferred_master_id=data.preferred_master_id,
                         guarantee_source_order_id=data.guarantee_source_order_id,
                         company_payment=Decimal(data.company_payment or 0),
@@ -1367,7 +1594,6 @@ class DBOrdersService:
                         )
                     )
                 return order.id
-
     async def has_active_guarantee(self, source_order_id: int, *, city_ids: Optional[Iterable[int]] = None) -> bool:
             async with self._session_factory() as session:
                 stmt = (

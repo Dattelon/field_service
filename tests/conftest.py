@@ -41,6 +41,7 @@ TABLES = [
     m.referral_rewards.__table__,
     m.order_status_history.__table__,
     m.settings.__table__,
+    m.geocache.__table__,
 ]
 
 
