@@ -519,6 +519,15 @@ async def _reset_escalations(
     session: AsyncSession,
     order: OrderForDistribution,
 ) -> None:
+    """
+    Сбрасывает эскалации при появлении нового оффера.
+    
+    ✅ STEP 1.4: Сбрасываем ВСЕ поля эскалации:
+    - dist_escalated_logist_at
+    - dist_escalated_admin_at
+    - escalation_logist_notified_at (timestamp уведомления логисту)
+    - escalation_admin_notified_at (timestamp уведомления админу)
+    """
     if order.escalated_logist_at is None and order.escalated_admin_at is None:
         return
     await session.execute(
@@ -526,13 +535,17 @@ async def _reset_escalations(
             """
         UPDATE orders
            SET dist_escalated_logist_at = NULL,
-               dist_escalated_admin_at = NULL
+               dist_escalated_admin_at = NULL,
+               escalation_logist_notified_at = NULL,
+               escalation_admin_notified_at = NULL
          WHERE id = :oid
         """
         ).bindparams(oid=order.id)
     )
     order.escalated_logist_at = None
     order.escalated_admin_at = None
+    order.escalation_logist_notified_at = None
+    order.escalation_admin_notified_at = None
 
 
 async def _escalate_logist(order_id: int):
@@ -541,192 +554,264 @@ async def _escalate_logist(order_id: int):
     _dist_log(message, level="WARN")
 
 
-async def tick_once(cfg: DistConfig, *, bot: Bot | None, alerts_chat_id: Optional[int]) -> None:
-    async with SessionLocal() as session:
-        if not await _try_advisory_lock(session):
-            return
+async def tick_once(
+    cfg: DistConfig, 
+    *, 
+    bot: Bot | None, 
+    alerts_chat_id: Optional[int],
+    session: AsyncSession | None = None
+) -> None:
+    """
+    Один тик распределителя заказов.
+    
+    Args:
+        cfg: Конфигурация распределения
+        bot: Telegram bot для уведомлений (опционально)
+        alerts_chat_id: ID чата для алертов (опционально)
+        session: Опциональная существующая сессия БД (для тестов)
+                 Если None - создаётся новая сессия
+    """
+    # Если сессия передана (тесты) - используем её
+    # Если нет (продакшен) - создаём новую
+    if session is not None:
+        await _tick_once_impl(session, cfg, bot, alerts_chat_id)
+    else:
+        async with SessionLocal() as session:
+            await _tick_once_impl(session, cfg, bot, alerts_chat_id)
 
-        now = await _db_now(session)
-        awakened = await _wake_deferred_orders(session, now_utc=now)
-        for order_id, target_local in awakened:
-            message = f"[dist] deferred->searching order={order_id} at {target_local.isoformat()}"
+
+async def _tick_once_impl(
+    session: AsyncSession,
+    cfg: DistConfig,
+    bot: Bot | None,
+    alerts_chat_id: Optional[int]
+) -> None:
+    """Внутренняя реализация tick_once с уже созданной сессией."""
+    if not await _try_advisory_lock(session):
+        return
+
+    now = await _db_now(session)
+    awakened = await _wake_deferred_orders(session, now_utc=now)
+    for order_id, target_local in awakened:
+        message = f"[dist] deferred->searching order={order_id} at {target_local.isoformat()}"
+        logger.info(message)
+        _dist_log(message)
+
+
+    orders = await _fetch_orders_for_distribution(session)
+
+    for order in orders:
+        # ✅ STEP 1.4: Эскалация к админу - проверяем что уведомление ещё не отправлено
+        if (
+            order.escalated_logist_at is not None
+            and order.escalated_admin_at is None
+            and now - order.escalated_logist_at >= timedelta(minutes=cfg.to_admin_after_min)
+        ):
+            admin_marked = await _set_admin_escalation(session, order)
+            if admin_marked and order.escalation_admin_notified_at is None:
+                admin_message = f"[dist] order={order.id} escalate=admin"
+                logger.warning(admin_message)
+                _dist_log(admin_message, level="WARN")
+                
+                # ✅ КРИТИЧНО: Отмечаем уведомление ПЕРЕД отправкой (независимо от бота)
+                notified_at = await _mark_admin_notification_sent(session, order.id)
+                order.escalation_admin_notified_at = notified_at
+                logger.info("[dist] order=%s admin_notification_sent_at=%s", order.id, notified_at.isoformat())
+                
+                await _report(bot, admin_message)
+                if bot and alerts_chat_id:
+                    await push_notify_admin(
+                        bot,
+                        alerts_chat_id,
+                        event=NotificationEvent.ESCALATION_ADMIN,
+                        order_id=order.id,
+                    )
+
+        # ✅ STEP 1.4: Эскалация к логисту при no_district - проверяем что уведомление ещё не отправлено
+        if order.district_id is None or order.no_district:
+            message = (
+                f"[dist] order={order.id} city={order.city_id} district=null skip_auto: no_district -> escalate=logist_now"
+            )
+            logger.info(message)
+            _dist_log(message)
+            newly_marked = False
+            if order.escalated_logist_at is None:
+                marked = await _set_logist_escalation(session, order)
+                newly_marked = marked is not None
+            await _escalate_logist(order.id)
+            if newly_marked:
+                await _report(bot, message)
+                await send_alert(
+                    bot,
+                    f"      {order.city_name}   #{order.id}.   .",
+                    chat_id=alerts_chat_id,
+                )
+            continue
+
+        timed_out_mid = await _expire_overdue_offer(session, order.id)
+        if timed_out_mid:
+            message = f"[dist] order={order.id} timeout mid={timed_out_mid}"
             logger.info(message)
             _dist_log(message)
 
-
-        orders = await _fetch_orders_for_distribution(session)
-
-        for order in orders:
-            if (
-                order.escalated_logist_at is not None
-                and order.escalated_admin_at is None
-                and now - order.escalated_logist_at >= timedelta(minutes=cfg.to_admin_after_min)
-            ):
-                admin_marked = await _set_admin_escalation(session, order)
-                if admin_marked:
-                    admin_message = f"[dist] order={order.id} escalate=admin"
-                    logger.warning(admin_message)
-                    _dist_log(admin_message, level="WARN")
-                    await _report(bot, admin_message)
-                    await send_alert(
-                        bot,
-                        f"  #{order.id}    10 .  .",
-                        chat_id=alerts_chat_id,
-                    )
-
-            if order.district_id is None or order.no_district:
-                message = (
-                    f"[dist] order={order.id} city={order.city_id} district=null skip_auto: no_district -> escalate=logist_now"
-                )
-                logger.info(message)
-                _dist_log(message)
-                newly_marked = False
-                if order.escalated_logist_at is None:
-                    marked = await _set_logist_escalation(session, order)
-                    newly_marked = marked is not None
-                await _escalate_logist(order.id)
-                if newly_marked:
-                    await _report(bot, message)
-                    await send_alert(
-                        bot,
-                        f"      {order.city_name}   #{order.id}.   .",
-                        chat_id=alerts_chat_id,
-                    )
-                continue
-
-            timed_out_mid = await _expire_overdue_offer(session, order.id)
-            if timed_out_mid:
-                message = f"[dist] order={order.id} timeout mid={timed_out_mid}"
-                logger.info(message)
-                _dist_log(message)
-
-            row = await session.execute(
-                text(
-                    "SELECT 1 FROM offers WHERE order_id=:oid AND state='SENT' LIMIT 1"
-                ).bindparams(oid=order.id)
-            )
-            if row.first():
-                await _reset_escalations(session, order)
-                continue
-
-            current_round = await _current_round(session, order.id)
-
-            if current_round >= cfg.rounds:
-                message = f"[dist] order={order.id} round={current_round} rounds_exhausted -> escalate=logist"
-                logger.info(message)
-                _dist_log(message)
-                newly_marked = False
-                if order.escalated_logist_at is None:
-                    marked = await _set_logist_escalation(session, order)
-                    newly_marked = marked is not None
-                await _escalate_logist(order.id)
-                if newly_marked:
-                    await _report(bot, message)
-                    await send_alert(
-                        bot,
-                        f"      {order.city_name}   #{order.id}.  .",
-                        chat_id=alerts_chat_id,
-                    )
-                continue
-
-            skill_code = _skill_code_for_category(order.category)
-            if not skill_code:
-                category_label = order.category if order.category else "-"
-                message = (
-                    f"[dist] order={order.id} skip_auto: no_category_filter category={category_label} -> escalate=logist_now"
-                )
-                logger.info(message)
-                _dist_log(message)
-                newly_marked = False
-                if order.escalated_logist_at is None:
-                    marked = await _set_logist_escalation(session, order)
-                    newly_marked = marked is not None
-                await _escalate_logist(order.id)
-                if newly_marked:
-                    await _report(bot, message)
-                    await send_alert(
-                        bot,
-                        f"        #{order.id}   {order.city_name}.  .",
-                        chat_id=alerts_chat_id,
-                    )
-                continue
-
-            status_value = str(order.status) if order.status is not None else ""
-
-            order_type_value = str(order.order_type) if order.order_type is not None else ""
-
-            order_kind = "GUARANTEE" if order_type_value.upper() == "GUARANTEE" or status_value.upper() == "GUARANTEE" else "NORMAL"
-            preferred_id = order.preferred_master_id if order_kind == "GUARANTEE" else None
-
-            ranked = await _candidates(
-                session,
-                oid=order.id,
-                city_id=order.city_id,
-                district_id=order.district_id,
-                skill_code=skill_code,
-                preferred_mid=preferred_id,
-                fallback_limit=DEFAULT_MAX_ACTIVE_LIMIT,
-            )
-            next_round = current_round + 1
-            await _log_ranked(
-                order.id,
-                order.city_id,
-                order.district_id,
-                order.category,
-                order_kind,
-                next_round,
-                cfg.rounds,
-                cfg.sla_seconds,
-                ranked,
-                preferred_id,
-                cfg.top_log_n,
-            )
-
-            if not ranked:
-                message = f"[dist] order={order.id} round={next_round} no_candidates -> escalate=logist"
-                logger.info(message)
-                _dist_log(message)
-                newly_marked = False
-                if order.escalated_logist_at is None:
-                    marked = await _set_logist_escalation(session, order)
-                    newly_marked = marked is not None
-                await _escalate_logist(order.id)
-                if newly_marked:
-                    await _report(bot, message)
-                    await send_alert(
-                        bot,
-                        f"      {order.city_name}   #{order.id}.  .",
-                        chat_id=alerts_chat_id,
-                    )
-                continue
-
-            first_mid = ranked[0]["mid"]
+        row = await session.execute(
+            text(
+                "SELECT 1 FROM offers WHERE order_id=:oid AND state='SENT' LIMIT 1"
+            ).bindparams(oid=order.id)
+        )
+        if row.first():
             await _reset_escalations(session, order)
-            ok = await _send_offer(
-                session,
-                oid=order.id,
-                mid=first_mid,
-                round_number=next_round,
-                sla_seconds=cfg.sla_seconds,
-            )
+            continue
 
-            if ok:
-                until_row = await session.execute(
-                    text("SELECT NOW() + make_interval(secs => :sla)").bindparams(
-                        sla=cfg.sla_seconds
+        current_round = await _current_round(session, order.id)
+
+        # ✅ STEP 1.4: Эскалация к логисту при исчерпании раундов
+        if current_round >= cfg.rounds:
+            message = f"[dist] order={order.id} round={current_round} rounds_exhausted -> escalate=logist"
+            logger.info(message)
+            _dist_log(message)
+            newly_marked = False
+            if order.escalated_logist_at is None:
+                marked = await _set_logist_escalation(session, order)
+                newly_marked = marked is not None
+            await _escalate_logist(order.id)
+            # ✅ Отправляем уведомление только если эскалация только что произошла И уведомление ещё не отправлялось
+            if newly_marked and order.escalation_logist_notified_at is None:
+                # ✅ КРИТИЧНО: Отмечаем уведомление ПЕРЕД отправкой (независимо от бота)
+                notified_at = await _mark_logist_notification_sent(session, order.id)
+                order.escalation_logist_notified_at = notified_at
+                logger.info("[dist] order=%s logist_notification_sent_at=%s", order.id, notified_at.isoformat())
+                
+                await _report(bot, message)
+                if bot and alerts_chat_id:
+                    await push_notify_admin(
+                        bot,
+                        alerts_chat_id,
+                        event=NotificationEvent.ESCALATION_LOGIST,
+                        order_id=order.id,
                     )
+            continue
+
+        # ✅ STEP 1.4: Эскалация к логисту при отсутствии категории
+        skill_code = _skill_code_for_category(order.category)
+        if not skill_code:
+            category_label = order.category if order.category else "-"
+            message = (
+                f"[dist] order={order.id} skip_auto: no_category_filter category={category_label} -> escalate=logist_now"
+            )
+            logger.info(message)
+            _dist_log(message)
+            newly_marked = False
+            if order.escalated_logist_at is None:
+                marked = await _set_logist_escalation(session, order)
+                newly_marked = marked is not None
+            await _escalate_logist(order.id)
+            # ✅ Отправляем уведомление только если эскалация только что произошла И уведомление ещё не отправлялось
+            if newly_marked and order.escalation_logist_notified_at is None:
+                # ✅ КРИТИЧНО: Отмечаем уведомление ПЕРЕД отправкой (независимо от бота)
+                notified_at = await _mark_logist_notification_sent(session, order.id)
+                order.escalation_logist_notified_at = notified_at
+                logger.info("[dist] order=%s logist_notification_sent_at=%s", order.id, notified_at.isoformat())
+                
+                await _report(bot, message)
+                if bot and alerts_chat_id:
+                    await push_notify_admin(
+                        bot,
+                        alerts_chat_id,
+                        event=NotificationEvent.ESCALATION_LOGIST,
+                        order_id=order.id,
+                    )
+            continue
+
+        status_value = str(order.status) if order.status is not None else ""
+
+        order_type_value = str(order.order_type) if order.order_type is not None else ""
+
+        order_kind = "GUARANTEE" if order_type_value.upper() == "GUARANTEE" or status_value.upper() == "GUARANTEE" else "NORMAL"
+        preferred_id = order.preferred_master_id if order_kind == "GUARANTEE" else None
+
+        ranked = await _candidates(
+            session,
+            oid=order.id,
+            city_id=order.city_id,
+            district_id=order.district_id,
+            skill_code=skill_code,
+            preferred_mid=preferred_id,
+            fallback_limit=DEFAULT_MAX_ACTIVE_LIMIT,
+        )
+        next_round = current_round + 1
+        await _log_ranked(
+            order.id,
+            order.city_id,
+            order.district_id,
+            order.category,
+            order_kind,
+            next_round,
+            cfg.rounds,
+            cfg.sla_seconds,
+            ranked,
+            preferred_id,
+            cfg.top_log_n,
+        )
+
+        # ✅ STEP 1.4: Эскалация к логисту при отсутствии кандидатов
+        if not ranked:
+            message = f"[dist] order={order.id} round={next_round} no_candidates -> escalate=logist"
+            logger.info(message)
+            _dist_log(message)
+            newly_marked = False
+            if order.escalated_logist_at is None:
+                marked = await _set_logist_escalation(session, order)
+                newly_marked = marked is not None
+            await _escalate_logist(order.id)
+            # ✅ Отправляем уведомление только если эскалация только что произошла И уведомление ещё не отправлялось
+            if newly_marked and order.escalation_logist_notified_at is None:
+                # ✅ КРИТИЧНО: Отмечаем уведомление ПЕРЕД отправкой (независимо от бота)
+                notified_at = await _mark_logist_notification_sent(session, order.id)
+                order.escalation_logist_notified_at = notified_at
+                logger.info("[dist] order=%s logist_notification_sent_at=%s", order.id, notified_at.isoformat())
+                
+                await _report(bot, message)
+                if bot and alerts_chat_id:
+                    await push_notify_admin(
+                        bot,
+                        alerts_chat_id,
+                        event=NotificationEvent.ESCALATION_LOGIST,
+                        order_id=order.id,
+                    )
+            continue
+
+        first_mid = ranked[0]["mid"]
+        await _reset_escalations(session, order)
+        ok = await _send_offer(
+            session,
+            oid=order.id,
+            mid=first_mid,
+            round_number=next_round,
+            sla_seconds=cfg.sla_seconds,
+        )
+
+        if ok:
+            until_row = await session.execute(
+                text("SELECT NOW() + make_interval(secs => :sla)").bindparams(
+                    sla=cfg.sla_seconds
                 )
-                until = until_row.scalar()
-                message = f"[dist] order={order.id} decision=offer mid={first_mid} until={until.isoformat()}"
-                logger.info(message)
-                _dist_log(message)
+            )
+            until = until_row.scalar()
+            message = f"[dist] order={order.id} decision=offer mid={first_mid} until={until.isoformat()}"
+            logger.info(message)
+            _dist_log(message)
 
 
         await session.commit()
 
 
 async def run_scheduler(bot: Bot | None = None, *, alerts_chat_id: Optional[int] = None) -> None:
-    logging.basicConfig(level=logging.INFO)
+    # CR-2025-10-03-009: Отключаем INFO/WARNING в консоли, оставляем только ERROR
+    logging.basicConfig(level=logging.WARNING)  # Общий уровень WARNING
+    dist_logger = logging.getLogger("distribution")
+    dist_logger.setLevel(logging.ERROR)  # Для distribution только ERROR и выше
+    
     sleep_for = 30
     while True:
         try:

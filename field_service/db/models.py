@@ -466,6 +466,13 @@ class orders(Base):
     dist_escalated_admin_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Step 1.4: Tracking escalation notifications to prevent duplicate sends
+    escalation_logist_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    escalation_admin_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     guarantee_source_order_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
     )
@@ -832,6 +839,41 @@ class notifications_outbox(Base):
         DateTime(timezone=True), server_default=func.now(), index=True
     )
     processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
+# P1-01: Autoclose queue
+class order_autoclose_queue(Base):
+    """Очередь для автозакрытия заказов через 24ч после CLOSED."""
+    __tablename__ = 'order_autoclose_queue'
+    
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    closed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False
+    )
+    autoclose_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False
+    )
+    processed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+    
+    __table_args__ = (
+        Index(
+            "ix_order_autoclose_queue__pending",
+            "autoclose_at",
+            postgresql_where=text("processed_at IS NULL")
+        ),
+    )
 
 
 

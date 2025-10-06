@@ -33,6 +33,9 @@ TABLES = [
     m.staff_access_code_cities.__table__,
     m.masters.__table__,
     m.master_invite_codes.__table__,
+    m.skills.__table__,  # ✅ Добавлено для test_fixes_stage_1
+    m.master_skills.__table__,  # ✅ Добавлено для test_fixes_stage_1
+    m.master_districts.__table__,  # ✅ Добавлено для test_fixes_stage_1
     m.offers.__table__,
     m.orders.__table__,
     m.attachments.__table__,
@@ -78,3 +81,101 @@ async def async_session() -> AsyncIterator[AsyncSession]:
         yield session
         await session.rollback()
     await engine.dispose()
+
+
+
+# ===== Дополнительные фикстуры для E2E тестов =====
+
+@pytest_asyncio.fixture()
+async def session(async_session: AsyncSession) -> AsyncSession:
+    """Alias для совместимости с test_e2e_escalation_notifications"""
+    return async_session
+
+
+@pytest_asyncio.fixture()
+async def sample_city(async_session: AsyncSession) -> m.cities:
+    """Создаёт тестовый город"""
+    city = m.cities(
+        id=1,
+        name="Test City",
+        timezone="Europe/Moscow",
+    )
+    async_session.add(city)
+    await async_session.commit()
+    await async_session.refresh(city)
+    return city
+
+
+@pytest_asyncio.fixture()
+async def sample_district(async_session: AsyncSession, sample_city: m.cities) -> m.districts:
+    """Создаёт тестовый район"""
+    district = m.districts(
+        id=1,
+        city_id=sample_city.id,
+        name="Test District",
+    )
+    async_session.add(district)
+    await async_session.commit()
+    await async_session.refresh(district)
+    return district
+
+
+@pytest_asyncio.fixture()
+async def sample_skill(async_session: AsyncSession) -> m.skills:
+    """Создаёт тестовый навык"""
+    skill = m.skills(
+        id=1,
+        code="ELEC",
+        name_ru="Электрика",
+        name_en="Electrics",
+        category="ELECTRICS",
+        is_active=True,
+    )
+    async_session.add(skill)
+    await async_session.commit()
+    await async_session.refresh(skill)
+    return skill
+
+
+@pytest_asyncio.fixture()
+async def sample_master(
+    async_session: AsyncSession,
+    sample_city: m.cities,
+    sample_district: m.districts,
+    sample_skill: m.skills,
+) -> m.masters:
+    """Создаёт тестового мастера"""
+    master = m.masters(
+        id=1,
+        tg_user_id=123456789,
+        city_id=sample_city.id,
+        username="test_master",
+        full_name="Test Master",
+        phone="+7 900 000 00 00",
+        is_active=True,
+        is_blocked=False,
+        verified=True,
+        is_on_shift=True,
+        has_vehicle=True,
+        rating=4.5,
+    )
+    async_session.add(master)
+    await async_session.flush()
+
+    # Привязываем мастера к району
+    master_district = m.master_districts(
+        master_id=master.id,
+        district_id=sample_district.id,
+    )
+    async_session.add(master_district)
+
+    # Привязываем навык к мастеру
+    master_skill = m.master_skills(
+        master_id=master.id,
+        skill_id=sample_skill.id,
+    )
+    async_session.add(master_skill)
+
+    await async_session.commit()
+    await async_session.refresh(master)
+    return master
