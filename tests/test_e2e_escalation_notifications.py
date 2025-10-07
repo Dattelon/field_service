@@ -33,6 +33,15 @@ from field_service.services.distribution_scheduler import tick_once, DistConfig
 UTC = timezone.utc
 
 
+async def _get_db_now(session: AsyncSession) -> datetime:
+    """
+    Получает текущее время из БД (аналогично _db_now в distribution_scheduler).
+    КРИТИЧНО: Всегда используем время БД в тестах для консистентности с tick_once()!
+    """
+    row = await session.execute(text("SELECT NOW()"))
+    return row.scalar()
+
+
 class TestEscalationNotifications:
     """Тесты для проверки одноразовой отправки уведомлений эскалации"""
 
@@ -52,15 +61,17 @@ class TestEscalationNotifications:
         2. Запускаем tick_once() 10 раз подряд
         3. Проверяем что timestamp установлен и не меняется
         """
-        # Arrange: Создаём заказ без мастеров (эскалация неизбежна)
+        # ✅ КРИТИЧНО: Используем время БД, а не Python время!
+        db_now = await _get_db_now(session)
+        
         order = m.orders(
             status=m.OrderStatus.SEARCHING,
             city_id=sample_city.id,
             district_id=sample_district.id,
             category=m.OrderCategory.ELECTRICS,
             house="1",
-            timeslot_start_utc=datetime.now(UTC) + timedelta(hours=2),
-            timeslot_end_utc=datetime.now(UTC) + timedelta(hours=4),
+            timeslot_start_utc=db_now + timedelta(hours=2),
+            timeslot_end_utc=db_now + timedelta(hours=4),
         )
         session.add(order)
         await session.commit()
@@ -116,9 +127,10 @@ class TestEscalationNotifications:
         2. Запускаем tick_once() 10 раз подряд
         3. Проверяем что timestamp установлен и не меняется
         """
-        # Arrange: Создаём заказ с давней эскалацией к логисту
-        escalation_time = datetime.now(UTC) - timedelta(minutes=15)
-        notification_time = datetime.now(UTC) - timedelta(minutes=14)
+        # ✅ КРИТИЧНО: Используем время БД, а не Python время!
+        db_now = await _get_db_now(session)
+        escalation_time = db_now - timedelta(minutes=15)
+        notification_time = db_now - timedelta(minutes=14)
         
         order = m.orders(
             status=m.OrderStatus.SEARCHING,
@@ -126,8 +138,8 @@ class TestEscalationNotifications:
             district_id=sample_district.id,
             category=m.OrderCategory.ELECTRICS,
             house="1",
-            timeslot_start_utc=datetime.now(UTC) + timedelta(hours=2),
-            timeslot_end_utc=datetime.now(UTC) + timedelta(hours=4),
+            timeslot_start_utc=db_now + timedelta(hours=2),
+            timeslot_end_utc=db_now + timedelta(hours=4),
             dist_escalated_logist_at=escalation_time,
             escalation_logist_notified_at=notification_time,
         )
@@ -187,9 +199,10 @@ class TestEscalationNotifications:
         4. Заказ снова эскалируется
         5. Timestamp устанавливается заново
         """
-        # Arrange: Создаём заказ с эскалацией
-        escalation_time = datetime.now(UTC) - timedelta(minutes=5)
-        notification_time = datetime.now(UTC) - timedelta(minutes=4)
+        # ✅ КРИТИЧНО: Используем время БД, а не Python время!
+        db_now = await _get_db_now(session)
+        escalation_time = db_now - timedelta(minutes=5)
+        notification_time = db_now - timedelta(minutes=4)
         
         order = m.orders(
             status=m.OrderStatus.SEARCHING,
@@ -197,8 +210,8 @@ class TestEscalationNotifications:
             district_id=sample_district.id,
             category=m.OrderCategory.ELECTRICS,
             house="1",
-            timeslot_start_utc=datetime.now(UTC) + timedelta(hours=2),
-            timeslot_end_utc=datetime.now(UTC) + timedelta(hours=4),
+            timeslot_start_utc=db_now + timedelta(hours=2),
+            timeslot_end_utc=db_now + timedelta(hours=4),
             dist_escalated_logist_at=escalation_time,
             escalation_logist_notified_at=notification_time,
         )
@@ -212,8 +225,8 @@ class TestEscalationNotifications:
             master_id=sample_master.id,
             round_number=1,
             state=m.OfferState.SENT,
-            sent_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(minutes=2),
+            sent_at=db_now,
+            expires_at=db_now + timedelta(minutes=2),
         )
         session.add(offer)
         await session.commit()
@@ -290,15 +303,17 @@ class TestEscalationNotifications:
         2. Запускаем 5 параллельных tick_once()
         3. Проверяем что timestamp установлен только один раз (благодаря advisory lock)
         """
-        # Arrange
+        # ✅ КРИТИЧНО: Используем время БД, а не Python время!
+        db_now = await _get_db_now(session)
+        
         order = m.orders(
             status=m.OrderStatus.SEARCHING,
             city_id=sample_city.id,
             district_id=sample_district.id,
             category=m.OrderCategory.ELECTRICS,
             house="1",
-            timeslot_start_utc=datetime.now(UTC) + timedelta(hours=2),
-            timeslot_end_utc=datetime.now(UTC) + timedelta(hours=4),
+            timeslot_start_utc=db_now + timedelta(hours=2),
+            timeslot_end_utc=db_now + timedelta(hours=4),
         )
         session.add(order)
         await session.commit()
@@ -490,15 +505,17 @@ class TestEscalationFullCycle:
         3. Через 10 минут → эскалация к админу
         4. Проверяем что timestamp'ы установлены и не меняются
         """
-        # Arrange: Создаём заказ
+        # ✅ КРИТИЧНО: Используем время БД, а не Python время!
+        db_now = await _get_db_now(session)
+        
         order = m.orders(
             status=m.OrderStatus.SEARCHING,
             city_id=sample_city.id,
             district_id=sample_district.id,
             category=m.OrderCategory.ELECTRICS,
             house="1",
-            timeslot_start_utc=datetime.now(UTC) + timedelta(hours=2),
-            timeslot_end_utc=datetime.now(UTC) + timedelta(hours=4),
+            timeslot_start_utc=db_now + timedelta(hours=2),
+            timeslot_end_utc=db_now + timedelta(hours=4),
         )
         session.add(order)
         await session.commit()
@@ -625,6 +642,9 @@ class TestEscalationFullCycle:
         await session.refresh(master1)
         await session.refresh(master2)
         
+        # ✅ КРИТИЧНО: Используем время БД, а не Python время!
+        db_now = await _get_db_now(session)
+        
         # Создаём заказ
         order = m.orders(
             status=m.OrderStatus.SEARCHING,
@@ -632,8 +652,8 @@ class TestEscalationFullCycle:
             district_id=sample_district.id,
             category=m.OrderCategory.ELECTRICS,
             house="1",
-            timeslot_start_utc=datetime.now(UTC) + timedelta(hours=2),
-            timeslot_end_utc=datetime.now(UTC) + timedelta(hours=4),
+            timeslot_start_utc=db_now + timedelta(hours=2),
+            timeslot_end_utc=db_now + timedelta(hours=4),
         )
         session.add(order)
         await session.commit()
@@ -647,9 +667,9 @@ class TestEscalationFullCycle:
                 master_id=masters[round_num - 1].id,  # Реальные ID мастеров
                 round_number=round_num,
                 state=m.OfferState.EXPIRED,
-                sent_at=datetime.now(UTC) - timedelta(minutes=10),
-                expires_at=datetime.now(UTC) - timedelta(minutes=5),
-                responded_at=datetime.now(UTC) - timedelta(minutes=5),
+                sent_at=db_now - timedelta(minutes=10),
+                expires_at=db_now - timedelta(minutes=5),
+                responded_at=db_now - timedelta(minutes=5),
             )
             session.add(offer)
         await session.commit()

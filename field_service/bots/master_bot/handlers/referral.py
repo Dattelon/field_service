@@ -41,6 +41,18 @@ async def _render_referrals(
 ) -> None:
     master_id = master.id
     referral_code = (master.referral_code or '').strip()
+    
+    # P1-7: Подсчёт приглашённых мастеров
+    invited_total_stmt = select(func.count()).select_from(m.masters).where(
+        m.masters.referred_by_master_id == master_id
+    )
+    invited_total = int((await session.execute(invited_total_stmt)).scalar_one() or 0)
+    
+    invited_pending_stmt = select(func.count()).select_from(m.masters).where(
+        m.masters.referred_by_master_id == master_id,
+        m.masters.verified == False,
+    )
+    invited_pending = int((await session.execute(invited_pending_stmt)).scalar_one() or 0)
 
     totals_stmt = (
         select(
@@ -89,11 +101,23 @@ async def _render_referrals(
 
     total_amount = level_stats[1]['amount'] + level_stats[2]['amount']
     lines: list[str] = ["<b>🎁 Реферальная программа</b>"]
+    lines.append("")
     if referral_code:
-        lines.append(f"Ваш код: <code>{referral_code}</code>")
+        lines.append(f"📋 Ваш код: <code>{referral_code}</code>")
     else:
-        lines.append("Код появится после активации аккаунта.")
-    lines.append("Приглашайте мастеров: уровень 1 — 10%, уровень 2 — 5% от комиссии.")
+        lines.append("📋 Код появится после активации аккаунта.")
+    
+    # P1-7: Статистика приглашённых
+    lines.append("")
+    lines.append(f"👥 Приглашено мастеров: {invited_total}")
+    if invited_pending > 0:
+        lines.append(f"⏳ Ожидают одобрения: {invited_pending}")
+    
+    lines.append("")
+    lines.append("<b>💰 Условия:</b>")
+    lines.append("• Уровень 1 (прямые рефералы): 10% от их комиссий")
+    lines.append("• Уровень 2 (рефералы рефералов): 5% от их комиссий")
+    lines.append("• Начисления происходят автоматически при закрытии заказа")
     lines.append("")
     for level in (1, 2):
         bucket = level_stats[level]
@@ -121,7 +145,23 @@ async def _render_referrals(
         lines.append("")
         lines.append("Начислений пока не было.")
 
-    markup = inline_keyboard([[InlineKeyboardButton(text='⬅️ В главное меню', callback_data='m:menu')]])
+    # P1-7: Кнопка "Поделиться"
+    buttons: list[list[InlineKeyboardButton]] = []
+    if referral_code:
+        share_text = (
+            f"Присоединяйся к Field Service! "
+            f"Используй мой реферальный код: {referral_code}\n\n"
+            f"Получай заказы и зарабатывай вместе со мной!"
+        )
+        share_url = f"https://t.me/share/url?url={share_text}"
+        buttons.append([
+            InlineKeyboardButton(text='📤 Поделиться кодом', url=share_url)
+        ])
+    buttons.append([
+        InlineKeyboardButton(text='⬅️ В главное меню', callback_data='m:menu')
+    ])
+    
+    markup = inline_keyboard(buttons)
     await safe_edit_or_send(event, "\n".join(lines), markup)
 
 

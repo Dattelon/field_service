@@ -47,7 +47,23 @@ async def run(
     *,
     now_utc: datetime,
 ) -> Tuple[List[AwakenedOrder], List[DeferredNotice]]:
+    """
+    ✅ STEP 3.3: Оптимизация N+1 запроса для timezone.
+    Предзагружаем все timezone одним запросом вместо отдельного запроса для каждого города.
+    """
     now_utc = now_utc.astimezone(UTC)
+    
+    # ✅ Предзагружаем все города и их таймзоны одним запросом
+    if hasattr(m.cities, "timezone"):
+        city_tz_stmt = select(m.cities.id, m.cities.timezone)
+        city_tz_rows = await session.execute(city_tz_stmt)
+        city_timezones = {
+            int(city_id): time_service.resolve_timezone(str(tz)) if tz else time_service.resolve_timezone()
+            for city_id, tz in city_tz_rows
+        }
+    else:
+        city_timezones = {}
+    
     stmt = (
         select(
             m.orders.id,
@@ -66,14 +82,13 @@ async def run(
     workday_start, _ = await settings_service.get_working_window()
     awakened: List[AwakenedOrder] = []
     notices: List[DeferredNotice] = []
-    tz_cache: dict[int, ZoneInfo] = {}
 
     for order_id, city_id, start_utc, city_name in items:
-        tz = tz_cache.get(city_id)
+        # ✅ Используем предзагруженные timezone вместо запроса в БД
+        tz = city_timezones.get(city_id) if city_id is not None else None
         if tz is None:
-            tz = await _resolve_city_timezone(session, city_id)
-            if city_id is not None:
-                tz_cache[city_id] = tz
+            tz = time_service.resolve_timezone()
+        
         local_now = now_utc.astimezone(tz)
         if start_utc is not None:
             su = start_utc if getattr(start_utc, "tzinfo", None) is not None else start_utc.replace(tzinfo=UTC)

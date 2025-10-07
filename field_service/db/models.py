@@ -876,6 +876,73 @@ class order_autoclose_queue(Base):
     )
 
 
+class distribution_metrics(Base):
+    """Метрики процесса распределения заказов для аналитики и оптимизации."""
+    __tablename__ = 'distribution_metrics'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    master_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("masters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    
+    # Метрики назначения
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True
+    )
+    round_number: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    candidates_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    time_to_assign_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # Флаги процесса
+    preferred_master_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    was_escalated_to_logist: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    was_escalated_to_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    
+    # География и категория
+    city_id: Mapped[int] = mapped_column(
+        ForeignKey("cities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    district_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("districts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    category: Mapped[Optional[str]] = mapped_column(
+        Enum(OrderCategory, name="ordercategory"),
+        nullable=True
+    )
+    order_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    
+    # Дополнительные данные
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb")
+    )
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+    
+    __table_args__ = (
+        Index("ix_distribution_metrics__assigned_at_desc", "assigned_at", postgresql_using="btree"),
+        Index("ix_distribution_metrics__city_assigned", "city_id", "assigned_at"),
+        Index("ix_distribution_metrics__performance", "round_number", "time_to_assign_seconds"),
+    )
 
 
 

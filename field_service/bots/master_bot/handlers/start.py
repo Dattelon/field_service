@@ -32,6 +32,15 @@ async def handle_cancel(message: Message, state: FSMContext, master: m.masters) 
     await _render_start(message, master)
 
 
+@router.callback_query(F.data == "m:cancel")
+async def handle_cancel_callback(callback: CallbackQuery, state: FSMContext, master: m.masters) -> None:
+    """Обработчик для кнопки ❌ Отменить - возвращает в главное меню из любого FSM-состояния."""
+    await state.clear()
+    if callback.message:
+        await _render_start(callback.message, master)
+    await safe_answer_callback(callback, "✅ Действие отменено")
+
+
 @router.callback_query(F.data == "m:menu")
 async def handle_menu(callback: CallbackQuery, state: FSMContext, master: m.masters) -> None:
     await state.clear()

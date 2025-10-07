@@ -28,6 +28,8 @@ from ..texts import (
     CLOSE_AMOUNT_PROMPT,
     CLOSE_DOCUMENT_ERROR,
     CLOSE_DOCUMENT_RECEIVED,
+    CLOSE_GUARANTEE_SUCCESS,
+    CLOSE_NEXT_STEPS,
     CLOSE_PAYMENT_TEMPLATE,
     CLOSE_SUCCESS_TEMPLATE,
     NAV_BACK,
@@ -38,7 +40,6 @@ from ..texts import (
     NO_ACTIVE_ORDERS,
     ORDER_STATUS_TITLES,
     ALERT_ACCEPT_SUCCESS,
-    ALERT_ACCOUNT_BLOCKED,
     ALERT_ALREADY_TAKEN,
     ALERT_CLOSE_NOT_ALLOWED,
     ALERT_CLOSE_NOT_FOUND,
@@ -50,11 +51,13 @@ from ..texts import (
     ALERT_ORDER_NOT_FOUND,
     ALERT_WORKING_FAIL,
     ALERT_WORKING_SUCCESS,
+    alert_account_blocked,
     offer_card,
     offer_line,
     OFFER_NOT_FOUND,
 )
 from ..utils import escape_html, inline_keyboard, normalize_money, now_utc
+from ..keyboards import close_order_cancel_keyboard
 
 router = Router(name="master_orders")
 _log = logging.getLogger("master_bot.orders")
@@ -163,7 +166,10 @@ async def offer_accept(
         return
 
     if master.is_blocked:
-        await safe_answer_callback(callback, ALERT_ACCOUNT_BLOCKED, show_alert=True)
+        # P0-4: Показываем причину блокировки
+        block_reason = getattr(master, 'blocked_reason', None)
+        alert_text = alert_account_blocked(block_reason)
+        await safe_answer_callback(callback, alert_text, show_alert=True)
         return
 
     limit = await _get_active_limit(session, master)
@@ -172,30 +178,50 @@ async def offer_accept(
         await safe_answer_callback(callback, ALERT_LIMIT_REACHED, show_alert=True)
         return
 
+    # ✅ FIX 1.1: Атомарная блокировка заказа с FOR UPDATE SKIP LOCKED
+    # Предотвращает Race Condition при параллельных запросах от разных мастеров
     order_snapshot = await session.execute(
         select(m.orders.status, m.orders.assigned_master_id, m.orders.version)
         .where(m.orders.id == order_id)
+        .with_for_update(skip_locked=True)  # ✅ Атомарная блокировка
         .limit(1)
     )
     row = order_snapshot.first()
+    
+    # Если заказ уже заблокирован другим мастером - skip_locked вернёт None
     if row is None:
-        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
+        _log.info(
+            "offer_accept: order=%s either not found or already locked by another master",
+            order_id
+        )
+        await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
         await _render_offers(callback, session, master, page=page)
         return
 
     current_status: m.OrderStatus = row.status
     assigned_master_id = row.assigned_master_id
     current_version = row.version or 1
+
+    # ✅ FIX 1.2: Разрешаем принятие DEFERRED заказов
+    # Если заказ в DEFERRED, разрешаем принять и автоматически переводим в ASSIGNED
     allowed_statuses = {
         m.OrderStatus.SEARCHING,
         m.OrderStatus.GUARANTEE,
         m.OrderStatus.CREATED,
+        m.OrderStatus.DEFERRED,  # ✅ Теперь мастер может принять заказ в DEFERRED
     }
 
     if assigned_master_id is not None or current_status not in allowed_statuses:
         await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
         await _render_offers(callback, session, master, page=page)
         return
+    
+    # Логируем если принимаем DEFERRED заказ
+    if current_status == m.OrderStatus.DEFERRED:
+        _log.info(
+            "offer_accept: accepting DEFERRED order=%s by master=%s, will auto-resume",
+            order_id, master.id
+        )
 
     updated = await session.execute(
         update(m.orders)
@@ -245,6 +271,65 @@ async def offer_accept(
             reason="accepted_by_master",
         )
     )
+    
+    # ✅ STEP 4.1: Запись метрик распределения для аналитики
+    try:
+        # Получаем полную информацию о заказе для метрик
+        order_info = await session.execute(
+            select(
+                m.orders.city_id,
+                m.orders.district_id,
+                m.orders.category,
+                m.orders.type,
+                m.orders.preferred_master_id,
+                m.orders.dist_escalated_logist_at,
+                m.orders.dist_escalated_admin_at,
+                m.orders.created_at,
+            ).where(m.orders.id == order_id)
+        )
+        order_row = order_info.first()
+        
+        # Получаем раунд и количество кандидатов из offers
+        offer_stats = await session.execute(
+            select(
+                func.max(m.offers.round_number).label("max_round"),
+                func.count(func.distinct(m.offers.master_id)).label("total_candidates")
+            ).where(m.offers.order_id == order_id)
+        )
+        stats_row = offer_stats.first()
+        
+        if order_row and stats_row:
+            now_utc = datetime.utcnow() if hasattr(datetime, 'utcnow') else datetime.now()
+            time_to_assign = int((now_utc - order_row.created_at).total_seconds()) if order_row.created_at else None
+            
+            await session.execute(
+                insert(m.distribution_metrics).values(
+                    order_id=order_id,
+                    master_id=master.id,
+                    round_number=stats_row.max_round or 1,
+                    candidates_count=stats_row.total_candidates or 1,
+                    time_to_assign_seconds=time_to_assign,
+                    preferred_master_used=(master.id == order_row.preferred_master_id),
+                    was_escalated_to_logist=(order_row.dist_escalated_logist_at is not None),
+                    was_escalated_to_admin=(order_row.dist_escalated_admin_at is not None),
+                    city_id=order_row.city_id,
+                    district_id=order_row.district_id,
+                    category=order_row.category,
+                    order_type=order_row.type,
+                    metadata_json={
+                        "accepted_via": "master_bot",
+                        "from_status": current_status.value if hasattr(current_status, 'value') else str(current_status),
+                    }
+                )
+            )
+            _log.info(
+                "distribution_metrics recorded: order=%s master=%s round=%s candidates=%s time=%ss",
+                order_id, master.id, stats_row.max_round, stats_row.total_candidates, time_to_assign
+            )
+    except Exception as metrics_err:
+        # Метрики не должны ломать основной процесс
+        _log.error("Failed to record distribution_metrics for order=%s: %s", order_id, metrics_err)
+    
     await session.commit()
 
     await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=True)
@@ -345,7 +430,7 @@ async def active_set_working(
     await _render_active_order(callback, session, master, order_id=order_id)
 
 
-async def _send_close_prompt(bot: Bot | None, master: m.masters, callback: CallbackQuery, text: str) -> None:
+async def _send_close_prompt(bot: Bot | None, master: m.masters, callback: CallbackQuery, text: str, reply_markup: InlineKeyboardMarkup | None = None) -> None:
     """Send the next-step prompt reliably regardless of callback message availability.
 
     In some environments callback.message may be present but lack a bound bot instance,
@@ -355,15 +440,10 @@ async def _send_close_prompt(bot: Bot | None, master: m.masters, callback: Callb
     # First try the simplest path: answer directly to the source message if possible.
     try:
         if getattr(callback, "message", None) is not None:
-            sent_message = await callback.message.answer(text)
-            _log.info(
-                "active_close_start: prompt via message.answer chat=%s message_id=%s",
-                getattr(getattr(callback.message, "chat", None), "id", None),
-                getattr(sent_message, "message_id", None),
-            )
+            await callback.message.answer(text, reply_markup=reply_markup)
             return
-    except Exception as exc:
-        _log.debug("active_close_start: message.answer failed, will fallback: %s", exc, exc_info=True)
+    except Exception:
+        pass  # Fallback to explicit send
 
     # Resolve target chat id: prefer message.chat.id, then callback.from_user.id, then master.tg_user_id
     target_id = None
@@ -386,18 +466,12 @@ async def _send_close_prompt(bot: Bot | None, master: m.masters, callback: Callb
         bot_instance = getattr(callback.message, "bot", None)
     if bot_instance is None:
         _log.warning(
-            "active_close_start: no bot instance for callback id=%s",
+            "_send_close_prompt: no bot instance for callback id=%s",
             getattr(callback, "id", None),
         )
         return
 
-    _log.info(
-        "active_close_start: prompt sent target=%s from_user=%s master_id=%s",
-        target_id,
-        getattr(getattr(callback, "from_user", None), "id", None),
-        getattr(master, "id", None),
-    )
-    await safe_send_message(bot_instance, target_id, text)
+    await safe_send_message(bot_instance, target_id, text, reply_markup=reply_markup)
 
 
 @router.callback_query(F.data.regexp(r"^m:act:cls:(\d+)$"))
@@ -410,11 +484,22 @@ async def active_close_start(
 ) -> None:
     order_id = int(callback.data.split(":")[-1])
     _log.info("active_close_start: uid=%s order_id=%s", _callback_uid(callback), order_id)
-    order = await session.get(m.orders, order_id)
+    
+    try:
+        order = await session.get(m.orders, order_id)
+    except Exception as exc:
+        _log.exception("active_close_start: FAILED to load order: %s", exc)
+        await safe_answer_callback(callback, "Ошибка загрузки заказа", show_alert=True)
+        return
     if order is None or order.assigned_master_id != master.id:
+        _log.warning("active_close_start: order not found or not assigned to master")
         await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
         return
     if order.status != m.OrderStatus.WORKING:
+        _log.warning(
+            "active_close_start: order status not WORKING, current=%s, sending alert",
+            order.status,
+        )
         await safe_answer_callback(callback, ALERT_CLOSE_NOT_ALLOWED, show_alert=True)
         return
 
@@ -424,7 +509,7 @@ async def active_close_start(
     if bot_instance is None and callback.message is not None:
         bot_instance = callback.message.bot
 
-    if order.order_type == m.OrderType.GUARANTEE:
+    if order.type == m.OrderType.GUARANTEE:  # FIX: use .type not .order_type
         await state.update_data(close_order_amount=str(Decimal("0")))
         await state.set_state(CloseOrderStates.act)
         prompt_text = CLOSE_ACT_PROMPT
@@ -443,20 +528,20 @@ async def active_close_start(
         state_snapshot,
     )
 
-    await _send_close_prompt(bot_instance, master, callback, prompt_text)
-    await safe_answer_callback(callback, prompt_text)
+    await _send_close_prompt(bot_instance, master, callback, prompt_text, reply_markup=close_order_cancel_keyboard())
+    await safe_answer_callback(callback)
 
 
 @router.message(CloseOrderStates.amount)
 async def active_close_amount(message: Message, state: FSMContext) -> None:
     amount = normalize_money(message.text or "")
     if amount is None:
-        await message.answer(CLOSE_AMOUNT_ERROR)
+        await message.answer(CLOSE_AMOUNT_ERROR, reply_markup=close_order_cancel_keyboard())
         return
     _log.info("active_close_amount: uid=%s amount=%s", getattr(getattr(message, "from_user", None), "id", None), amount)
     await state.update_data(close_order_amount=str(amount))
     await state.set_state(CloseOrderStates.act)
-    await message.answer(CLOSE_ACT_PROMPT)
+    await message.answer(CLOSE_ACT_PROMPT, reply_markup=close_order_cancel_keyboard())
 
 
 @router.message(
@@ -505,7 +590,7 @@ async def active_close_act(
         )
     )
 
-    is_guarantee = order.order_type == m.OrderType.GUARANTEE
+    is_guarantee = order.type == m.OrderType.GUARANTEE  # FIX: use .type not .order_type
     order.updated_at = now_utc()
     order.version = (order.version or 0) + 1
 
@@ -520,6 +605,13 @@ async def active_close_act(
                 changed_by_master_id=master.id,
                 reason="guarantee_completed",
             )
+        )
+        # P1-01: Добавляем в очередь автозакрытия
+        from field_service.services.autoclose_scheduler import enqueue_order_for_autoclose
+        await enqueue_order_for_autoclose(
+            session,
+            order_id=order.id,
+            closed_at=now_utc()
         )
     else:
         order.total_sum = amount
@@ -538,17 +630,20 @@ async def active_close_act(
     await session.commit()
     await state.clear()
 
+    # Возврат в главное меню с информативным сообщением
+    from ..keyboards import main_menu_keyboard
+    
     if is_guarantee:
-        await message.answer(CLOSE_SUCCESS_TEMPLATE.format(order_id=order_id))
+        text = CLOSE_GUARANTEE_SUCCESS.format(order_id=order_id)
     else:
-        payment_text = CLOSE_PAYMENT_TEMPLATE.format(order_id=order_id, amount=amount)
-        await message.answer(f"{payment_text}\n{CLOSE_DOCUMENT_RECEIVED}")
-    await _render_active_order(message, session, master, order_id=order_id)
+        text = CLOSE_NEXT_STEPS.format(order_id=order_id, amount=amount)
+    
+    await message.answer(text, reply_markup=main_menu_keyboard(master))
 
 
 @router.message(CloseOrderStates.act)
 async def active_close_act_invalid(message: Message) -> None:
-    await message.answer(CLOSE_DOCUMENT_ERROR)
+    await message.answer(CLOSE_DOCUMENT_ERROR, reply_markup=close_order_cancel_keyboard())
 
 
 async def _render_offers(
@@ -805,6 +900,7 @@ async def _load_offers(session: AsyncSession, master_id: int) -> list[SimpleName
         .where(
             m.offers.master_id == master_id,
             m.offers.state.in_((m.OfferState.SENT, m.OfferState.VIEWED)),
+            m.orders.status != m.OrderStatus.DEFERRED,  # ✅ Скрываем DEFERRED от мастеров
         )
         .order_by(m.offers.sent_at.desc(), m.offers.order_id.desc())
     )

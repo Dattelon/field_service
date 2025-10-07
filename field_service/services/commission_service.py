@@ -212,6 +212,7 @@ async def apply_overdue_commissions(
             & (m.commissions.blocked_applied.is_(False))
         )
         .order_by(m.commissions.id.asc())
+        .with_for_update()  # P1: Блокировка для предотвращения race condition
     )
     rows = result.all()
     if not rows:

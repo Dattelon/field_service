@@ -1,0 +1,76 @@
+﻿from __future__ import annotations
+
+import html
+from datetime import datetime, date
+from typing import Iterable, Optional, Sequence
+import inspect
+
+from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.filters import StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from field_service.db.models import OrderStatus
+from field_service.services.guarantee_service import GuaranteeError
+
+# P2.2: Typed state management imports
+from .queue_state import (
+    QueueFilters,
+    load_queue_filters,
+    save_queue_filters,
+    load_filters_message,
+    save_filters_message,
+    load_cancel_state,
+    save_cancel_state,
+    clear_cancel_state as typed_clear_cancel_state,
+)
+
+from .access import visible_city_ids_for
+from .dto import (
+    CityRef,
+    MasterBrief,
+    OrderAttachment,
+    OrderCard,
+    OrderCategory,
+    OrderDetail,
+    OrderListItem,
+    OrderStatusHistoryItem,
+    OrderType,
+    StaffRole,
+    StaffUser,
+)
+from .filters import StaffRoleFilter
+from .keyboards import (
+    assign_menu_keyboard,
+    manual_candidates_keyboard,
+    manual_confirm_keyboard,
+    main_menu,
+    order_card_keyboard,
+    queue_cancel_keyboard,
+    queue_list_keyboard,
+)
+from .states import QueueActionFSM, QueueFiltersFSM
+from .texts import master_brief_line
+from .utils import get_service
+from .normalizers import normalize_category, normalize_status
+
+queue_router = Router(name="admin_queue")
+
+
+async def _safe_answer(cq: CallbackQuery, *args, **kwargs) -> None:
+    try:
+        await cq.answer(*args, **kwargs)
+    except TelegramBadRequest:
+        pass
+
+
+_ALLOWED_ROLES = {StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}
+
+QUEUE_PAGE_SIZE = 10
+MANUAL_PAGE_SIZE = 5
+ORDER_CARD_HISTORY_LIMIT = 5
+_MAX_CITIES = 120
+CANCEL_REASON_MIN = 3
+CANCEL_REASON_MAX = 200

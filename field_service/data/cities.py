@@ -8,7 +8,7 @@ from typing import List
 # Ordered canonical list, frozen by product decision (78 entries)
 ALLOWED_CITIES: tuple[str, ...] = (
     "Москва",
-    "Санкт Петербург",
+    "Санкт-Петербург",
     "Новосибирск",
     "Екатеринбург",
     "Казань",
@@ -89,7 +89,7 @@ ALLOWED_CITIES: tuple[str, ...] = (
 
 CITY_TIMEZONES: dict[str, str] = {
     "Москва": "Europe/Moscow",
-    "Санкт Петербург": "Europe/Moscow",
+    "Санкт-Петербург": "Europe/Moscow",
     "Новосибирск": "Asia/Novosibirsk",
     "Екатеринбург": "Asia/Yekaterinburg",
     "Казань": "Europe/Moscow",
@@ -169,9 +169,9 @@ CITY_TIMEZONES: dict[str, str] = {
 }
 
 _ALIAS_RAW = {
-    "спб": "Санкт Петербург",
-    "санкт-петербург": "Санкт Петербург",
-    "питер": "Санкт Петербург",
+    "спб": "Санкт-Петербург",
+    "санкт-петербург": "Санкт-Петербург",
+    "питер": "Санкт-Петербург",
     "екб": "Екатеринбург",
     "ростов-на-дону": "Ростов на Дону",
     "балашиха": "Балашиха (МО)",
@@ -219,19 +219,23 @@ def resolve_city_name(value: str) -> str | None:
 
 
 def match_cities(query: str | None) -> List[str]:
+    """Match cities by query and return them in alphabetical order."""
     if query is None or not query.strip():
-        return list(ALLOWED_CITIES)
+        # Return all cities sorted alphabetically
+        return sorted(list(ALLOWED_CITIES))
     resolved = resolve_city_name(query)
     if resolved:
         return [resolved]
     normalized_query = _normalize(query)
     if not normalized_query:
-        return list(ALLOWED_CITIES)
+        # Return all cities sorted alphabetically
+        return sorted(list(ALLOWED_CITIES))
     matches = [
         city for city, normalized in _normalized_names.items()
         if normalized_query in normalized
     ]
-    return matches
+    # Sort search results alphabetically
+    return sorted(matches)
 
 
 def get_timezone(city_name: str) -> str | None:

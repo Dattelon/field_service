@@ -10,6 +10,11 @@ from .texts import MAIN_MENU_BUTTONS
 from .utils import inline_keyboard
 
 
+def cancel_button(callback_data: str = "m:cancel") -> list[InlineKeyboardButton]:
+    """Создаёт кнопку отмены для любого FSM-состояния."""
+    return [InlineKeyboardButton(text="❌ Отменить", callback_data=callback_data)]
+
+
 def start_onboarding_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
         [
@@ -28,6 +33,7 @@ def pdn_keyboard() -> InlineKeyboardMarkup:
         [
             [InlineKeyboardButton(text="Согласен", callback_data="m:onboarding:pdn_accept")],
             [InlineKeyboardButton(text="Не согласен", callback_data="m:onboarding:pdn_decline")],
+            cancel_button(),
         ]
     )
 
@@ -37,6 +43,7 @@ def vehicle_keyboard() -> InlineKeyboardMarkup:
         [
             [InlineKeyboardButton(text="Есть авто", callback_data="m:onboarding:vehicle_yes")],
             [InlineKeyboardButton(text="Нет авто", callback_data="m:onboarding:vehicle_no")],
+            cancel_button(),
         ]
     )
 
@@ -70,6 +77,7 @@ def districts_keyboard(
     controls.append(InlineKeyboardButton(text="Готово", callback_data="m:onboarding:districts_done"))
     if controls:
         rows.append(controls)
+    rows.append(cancel_button())
     return inline_keyboard(rows)
 
 
@@ -81,6 +89,7 @@ def skills_keyboard(skills: Sequence[tuple[int, str, bool]]) -> InlineKeyboardMa
             [InlineKeyboardButton(text=label, callback_data=f"m:onboarding:skill:{skill_id}")]
         )
     rows.append([InlineKeyboardButton(text="Готово", callback_data="m:onboarding:skills_done")])
+    rows.append(cancel_button())
     return inline_keyboard(rows)
 
 
@@ -95,6 +104,7 @@ def payout_methods_keyboard(methods: Iterable[m.PayoutMethod]) -> InlineKeyboard
                 )
             ]
         )
+    rows.append(cancel_button())
     return inline_keyboard(rows)
 
 
@@ -103,6 +113,7 @@ def home_geo_keyboard() -> InlineKeyboardMarkup:
         [
         [InlineKeyboardButton(text="Отправить геопозицию", callback_data="m:onboarding:home_geo_share")],
         [InlineKeyboardButton(text="Пропустить", callback_data="m:onboarding:home_geo_skip")],
+        cancel_button(),
         ]
     )
 
@@ -214,3 +225,8 @@ def _method_title(method: m.PayoutMethod) -> str:
         m.PayoutMethod.BANK_ACCOUNT: "Банковский счёт",
     }
     return mapping.get(method, method.value.title())
+
+
+def close_order_cancel_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура с кнопкой отмены для процесса закрытия заказа."""
+    return inline_keyboard([cancel_button()])

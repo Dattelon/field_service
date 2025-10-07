@@ -18,6 +18,7 @@ from ..finance import format_pay_snapshot
 from ..states import FinanceUploadStates
 from field_service.bots.common import safe_answer_callback, safe_edit_or_send
 from ..utils import inline_keyboard, now_utc
+from ..keyboards import close_order_cancel_keyboard
 
 router = Router(name="master_finance")
 
@@ -123,7 +124,7 @@ async def finances_request_check(
 
     await state.update_data(fin_upload={"commission_id": commission_id})
     await state.set_state(FinanceUploadStates.check)
-    await callback.message.answer("Загрузите чек (фото или PDF одним файлом).")
+    await callback.message.answer("Загрузите чек (фото или PDF одним файлом).", reply_markup=close_order_cancel_keyboard())
     await safe_answer_callback(callback)
 
 
@@ -196,7 +197,7 @@ async def finances_upload_check(
 
 @router.message(FinanceUploadStates.check)
 async def finances_upload_invalid(message: Message) -> None:
-    await message.answer("Пожалуйста, отправьте фото или PDF-файл чека.")
+    await message.answer("Пожалуйста, отправьте фото или PDF-файл чека.", reply_markup=close_order_cancel_keyboard())
 
 
 async def _render_commission_list(
@@ -287,32 +288,65 @@ async def _render_commission_card(
 
     lines = [
         f"<b>💳 Комиссия #{commission.id}</b>",
-        f"Статус: {status_label}",
-        f"Сумма к оплате: {Decimal(commission.amount):.2f} ₽",
+        "",
+        f"📊 Статус: {status_label}",
+        f"💰 Сумма к оплате: {Decimal(commission.amount):.2f} ₽",
     ]
+    
+    # P1-8: Добавлена детальная информация о заказе
     if order:
+        lines.append("")
+        lines.append("<b>📦 Информация о заказе:</b>")
         order_label = ORDER_TYPE_LABELS.get(order.order_type, order.order_type.value)
-        lines.append(f"Заказ #{order.id} ({order_label})")
+        lines.append(f"• Заказ #{order.id} ({order_label})")
+        
+        # Адрес
+        address_parts = []
+        if row.city_name:
+            address_parts.append(row.city_name)
+        if row.district_name:
+            address_parts.append(row.district_name)
+        if row.street_name:
+            address_parts.append(row.street_name)
+        if order.house:
+            address_parts.append(str(order.house))
+        if address_parts:
+            lines.append(f"• Адрес: {', '.join(address_parts)}")
+        
+        # Категория
+        if order.category:
+            category_value = order.category.value if hasattr(order.category, 'value') else str(order.category)
+            lines.append(f"• Категория: {category_value}")
+        
         if order.total_sum is not None:
-            lines.append(f"Сумма заказа: {Decimal(order.total_sum):.2f} ₽")
+            lines.append(f"• Сумма заказа: {Decimal(order.total_sum):.2f} ₽")
+    
+    lines.append("")
 
+    # P1-8: Детали комиссии
+    lines.append("<b>📊 Детали комиссии:</b>")
+    
     rate = commission.rate or commission.percent
     if rate is not None:
         rate_decimal = Decimal(str(rate))
         rate_percent = rate_decimal * 100 if rate_decimal <= 1 else rate_decimal
-        lines.append(f"Ставка: {rate_percent:.2f}%")
+        lines.append(f"• Ставка: {rate_percent:.2f}%")
+    
+    if commission.created_at:
+        lines.append(f"• Создана: {commission.created_at.strftime('%d.%m.%Y %H:%M')}")
 
     if commission.deadline_at:
-        lines.append(f"Оплатить до: {commission.deadline_at.strftime('%d.%m %H:%M')}")
+        lines.append(f"• Оплатить до: {commission.deadline_at.strftime('%d.%m %H:%M')}")
     if commission.paid_reported_at:
-        lines.append(f"Отправлено: {commission.paid_reported_at.strftime('%d.%m %H:%M')}")
+        lines.append(f"• Отправлено: {commission.paid_reported_at.strftime('%d.%m %H:%M')}")
     if commission.paid_approved_at:
-        lines.append(f"Подтверждено: {commission.paid_approved_at.strftime('%d.%m %H:%M')}")
+        lines.append(f"• Подтверждено: {commission.paid_approved_at.strftime('%d.%m %H:%M')}")
     if commission.paid_amount is not None:
-        lines.append(f"Оплачено: {Decimal(commission.paid_amount):.2f} ₽")
-    lines.append(
-        "Чеки загружены." if commission.has_checks else "Чеки ещё не загружены."
-    )
+        lines.append(f"• Оплачено: {Decimal(commission.paid_amount):.2f} ₽")
+    
+    lines.append("")
+    check_status = "✅ Чеки загружены" if commission.has_checks else "⚠️ Чеки ещё не загружены"
+    lines.append(check_status)
 
     buttons: list[list[InlineKeyboardButton]] = []
     buttons.append([
@@ -362,9 +396,19 @@ async def _load_commission_detail(
     master_id: int,
     commission_id: int,
 ) -> SimpleNamespace | None:
+    # P1-8: Добавлено информацию о городе, районе, улице
     stmt = (
-        select(m.commissions, m.orders)
+        select(
+            m.commissions,
+            m.orders,
+            m.cities.name.label('city_name'),
+            m.districts.name.label('district_name'),
+            m.streets.name.label('street_name'),
+        )
         .join(m.orders, m.orders.id == m.commissions.order_id, isouter=True)
+        .join(m.cities, m.cities.id == m.orders.city_id, isouter=True)
+        .join(m.districts, m.districts.id == m.orders.district_id, isouter=True)
+        .join(m.streets, m.streets.id == m.orders.street_id, isouter=True)
         .where(
             and_(
                 m.commissions.master_id == master_id,
@@ -376,7 +420,13 @@ async def _load_commission_detail(
     row = (await session.execute(stmt)).first()
     if not row:
         return None
-    return SimpleNamespace(commission=row.commissions, order=row.orders)
+    return SimpleNamespace(
+        commission=row.commissions,
+        order=row.orders,
+        city_name=row.city_name,
+        district_name=row.district_name,
+        street_name=row.street_name,
+    )
 
 
 async def _get_commission(

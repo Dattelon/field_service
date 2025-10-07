@@ -1,9 +1,0 @@
-﻿diff --git a/field_service/services/export_service.py b/field_service/services/export_service.py
---- a/field_service/services/export_service.py
-+++ b/field_service/services/export_service.py
-@@
--from datetime import date, datetime, time, timezone
-+from datetime import datetime, timezone
-@@
--from field_service.services.settings_service import get_timezone
-*** End Patch
