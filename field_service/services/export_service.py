@@ -4,7 +4,7 @@ import csv
 import io
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, AsyncIterator, Iterable, Literal, Optional, Sequence
 
@@ -109,7 +109,19 @@ REF_REWARDS_COLUMNS: Sequence[ColumnSpec] = (
 )
 
 
-def _ensure_utc(value: datetime) -> datetime:
+def _ensure_utc(value: datetime | date, *, end_of_day: bool = False) -> datetime:
+    """Convert date or datetime to UTC-aware datetime.
+    
+    Args:
+        value: Date or datetime to convert
+        end_of_day: If True and value is date, set time to 23:59:59
+    """
+    if isinstance(value, date) and not isinstance(value, datetime):
+        # Convert date to datetime
+        if end_of_day:
+            value = datetime.combine(value, datetime.max.time().replace(microsecond=0), tzinfo=UTC)
+        else:
+            value = datetime.combine(value, datetime.min.time(), tzinfo=UTC)
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
@@ -225,9 +237,9 @@ async def _session_scope(session: AsyncSession | None) -> AsyncIterator[AsyncSes
         yield new_session
 
 
-async def export_orders(*, date_from: datetime, date_to: datetime, city_ids: Optional[Iterable[int]] = None, session: AsyncSession | None = None) -> ExportBundle:
+async def export_orders(*, date_from: datetime | date, date_to: datetime | date, city_ids: Optional[Iterable[int]] = None, session: AsyncSession | None = None) -> ExportBundle:
     start_utc = _ensure_utc(date_from)
-    end_utc = _ensure_utc(date_to)
+    end_utc = _ensure_utc(date_to, end_of_day=True)
     assigned_master = aliased(m.masters, name="assigned_master")
     city_filter = list(city_ids) if city_ids else None
     async with _session_scope(session) as db:
@@ -332,9 +344,9 @@ async def export_orders(*, date_from: datetime, date_to: datetime, city_ids: Opt
     return _make_bundle("orders", ORDERS_COLUMNS, rows, sheet_name="orders")
 
 
-async def export_commissions(*, date_from: datetime, date_to: datetime, city_ids: Optional[Iterable[int]] = None, session: AsyncSession | None = None) -> ExportBundle:
+async def export_commissions(*, date_from: datetime | date, date_to: datetime | date, city_ids: Optional[Iterable[int]] = None, session: AsyncSession | None = None) -> ExportBundle:
     start_utc = _ensure_utc(date_from)
-    end_utc = _ensure_utc(date_to)
+    end_utc = _ensure_utc(date_to, end_of_day=True)
     city_filter = list(city_ids) if city_ids else None
     master_alias = aliased(m.masters, name="commission_master")
     checks_subquery = (
@@ -410,9 +422,9 @@ async def export_commissions(*, date_from: datetime, date_to: datetime, city_ids
     return _make_bundle("commissions", COMMISSIONS_COLUMNS, rows, sheet_name="commissions")
 
 
-async def export_referral_rewards(*, date_from: datetime, date_to: datetime, city_ids: Optional[Iterable[int]] = None, session: AsyncSession | None = None) -> ExportBundle:
+async def export_referral_rewards(*, date_from: datetime | date, date_to: datetime | date, city_ids: Optional[Iterable[int]] = None, session: AsyncSession | None = None) -> ExportBundle:
     start_utc = _ensure_utc(date_from)
-    end_utc = _ensure_utc(date_to)
+    end_utc = _ensure_utc(date_to, end_of_day=True)
     city_filter = list(city_ids) if city_ids else None
 
     async with _session_scope(session) as db:

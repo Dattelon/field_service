@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import math
 from typing import Sequence
@@ -69,7 +69,7 @@ async def onboarding_pdn_accept(callback: CallbackQuery, state: FSMContext) -> N
     await push_step_message(
         callback,
         state,
-        "  (, 230 ).",
+        "Введите вашу фамилию (от 2 до 230 символов).",
     )
     await callback.answer()
 
@@ -94,7 +94,7 @@ async def onboarding_last_name(message: Message, state: FSMContext) -> None:
     await push_step_message(
         message,
         state,
-        "  (, 230 ).",
+        "Введите ваше имя (от 2 до 230 символов).",
     )
 
 
@@ -110,7 +110,7 @@ async def onboarding_first_name(message: Message, state: FSMContext) -> None:
     await push_step_message(
         message,
         state,
-        "    -,   .",
+        "Введите ваше отчество или прочерк-минус, если его нет.",
     )
 
 
@@ -130,7 +130,7 @@ async def onboarding_middle_name(message: Message, state: FSMContext) -> None:
     await push_step_message(
         message,
         state,
-        "    +7XXXXXXXXXX  8XXXXXXXXXX.",
+        "Введите ваш телефон формата +7XXXXXXXXXX или 8XXXXXXXXXX.",
     )
 
 
@@ -144,7 +144,7 @@ async def onboarding_phone(message: Message, state: FSMContext) -> None:
     await state.update_data(phone=phone)
     await state.set_state(OnboardingStates.city)
     await message.answer(
-        " :        ."
+        "Напишите название города: можно начать вводить и увидеть подсказки."
     )
 
 
@@ -156,7 +156,7 @@ async def onboarding_city_lookup(
 ) -> None:
     query = (message.text or "").strip()
     if not query:
-        await message.answer("  .")
+        await message.answer("Введите название города.")
         return
     pattern = f"%{query.lower()}%"
     stmt = (
@@ -168,7 +168,7 @@ async def onboarding_city_lookup(
     )
     cities = (await session.execute(stmt)).scalars().all()
     if not cities:
-        await message.answer("  .   .")
+        await message.answer("Город не найден. Попробуйте ещё раз.")
         return
     options = [
         [InlineKeyboardButton(text=city.name, callback_data=f"m:onboarding:city:{city.id}")]
@@ -177,7 +177,7 @@ async def onboarding_city_lookup(
     await state.update_data(
         city_options=[{"id": city.id, "name": city.name} for city in cities]
     )
-    await push_step_message(message, state, "   :", inline_keyboard(options))
+    await push_step_message(message, state, "Выберите ваш город:", inline_keyboard(options))
 
 
 @router.callback_query(OnboardingStates.city, F.data.startswith("m:onboarding:city:"))
@@ -190,7 +190,7 @@ async def onboarding_city_pick(
     data = await state.get_data()
     option_lookup = {item["id"]: item["name"] for item in data.get("city_options", [])}
     if city_id not in option_lookup:
-        await callback.answer("    .", show_alert=True)
+        await callback.answer("Город устарел. Выберите снова.", show_alert=True)
         return
     city_name = option_lookup[city_id]
     await state.update_data(city_id=city_id, city_name=city_name, district_ids=[])
@@ -201,7 +201,7 @@ async def onboarding_city_pick(
         await push_step_message(
             callback,
             state,
-            "  .",
+            "Есть ли у вас автомобиль?",
             vehicle_keyboard(),
         )
         await callback.answer()
@@ -213,7 +213,7 @@ async def onboarding_city_pick(
     await push_step_message(
         callback,
         state,
-        "  ( ).",
+        "Выберите районы работы (можно несколько).",
         keyboard,
     )
     await callback.answer()
@@ -248,7 +248,7 @@ async def onboarding_district_toggle(callback: CallbackQuery, state: FSMContext)
     districts = data.get("districts", [])
     known_ids = {item["id"] for item in districts}
     if district_id not in known_ids:
-        await callback.answer("  .", show_alert=True)
+        await callback.answer("Район не найден.", show_alert=True)
         return
     selected = set(data.get("district_ids", []))
     if district_id in selected:
@@ -270,13 +270,13 @@ async def onboarding_districts_done(callback: CallbackQuery, state: FSMContext) 
     data = await state.get_data()
     selected = data.get("district_ids", [])
     if not selected:
-        await callback.answer("    .", show_alert=True)
+        await callback.answer("Выберите хотя бы один район.", show_alert=True)
         return
     await state.set_state(OnboardingStates.vehicle)
     await push_step_message(
         callback,
         state,
-        "  .",
+        "Есть ли у вас автомобиль?",
         vehicle_keyboard(),
     )
     await callback.answer()
@@ -315,7 +315,7 @@ async def _start_skills(
     await state.update_data(skills=skills_data, skill_ids=[])
     keyboard = _build_skills_keyboard(skills_data, set())
     await state.set_state(OnboardingStates.skills)
-    await push_step_message(event, state, "  ( ).", keyboard)
+    await push_step_message(event, state, "Выберите ваши навыки (можно несколько).", keyboard)
 
 
 @router.callback_query(OnboardingStates.skills, F.data.startswith("m:onboarding:skill:"))
@@ -325,7 +325,7 @@ async def onboarding_skill_toggle(callback: CallbackQuery, state: FSMContext) ->
     skills = data.get("skills", [])
     known_ids = {item["id"] for item in skills}
     if skill_id not in known_ids:
-        await callback.answer("  .", show_alert=True)
+        await callback.answer("Навык не найден.", show_alert=True)
         return
     selected = set(data.get("skill_ids", []))
     if skill_id in selected:
@@ -345,13 +345,13 @@ async def onboarding_skill_toggle(callback: CallbackQuery, state: FSMContext) ->
 async def onboarding_skills_done(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     if not data.get("skill_ids"):
-        await callback.answer("    .", show_alert=True)
+        await callback.answer("Выберите хотя бы один навык.", show_alert=True)
         return
     await state.set_state(OnboardingStates.passport)
     await push_step_message(
         callback,
         state,
-        "   PDF  ( ).",
+        "Загрузите фото или PDF паспорта (разворот с фото).",
     )
     await callback.answer()
 
@@ -366,12 +366,12 @@ async def onboarding_passport_file(message: Message, state: FSMContext) -> None:
         file_type = "DOCUMENT"
     await state.update_data(passport_file={"file_id": file_id, "file_type": file_type})
     await state.set_state(OnboardingStates.selfie)
-    await push_step_message(message, state, "   ( ).")
+    await push_step_message(message, state, "Теперь загрузите селфи с паспортом (видно лицо).")
 
 
 @router.message(OnboardingStates.passport)
 async def onboarding_passport_invalid(message: Message) -> None:
-    await message.answer("    PDF-.")
+    await message.answer("Нужно фото или PDF-документ.")
 
 
 @router.message(OnboardingStates.selfie, F.content_type == ContentType.PHOTO)
@@ -382,14 +382,14 @@ async def onboarding_selfie_file(message: Message, state: FSMContext) -> None:
     await push_step_message(
         message,
         state,
-        "   .",
+        "Выберите способ выплаты.",
         payout_methods_keyboard(AVAILABLE_PAYOUT_METHODS),
     )
 
 
 @router.message(OnboardingStates.selfie)
 async def onboarding_selfie_invalid(message: Message) -> None:
-    await message.answer("  ().")
+    await message.answer("Нужна фотография (селфи).")
 
 
 @router.callback_query(OnboardingStates.payout_method, F.data.startswith("m:onboarding:payout:"))
@@ -398,7 +398,7 @@ async def onboarding_payout_method(callback: CallbackQuery, state: FSMContext) -
     try:
         method = m.PayoutMethod[code]
     except KeyError:
-        await callback.answer("  .", show_alert=True)
+        await callback.answer("Способ не найден.", show_alert=True)
         return
     await state.update_data(payout_method=method.value)
     await state.set_state(OnboardingStates.payout_requisites)
@@ -411,7 +411,7 @@ async def onboarding_payout_requisites(message: Message, state: FSMContext) -> N
     data = await state.get_data()
     method_value = data.get("payout_method")
     if not method_value:
-        await message.answer("     .")
+        await message.answer("Сначала выберите способ выплаты.")
         return
     try:
         payout = onboarding_service.validate_payout(method_value, message.text or "")
@@ -423,7 +423,7 @@ async def onboarding_payout_requisites(message: Message, state: FSMContext) -> N
     await push_step_message(
         message,
         state,
-        "   ()    .",
+        "Укажите домашнюю геолокацию (необязательно) или пропустите этот шаг.",
         home_geo_keyboard(),
     )
 
@@ -432,8 +432,8 @@ async def onboarding_payout_requisites(message: Message, state: FSMContext) -> N
 async def onboarding_home_geo_share(callback: CallbackQuery) -> None:
     await callback.answer()
     await callback.message.answer(
-        "     Telegram    "
-        "  55.75580, 37.61730."
+        "Нажмите кнопку прикрепления в Telegram и выберите геолокацию, "
+        "либо отправьте координаты текстом: 55.75580, 37.61730."
     )
 
 
@@ -455,14 +455,14 @@ async def onboarding_home_geo_location(message: Message, state: FSMContext) -> N
 async def onboarding_home_geo_text(message: Message, state: FSMContext) -> None:
     text_value = (message.text or "").strip()
     if "," not in text_value:
-        await message.answer("    55.75580, 37.61730.")
+        await message.answer("Формат координат: широта, долгота. Например: 55.75580, 37.61730.")
         return
     lat_part, lon_part = [part.strip() for part in text_value.split(",", 1)]
     try:
         latitude = float(lat_part)
         longitude = float(lon_part)
     except ValueError:
-        await message.answer("   .  .")
+        await message.answer("Неверный формат. Попробуйте снова.")
         return
     await state.update_data(home_lat=latitude, home_lon=longitude)
     await _show_summary(message, state)
@@ -470,7 +470,7 @@ async def onboarding_home_geo_text(message: Message, state: FSMContext) -> None:
 
 @router.message(OnboardingStates.home_geo)
 async def onboarding_home_geo_other(message: Message) -> None:
-    await message.answer("    .")
+    await message.answer("Отправьте геолокацию или координаты.")
 
 
 async def _show_summary(event: Message | CallbackQuery, state: FSMContext) -> None:
@@ -492,21 +492,21 @@ async def _show_summary(event: Message | CallbackQuery, state: FSMContext) -> No
     payout_payload = data.get("payout_payload", {})
     lines = [
         ONBOARDING_SUMMARY_HEADER,
-        f": {full_name or ''}",
-        f": {data.get('phone', '')}",
-        f": {data.get('city_name', '')}",
-        f": {', '.join(district_names) if district_names else ''}",
-        f": {'' if data.get('has_vehicle') else ''}",
-        f": {', '.join(skill_names) if skill_names else ''}",
-        f" : {_format_payout_summary(payout_method, payout_payload)}",
+        f"ФИО: {full_name or '—'}",
+        f"Телефон: {data.get('phone', '')}",
+        f"Город: {data.get('city_name', '')}",
+        f"Районы: {', '.join(district_names) if district_names else '—'}",
+        f"Автомобиль: {'Да' if data.get('has_vehicle') else 'Нет'}",
+        f"Навыки: {', '.join(skill_names) if skill_names else '—'}",
+        f"Способ выплаты: {_format_payout_summary(payout_method, payout_payload)}",
     ]
     if data.get("home_lat") is not None and data.get("home_lon") is not None:
-        lines.append(f" -: {data['home_lat']:.5f}, {data['home_lon']:.5f}")
+        lines.append(f"Дом-база: {data['home_lat']:.5f}, {data['home_lon']:.5f}")
     else:
-        lines.append(" -: ")
+        lines.append("Дом-база: не указана")
 
     keyboard = inline_keyboard(
-        [[InlineKeyboardButton(text="  ", callback_data="m:onboarding:confirm")]]
+        [[InlineKeyboardButton(text="✅ Отправить", callback_data="m:onboarding:confirm")]]
     )
     await state.set_state(OnboardingStates.confirm)
     await push_step_message(event, state, "\n".join(lines), keyboard)
@@ -533,7 +533,7 @@ async def onboarding_confirm(
         "payout_payload",
     ]
     if any(key not in data or not data[key] for key in required_keys):
-        await callback.answer("   .   .", show_alert=True)
+        await callback.answer("Не все данные заполнены. Начните анкету заново.", show_alert=True)
         return
 
     full_name = " ".join(
@@ -598,6 +598,7 @@ async def onboarding_confirm(
                 entity_id=master.id,
                 file_type=m.AttachmentFileType[passport_info["file_type"]],
                 file_id=passport_info["file_id"],
+                document_type="passport",
                 uploaded_by_master_id=master.id,
             )
         )
@@ -608,6 +609,7 @@ async def onboarding_confirm(
                 entity_id=master.id,
                 file_type=m.AttachmentFileType[selfie_info["file_type"]],
                 file_id=selfie_info["file_id"],
+                document_type="selfie",
                 uploaded_by_master_id=master.id,
             )
         )
@@ -632,7 +634,7 @@ async def onboarding_confirm(
     await clear_step_messages(callback.message.bot, state, callback.message.chat.id)
     await state.clear()
     await callback.message.answer(ONBOARDING_SENT)
-    await callback.answer("")
+    await callback.answer("Анкета отправлена на модерацию.")
 
 
 async def _load_districts(session: AsyncSession, city_id: int) -> list[dict[str, int | str]]:
@@ -670,14 +672,14 @@ def _build_skills_keyboard(
 
 def _payout_prompt(method: m.PayoutMethod) -> str:
     if method is m.PayoutMethod.CARD:
-        return "   (1619   )."
+        return "Введите номер карты (1619 или 16 цифр без пробелов)."
     if method is m.PayoutMethod.SBP:
-        return " ,    ( +7XXXXXXXXXX  8XXXXXXXXXX)."
+        return "Введите телефон, привязанный к СБП (формат +7XXXXXXXXXX или 8XXXXXXXXXX)."
     if method is m.PayoutMethod.YOOMONEY:
-        return "   (email    11 )."
+        return "Введите номер счёта (email или кошелёк из 11 цифр)."
     if method is m.PayoutMethod.BANK_ACCOUNT:
-        return "  (10/12),  (9)    (20)  ."
-    return "   ."
+        return "Введите номер счета (10/12), БИК (9) и корреспондентский счёт (20) через пробел."
+    return "Введите платёжные реквизиты."
 
 
 def _format_payout_summary(method_value: str | None, payload: dict | None) -> str:
@@ -692,17 +694,18 @@ def _format_payout_summary(method_value: str | None, payload: dict | None) -> st
         number = payload.get('card_number', '')
         digits = ''.join(ch for ch in number if ch.isdigit())
         last4 = digits[-4:] if digits else ''
-        return f" {last4}" if last4 else ""
+        return f"Карта *{last4}" if last4 else "Карта"
     if method is m.PayoutMethod.SBP:
         phone = payload.get('sbp_phone', '')
-        return f" {phone}".strip() or ""
+        return f"СБП {phone}".strip() or "СБП"
     if method is m.PayoutMethod.YOOMONEY:
         account = payload.get('account', '')
-        return f"Money {account}".strip() or "Money"
+        return f"ЮMoney {account}".strip() or "ЮMoney"
     if method is m.PayoutMethod.BANK_ACCOUNT:
         account = payload.get('account_number', '')
         last4 = account[-4:] if account else ''
-        return f"  {last4}" if last4 else " "
+        return f"Банк счёт *{last4}" if last4 else "Банк счёт"
     return method.value
+
 
 

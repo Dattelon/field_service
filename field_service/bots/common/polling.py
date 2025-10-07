@@ -16,6 +16,8 @@ async def poll_with_single_instance_guard(
     """Run dispatcher polling handling 409 conflicts gracefully."""
 
     try:
+        # Keep signature minimal to be compatible with test doubles
+        # and different dispatcher implementations.
         await dispatcher.start_polling(bot)
     except ClientResponseError as error:
         if error.status == 409:

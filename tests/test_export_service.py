@@ -12,6 +12,166 @@ from field_service.db import models as m
 from field_service.services import export_service
 
 
+# Tests for date/datetime compatibility
+@pytest.mark.asyncio
+async def test_export_orders_with_date_objects(monkeypatch, async_session):
+    """Test that export_orders works with date objects (not datetime)."""
+    monkeypatch.setattr(export_service, "get_timezone", lambda: ZoneInfo("UTC"))
+
+    city = m.cities(name="TestCity")
+    async_session.add(city)
+    await async_session.flush()
+
+    order = m.orders(
+        city_id=city.id,
+        status=m.OrderStatus.NEW,
+        type=m.OrderType.NORMAL,
+        total_sum=Decimal("1000.00"),
+        created_at=datetime(2025, 1, 15, 10, 30, tzinfo=timezone.utc),
+        description="Test",
+    )
+    async_session.add(order)
+    await async_session.flush()
+
+    # Use date objects instead of datetime
+    bundle = await export_service.export_orders(
+        date_from=date(2025, 1, 15),
+        date_to=date(2025, 1, 15),
+        city_ids=[city.id],
+        session=async_session,
+    )
+
+    assert bundle.csv_filename.startswith("orders_")
+    csv_text = bundle.csv_bytes.decode("utf-8-sig")
+    assert str(order.id) in csv_text
+
+
+@pytest.mark.asyncio
+async def test_export_commissions_with_date_objects(async_session):
+    """Test that export_commissions works with date objects."""
+    city = m.cities(name="TestCity")
+    async_session.add(city)
+    await async_session.flush()
+
+    master = m.masters(
+        full_name="Test Master",
+        phone="+79991234567",
+        city_id=city.id,
+        verified=True,
+        is_active=True,
+    )
+    async_session.add(master)
+    await async_session.flush()
+
+    order = m.orders(
+        city_id=city.id,
+        status=m.OrderStatus.PAYMENT,
+        type=m.OrderType.NORMAL,
+        total_sum=Decimal("2000.00"),
+        assigned_master_id=master.id,
+        created_at=datetime(2025, 1, 15, tzinfo=timezone.utc),
+        description="Test",
+    )
+    async_session.add(order)
+    await async_session.flush()
+
+    commission = m.commissions(
+        order_id=order.id,
+        master_id=master.id,
+        amount=Decimal("1000.00"),
+        rate=Decimal("0.50"),
+        status=m.CommissionStatus.WAIT_PAY,
+        created_at=datetime(2025, 1, 15, 12, tzinfo=timezone.utc),
+        deadline_at=datetime(2025, 1, 15, 15, tzinfo=timezone.utc),
+        is_paid=False,
+    )
+    async_session.add(commission)
+    await async_session.flush()
+
+    # Use date objects
+    bundle = await export_service.export_commissions(
+        date_from=date(2025, 1, 15),
+        date_to=date(2025, 1, 15),
+        city_ids=[city.id],
+        session=async_session,
+    )
+
+    csv_text = bundle.csv_bytes.decode("utf-8-sig")
+    assert str(commission.id) in csv_text
+
+
+@pytest.mark.asyncio
+async def test_export_referral_rewards_with_date_objects(async_session):
+    """Test that export_referral_rewards works with date objects."""
+    city = m.cities(name="TestCity")
+    async_session.add(city)
+    await async_session.flush()
+
+    referrer = m.masters(
+        full_name="Referrer",
+        phone="+79991111111",
+        city_id=city.id,
+        verified=True,
+        is_active=True,
+    )
+    referred = m.masters(
+        full_name="Referred",
+        phone="+79992222222",
+        city_id=city.id,
+        verified=True,
+        is_active=True,
+    )
+    async_session.add_all([referrer, referred])
+    await async_session.flush()
+
+    order = m.orders(
+        city_id=city.id,
+        status=m.OrderStatus.CLOSED,
+        type=m.OrderType.NORMAL,
+        assigned_master_id=referred.id,
+        total_sum=Decimal("3000.00"),
+        created_at=datetime(2025, 1, 15, tzinfo=timezone.utc),
+    )
+    async_session.add(order)
+    await async_session.flush()
+
+    commission = m.commissions(
+        order_id=order.id,
+        master_id=referred.id,
+        amount=Decimal("1500.00"),
+        rate=Decimal("0.50"),
+        status=m.CommissionStatus.WAIT_PAY,
+        created_at=datetime(2025, 1, 15, tzinfo=timezone.utc),
+        deadline_at=datetime(2025, 1, 15, 3, tzinfo=timezone.utc),
+        is_paid=False,
+    )
+    async_session.add(commission)
+    await async_session.flush()
+
+    reward = m.referral_rewards(
+        referrer_id=referrer.id,
+        referred_master_id=referred.id,
+        commission_id=commission.id,
+        level=1,
+        percent=Decimal("10.00"),
+        amount=Decimal("150.00"),
+        status=m.ReferralRewardStatus.ACCRUED,
+        created_at=datetime(2025, 1, 15, 14, tzinfo=timezone.utc),
+    )
+    async_session.add(reward)
+
+    # Use date objects
+    bundle = await export_service.export_referral_rewards(
+        date_from=date(2025, 1, 15),
+        date_to=date(2025, 1, 15),
+        city_ids=[city.id],
+        session=async_session,
+    )
+
+    csv_text = bundle.csv_bytes.decode("utf-8-sig")
+    assert str(reward.id) in csv_text
+
+
 @pytest.mark.asyncio
 async def test_export_orders_bundle(monkeypatch, async_session):
     monkeypatch.setattr(export_service, "get_timezone", lambda: ZoneInfo("UTC"))

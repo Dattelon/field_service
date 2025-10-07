@@ -6,15 +6,19 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
+from field_service.db import models as m
 from field_service.db.session import SessionLocal
-from field_service.infra.notify import send_alert
 from field_service.services import live_log
+from field_service.services.push_notifications import (
+    notify_master as push_notify_master,
+    notify_admin as push_notify_admin,
+    NotificationEvent,
+)
 from field_service.services.commission_service import (
     CommissionOverdueEvent,
     apply_overdue_commissions,
 )
+from sqlalchemy import select
 
 UTC = timezone.utc
 logger = logging.getLogger("watchdogs")
@@ -48,6 +52,8 @@ async def watchdog_commissions_overdue(
                 if alerts_chat_id is not None and bot is not None:
                     for event in events:
                         await _notify_overdue_commission(bot, alerts_chat_id, event)
+                        # P0-3: Уведомить мастера о блокировке
+                        await _notify_master_blocked(bot, event)
                 for event in events:
                     logger.info(
                         "commission_overdue cid=%s order=%s master=%s",
@@ -67,23 +73,96 @@ async def watchdog_commissions_overdue(
 
 
 async def _notify_overdue_commission(bot: Bot, chat_id: int, event: CommissionOverdueEvent) -> None:
-    name = event.master_full_name or "Неизвестный мастер"
-    message = (
-        f"🚫 Просрочка комиссии #{event.commission_id} (заказ #{event.order_id}). "
-        f"Мастер {name}, id={event.master_id} заблокирован."
-    )
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="Открыть комиссию",
-                    callback_data=f"adm:f:cm:{event.commission_id}",
-                )
-            ]
-        ]
-    )
+    if bot is None or chat_id is None:
+        return
+    master_name = event.master_full_name or f"?????? #{event.master_id}"
     try:
-        await send_alert(bot, message, chat_id=chat_id, reply_markup=keyboard)
+        await push_notify_admin(
+            bot,
+            chat_id,
+            event=NotificationEvent.COMMISSION_OVERDUE,
+            commission_id=event.commission_id,
+            order_id=event.order_id,
+            master_id=event.master_id,
+            master_name=master_name,
+        )
     except Exception:
         logger.warning("watchdog notification failed", exc_info=True)
         live_log.push("watchdog", "notification send failed", level="WARN")
+
+
+
+async def _notify_master_blocked(bot: Bot, event: CommissionOverdueEvent) -> None:
+    """P0-3: ?????????????? ??????? ??? ???????????? ???????? ???????? ???????."""
+    reason_text = (
+        f"?????????? ???????? #{event.commission_id} ?? ?????? #{event.order_id}"
+    )
+    try:
+        async with SessionLocal() as session:
+            result = await session.execute(
+                select(m.masters.tg_user_id)
+                .where(m.masters.id == event.master_id)
+            )
+            master_row = result.first()
+            if not master_row or not master_row.tg_user_id:
+                logger.warning(
+                    "Cannot notify master %s: no tg_user_id",
+                    event.master_id,
+                )
+                return
+
+            tg_user_id = master_row.tg_user_id
+
+            try:
+                await push_notify_master(
+                    session,
+                    master_id=event.master_id,
+                    event=NotificationEvent.ACCOUNT_BLOCKED,
+                    reason=reason_text,
+                )
+                await session.commit()
+            except Exception as push_exc:
+                await session.rollback()
+                logger.warning(
+                    "Failed to enqueue blocked notification for master %s: %s",
+                    event.master_id,
+                    push_exc,
+                    exc_info=True,
+                )
+
+            message = (
+                "??????! <b>??? ??????? ????????????</b>\n\n"
+                f"???????: {reason_text}.\n\n"
+                "?????? ????????? ???????? ? ???? ??? ????????? ???????."
+            )
+
+            await bot.send_message(
+                chat_id=tg_user_id,
+                text=message,
+                parse_mode="HTML",
+            )
+
+            live_log.push(
+                "watchdog",
+                f"master_blocked_notified master={event.master_id} tg={tg_user_id}",
+                level="INFO",
+            )
+            logger.info(
+                "master_blocked_notified master=%s tg_user_id=%s",
+                event.master_id,
+                tg_user_id,
+            )
+    except Exception as exc:
+        logger.warning(
+            "Failed to notify master %s about blocking: %s",
+            event.master_id,
+            exc,
+            exc_info=True,
+        )
+        live_log.push(
+            "watchdog",
+            f"master_blocked_notify_failed master={event.master_id} error={exc}",
+            level="WARN",
+        )
+
+

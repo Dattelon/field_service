@@ -9,11 +9,44 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from field_service.config import settings
 
 _TIME_RE = re.compile(r"^(?P<hour>\d{1,2}):(?P<minute>\d{2})$")
-_SLOT_BUCKETS: dict[str, tuple[time, time]] = {
-    "10-13": (time(10, 0), time(13, 0)),
-    "13-16": (time(13, 0), time(16, 0)),
-    "16-19": (time(16, 0), time(19, 0)),
-}
+# P1-03: Слоты загружаются из конфига или дефолтные
+def _load_slot_buckets() -> dict[str, tuple[time, time]]:
+    """Загрузить временные слоты из конфига или использовать дефолтные."""
+    # Дефолтные слоты
+    default = {
+        "10-13": (time(10, 0), time(13, 0)),
+        "13-16": (time(13, 0), time(16, 0)),
+        "16-19": (time(16, 0), time(19, 0)),
+    }
+    
+    # Если в конфиге есть кастомные слоты - используем их
+    custom_slots = getattr(settings, 'timeslot_buckets', None)
+    if custom_slots:
+        try:
+            import json
+            if isinstance(custom_slots, str):
+                slots_data = json.loads(custom_slots)
+            else:
+                slots_data = custom_slots
+            
+            result = {}
+            for item in slots_data:
+                key = item.get("key")
+                start_str = item.get("start")
+                end_str = item.get("end")
+                
+                if key and start_str and end_str:
+                    start_time = parse_time_string(start_str)
+                    end_time = parse_time_string(end_str)
+                    result[key] = (start_time, end_time)
+            
+            return result if result else default
+        except Exception:
+            pass
+    
+    return default
+
+_SLOT_BUCKETS: dict[str, tuple[time, time]] = _load_slot_buckets()
 
 SlotChoice = Literal[
     "ASAP",

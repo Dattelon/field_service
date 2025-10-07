@@ -14,9 +14,11 @@ from field_service.bots.admin_bot.services_db import (
     DBSettingsService,
     PAYMENT_METHOD_LABELS,
 )
+from field_service.bots.admin_bot.dto import NewOrderData, OrderCategory, OrderType, OrderStatus
 from field_service.db import models as m
 from field_service.services import distribution_worker as dw, live_log
 from field_service.services.guarantee_service import GuaranteeError
+from field_service.data import cities as city_catalog
 from field_service.services.referral_service import apply_rewards_for_commission
 
 UTC = timezone.utc
@@ -42,8 +44,11 @@ async def existing_session(session):
 @pytest.mark.asyncio
 async def test_list_cities_and_districts(async_session) -> None:
     await _ensure_tables(async_session, _tables(m.districts.__table__))
-    city = m.cities(name="Sample City")
-    async_session.add(city)
+    primary_name = city_catalog.ALLOWED_CITIES[0]
+    secondary_name = city_catalog.ALLOWED_CITIES[1]
+    city = m.cities(name=primary_name)
+    other_city = m.cities(name=secondary_name)
+    async_session.add_all([city, other_city])
     await async_session.flush()
 
     district = m.districts(city_id=city.id, name="Central")
@@ -51,8 +56,11 @@ async def test_list_cities_and_districts(async_session) -> None:
     await async_session.commit()
 
     orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
-    cities = await orders_service.list_cities(limit=10)
-    assert any(c.name == "Sample City" for c in cities)
+    cities = await orders_service.list_cities(limit=5)
+    assert [c.name for c in cities] == [primary_name, secondary_name]
+
+    alias_result = await orders_service.list_cities(query="Питер")
+    assert [c.name for c in alias_result] == [secondary_name]
 
     districts, has_next = await orders_service.list_districts(city.id, page=1, page_size=5)
     assert has_next is False
@@ -708,3 +716,113 @@ async def test_finance_approve_creates_referral_rewards(async_session) -> None:
     assert [Decimal(r.percent) for r in rewards] == [Decimal("10.00"), Decimal("5.00")]
     assert [r.referrer_id for r in rewards] == [ref_l1.id, ref_l2.id]
     assert [r.referred_master_id for r in rewards] == [payer.id, payer.id]
+
+@pytest.mark.asyncio
+async def test_search_streets_deduplicates_similar(async_session) -> None:
+    await _ensure_tables(async_session, _tables(m.districts.__table__, m.streets.__table__))
+    city = m.cities(name=city_catalog.ALLOWED_CITIES[2])
+    async_session.add(city)
+    await async_session.flush()
+
+    district = m.districts(city_id=city.id, name="North")
+    async_session.add(district)
+    await async_session.flush()
+
+    async_session.add_all(
+        [
+            m.streets(city_id=city.id, district_id=district.id, name="Baker Street"),
+            m.streets(city_id=city.id, district_id=district.id, name="Baker St."),
+        ]
+    )
+    await async_session.commit()
+
+    orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
+    results = await orders_service.search_streets(city.id, "Baker")
+
+    names = [r.name for r in results]
+    assert names.count("Baker Street") == 1
+    assert not any(name == "Baker St." for name in names)
+
+
+@pytest.mark.asyncio
+async def test_create_order_uses_centroid_when_coordinates_missing(async_session) -> None:
+    await _ensure_tables(
+        async_session,
+        _tables(
+            m.districts.__table__,
+            m.streets.__table__,
+            m.orders.__table__,
+            m.order_status_history.__table__,
+        ),
+    )
+    city = m.cities(
+        name="Geo City",
+        timezone="Europe/Moscow",
+        centroid_lat=55.75,
+        centroid_lon=37.62,
+    )
+    async_session.add(city)
+    await async_session.flush()
+
+    district = m.districts(
+        city_id=city.id,
+        name="Center",
+        centroid_lat=55.76,
+        centroid_lon=37.6,
+    )
+    async_session.add(district)
+    await async_session.flush()
+
+    street = m.streets(
+        city_id=city.id,
+        district_id=district.id,
+        name="Central Street",
+        centroid_lat=55.761,
+        centroid_lon=37.601,
+    )
+    async_session.add(street)
+    await async_session.commit()
+
+    orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
+    data = NewOrderData(
+        city_id=city.id,
+        district_id=None,
+        street_id=street.id,
+        house="10",
+        apartment=None,
+        address_comment=None,
+        client_name="Ivan",
+        client_phone="+79990000000",
+        category=OrderCategory.ELECTRICS,
+        description="Lamp issue",
+        order_type=OrderType.NORMAL,
+        timeslot_start_utc=None,
+        timeslot_end_utc=None,
+        timeslot_display=None,
+        lat=None,
+        lon=None,
+        no_district=False,
+        company_payment=None,
+        total_sum=Decimal(0),
+        created_by_staff_id=1,
+    )
+    order_id = await orders_service.create_order(data)
+
+    row = await async_session.execute(select(m.orders).where(m.orders.id == order_id))
+    order = row.scalar_one()
+    assert order.district_id == district.id
+    assert order.lat == pytest.approx(55.761)
+    assert order.lon == pytest.approx(37.601)
+    assert order.geocode_provider == "street_centroid"
+    assert order.geocode_confidence == 80
+
+@pytest.mark.asyncio
+async def test_get_city_timezone_uses_city_value(async_session) -> None:
+    await _ensure_tables(async_session, _tables())
+    city = m.cities(name="Timezone City", timezone="Asia/Yekaterinburg")
+    async_session.add(city)
+    await async_session.commit()
+
+    orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
+    tz_value = await orders_service.get_city_timezone(city.id)
+    assert tz_value == "Asia/Yekaterinburg"

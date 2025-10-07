@@ -123,6 +123,9 @@ class StaffRole(str, enum.Enum):
 class cities(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    centroid_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    centroid_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
@@ -144,6 +147,8 @@ class districts(Base):
         ForeignKey("cities.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    centroid_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    centroid_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -167,6 +172,8 @@ class streets(Base):
         ForeignKey("districts.id", ondelete="SET NULL"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    centroid_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    centroid_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -178,6 +185,18 @@ class streets(Base):
         UniqueConstraint(
             "city_id", "district_id", "name", name="uq_streets__city_district_name"
         ),
+    )
+
+
+
+class geocache(Base):
+    query: Mapped[str] = mapped_column(String(255), primary_key=True)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
 
 
@@ -201,6 +220,9 @@ class masters(Base):
         Boolean, nullable=False, default=True, server_default="true"
     )
     is_blocked: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    is_deleted: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
     is_on_shift: Mapped[bool] = mapped_column(
@@ -238,6 +260,7 @@ class masters(Base):
         server_default="PENDING",
     )
     moderation_note: Mapped[Optional[str]] = mapped_column(Text)
+    moderation_reason: Mapped[Optional[str]] = mapped_column(Text)
     shift_status: Mapped[ShiftStatus] = mapped_column(
         Enum(ShiftStatus, name="shift_status"),
         nullable=False,
@@ -251,6 +274,10 @@ class masters(Base):
         Enum(PayoutMethod, name="payout_method")
     )
     payout_data: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    verified_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("staff_users.id", ondelete="SET NULL"), nullable=True
+    )
     has_vehicle: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
@@ -261,6 +288,13 @@ class masters(Base):
     __table_args__ = (
         Index("ix_masters__mod_shift", "moderation_status", "shift_status"),
         Index("ix_masters__onshift_verified", "is_on_shift", "verified"),
+        Index(
+            "ix_masters__verified_active_deleted_city",
+            "verified",
+            "is_active",
+            "is_deleted",
+            "city_id",
+        ),
     )
 
 
@@ -372,6 +406,8 @@ class orders(Base):
 
     lat: Mapped[Optional[float]] = mapped_column(Float(asdecimal=False))
     lon: Mapped[Optional[float]] = mapped_column(Float(asdecimal=False))
+    geocode_provider: Mapped[Optional[str]] = mapped_column(String(32))
+    geocode_confidence: Mapped[Optional[int]] = mapped_column(Integer)
 
     house: Mapped[Optional[str]] = mapped_column(String(32))
     apartment: Mapped[Optional[str]] = mapped_column(String(32))
@@ -428,6 +464,13 @@ class orders(Base):
         DateTime(timezone=True), nullable=True
     )
     dist_escalated_admin_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Step 1.4: Tracking escalation notifications to prevent duplicate sends
+    escalation_logist_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    escalation_admin_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     guarantee_source_order_id: Mapped[Optional[int]] = mapped_column(
@@ -557,6 +600,7 @@ class attachments(Base):
     mime_type: Mapped[Optional[str]] = mapped_column(String(128))
     size: Mapped[Optional[int]] = mapped_column(Integer)
     caption: Mapped[Optional[str]] = mapped_column(Text)
+    document_type: Mapped[Optional[str]] = mapped_column(String(32))
     uploaded_by_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL")
     )
@@ -765,6 +809,140 @@ class master_invite_codes(Base):
     )
 
 
+class admin_audit_log(Base):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    admin_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("staff_users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    master_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("masters.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
+class notifications_outbox(Base):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    master_id: Mapped[int] = mapped_column(
+        ForeignKey("masters.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
+# P1-01: Autoclose queue
+class order_autoclose_queue(Base):
+    """Очередь для автозакрытия заказов через 24ч после CLOSED."""
+    __tablename__ = 'order_autoclose_queue'
+    
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    closed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False
+    )
+    autoclose_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False
+    )
+    processed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+    
+    __table_args__ = (
+        Index(
+            "ix_order_autoclose_queue__pending",
+            "autoclose_at",
+            postgresql_where=text("processed_at IS NULL")
+        ),
+    )
+
+
+class distribution_metrics(Base):
+    """Метрики процесса распределения заказов для аналитики и оптимизации."""
+    __tablename__ = 'distribution_metrics'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    master_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("masters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    
+    # Метрики назначения
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True
+    )
+    round_number: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    candidates_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    time_to_assign_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # Флаги процесса
+    preferred_master_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    was_escalated_to_logist: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    was_escalated_to_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    
+    # География и категория
+    city_id: Mapped[int] = mapped_column(
+        ForeignKey("cities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    district_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("districts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    category: Mapped[Optional[str]] = mapped_column(
+        Enum(OrderCategory, name="ordercategory"),
+        nullable=True
+    )
+    order_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    
+    # Дополнительные данные
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb")
+    )
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+    
+    __table_args__ = (
+        Index("ix_distribution_metrics__assigned_at_desc", "assigned_at", postgresql_using="btree"),
+        Index("ix_distribution_metrics__city_assigned", "city_id", "assigned_at"),
+        Index("ix_distribution_metrics__performance", "round_number", "time_to_assign_seconds"),
+    )
 
 
 

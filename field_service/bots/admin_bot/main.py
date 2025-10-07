@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from contextlib import suppress
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.types import Update
 
 from field_service.config import settings
 from field_service.bots.common.error_middleware import setup_error_middleware
@@ -16,12 +18,16 @@ from field_service.infra.notify import send_alert, send_log
 from field_service.services.distribution_scheduler import run_scheduler
 from field_service.services.heartbeat import run_heartbeat
 from field_service.services.watchdogs import watchdog_commissions_overdue
+from field_service.services.autoclose_scheduler import autoclose_scheduler  # P1-01
+from field_service.services.unassigned_monitor import monitor_unassigned_orders
 
-from .handlers import router as admin_router
-from .handlers_staff import router as admin_staff_router
-from .middlewares import StaffAccessMiddleware
-from .service_registry import register_services
-from .services_db import (
+from .handlers import create_combined_router
+from .handlers.finance.main import router as finance_router  # CR-2025-10-03-007: Финансы
+from .handlers.masters.main import router as admin_masters_router
+from .handlers.masters.moderation import router as admin_moderation_router
+from .core.middlewares import StaffAccessMiddleware
+from .infrastructure.registry import register_services
+from .services import (
     DBDistributionService,
     DBFinanceService,
     DBMastersService,
@@ -34,14 +40,42 @@ from .services_db import (
 logger = logging.getLogger(__name__)
 
 
+async def log_all_callbacks_middleware(handler, event, data):
+    """Глобальное логирование всех callback перед обработкой."""
+    if isinstance(event, Update) and event.callback_query:
+        cq = event.callback_query
+        logger.info(f"[GLOBAL] Callback received: {cq.data} from user {cq.from_user.id}")
+    return await handler(event, data)
+
+
 async def main() -> int:
+    # Setup logging
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=getattr(logging, log_level, logging.INFO),
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
+    logging.getLogger("aiogram").setLevel(getattr(logging, log_level, logging.INFO))
+    
     bot = Bot(
         settings.admin_bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
-    dp.include_router(admin_router)
-    dp.include_router(admin_staff_router)
+    
+    # Глобальное логирование всех callback (для отладки)
+    dp.update.outer_middleware(log_all_callbacks_middleware)
+    
+    # P2-08: Используем только модульные роутеры из handlers/
+    dp.include_router(create_combined_router())
+    
+    # CR-2025-10-03-007: Финансы
+    dp.include_router(finance_router)
+    
+    # Модерация и управление мастерами
+    dp.include_router(admin_masters_router)
+    dp.include_router(admin_moderation_router)
 
     services = {
         "staff_service": DBStaffService(),
@@ -94,6 +128,25 @@ async def main() -> int:
         name="commissions_watchdog",
     )
 
+    unassigned_task: asyncio.Task | None = None
+    if alerts_chat_id:
+        unassigned_task = asyncio.create_task(
+            monitor_unassigned_orders(
+                bot,
+                alerts_chat_id,
+                interval_seconds=600,
+            ),
+            name="unassigned_monitor",
+        )
+
+    # P1-01: Автозакрытие заказов через 24ч
+    autoclose_task = asyncio.create_task(
+        autoclose_scheduler(
+            interval_seconds=3600,  # Проверка каждый час
+        ),
+        name="autoclose_scheduler",
+    )
+
     exit_code = 0
     try:
         await poll_with_single_instance_guard(
@@ -112,7 +165,7 @@ async def main() -> int:
         await send_log(bot, message, chat_id=logs_chat_id)
         exit_code = 1
     finally:
-        for task in (heartbeat_task, scheduler_task, watchdog_task):
+        for task in (heartbeat_task, scheduler_task, watchdog_task, autoclose_task, unassigned_task):
             if task:
                 task.cancel()
                 with suppress(asyncio.CancelledError):

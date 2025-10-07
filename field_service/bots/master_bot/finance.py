@@ -3,9 +3,9 @@
 from typing import Iterable, Optional, Sequence
 
 PAYMENT_METHOD_LABELS: dict[str, str] = {
-    "card": "Bank card",
-    "sbp": "Faster Payments",
-    "cash": "Cash",
+    "card": "💳 Карта",
+    "sbp": "СБП",
+    "cash": "Наличные",
 }
 
 
@@ -24,11 +24,11 @@ def format_pay_snapshot(snapshot: Optional[dict]) -> str:
     if methods:
         method_titles = _format_methods(methods)
         if method_titles:
-            lines.append(f"Payment methods: {method_titles}")
+            lines.append(f"Способы оплаты: {method_titles}")
 
     card_last4 = snapshot.get("card_number_last4")
     if card_last4:
-        card_line = f"Card ****{card_last4}"
+        card_line = f"Карта ****{card_last4}"
         extra: list[str] = []
         card_holder = snapshot.get("card_holder")
         if card_holder:
@@ -42,14 +42,14 @@ def format_pay_snapshot(snapshot: Optional[dict]) -> str:
 
     sbp_phone = snapshot.get("sbp_phone_masked")
     if sbp_phone:
-        sbp_line = f"SBP phone: {sbp_phone}"
+        sbp_line = f"Телефон для СБП: {sbp_phone}"
         sbp_bank = snapshot.get("sbp_bank")
         if sbp_bank:
             sbp_line += f" ({sbp_bank})"
         lines.append(sbp_line)
 
     if snapshot.get("sbp_qr_file_id"):
-        lines.append("QR code is available below.")
+        lines.append("QR-код доступен ниже.")
 
     other_text = snapshot.get("other_text")
     if other_text:
@@ -57,6 +57,6 @@ def format_pay_snapshot(snapshot: Optional[dict]) -> str:
 
     comment = snapshot.get("comment")
     if comment:
-        lines.append(f"Payment comment: {comment}")
+        lines.append(f"Комментарий к оплате: {comment}")
 
     return "\n".join(lines)

@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
-from field_service.services import distribution_worker as dw
+from field_service.services import distribution_scheduler as ds
+from field_service.infra.structured_logging import log_candidate_rejection
 
 UTC = timezone.utc
 logger = logging.getLogger(__name__)
@@ -81,15 +82,28 @@ def _log_rejection(
     mode: str,
     reasons: Iterable[str],
     hook: Any | None,
+    master_details: dict[str, Any] | None = None,
 ) -> None:
     if not reasons:
         return
-    labels = [_REASON_LABELS.get(reason, reason) for reason in reasons]
+    
+    reasons_list = list(reasons)
+    labels = [_REASON_LABELS.get(reason, reason) for reason in reasons_list]
     reason_text = ", ".join(labels)
     message = (
         f"[candidates] order={order_id} master={candidate_id} mode={mode} : {reason_text}"
     )
     logger.info(message)
+    
+    # ✅ STEP 4.2: Structured logging - candidate rejection
+    log_candidate_rejection(
+        order_id=order_id,
+        master_id=candidate_id,
+        mode=mode,
+        rejection_reasons=reasons_list,
+        master_details=master_details or {},
+    )
+    
     if hook is not None:
         try:
             hook(message)
@@ -123,7 +137,7 @@ async def select_candidates(
         return []
     city_id = city_id_int
 
-    skill_code = dw._skill_code_for_category(_order_attr(order, "category"))
+    skill_code = ds._skill_code_for_category(_order_attr(order, "category"))
     if skill_code is None:
         logger.info(
             "[candidates] order=%s:  -    ", order_id
@@ -143,7 +157,7 @@ async def select_candidates(
 
     assert session is not None
 
-    global_limit = await dw._max_active_limit_for(session)
+    global_limit = await ds._max_active_limit_for(session)
     now = datetime.now(UTC)
 
     active_statuses_sql = ", ".join(f"'{status}'" for status in _ACTIVE_ORDER_STATUSES)
@@ -275,7 +289,24 @@ ORDER BY m.id
             reasons.append("offer")
 
         if reasons:
-            _log_rejection(order_id, master_id, mode, reasons, log_hook)
+            # ✅ STEP 4.2: Pass master details to structured logging
+            master_details = {
+                "full_name": mapping.get("full_name") or f"Master #{master_id}",
+                "city_id": int(mapping["city_id"] or 0),
+                "has_vehicle": bool(mapping.get("has_vehicle")),
+                "avg_week_check": float(mapping.get("avg_week") or 0),
+                "rating": float(mapping.get("rating") or 0),
+                "is_on_shift": is_on_shift,
+                "on_break": on_break,
+                "is_active": is_active,
+                "verified": verified,
+                "in_district": in_district,
+                "active_orders": active_orders,
+                "max_active_orders": max_limit,
+                "has_skill": has_skill,
+                "has_open_offer": has_open_offer,
+            }
+            _log_rejection(order_id, master_id, mode, reasons, log_hook, master_details)
             continue
 
         candidates.append(

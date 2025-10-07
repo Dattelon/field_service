@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import html
 import re
@@ -34,10 +34,12 @@ async def delete_message_silent(bot: Bot, chat_id: int, message_id: int) -> None
 async def push_step_message(
     source: Message | CallbackQuery,
     state: FSMContext,
-    text: str,
+    text: str | Iterable[str],
     reply_markup: InlineKeyboardMarkup | None = None,
 ) -> Message:
     message = source if isinstance(source, Message) else source.message
+    if not isinstance(text, str):
+        text = "\n".join(str(part) for part in text)
     sent = await message.answer(text, reply_markup=reply_markup)
     data = await state.get_data()
     previous_id = data.get("last_step_msg_id")

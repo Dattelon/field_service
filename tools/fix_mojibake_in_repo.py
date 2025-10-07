@@ -3,8 +3,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Heuristic set of characters typical for UTF-8cp1251 mojibake
-SUSPICIOUS_CHARS = set("℁")
+# Heuristic set of characters typical for UTF-8↔cp1251 mojibake
+# Common artifacts: 'Ð', 'Ñ', 'Р', 'С', '�', and cp1252 quotes/dashes.
+SUSPICIOUS_CHARS = set("ÐÑРС�â€™”“•—‹›�")
 
 
 def looks_mojibake(text: str) -> bool:
@@ -13,6 +14,8 @@ def looks_mojibake(text: str) -> bool:
 
 
 def try_fix(text: str) -> str:
+    # Typical fix for UTF-8 bytes mis-decoded as cp1251 -> now in Unicode
+    # Encode back to cp1251 bytes, then decode as UTF-8
     try:
         fixed = text.encode("cp1251", errors="ignore").decode("utf-8", errors="ignore")
         return fixed if fixed else text
@@ -24,7 +27,7 @@ def main(root: str) -> int:
     root_path = Path(root)
     changed = 0
     for path in root_path.rglob("*.py"):
-        if ".venv" in path.parts or ".git" in path.parts:
+        if any(part in {".venv", ".git", "__pycache__"} for part in path.parts):
             continue
         try:
             original = path.read_text(encoding="utf-8")
@@ -33,7 +36,7 @@ def main(root: str) -> int:
         if not looks_mojibake(original):
             continue
         fixed = try_fix(original)
-        # Accept only if mojibake density decreased (to avoid damaging good files)
+
         def density(s: str) -> int:
             return sum(1 for ch in s if ch in SUSPICIOUS_CHARS)
 

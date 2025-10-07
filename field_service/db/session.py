@@ -10,6 +10,8 @@ DATABASE_URL = os.getenv(
 engine = create_async_engine(
     DATABASE_URL,
     pool_pre_ping=True,
+    pool_size=10,  # ✅ FIX: Размер пула для параллельных тестов
+    max_overflow=20,  # ✅ FIX: Максимум дополнительных соединений
     future=True,
 )
 
