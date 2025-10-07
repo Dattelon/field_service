@@ -1,0 +1,135 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Запуск каждый день в 3:00 UTC
+    - cron: '0 3 * * *'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-cov pytest-html
+    
+    - name: Run critical E2E tests
+      run: |
+        cd tests/e2e
+        pytest -m critical -v --cov --cov-report=xml --cov-report=html --html=report.html --self-contained-html
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        PYTHONPATH: ${{ github.workspace }}
+    
+    - name: Run all E2E tests
+      if: github.event_name == 'schedule'
+      run: |
+        cd tests/e2e
+        pytest -v --cov --cov-report=xml --cov-report=html
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        PYTHONPATH: ${{ github.workspace }}
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./tests/e2e/coverage.xml
+        flags: e2e
+        name: e2e-coverage
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          tests/e2e/report.html
+          tests/e2e/htmlcov/
+          tests/e2e/test_report.html
+    
+    - name: Comment PR with test results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const coverage = fs.readFileSync('tests/e2e/coverage.xml', 'utf8');
+          const match = coverage.match(/line-rate="([0-9.]+)"/);
+          const coveragePercent = match ? (parseFloat(match[1]) * 100).toFixed(2) : 'N/A';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## 🧪 E2E Test Results\n\n✅ All critical tests passed!\n\n📊 Coverage: ${coveragePercent}%\n\n[View detailed report](${context.payload.pull_request.html_url}/checks)`
+          });
+    
+    - name: Fail if critical tests failed
+      if: failure()
+      run: |
+        echo "❌ Critical E2E tests failed! Please fix before merging."
+        exit 1
+
+  notify:
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Send Telegram notification
+      if: failure()
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          ❌ E2E Tests FAILED
+          
+          Repository: ${{ github.repository }}
+          Branch: ${{ github.ref }}
+          Commit: ${{ github.sha }}
+          Author: ${{ github.actor }}
+          
+          [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
