@@ -1,0 +1,22 @@
+[mypy]
+python_version = 3.11
+strict = True
+plugins = sqlalchemy.ext.mypy.plugin
+
+[mypy-aiogram.*]
+ignore_missing_imports = True
+
+[mypy-asyncpg.*]
+ignore_missing_imports = True
+
+[mypy-uvloop.*]
+ignore_missing_imports = True
+
+[mypy-field_service.alembic_env]
+ignore_errors = True
+
+[mypy-alembic.*]
+ignore_missing_imports = True
+
+[mypy-scripts.*]
+ignore_errors = True
