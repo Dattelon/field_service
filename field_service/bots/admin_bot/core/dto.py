@@ -335,6 +335,7 @@ __all__ = [
     'OrderCategory',
     'OrderType',
     'OrderStatus',
+    'OrderStatusHistoryItem',
     'StaffAccessCode',
     'StaffMember',
     'StaffRole',

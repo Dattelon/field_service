@@ -94,6 +94,8 @@ def order_card_keyboard(
 def queue_cancel_keyboard(order_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text='⬅️ Назад', callback_data=f'adm:q:cnl:bk:{order_id}')
+    kb.button(text='🏠 В меню', callback_data='adm:menu')
+    kb.adjust(2)
     return kb.as_markup()
 
 

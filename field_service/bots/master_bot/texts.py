@@ -83,10 +83,28 @@ def _escape(value: str | None) -> str:
     return html.escape(value or "—")
 
 
-def offer_line(order_id: int, city: str, district: str | None, category: str, timeslot: str | None) -> str:
+OFFER_DEFERRED_BADGE = "⚠️ Отложено"
+OFFER_DEFERRED_NOTICE = (
+    "⚠️ Заявки со значком «Отложено» доступны только по инициативе мастера.\n"
+    "Они могут быть с ночным визитом или переносом."
+)
+
+
+def offer_line(
+    order_id: int,
+    city: str,
+    district: str | None,
+    category: str,
+    timeslot: str | None,
+    *,
+    status: m.OrderStatus | None = None,
+) -> str:
     district_part = f", {_escape(district)}" if district else ""
     slot = _escape(timeslot or "сегодня/ASAP")
-    return f"#{order_id} • {_escape(city)}{district_part} • {_escape(category)} • {slot}"
+    base = f"#{order_id} • {_escape(city)}{district_part} • {_escape(category)} • {slot}"
+    if status is m.OrderStatus.DEFERRED:
+        return f"{OFFER_DEFERRED_BADGE} • {base}"
+    return base
 
 
 def offer_card(
@@ -99,6 +117,7 @@ def offer_card(
     timeslot: str | None,
     category: str,
     description: str | None,
+    status: m.OrderStatus | None = None,
 ) -> str:
     address_parts: list[str] = [
         _escape(city),
@@ -112,8 +131,11 @@ def offer_card(
     address = ", ".join(address_parts)
     description_text = _escape(description.strip() if description else "—")
     slot = _escape(timeslot or "—")
+    title = f"<b>Заявка #{order_id}</b>"
+    if status is m.OrderStatus.DEFERRED:
+        title = f"{OFFER_DEFERRED_BADGE} {title}"
     lines = [
-        f"<b>Заявка #{order_id}</b>",
+        title,
         f"📍 Адрес: {address}",
         f"🗓 Слот: {slot}",
         f"🛠 Категория: {_escape(category)}",

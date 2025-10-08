@@ -1,5 +1,9 @@
 # TESTING RULES FOR PROJECT INSTRUCTIONS
 
+## Подготовка окружения
+- Перед запуском любых тестов выполните `pip install -r requirements.txt`, чтобы установить зависимости (включая SQLAlchemy и
+  pytest-asyncio). Без этого большинство тестов не стартует.
+
 При написании тестов для Field Service ОБЯЗАТЕЛЬНО соблюдать:
 
 ## Async Fixtures

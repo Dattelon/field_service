@@ -29,6 +29,7 @@ TABLES = [
     m.cities.__table__,
     m.districts.__table__,
     m.streets.__table__,
+    m.staff_users.__table__,
     m.staff_cities.__table__,
     m.staff_access_codes.__table__,
     m.staff_access_code_cities.__table__,
@@ -66,32 +67,12 @@ async def engine() -> AsyncIterator[AsyncEngine]:
     
     # Создаём все таблицы один раз
     async with engine.begin() as conn:
-        # Создаём staff_users вручную (не через metadata)
-        await conn.execute(sa.text("""
-            CREATE TABLE IF NOT EXISTS staff_users (
-                id SERIAL PRIMARY KEY,
-                tg_user_id BIGINT UNIQUE,
-                username VARCHAR(64),
-                full_name VARCHAR(160),
-                phone VARCHAR(32),
-                role VARCHAR(10) NOT NULL,
-                is_active BOOLEAN DEFAULT TRUE NOT NULL,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                commission_requisites TEXT DEFAULT '{}'
-            )
-        """))
-        
-        # Создаём остальные таблицы через metadata
         await conn.run_sync(metadata.create_all, tables=TABLES)
-    
+
     yield engine
-    
-    # Очищаем после всех тестов
-    async with engine.begin() as conn:
-        await conn.execute(sa.text("DROP TABLE IF EXISTS staff_users CASCADE"))
-        await conn.run_sync(metadata.drop_all, tables=TABLES)
-    
+
+    # Оставляем схемы нетронутыми: таблицы очищаются перед каждым тестом,
+    # а повторный прогон в том же окружении не страдает от наличия enum-типа.
     await engine.dispose()
 
 
@@ -139,7 +120,7 @@ async def _clean_database(session: AsyncSession) -> None:
         "staff_access_code_cities",
         "staff_access_codes",
         "staff_cities",
-        "staff_users",  # ✅ Добавлено
+        "staff_users",
         "streets",
         "districts",
         "cities",

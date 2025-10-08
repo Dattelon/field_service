@@ -4,8 +4,9 @@ from __future__ import annotations
 from typing import Mapping, Sequence, Optional
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from ...core.dto import CommissionDetail, StaffUser
+from ...core.dto import CommissionDetail, StaffRole, StaffUser
 
 
 def finance_menu(staff: StaffUser) -> InlineKeyboardMarkup:

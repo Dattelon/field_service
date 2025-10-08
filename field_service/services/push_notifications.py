@@ -26,6 +26,7 @@ class NotificationEvent(str, Enum):
     ACCOUNT_UNBLOCKED = "account_unblocked"
     NEW_OFFER = "new_offer"
     LIMIT_CHANGED = "limit_changed"
+    ORDER_RETURNED = "order_returned"
     
     # Для админов
     ESCALATION_LOGIST = "escalation_logist"
@@ -67,6 +68,11 @@ NOTIFICATION_TEMPLATES = {
     NotificationEvent.LIMIT_CHANGED: (
         "🎯 <b>Лимит активных заказов изменён</b>\n\n"
         "Новый лимит: {limit}"
+    ),
+    NotificationEvent.ORDER_RETURNED: (
+        "🔁 <b>Заказ #{order_id} возвращён в поиск</b>\n\n"
+        "Причина: {reason}\n\n"
+        "Заказ снова доступен для принятия мастерами."
     ),
     NotificationEvent.ESCALATION_LOGIST: (
         "⚠️ <b>Эскалация заказа #{order_id}</b>\n\n"

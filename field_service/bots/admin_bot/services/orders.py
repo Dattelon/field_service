@@ -1,6 +1,7 @@
 """Orders service: order management, creation, status changes."""
 from __future__ import annotations
 
+import html
 from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 from typing import Iterable, Optional, Sequence, Tuple
@@ -15,6 +16,10 @@ from field_service.config import settings
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import time_service, guarantee_service, live_log
+from field_service.services.push_notifications import (
+    NotificationEvent,
+    notify_master,
+)
 from field_service.services.guarantee_service import GuaranteeError
 
 from ..core.dto import (
@@ -883,6 +888,7 @@ class DBOrdersService:
                     if order.status in {m.OrderStatus.CANCELED, m.OrderStatus.CLOSED}:
                         return False
                     prev_status = order.status
+                    previous_master_id = order.assigned_master_id
                     order.assigned_master_id = None
                     order.status = (
                         m.OrderStatus.GUARANTEE
@@ -926,6 +932,18 @@ class DBOrdersService:
                         f"[dist] return_to_search order={order.id} canceled_offers={canceled_count}",
                         level="INFO",
                     )
+                    if previous_master_id:
+                        if staff and getattr(staff, "full_name", None):
+                            reason = f"{html.escape(staff.full_name)} вернул заказ в поиск"
+                        else:
+                            reason = "Администратор вернул заказ в поиск"
+                        await notify_master(
+                            session,
+                            master_id=previous_master_id,
+                            event=NotificationEvent.ORDER_RETURNED,
+                            order_id=order.id,
+                            reason=reason,
+                        )
             return True
 
     async def cancel(self, order_id: int, reason: str, by_staff_id: int) -> bool:

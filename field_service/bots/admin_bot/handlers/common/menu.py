@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.exceptions import TelegramBadRequest
@@ -74,12 +74,23 @@ async def not_allowed_start(message: Message, state: FSMContext) -> None:
     )
 
 
+@router.message(
+    Command("cancel"),
+    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
+)
+async def admin_cancel(message: Message, staff: StaffUser, state: FSMContext) -> None:
+    """Обработчик команды /cancel — очищает состояние и возвращает в меню."""
+    await state.clear()
+    await message.answer("❌ Действие отменено. Главное меню:", reply_markup=main_menu(staff))
+
+
 @router.callback_query(
     F.data == "adm:menu",
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
-async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
+async def cb_menu(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     """Вернуться в главное меню."""
+    await state.clear()
     await cq.message.edit_text("Главное меню:", reply_markup=main_menu(staff))
     await safe_answer(cq)
 

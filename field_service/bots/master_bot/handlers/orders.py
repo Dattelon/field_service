@@ -37,6 +37,7 @@ from ..texts import (
     OFFERS_EMPTY,
     OFFERS_HEADER_TEMPLATE,
     OFFERS_REFRESH_BUTTON,
+    OFFER_DEFERRED_NOTICE,
     NO_ACTIVE_ORDERS,
     ORDER_STATUS_TITLES,
     ALERT_ACCEPT_SUCCESS,
@@ -671,6 +672,9 @@ async def _render_offers(
     chunk = offers[start : start + OFFERS_PAGE_SIZE]
 
     lines = [OFFERS_HEADER_TEMPLATE.format(page=page, pages=pages, total=total), ""]
+    if any(item.status is m.OrderStatus.DEFERRED for item in chunk):
+        lines.append(OFFER_DEFERRED_NOTICE)
+        lines.append("")
     keyboard_rows: list[list[InlineKeyboardButton]] = []
     for item in chunk:
         order_id = item.order_id
@@ -686,6 +690,7 @@ async def _render_offers(
                 item.district,
                 category_value,
                 item.timeslot_text,
+                status=item.status,
             )
         )
         keyboard_rows.append(
@@ -761,6 +766,7 @@ async def _render_offer_card(
         timeslot=slot_text,
         category=str(category),
         description=order.description or "",
+        status=order.status,
     )
 
     keyboard = inline_keyboard(
@@ -893,6 +899,7 @@ async def _load_offers(session: AsyncSession, master_id: int) -> list[SimpleName
             m.cities.timezone.label("city_tz"),
             m.orders.timeslot_start_utc,
             m.orders.timeslot_end_utc,
+            m.orders.status.label("status"),
         )
         .join(m.orders, m.orders.id == m.offers.order_id)
         .join(m.cities, m.cities.id == m.orders.city_id)
@@ -900,7 +907,6 @@ async def _load_offers(session: AsyncSession, master_id: int) -> list[SimpleName
         .where(
             m.offers.master_id == master_id,
             m.offers.state.in_((m.OfferState.SENT, m.OfferState.VIEWED)),
-            m.orders.status != m.OrderStatus.DEFERRED,  # ✅ Скрываем DEFERRED от мастеров
         )
         .order_by(m.offers.sent_at.desc(), m.offers.order_id.desc())
     )
@@ -917,6 +923,7 @@ async def _load_offers(session: AsyncSession, master_id: int) -> list[SimpleName
                 timeslot_start=row.timeslot_start_utc,
                 timeslot_end=row.timeslot_end_utc,
                 timeslot_text=_timeslot_text(row.timeslot_start_utc, row.timeslot_end_utc, row.city_tz),
+                status=row.status,
             )
         )
     return rows

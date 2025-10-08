@@ -1634,7 +1634,7 @@ async def cb_queue_cancel_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
     await cq.message.edit_text(
         f"📝 Введите причину отмены заказа #{order_id}\n\n"
         f"Минимум {CANCEL_REASON_MIN} символов (или пустое сообщение для пропуска).\n"
-        f"Для отмены введите /cancel",
+        f"Для отмены нажмите «🏠 В меню» или отправьте /cancel",
         reply_markup=queue_cancel_keyboard(order_id),
         parse_mode="HTML",
     )

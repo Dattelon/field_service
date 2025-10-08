@@ -56,6 +56,7 @@ class OrderStatus(str, enum.Enum):
     """Canonical order statuses per TZ v1.2."""
 
     CREATED = "CREATED"
+    NEW = "CREATED"  # legacy alias for backwards compatibility
     SEARCHING = "SEARCHING"
     ASSIGNED = "ASSIGNED"
     EN_ROUTE = "EN_ROUTE"

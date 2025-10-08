@@ -75,6 +75,15 @@ async def _render_start(message: Message, master: m.masters) -> None:
         "",
         escape_html(text),
     ]
+    if getattr(master, "is_blocked", False):
+        reason = getattr(master, "blocked_reason", None)
+        if reason:
+            lines.extend(
+                [
+                    "",
+                    f"⛔️ Причина блокировки: {escape_html(reason)}",
+                ]
+            )
     await safe_edit_or_send(message, "\n".join(lines), keyboard)
 
 

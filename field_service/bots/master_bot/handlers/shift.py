@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from field_service.bots.common import safe_answer_callback
 from field_service.db import models as m
 
-from ..texts import SHIFT_MESSAGES
+from ..texts import SHIFT_MESSAGES, alert_account_blocked
 from ..utils import now_utc
 from .start import _render_start
 
@@ -25,7 +25,7 @@ async def _answer(callback: CallbackQuery, message: str, *, alert: bool = True) 
 @router.callback_query(F.data == "m:sh:on")
 async def shift_on(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
     if master.is_blocked:
-        await _answer(callback, SHIFT_MESSAGES["blocked"])
+        await _answer(callback, alert_account_blocked(getattr(master, "blocked_reason", None)))
         return
     if getattr(master, "moderation_status", m.ModerationStatus.PENDING) != m.ModerationStatus.APPROVED:
         await _answer(callback, SHIFT_MESSAGES["pending"])
