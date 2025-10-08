@@ -279,7 +279,7 @@ def _format_order_card_text(
     return "\n".join(lines_out)
 
 
-def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False) -> InlineKeyboardMarkup:
+def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False, page: int = 1) -> InlineKeyboardMarkup:
     status = (order.status or '').upper()
     allow_return = status not in {'CANCELED', 'CLOSED'}
     allow_cancel = status not in {'CANCELED', 'CLOSED'}
@@ -291,6 +291,7 @@ def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False) -> I
         allow_cancel=allow_cancel,
         show_guarantee=show_guarantee,
         is_deferred=is_deferred,
+        page=page,  # P0-6: Передаём page для возврата
     )
 
 
@@ -312,9 +313,11 @@ async def _render_order_card(
     history: Sequence[OrderStatusHistoryItem],
     *,
     show_guarantee: bool = False,
+    page: int = 1,  # P0-6: Страница для возврата
 ) -> None:
     text = _format_order_card_text(order, history)
-    markup = _order_card_markup(order, show_guarantee=show_guarantee)
+    # P0-6: Передаём page для кнопок возврата
+    markup = _order_card_markup(order, show_guarantee=show_guarantee, page=page)
     try:
         await message.edit_text(text, reply_markup=markup)
     except TelegramBadRequest as exc:
@@ -979,6 +982,8 @@ async def cb_queue_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     parts = cq.data.split(':')
     try:
         order_id = int(parts[3])
+        # P0-6: Парсим сохранённую страницу (по умолчанию 1)
+        page = int(parts[4]) if len(parts) > 4 else 1
     except (IndexError, ValueError):
         await _safe_answer(cq, '  ', show_alert=True)
         return
@@ -992,7 +997,8 @@ async def cb_queue_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
         return
     history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
     show_guarantee = await _should_show_guarantee_button(order, orders_service, visible_city_ids_for(staff))
-    await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee)
+    # P0-6: Передаём page для сохранения контекста навигации
+    await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee, page=page)
     await _safe_answer(cq)
 
 @queue_router.callback_query(
@@ -1532,6 +1538,8 @@ async def cb_queue_return(cq: CallbackQuery, staff: StaffUser) -> None:
     parts = cq.data.split(":")
     try:
         order_id = int(parts[3])
+        # P0-6: Парсим page для возврата
+        page = int(parts[4]) if len(parts) > 4 else 1
     except (IndexError, ValueError):
         await _safe_answer(cq, "❌ Неверный ID заказа", show_alert=True)
         return
@@ -1569,7 +1577,8 @@ async def cb_queue_return(cq: CallbackQuery, staff: StaffUser) -> None:
         f"Заказ будет снят с мастера и отправлен на автораспределение."
     )
     
-    markup = queue_return_confirm_keyboard(order_id)
+    # P0-6: Передаём page для возврата
+    markup = queue_return_confirm_keyboard(order_id, page=page)
     
     try:
         await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")

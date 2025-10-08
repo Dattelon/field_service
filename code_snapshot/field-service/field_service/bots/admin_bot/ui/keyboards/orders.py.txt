@@ -21,7 +21,8 @@ def queue_list_keyboard(
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for order in items:
-        kb.button(text=f"#{order.id}", callback_data=f"adm:q:card:{order.id}")
+        # P0-6: Сохраняем текущую страницу в callback для возврата
+        kb.button(text=f"#{order.id}", callback_data=f"adm:q:card:{order.id}:{page}")
     if items:
         kb.adjust(1)
     nav = InlineKeyboardBuilder()
@@ -53,6 +54,7 @@ def order_card_keyboard(
     allow_cancel: bool = True,
     show_guarantee: bool = False,
     is_deferred: bool = False,  # ⚠️ Новый параметр
+    page: int = 1,  # P0-6: Страница для возврата
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for attachment in attachments:
@@ -73,10 +75,12 @@ def order_card_keyboard(
         actions.button(text='🛡 Гарантия', callback_data=f'adm:q:gar:{order_id}')
     actions.button(text='👥 Назначить', callback_data=f'adm:q:as:{order_id}')
     if allow_return:
-        actions.button(text='⬅️ Назад', callback_data=f'adm:q:ret:{order_id}')
+        # P0-6: Используем сохранённую страницу при возврате
+        actions.button(text='⬅️ Назад', callback_data=f'adm:q:ret:{order_id}:{page}')
     if allow_cancel:
         actions.button(text='✖️ Отменить', callback_data=f'adm:q:cnl:{order_id}')
-    actions.button(text='📋 К списку', callback_data='adm:q:list:1')
+    # P0-6: Возврат к списку с сохранённой страницей
+    actions.button(text='📋 К списку', callback_data=f'adm:q:list:{page}')
     actions.adjust(1)
     kb.attach(actions)
     return kb.as_markup()
@@ -97,11 +101,12 @@ def queue_cancel_keyboard(order_id: int) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def queue_return_confirm_keyboard(order_id: int) -> InlineKeyboardMarkup:
+def queue_return_confirm_keyboard(order_id: int, *, page: int = 1) -> InlineKeyboardMarkup:
     """P0-3: Клавиатура подтверждения возврата заказа в поиск."""
     kb = InlineKeyboardBuilder()
     kb.button(text='✅ Да, вернуть в поиск', callback_data=f'adm:q:ret:confirm:{order_id}')
-    kb.button(text='❌ Отменить', callback_data=f'adm:q:card:{order_id}')
+    # P0-6: Передаём page при отмене
+    kb.button(text='❌ Отменить', callback_data=f'adm:q:card:{order_id}:{page}')
     kb.adjust(1)
     return kb.as_markup()
 
