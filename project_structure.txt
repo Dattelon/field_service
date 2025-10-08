@@ -1,0 +1,356 @@
+Структура проекта: C:\ProjectF\field-service
+
+================================================================================
+
+field-service/
+├── add_cities.sql
+├── add_cities_script.py
+├── admin_bot.log
+├── alembic.ini
+├── CHANGELOG.md
+├── docker-compose.yml
+├── fix_indents_v2.py
+├── mypy.ini
+├── P1_02_UI_IMPROVEMENTS_COMPLETE.md
+├── pytest.ini
+├── QUICKSTART_P1_02.md
+├── README.md
+├── requirements.txt
+├── STEP_3_OPTIMIZATIONS_REPORT.md
+├── STEP_4_1_METRICS_COMPLETE.md
+├── STEP_4_2_LOGGING_COMPLETE.md
+├── STEP_4_2_SUMMARY.md
+├── temp_fix_indents.py
+├── TESTING_P1_02.md
+├── TESTING_RULES_FOR_AI.md
+├── alembic/
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│       ├── 0010_order_autoclose.py
+│       ├── 2025_09_17_0001_init_schema.py
+│       ├── 2025_09_17_0002_master_fsm.py
+│       ├── 2025_09_17_0003_seed_cities.py
+│       ├── 2025_09_17_0003_seed_demo_data.py
+│       ├── 2025_09_17_0004_update_skills.py
+│       ├── 2025_09_17_0005_admin_settings.py
+│       ├── 2025_09_18_0005_admin_enhancements.py
+│       ├── 2025_09_18_0006_staff_access_codes.py
+│       ├── 2025_09_18_0007_master_active_limit.py
+│       ├── 2025_09_19_0008_distribution_indexes.py
+│       ├── 2025_09_19_0009_commission_rework.py
+│       ├── 2025_09_19_0010_owner_pay_settings.py
+│       ├── 2025_09_19_0011_guarantee_cycle.py
+│       ├── 2025_09_19_0011_master_invite_codes.py
+│       ├── 2025_09_19_0012_spec_indexes.py
+│       ├── 2025_09_19_0013_order_status_v12.py
+│       ├── 2025_09_19_0014_admin_bot_core.py
+│       ├── 2025_09_20_0015_distribution_escalations.py
+│       ├── 2025_09_20_0016_referral_rewards_update.py
+│       ├── 2025_09_22_0001_staff_visibility_indexes.py
+│       ├── 2025_09_22_0002_orders_v12_compat.py
+│       ├── 2025_09_23_0003_staff_access_rework.py
+│       ├── 2025_09_27_0002_orders_add_v12_fields.py
+│       ├── 2025_09_27_0003_orders_drop_legacy_fields.py
+│       ├── 2025_09_27_0004_orders_add_category_enum_v12.py
+│       ├── 2025_09_rename_admin_to_global_admin.py
+│       ├── 2025_10_01_0001_admin_master_moderation.py
+│       ├── 2025_10_01_0002_cities_timezone.py
+│       ├── 2025_10_02_0003_geo_enhancements.py
+│       ├── 2025_10_04_0001_add_missing_cities.py.backup
+│       ├── 2025_10_05_0004_add_centroids.py
+│       ├── 2025_10_05_0005_escalation_notifications.py
+│       ├── 2025_10_06_0001_distribution_metrics.py
+│       └── 2cad62ab4b40_merge_heads_unify_branches.py
+├── data/
+│   ├── all_districts_complete.csv
+│   └── districts_sample.csv
+├── docs/
+│   ├── CHANGE_REQUEST_DISTRICTS_2025-10-04.md
+│   ├── CHANGE_REQUESTS.md
+│   ├── CR-2025-10-03-010_distribution_worker_removal.md
+│   ├── DISTRIBUTION_METRICS.md
+│   ├── DISTRICTS_AUDIT_2025-10-03.md
+│   ├── DISTRICTS_MIGRATION_2025-10-04.md
+│   ├── GEO_IMPORT.md
+│   ├── HOW_TO_LOAD_DISTRICTS.md
+│   ├── QUICK_START_DISTRICTS.md
+│   ├── STRUCTURED_LOGGING.md
+│   └── archive/
+│       ├── APPLY_HOTFIX.md
+│       ├── CLEAR_CACHE.md
+│       ├── FIX_SUMMARY.md
+│       ├── QUICKSTART-STAFF-UI.md
+│       ├── QUICKSTART_HOTFIX.md
+│       ├── RESTART_NOW.md
+│       ├── UAT_CHECKLIST.md
+│       ├── change-requests/
+│       │   ├── CR-2025-10-03-010_SUMMARY.md
+│       │   └── CR-2025-10-04-STAFF-UI-DOCS.md
+│       ├── hotfixes/
+│       │   ├── BUGFIX_2025-10-03_FK_VIOLATION.md
+│       │   ├── CRITICAL-FIX-username-auth.md
+│       │   ├── FINAL-SOLUTION-username-or-id.md
+│       │   ├── HOTFIX-message-not-modified.md
+│       │   ├── HOTFIX_2025-10-03_GLOBAL_ADMIN_FINANCE.md
+│       │   ├── HOTFIX_2025-10-03_GLOBAL_ADMIN_FK_FIX.md
+│       │   ├── HOTFIX_2025-10-03_IMPORT_ERROR.md
+│       │   └── HOTFIX_INSTRUCTIONS.md
+│       └── patches/
+├── field_service/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── bots/
+│   │   ├── admin_bot/
+│   │   │   ├── __init__.py
+│   │   │   ├── main.py
+│   │   │   ├── core/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── access.py
+│   │   │   │   ├── dto.py
+│   │   │   │   ├── filters.py
+│   │   │   │   ├── middlewares.py
+│   │   │   │   ├── rbac.py
+│   │   │   │   ├── states.py
+│   │   │   │   └── utils.py
+│   │   │   ├── handlers/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── staff_access.py.deprecated
+│   │   │   │   ├── common/
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── helpers.py
+│   │   │   │   │   └── menu.py
+│   │   │   │   ├── finance/
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   └── main.py
+│   │   │   │   ├── masters/
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── main.py
+│   │   │   │   │   └── moderation.py
+│   │   │   │   ├── orders/
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── create.py
+│   │   │   │   │   └── queue.py
+│   │   │   │   ├── staff/
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── access_codes.py
+│   │   │   │   │   └── management.py
+│   │   │   │   └── system/
+│   │   │   │       ├── __init__.py
+│   │   │   │       ├── logs.py
+│   │   │   │       ├── reports.py
+│   │   │   │       └── settings.py
+│   │   │   ├── infrastructure/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── queue_state.py
+│   │   │   │   └── registry.py
+│   │   │   ├── services/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── _common.py
+│   │   │   │   ├── distribution.py
+│   │   │   │   ├── finance.py
+│   │   │   │   ├── masters.py
+│   │   │   │   ├── orders.py
+│   │   │   │   ├── settings.py
+│   │   │   │   └── staff.py
+│   │   │   ├── ui/
+│   │   │   │   ├── keyboards/
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── common.py
+│   │   │   │   │   ├── finance.py
+│   │   │   │   │   ├── orders.py
+│   │   │   │   │   ├── reports.py
+│   │   │   │   │   └── settings.py
+│   │   │   │   └── texts/
+│   │   │   │       ├── __init__.py
+│   │   │   │       ├── common.py
+│   │   │   │       ├── finance.py
+│   │   │   │       └── orders.py
+│   │   │   └── utils/
+│   │   │       ├── __init__.py
+│   │   │       ├── helpers.py
+│   │   │       └── normalizers.py
+│   │   ├── common/
+│   │   │   ├── __init__.py
+│   │   │   ├── error_middleware.py
+│   │   │   ├── fsm_timeout.py
+│   │   │   ├── polling.py
+│   │   │   └── telegram_safe.py
+│   │   └── master_bot/
+│   │       ├── __init__.py
+│   │       ├── dto.py
+│   │       ├── filters.py
+│   │       ├── finance.py
+│   │       ├── keyboards.py
+│   │       ├── main.py
+│   │       ├── middlewares.py
+│   │       ├── service_registry.py
+│   │       ├── states.py
+│   │       ├── texts.py
+│   │       ├── utils.py
+│   │       └── handlers/
+│   │           ├── __init__.py
+│   │           ├── finance.py
+│   │           ├── onboarding.py
+│   │           ├── orders.py
+│   │           ├── referral.py
+│   │           ├── shift.py
+│   │           └── start.py
+│   ├── data/
+│   │   ├── __init__.py
+│   │   └── cities.py
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── models.py
+│   │   ├── pg_enums.py
+│   │   └── session.py
+│   ├── infra/
+│   │   ├── __init__.py
+│   │   ├── logging_utils.py
+│   │   ├── notify.py
+│   │   └── structured_logging.py
+│   └── services/
+│       ├── autoclose_scheduler.py
+│       ├── candidates.py
+│       ├── commission_service.py
+│       ├── distribution_metrics_service.py
+│       ├── distribution_scheduler.py
+│       ├── distribution_worker.py.deprecated
+│       ├── export_service.py
+│       ├── guarantee_service.py
+│       ├── heartbeat.py
+│       ├── live_log.py
+│       ├── notifications.py
+│       ├── notifications_watcher.py
+│       ├── onboarding_service.py
+│       ├── owner_requisites_service.py
+│       ├── push_notifications.py
+│       ├── referral_service.py
+│       ├── settings_service.py
+│       ├── time_service.py
+│       ├── unassigned_monitor.py
+│       ├── watchdogs.py
+│       └── distribution/
+│           ├── __init__.py
+│           └── wakeup.py
+├── migrations/
+│   ├── 2025-10-03_register_superusers.sql
+│   ├── 2025-10-04_cleanup_districts.sql
+│   ├── 2025-10-04_cleanup_districts_v2.sql
+│   ├── 2025-10-04_cleanup_districts_v3.sql
+│   ├── 2025-10-04_districts_v4_clean.sql
+│   ├── 2025-10-04_districts_v5_force.sql
+│   ├── 2025-10-07_add_all_cities.sql
+│   ├── 2025-10-07_add_all_cities_v2.sql
+│   ├── 2025-10-07_add_all_cities_v3.sql
+│   ├── 2025-10-07_add_commission_indexes.sql
+│   ├── 2025-10-07_add_districts.sql
+│   ├── 2025-10-07_create_distribution_metrics.sql
+│   ├── add_all_cities.sql
+│   ├── add_all_cities_final.sql
+│   ├── add_districts.sql
+│   ├── add_districts_fixed.sql
+│   ├── add_remaining_districts.sql
+│   ├── add_small_cities_districts.sql
+│   ├── check_districts.sql
+│   ├── FINAL_districts.sql
+│   ├── MIGRATION_CITIES_DISTRICTS_COMPLETED.md
+│   ├── MIGRATION_P0_APPLIED.md
+│   ├── P1_1_add_missing_commissions_indexes.sql
+│   ├── P1_1_APPLIED.md
+│   ├── P1_1_INSTRUCTIONS.md
+│   ├── P1_1_QUICK_RUN.ps1
+│   ├── P1_1_REPORT.md
+│   ├── README_CITIES_DISTRICTS_FIX.md
+│   ├── README_distribution_metrics.md
+│   ├── README_districts_migration.md
+│   └── manual/
+│       └── add_escalation_indexes.sql
+├── ops/
+│   ├── backup_db.ps1
+│   └── backup_db.sh
+├── scripts/
+│   ├── audit_legacy.py
+│   ├── create_db_snapshot.ps1
+│   ├── db_schema_2025-10-07_165553.sql
+│   ├── db_schema_2025-10-07_165709.sql
+│   ├── db_structure_2025-10-07_165553.txt
+│   ├── db_structure_2025-10-07_165709.txt
+│   ├── db_structure_snapshot.py
+│   ├── fix_kaliningrad_districts.sql
+│   ├── import_districts.py
+│   ├── init_global_admin.sql
+│   ├── migrate_districts_simplification.sql
+│   ├── quick_db_snapshot.ps1
+│   ├── README_DB_SNAPSHOTS.md
+│   ├── SNAPSHOT_SCRIPTS_SUMMARY.md
+│   └── update_global_admin.sql
+├── tests/
+│   ├── conftest.py
+│   ├── CONTINUE_CONTEXT.md
+│   ├── POSTGRESQL_MIGRATION.md
+│   ├── README_ESCALATION_NOTIFICATIONS_TESTS.md
+│   ├── test_admin_bot_manual_assign.py
+│   ├── test_admin_bot_new_order.py
+│   ├── test_admin_bot_queue_actions.py
+│   ├── test_admin_bot_queue_card.py
+│   ├── test_admin_bot_queue_filters.py
+│   ├── test_admin_bot_queue_list.py
+│   ├── test_admin_finance_ui.py
+│   ├── test_admin_masters_keyboard.py
+│   ├── test_admin_services.py
+│   ├── test_commission_service.py
+│   ├── test_dist_log_format.py
+│   ├── test_distribution_metrics.py
+│   ├── test_distribution_scheduler.py
+│   ├── test_e2e_escalation_debug.py
+│   ├── test_e2e_escalation_notifications.py
+│   ├── test_e2e_escalation_notifications_fixed.py
+│   ├── TEST_E2E_ESCALATION_NOTIFICATIONS_README.md
+│   ├── TEST_E2E_FINAL_REPORT.md
+│   ├── test_e2e_fixes_step1.py
+│   ├── test_e2e_step_1_4_escalation_notifications.py
+│   ├── TEST_E2E_STEP_1_4_REPORT.md
+│   ├── test_export_service.py
+│   ├── test_fix_1_3_comprehensive.py
+│   ├── TEST_FIX_1_3_FINAL_REPORT.md
+│   ├── test_fix_1_3_fixes.md
+│   ├── TEST_FIX_1_3_ISSUES_REPORT.md
+│   ├── test_fixes_stage_1.py
+│   ├── test_fsm_timeout.py
+│   ├── test_heartbeat.py
+│   ├── TEST_INSTRUCTIONS.md
+│   ├── test_load_race_condition.py
+│   ├── test_logging_utils.py
+│   ├── test_master_finance.py
+│   ├── test_master_offer_callbacks.py
+│   ├── test_master_start_cancel.py
+│   ├── test_orders_model_compat.py
+│   ├── test_owner_requisites.py
+│   ├── test_single_instance.py
+│   ├── test_smoke.py
+│   ├── test_staff_access.py
+│   ├── test_step_2_logical_improvements.py
+│   ├── test_step_3_optimizations.py
+│   ├── test_structured_logging.py
+│   ├── test_time_service_boundaries.py
+│   ├── test_watchdogs_overdue.py
+│   ├── TESTING_GUIDELINES.md
+│   └── TESTING_QUICK_REF.md
+└── tools/
+    ├── check_no_mojibake.py
+    ├── code_export.txt
+    ├── collect_code.bat
+    ├── collect_code.config.example.toml
+    ├── collect_code.py
+    ├── fix_mojibake_in_repo.py
+    ├── fix_mojibake_per_line.py
+    ├── load_geo_catalog.py
+    ├── patch_strings.py
+    ├── QUICKSTART.txt
+    ├── README.md
+    ├── SUMMARY_COLLECT_CODE.md
+    ├── verify_all.ps1
+    └── tools/
+        └── collect_code.py
