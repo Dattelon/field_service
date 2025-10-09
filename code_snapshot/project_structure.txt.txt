@@ -66,6 +66,10 @@ field-service/
 │   ├── all_districts_complete.csv
 │   └── districts_sample.csv
 ├── docs/
+│   ├── BUGFIX_CITY_ADMIN_COMPLETE.md
+│   ├── BUGFIX_CITY_ADMIN_FILTER.md
+│   ├── BUGFIX_CITY_ADMIN_QUICKSTART.md
+│   ├── BUGFIX_CITY_ADMIN_SUMMARY.md
 │   ├── CHANGE_REQUEST_DISTRICTS_2025-10-04.md
 │   ├── CHANGE_REQUESTS.md
 │   ├── CR-2025-10-03-010_distribution_worker_removal.md
@@ -79,9 +83,14 @@ field-service/
 │   ├── P0-2_ONBOARDING_EDIT.md
 │   ├── P0-2_QUICKSTART.md
 │   ├── P0-2_SUMMARY.md
+│   ├── P1-10_FINAL_REPORT.md
 │   ├── P1-10_PATCH.py
 │   ├── P1-10_PUSH_OFFER_NOTIFICATIONS.md
 │   ├── P1-10_QUICKSTART.md
+│   ├── P1-12_COMPLETE.md
+│   ├── P1-12_PROGRESS_BAR.md
+│   ├── P1-12_QUICKSTART.md
+│   ├── P1-12_SUMMARY.md
 │   ├── QUICK_START_DISTRICTS.md
 │   ├── STRUCTURED_LOGGING.md
 │   └── archive/
@@ -137,6 +146,7 @@ field-service/
 │   │   │   │   │   └── moderation.py
 │   │   │   │   ├── orders/
 │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── copy_data.py
 │   │   │   │   │   ├── create.py
 │   │   │   │   │   ├── queue.py
 │   │   │   │   │   └── quick_create.py
@@ -181,6 +191,7 @@ field-service/
 │   │   │       └── normalizers.py
 │   │   ├── common/
 │   │   │   ├── __init__.py
+│   │   │   ├── copy_utils.py
 │   │   │   ├── error_middleware.py
 │   │   │   ├── fsm_timeout.py
 │   │   │   ├── polling.py

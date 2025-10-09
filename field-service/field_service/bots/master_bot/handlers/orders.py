@@ -14,6 +14,7 @@ from sqlalchemy import and_, func, insert, null, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.bots.common import safe_answer_callback, safe_edit_or_send, safe_send_message
+from field_service.bots.common.copy_utils import copy_button, format_copy_message
 from field_service.db import models as m
 from field_service.config import settings
 from field_service.services import time_service
@@ -912,6 +913,16 @@ async def _render_active_order(
         keyboard_rows.append(
             [InlineKeyboardButton(text="📞 Позвонить клиенту", url=f"tel:{order.client_phone}")]
         )
+    
+    # P1-19: Кнопки быстрого копирования
+    if order.status in ACTIVE_STATUSES or order.status == m.OrderStatus.PAYMENT:
+        copy_row: list[InlineKeyboardButton] = []
+        if order.client_phone:
+            copy_row.append(copy_button("📋 Телефон", order.id, "cph", "m"))
+        # Адрес всегда доступен для копирования
+        copy_row.append(copy_button("📋 Адрес", order.id, "addr", "m"))
+        if copy_row:
+            keyboard_rows.append(copy_row)
 
     keyboard_rows.append(_nav_row("m:act"))
     keyboard = inline_keyboard(keyboard_rows)
@@ -1080,3 +1091,84 @@ async def _count_active_orders(session: AsyncSession, master_id: int) -> int:
         )
     )
     return int((await session.execute(stmt)).scalar_one())
+
+
+# P1-19: Handler для быстрого копирования данных
+@router.callback_query(F.data.regexp(r"^m:copy:(cph|addr):(\d+)$"))
+async def copy_data_handler(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    master: m.masters,
+) -> None:
+    """
+    Обрабатывает копирование данных заказа (телефон, адрес).
+    
+    Callback format: m:copy:type:order_id
+    - type: cph (client_phone) или addr (address)
+    - order_id: ID заказа
+    """
+    parts = callback.data.split(":")
+    if len(parts) != 4:
+        await safe_answer_callback(callback, "Ошибка формата", show_alert=True)
+        return
+    
+    data_type = parts[2]
+    try:
+        order_id = int(parts[3])
+    except ValueError:
+        await safe_answer_callback(callback, "Неверный ID заказа", show_alert=True)
+        return
+    
+    # Загружаем заказ из БД
+    stmt = (
+        select(
+            m.orders.id,
+            m.orders.client_phone,
+            m.orders.house,
+            m.cities.name.label("city"),
+            m.districts.name.label("district"),
+            m.streets.name.label("street"),
+        )
+        .join(m.cities, m.cities.id == m.orders.city_id)
+        .outerjoin(m.districts, m.districts.id == m.orders.district_id)
+        .outerjoin(m.streets, m.streets.id == m.orders.street_id)
+        .where(
+            m.orders.id == order_id,
+            m.orders.assigned_master_id == master.id,
+        )
+    )
+    row = (await session.execute(stmt)).first()
+    
+    if not row:
+        await safe_answer_callback(callback, "Заказ не найден", show_alert=True)
+        return
+    
+    # Формируем данные для копирования
+    if data_type == "cph":
+        if not row.client_phone:
+            await safe_answer_callback(callback, "Телефон не указан", show_alert=True)
+            return
+        data = row.client_phone
+    elif data_type == "addr":
+        address_parts = [row.city]
+        if row.district:
+            address_parts.append(row.district)
+        if row.street:
+            address_parts.append(row.street)
+        if row.house:
+            address_parts.append(str(row.house))
+        data = ", ".join(address_parts)
+    else:
+        await safe_answer_callback(callback, "Неизвестный тип данных", show_alert=True)
+        return
+    
+    # Отправляем данные через alert для быстрого копирования
+    message_text = format_copy_message(data_type, data)
+    await safe_answer_callback(callback, data, show_alert=True)
+    
+    _log.info(
+        "copy_data: uid=%s order_id=%s type=%s",
+        _callback_uid(callback),
+        order_id,
+        data_type,
+    )

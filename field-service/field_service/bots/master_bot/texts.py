@@ -44,8 +44,10 @@ MAIN_MENU_BUTTONS = {
     "shift_off": "🔴 Выключить смену",
     "new_orders": "🆕 Новые заказы",
     "active_order": "📦 Активный заказ",
+    "history": "📋 История заказов",  # P1-9
     "finance": "💳 Финансы",
     "referral": "🎁 Реферальная программа",
+    "statistics": "📊 Моя статистика",  # P1-17
     "knowledge": "📚 База знаний",
     "start_onboarding": "Заполнить анкету",
 }
@@ -68,6 +70,7 @@ SHIFT_MESSAGES = {
     "finished": "Смена завершена.",
     "break_started": "Перерыв 2 часа начат.",
     "break_finished": "Вы вернулись на смену.",
+    "break_extended": "Перерыв продлён ещё на 2 часа.",  # P1-16
     "inactive": "Смена не активна.",
     "not_break": "Сейчас не перерыв.",
     "blocked": "Смена недоступна: аккаунт заблокирован.",
@@ -222,3 +225,106 @@ ALERT_ORDER_NOT_FOUND = "Заказ не найден."
 
 REFERRAL_EMPTY = "Пока нет начислений по реферальной программе."
 FINANCE_EMPTY = "Комиссии не найдены."
+
+
+# P1-9: История заказов мастера
+HISTORY_EMPTY = "📋 У вас пока нет завершенных заказов.\n\nВключайте смену и берите заявки — они появятся здесь после выполнения!"
+HISTORY_HEADER_TEMPLATE = "<b>📋 История заказов</b>\nСтраница {page}/{pages} • всего: {total}"
+HISTORY_STATS_TEMPLATE = (
+    "📊 <b>Ваша статистика:</b>\n"
+    "✅ Выполнено: {total_completed}\n"
+    "💰 Заработано: {total_earned:.2f} ₽\n"
+    "⭐️ Средняя оценка: {avg_rating}"
+)
+
+
+def history_order_line(
+    order_id: int,
+    status: str,
+    city: str,
+    district: str | None,
+    category: str,
+    timeslot: str | None,
+) -> str:
+    """Формирует строку для списка истории заказов."""
+    district_part = f", {_escape(district)}" if district else ""
+    slot = _escape(timeslot or "сегодня/ASAP")
+    status_emoji = "✅" if status == "Заказ закрыт" else "❌"
+    return f"{status_emoji} #{order_id} • {_escape(city)}{district_part} • {_escape(category)} • {slot}"
+
+
+def history_order_card(
+    *,
+    order_id: int,
+    status: str,
+    city: str,
+    district: str | None,
+    street: str | None,
+    house: str | None,
+    apartment: str | None,
+    address_comment: str | None,
+    category: str,
+    description: str | None,
+    timeslot: str | None,
+    client_name: str | None,
+    client_phone: str | None,
+    final_amount: float | None,
+    created_at,
+    closed_at,
+) -> str:
+    """Формирует карточку завершенного заказа."""
+    from datetime import datetime
+    
+    # Адрес
+    address_parts: list[str] = [_escape(city)]
+    if district:
+        address_parts.append(_escape(district))
+    if street:
+        address_parts.append(_escape(street))
+    if house:
+        address_parts.append(_escape(str(house)))
+    if apartment:
+        address_parts.append(f"кв. {_escape(str(apartment))}")
+    address = ", ".join(address_parts)
+    
+    if address_comment:
+        address += f"\n   💬 {_escape(address_comment)}"
+    
+    # Описание
+    description_text = _escape(description.strip() if description else "—")
+    
+    # Слот
+    slot = _escape(timeslot or "—")
+    
+    # Клиент
+    client = _escape(client_name or "—")
+    phone = _escape(client_phone or "—")
+    
+    # Сумма
+    amount_text = f"{final_amount:.2f} ₽" if final_amount else "—"
+    
+    # Даты
+    created_str = created_at.strftime("%d.%m.%Y %H:%M") if isinstance(created_at, datetime) else "—"
+    closed_str = closed_at.strftime("%d.%m.%Y %H:%M") if isinstance(closed_at, datetime) and closed_at else "—"
+    
+    # Эмодзи статуса
+    status_emoji = "✅" if status == "Заказ закрыт" else "❌"
+    
+    lines = [
+        f"<b>{status_emoji} Заказ #{order_id}</b>",
+        f"🔁 Статус: {_escape(status)}",
+        "",
+        f"📍 Адрес: {address}",
+        f"🗓 Слот: {slot}",
+        f"🛠 Категория: {_escape(category)}",
+        f"💬 Описание: {description_text}",
+        "",
+        f"👤 Клиент: {client}",
+        f"📞 Телефон: {phone}",
+        "",
+        f"💰 Сумма: {amount_text}",
+        f"📅 Создан: {created_str}",
+        f"🏁 Завершён: {closed_str}",
+    ]
+    
+    return "\n".join(lines)

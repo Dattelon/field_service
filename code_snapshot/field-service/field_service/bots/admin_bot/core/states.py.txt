@@ -67,6 +67,9 @@ class QueueFiltersFSM(StatesGroup):
 class QueueActionFSM(StatesGroup):
     cancel_reason = State()
     search_by_id = State()  # P1-9: Поиск заказа по ID
+    search_type_selection = State()  # P1-11: Выбор типа поиска
+    search_by_phone = State()  # P1-11: Поиск по телефону клиента
+    search_by_master = State()  # P1-11: Поиск по мастеру
 
 
 class MasterActionFSM(StatesGroup):

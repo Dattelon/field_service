@@ -14,11 +14,13 @@ from ..middlewares import (
     DebugLoggingMiddleware,
 )
 from .finance import router as finance_router
+from .history import router as history_router  # P1-9
 from .onboarding import router as onboarding_router
 from .orders import router as orders_router
 from .referral import router as referral_router
 from .shift import router as shift_router
 from .start import router as start_router
+from .statistics import router as statistics_router  # P1-17
 
 router = Router(name="master_bot")
 
@@ -50,5 +52,7 @@ router.include_router(start_router)
 router.include_router(onboarding_router)
 router.include_router(shift_router)
 router.include_router(orders_router)
+router.include_router(history_router)  # P1-9
 router.include_router(referral_router)
 router.include_router(finance_router)
+router.include_router(statistics_router)  # P1-17

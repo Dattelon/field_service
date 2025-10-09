@@ -181,6 +181,15 @@ def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
                 )
             ]
         )
+        # P1-9: История заказов
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["history"],
+                    callback_data="m:hist",
+                )
+            ]
+        )
         rows.append(
             [
                 InlineKeyboardButton(
@@ -194,6 +203,14 @@ def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text=MAIN_MENU_BUTTONS["referral"],
                     callback_data="m:rf",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["statistics"],
+                    callback_data="m:stats",
                 )
             ]
         )
@@ -230,3 +247,15 @@ def _method_title(method: m.PayoutMethod) -> str:
 def close_order_cancel_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура с кнопкой отмены для процесса закрытия заказа."""
     return inline_keyboard([cancel_button(callback_data="m:act:cls:cancel")])
+
+
+
+# P1-16: Клавиатура для напоминания о перерыве
+def break_reminder_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для напоминания об окончании перерыва."""
+    return inline_keyboard(
+        [
+            [InlineKeyboardButton(text="🟢 Вернуться на смену", callback_data="m:sh:brk:ok")],
+            [InlineKeyboardButton(text="☕ Продлить перерыв на 2 часа", callback_data="m:sh:brk:extend")],
+        ]
+    )

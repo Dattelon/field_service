@@ -66,8 +66,13 @@ field-service/
 │   ├── all_districts_complete.csv
 │   └── districts_sample.csv
 ├── docs/
+│   ├── BUGFIX_CITY_ADMIN_COMPLETE.md
+│   ├── BUGFIX_CITY_ADMIN_FILTER.md
+│   ├── BUGFIX_CITY_ADMIN_QUICKSTART.md
+│   ├── BUGFIX_CITY_ADMIN_SUMMARY.md
 │   ├── CHANGE_REQUEST_DISTRICTS_2025-10-04.md
 │   ├── CHANGE_REQUESTS.md
+│   ├── CONTINUE_P1_CONTEXT.md
 │   ├── CR-2025-10-03-010_distribution_worker_removal.md
 │   ├── DISTRIBUTION_METRICS.md
 │   ├── DISTRICTS_AUDIT_2025-10-03.md
@@ -83,6 +88,20 @@ field-service/
 │   ├── P1-10_PATCH.py
 │   ├── P1-10_PUSH_OFFER_NOTIFICATIONS.md
 │   ├── P1-10_QUICKSTART.md
+│   ├── P1-12_COMPLETE.md
+│   ├── P1-12_PROGRESS_BAR.md
+│   ├── P1-12_QUICKSTART.md
+│   ├── P1-12_SUMMARY.md
+│   ├── P1-17_QUICKSTART.md
+│   ├── P1-17_STATISTICS.md
+│   ├── P1-17_SUMMARY.md
+│   ├── P1-9_CHEATSHEET.md
+│   ├── P1-9_COMPLETE.md
+│   ├── P1-9_CONTINUE_CONTEXT.md
+│   ├── P1-9_FILES_LIST.md
+│   ├── P1-9_HISTORY_ORDERS.md
+│   ├── P1-9_QUICKSTART.md
+│   ├── P1-9_SUMMARY.md
 │   ├── QUICK_START_DISTRICTS.md
 │   ├── STRUCTURED_LOGGING.md
 │   └── archive/
@@ -138,6 +157,7 @@ field-service/
 │   │   │   │   │   └── moderation.py
 │   │   │   │   ├── orders/
 │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── copy_data.py
 │   │   │   │   │   ├── create.py
 │   │   │   │   │   ├── queue.py
 │   │   │   │   │   └── quick_create.py
@@ -182,6 +202,7 @@ field-service/
 │   │   │       └── normalizers.py
 │   │   ├── common/
 │   │   │   ├── __init__.py
+│   │   │   ├── copy_utils.py
 │   │   │   ├── error_middleware.py
 │   │   │   ├── fsm_timeout.py
 │   │   │   ├── polling.py
@@ -201,11 +222,13 @@ field-service/
 │   │       └── handlers/
 │   │           ├── __init__.py
 │   │           ├── finance.py
+│   │           ├── history.py
 │   │           ├── onboarding.py
 │   │           ├── orders.py
 │   │           ├── referral.py
 │   │           ├── shift.py
-│   │           └── start.py
+│   │           ├── start.py
+│   │           └── statistics.py
 │   ├── data/
 │   │   ├── __init__.py
 │   │   └── cities.py
@@ -336,9 +359,11 @@ field-service/
 │   ├── test_master_finance.py
 │   ├── test_master_offer_callbacks.py
 │   ├── test_master_start_cancel.py
+│   ├── test_master_statistics.py
 │   ├── test_orders_model_compat.py
 │   ├── test_owner_requisites.py
 │   ├── test_p1_10_push_offer_notification.py
+│   ├── test_p1_9_history_orders.py
 │   ├── test_single_instance.py
 │   ├── test_smoke.py
 │   ├── test_staff_access.py

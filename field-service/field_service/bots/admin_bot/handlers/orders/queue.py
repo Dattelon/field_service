@@ -557,10 +557,10 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
 
 
 
-# P1-9: Функция для меню очереди
+# P1-11: Функция для меню очереди
 def _queue_menu_markup() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="🔍 Поиск по ID", callback_data="adm:q:search")
+    builder.button(text="🔍 Поиск заказа", callback_data="adm:q:search")  # P1-11: Обновлён текст
     builder.button(text="🔧 Фильтры", callback_data="adm:q:flt")
     builder.button(text="📋 Открыть очередь", callback_data="adm:orders:queue:1")
     builder.button(text="🏠 В меню", callback_data="adm:menu")
@@ -1881,20 +1881,27 @@ async def cb_queue_attachment(cq: CallbackQuery, staff: StaffUser) -> None:
         return
     await _safe_answer(cq)
 
-# P1-9: ПОИСК ЗАКАЗА ПО ID
+# P1-11: ВЫБОР ТИПА ПОИСКА
 @queue_router.callback_query(
     F.data == "adm:q:search",
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_search_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """P1-9: Начать поиск заказа по ID."""
-    await state.set_state(QueueActionFSM.search_by_id)
-    await cq.message.answer(
-        "📋 <b>Поиск заказа по ID</b>\n\n"
-        "Введите номер заказа (например, 12345) или '-' для отмены.",
+    """P1-11: Начать поиск заказа - выбор типа поиска."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔢 По ID заказа", callback_data="adm:q:search:type:id")
+    builder.button(text="📱 По телефону клиента", callback_data="adm:q:search:type:phone")
+    builder.button(text="👤 По мастеру", callback_data="adm:q:search:type:master")
+    builder.button(text="❌ Отмена", callback_data="adm:q:bk")
+    builder.adjust(1)
+    
+    await cq.message.edit_text(
+        "🔍 <b>Поиск заказа</b>\n\n"
+        "Выберите тип поиска:",
+        reply_markup=builder.as_markup(),
         parse_mode="HTML",
     )
-    await _safe_answer(cq, "Введите ID заказа")
+    await _safe_answer(cq)
 
 
 @queue_router.message(
@@ -2020,3 +2027,471 @@ async def cb_filters_clear_order_id(cq: CallbackQuery, staff: StaffUser, state: 
     # Обновить меню фильтров
     await _render_filters_by_ref(cq.message.bot, staff, state)
     await _safe_answer(cq, "🔍 Поиск по ID очищен")
+
+# P1-11: HANDLERS ДЛЯ ТИПОВ ПОИСКА
+
+@queue_router.callback_query(
+    F.data == "adm:q:search:type:id",
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_search_by_id_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """P1-11: Начать поиск по ID заказа."""
+    await state.set_state(QueueActionFSM.search_by_id)
+    await cq.message.edit_text(
+        "📋 <b>Поиск заказа по ID</b>\n\n"
+        "Введите номер заказа (например, 12345) или '-' для отмены.",
+        parse_mode="HTML",
+    )
+    await _safe_answer(cq, "Введите ID заказа")
+
+
+@queue_router.callback_query(
+    F.data == "adm:q:search:type:phone",
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_search_by_phone_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """P1-11: Начать поиск по телефону клиента."""
+    await state.set_state(QueueActionFSM.search_by_phone)
+    await cq.message.edit_text(
+        "📱 <b>Поиск заказов по телефону клиента</b>\n\n"
+        "Введите телефон клиента (например, +79991234567 или 9991234567)\n"
+        "Или '-' для отмены.",
+        parse_mode="HTML",
+    )
+    await _safe_answer(cq, "Введите телефон")
+
+
+@queue_router.callback_query(
+    F.data == "adm:q:search:type:master",
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_search_by_master_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """P1-11: Начать поиск по мастеру."""
+    await state.set_state(QueueActionFSM.search_by_master)
+    await cq.message.edit_text(
+        "👤 <b>Поиск заказов по мастеру</b>\n\n"
+        "Введите ID мастера, имя или телефон\n"
+        "(например: 123, Иван, или +79991234567)\n\n"
+        "Или '-' для отмены.",
+        parse_mode="HTML",
+    )
+    await _safe_answer(cq, "Введите данные мастера")
+
+
+# P1-11: Отмена поиска для всех типов
+@queue_router.message(
+    StateFilter(QueueActionFSM.search_by_phone, QueueActionFSM.search_by_master),
+    StaffRoleFilter(_ALLOWED_ROLES),
+    F.text == "-",
+)
+async def queue_search_cancel_all(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+    """P1-11: Отменить поиск."""
+    await state.set_state(None)
+    await msg.answer("🔙 Поиск отменён.", reply_markup=_queue_menu_markup())
+
+
+# P1-11: Поиск по телефону клиента
+@queue_router.message(
+    StateFilter(QueueActionFSM.search_by_phone),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def queue_search_by_phone(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+    """P1-11: Поиск заказов по телефону клиента."""
+    text = (msg.text or "").strip()
+    
+    # Нормализация телефона - убираем всё кроме цифр
+    phone_digits = ''.join(c for c in text if c.isdigit())
+    
+    # Валидация
+    if len(phone_digits) < 10:
+        await msg.answer(
+            "⚠️ Телефон должен содержать минимум 10 цифр.\n"
+            "Попробуйте ещё раз или введите '-' для отмены."
+        )
+        return
+    
+    await state.set_state(None)
+    
+    # Поиск заказов по телефону
+    from sqlalchemy import select, or_, func
+    from field_service.db import models as m
+    
+    session_factory = msg.bot.get("session_factory")
+    if not session_factory:
+        await msg.answer("❌ Ошибка системы. Попробуйте позже.")
+        return
+    
+    async with session_factory() as session:
+        # Ищем заказы где client_phone содержит эти цифры
+        # Используем LIKE для гибкого поиска
+        stmt = (
+            select(
+                m.orders.id,
+                m.orders.client_phone,
+                m.orders.client_name,
+                m.orders.status,
+                m.orders.created_at,
+                m.cities.name.label("city_name"),
+                m.districts.name.label("district_name"),
+            )
+            .join(m.cities, m.cities.id == m.orders.city_id)
+            .outerjoin(m.districts, m.districts.id == m.orders.district_id)
+            .where(
+                or_(
+                    m.orders.client_phone.like(f"%{phone_digits}%"),
+                    m.orders.client_phone.like(f"%{phone_digits[-10:]}%"),  # последние 10 цифр
+                )
+            )
+            .order_by(m.orders.created_at.desc())
+            .limit(20)  # Ограничение результатов
+        )
+        
+        # Фильтр по городам если нужно
+        city_ids = visible_city_ids_for(staff)
+        if city_ids is not None:
+            stmt = stmt.where(m.orders.city_id.in_(city_ids))
+        
+        result = await session.execute(stmt)
+        orders = result.all()
+    
+    if not orders:
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
+        builder.button(text="🏠 В меню", callback_data="adm:menu")
+        builder.adjust(1)
+        await msg.answer(
+            f"❌ Заказы с телефоном '{text}' не найдены.",
+            reply_markup=builder.as_markup()
+        )
+        return
+    
+    # Форматирование результатов
+    lines = [f"📱 <b>Найдено заказов: {len(orders)}</b>\n"]
+    for order in orders[:10]:  # Показываем первые 10
+        status_emoji = "🟢" if order.status == m.OrderStatus.ASSIGNED else "🔵"
+        lines.append(
+            f"{status_emoji} #{order.id} • {order.city_name or '?'}"
+            f"{f', {order.district_name}' if order.district_name else ''}\n"
+            f"   👤 {order.client_name or '—'} ({order.client_phone or '—'})\n"
+            f"   📌 {order.status.value if hasattr(order.status, 'value') else order.status}"
+        )
+    
+    if len(orders) > 10:
+        lines.append(f"\n... и ещё {len(orders) - 10} заказов")
+    
+    text_response = "\n".join(lines)
+    
+    # Кнопки для действий
+    builder = InlineKeyboardBuilder()
+    for order in orders[:5]:  # Первые 5 с кнопками
+        builder.button(
+            text=f"#{order.id}",
+            callback_data=f"adm:q:card:{order.id}:1"
+        )
+    builder.adjust(5)  # 5 кнопок в ряд
+    
+    nav_builder = InlineKeyboardBuilder()
+    nav_builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
+    nav_builder.button(text="🏠 В меню", callback_data="adm:menu")
+    nav_builder.adjust(2)
+    builder.attach(nav_builder)
+    
+    await msg.answer(
+        text_response,
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+
+
+# P1-11: Поиск по мастеру
+@queue_router.message(
+    StateFilter(QueueActionFSM.search_by_master),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def queue_search_by_master(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+    """P1-11: Поиск заказов по мастеру (ID, имя или телефон)."""
+    text = (msg.text or "").strip()
+    
+    if not text:
+        await msg.answer("⚠️ Введите ID, имя или телефон мастера.")
+        return
+    
+    await state.set_state(None)
+    
+    from sqlalchemy import select, or_, func
+    from field_service.db import models as m
+    
+    session_factory = msg.bot.get("session_factory")
+    if not session_factory:
+        await msg.answer("❌ Ошибка системы. Попробуйте позже.")
+        return
+    
+    async with session_factory() as session:
+        # Сначала ищем мастеров по запросу
+        master_search_conditions = []
+        
+        # Поиск по ID (если это число)
+        if text.isdigit():
+            master_id = int(text)
+            master_search_conditions.append(m.masters.id == master_id)
+        
+        # Поиск по имени (case-insensitive)
+        master_search_conditions.append(
+            or_(
+                func.lower(m.masters.first_name).like(f"%{text.lower()}%"),
+                func.lower(m.masters.last_name).like(f"%{text.lower()}%"),
+            )
+        )
+        
+        # Поиск по телефону
+        phone_digits = ''.join(c for c in text if c.isdigit())
+        if len(phone_digits) >= 10:
+            master_search_conditions.append(m.masters.phone.like(f"%{phone_digits}%"))
+        
+        # Ищем мастеров
+        masters_stmt = (
+            select(m.masters.id, m.masters.first_name, m.masters.last_name, m.masters.phone)
+            .where(or_(*master_search_conditions))
+            .limit(10)
+        )
+        masters_result = await session.execute(masters_stmt)
+        masters = masters_result.all()
+        
+        if not masters:
+            builder = InlineKeyboardBuilder()
+            builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
+            builder.button(text="🏠 В меню", callback_data="adm:menu")
+            builder.adjust(1)
+            await msg.answer(
+                f"❌ Мастера '{text}' не найдены.",
+                reply_markup=builder.as_markup()
+            )
+            return
+        
+        # Если нашли больше 1 мастера - показываем список для выбора
+        if len(masters) > 1:
+            lines = [f"👥 <b>Найдено мастеров: {len(masters)}</b>\n"]
+            builder = InlineKeyboardBuilder()
+            for master in masters:
+                full_name = f"{master.last_name} {master.first_name}"
+                lines.append(f"• #{master.id} {full_name} ({master.phone or '—'})")
+                builder.button(
+                    text=f"#{master.id} {full_name[:15]}",
+                    callback_data=f"adm:q:search:master:{master.id}"
+                )
+            builder.adjust(1)
+            
+            nav_builder = InlineKeyboardBuilder()
+            nav_builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
+            nav_builder.button(text="🏠 В меню", callback_data="adm:menu")
+            nav_builder.adjust(2)
+            builder.attach(nav_builder)
+            
+            await msg.answer(
+                "\n".join(lines) + "\n\nВыберите мастера:",
+                reply_markup=builder.as_markup(),
+                parse_mode="HTML"
+            )
+            return
+        
+        # Если нашли ровно 1 мастера - ищем его заказы
+        master = masters[0]
+        master_id = master.id
+        
+        # Поиск заказов мастера
+        orders_stmt = (
+            select(
+                m.orders.id,
+                m.orders.client_phone,
+                m.orders.client_name,
+                m.orders.status,
+                m.orders.created_at,
+                m.cities.name.label("city_name"),
+                m.districts.name.label("district_name"),
+            )
+            .join(m.cities, m.cities.id == m.orders.city_id)
+            .outerjoin(m.districts, m.districts.id == m.orders.district_id)
+            .where(m.orders.assigned_master_id == master_id)
+            .order_by(m.orders.created_at.desc())
+            .limit(20)
+        )
+        
+        # Фильтр по городам
+        city_ids = visible_city_ids_for(staff)
+        if city_ids is not None:
+            orders_stmt = orders_stmt.where(m.orders.city_id.in_(city_ids))
+        
+        orders_result = await session.execute(orders_stmt)
+        orders = orders_result.all()
+    
+    if not orders:
+        full_name = f"{master.last_name} {master.first_name}"
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
+        builder.button(text="🏠 В меню", callback_data="adm:menu")
+        builder.adjust(1)
+        await msg.answer(
+            f"❌ У мастера #{master_id} {full_name} нет заказов.",
+            reply_markup=builder.as_markup()
+        )
+        return
+    
+    # Форматирование результатов
+    full_name = f"{master.last_name} {master.first_name}"
+    lines = [f"👤 <b>Заказы мастера #{master_id} {full_name}</b>"]
+    lines.append(f"Найдено: {len(orders)}\n")
+    
+    for order in orders[:10]:
+        status_emoji = {
+            m.OrderStatus.ASSIGNED: "🟡",
+            m.OrderStatus.EN_ROUTE: "🚗",
+            m.OrderStatus.WORKING: "🔧",
+            m.OrderStatus.PAYMENT: "💰",
+            m.OrderStatus.CLOSED: "✅",
+        }.get(order.status, "🔵")
+        
+        lines.append(
+            f"{status_emoji} #{order.id} • {order.city_name or '?'}"
+            f"{f', {order.district_name}' if order.district_name else ''}\n"
+            f"   👤 {order.client_name or '—'}\n"
+            f"   📌 {order.status.value if hasattr(order.status, 'value') else order.status}"
+        )
+    
+    if len(orders) > 10:
+        lines.append(f"\n... и ещё {len(orders) - 10} заказов")
+    
+    text_response = "\n".join(lines)
+    
+    # Кнопки
+    builder = InlineKeyboardBuilder()
+    for order in orders[:5]:
+        builder.button(
+            text=f"#{order.id}",
+            callback_data=f"adm:q:card:{order.id}:1"
+        )
+    builder.adjust(5)
+    
+    nav_builder = InlineKeyboardBuilder()
+    nav_builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
+    nav_builder.button(text="🏠 В меню", callback_data="adm:menu")
+    nav_builder.adjust(2)
+    builder.attach(nav_builder)
+    
+    await msg.answer(
+        text_response,
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+
+
+# P1-11: Callback для выбора мастера из списка
+@queue_router.callback_query(
+    F.data.regexp(r"^adm:q:search:master:(\d+)$"),
+    StaffRoleFilter(_ALLOWED_ROLES),
+)
+async def cb_queue_search_master_selected(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """P1-11: Выбран мастер из списка - показать его заказы."""
+    try:
+        master_id = int(cq.data.split(":")[-1])
+    except (ValueError, IndexError):
+        await _safe_answer(cq, "❌ Ошибка ID мастера", show_alert=True)
+        return
+    
+    from sqlalchemy import select
+    from field_service.db import models as m
+    
+    session_factory = cq.message.bot.get("session_factory")
+    if not session_factory:
+        await _safe_answer(cq, "❌ Ошибка системы", show_alert=True)
+        return
+    
+    async with session_factory() as session:
+        # Загрузить мастера
+        master_stmt = select(m.masters).where(m.masters.id == master_id)
+        master_result = await session.execute(master_stmt)
+        master = master_result.scalar_one_or_none()
+        
+        if not master:
+            await _safe_answer(cq, "❌ Мастер не найден", show_alert=True)
+            return
+        
+        # Поиск заказов мастера
+        orders_stmt = (
+            select(
+                m.orders.id,
+                m.orders.client_phone,
+                m.orders.client_name,
+                m.orders.status,
+                m.orders.created_at,
+                m.cities.name.label("city_name"),
+                m.districts.name.label("district_name"),
+            )
+            .join(m.cities, m.cities.id == m.orders.city_id)
+            .outerjoin(m.districts, m.districts.id == m.orders.district_id)
+            .where(m.orders.assigned_master_id == master_id)
+            .order_by(m.orders.created_at.desc())
+            .limit(20)
+        )
+        
+        city_ids = visible_city_ids_for(staff)
+        if city_ids is not None:
+            orders_stmt = orders_stmt.where(m.orders.city_id.in_(city_ids))
+        
+        orders_result = await session.execute(orders_stmt)
+        orders = orders_result.all()
+    
+    if not orders:
+        full_name = f"{master.last_name} {master.first_name}"
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
+        builder.button(text="🏠 В меню", callback_data="adm:menu")
+        builder.adjust(1)
+        await cq.message.edit_text(
+            f"❌ У мастера #{master_id} {full_name} нет заказов.",
+            reply_markup=builder.as_markup()
+        )
+        await _safe_answer(cq)
+        return
+    
+    # Форматирование
+    full_name = f"{master.last_name} {master.first_name}"
+    lines = [f"👤 <b>Заказы мастера #{master_id} {full_name}</b>"]
+    lines.append(f"Найдено: {len(orders)}\n")
+    
+    for order in orders[:10]:
+        status_emoji = {
+            m.OrderStatus.ASSIGNED: "🟡",
+            m.OrderStatus.EN_ROUTE: "🚗",
+            m.OrderStatus.WORKING: "🔧",
+            m.OrderStatus.PAYMENT: "💰",
+            m.OrderStatus.CLOSED: "✅",
+        }.get(order.status, "🔵")
+        
+        lines.append(
+            f"{status_emoji} #{order.id} • {order.city_name or '?'}"
+            f"{f', {order.district_name}' if order.district_name else ''}\n"
+            f"   👤 {order.client_name or '—'}\n"
+            f"   📌 {order.status.value if hasattr(order.status, 'value') else order.status}"
+        )
+    
+    if len(orders) > 10:
+        lines.append(f"\n... и ещё {len(orders) - 10} заказов")
+    
+    # Кнопки
+    builder = InlineKeyboardBuilder()
+    for order in orders[:5]:
+        builder.button(text=f"#{order.id}", callback_data=f"adm:q:card:{order.id}:1")
+    builder.adjust(5)
+    
+    nav_builder = InlineKeyboardBuilder()
+    nav_builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
+    nav_builder.button(text="🏠 В меню", callback_data="adm:menu")
+    nav_builder.adjust(2)
+    builder.attach(nav_builder)
+    
+    await cq.message.edit_text(
+        "\n".join(lines),
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+    await _safe_answer(cq)

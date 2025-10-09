@@ -67,6 +67,9 @@ class QueueFiltersFSM(StatesGroup):
 class QueueActionFSM(StatesGroup):
     cancel_reason = State()
     search_by_id = State()  # P1-9: Поиск заказа по ID
+    search_type_selection = State()  # P1-11: Выбор типа поиска
+    search_by_phone = State()  # P1-11: Поиск по телефону клиента
+    search_by_master = State()  # P1-11: Поиск по мастеру
 
 
 class MasterActionFSM(StatesGroup):
@@ -74,6 +77,11 @@ class MasterActionFSM(StatesGroup):
     reject_reason = State()
     block_reason = State()
     limit_value = State()
+
+
+class ModerationBulkFSM(StatesGroup):
+    """FSM для массовых операций модерации (P1-14)."""
+    reject_reason = State()  # Причина для массового отклонения
 
 
 
@@ -114,6 +122,7 @@ __all__ = [
     "AccessCodeNewFSM",
     "FinanceActionFSM",
     "MasterActionFSM",
+    "ModerationBulkFSM",  # P1-14: Массовые операции модерации
     "NewOrderFSM",
     "QuickOrderFSM",  # P0-5: Быстрое создание заказа
     "OwnerPayEditFSM",

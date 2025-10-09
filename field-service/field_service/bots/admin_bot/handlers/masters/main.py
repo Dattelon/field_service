@@ -194,6 +194,7 @@ def build_list_kb(
     skills: list[dict[str, object]],
     *,
     prefix: str = "adm:m",
+    selected_ids: set[int] | None = None,  # P1-14: Для чекбоксов
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
 
@@ -213,14 +214,56 @@ def build_list_kb(
             kb.row(*buttons)
 
     list_builder = InlineKeyboardBuilder()
-    for item in items:
-        list_builder.button(
-            text=f"Открыть #{item.id}",
-            callback_data=f"{prefix}:card:{group}:{category}:{page}:{item.id}",
-        )
+    is_moderation = prefix == "adm:mod"
+    selected = selected_ids or set()
+    
+    # P1-14: В модерации показываем чекбоксы + кнопку просмотра
+    if is_moderation:
+        for item in items:
+            is_selected = item.id in selected
+            checkbox = "☑️" if is_selected else "⬜"
+            # Чекбокс
+            list_builder.button(
+                text=f"{checkbox} #{item.id}",
+                callback_data=f"{prefix}:toggle:{group}:{category}:{page}:{item.id}",
+            )
+            # Кнопка просмотра
+            list_builder.button(
+                text="👁 Открыть",
+                callback_data=f"{prefix}:card:{group}:{category}:{page}:{item.id}",
+            )
+        if items:
+            list_builder.adjust(2)  # 2 кнопки в ряд (чекбокс + открыть)
+    else:
+        # Обычный режим - только кнопка открытия
+        for item in items:
+            list_builder.button(
+                text=f"Открыть #{item.id}",
+                callback_data=f"{prefix}:card:{group}:{category}:{page}:{item.id}",
+            )
+        if items:
+            list_builder.adjust(1)
+    
     if items:
-        list_builder.adjust(1)
         kb.attach(list_builder)
+
+    # P1-14: Массовые операции в модерации
+    if is_moderation and selected:
+        bulk_actions = InlineKeyboardBuilder()
+        bulk_actions.button(
+            text=f"✅ Одобрить выбранные ({len(selected)})",
+            callback_data=f"{prefix}:bulk:approve:{group}:{category}:{page}",
+        )
+        bulk_actions.button(
+            text=f"❌ Отклонить выбранные ({len(selected)})",
+            callback_data=f"{prefix}:bulk:reject:{group}:{category}:{page}",
+        )
+        bulk_actions.button(
+            text="🔄 Сбросить выбор",
+            callback_data=f"{prefix}:bulk:clear:{group}:{category}:{page}",
+        )
+        bulk_actions.adjust(1)
+        kb.attach(bulk_actions)
 
     nav = InlineKeyboardBuilder()
     if page > 1:
@@ -341,6 +384,7 @@ async def render_master_list(
     staff: StaffUser,
     mode: str = "masters",
     prefix: str = "adm:m",
+    selected_ids: set[int] | None = None,  # P1-14: Выбранные для массовых операций
 ) -> tuple[str, InlineKeyboardMarkup, list[MasterListItem], list[dict[str, object]], bool]:
     service = _masters_service(bot)
     skills = await service.list_active_skills()
@@ -362,6 +406,9 @@ async def render_master_list(
         f"Категория: {category_label}",
         f"Страница: {page}",
     ]
+    # P1-14: Показываем количество выбранных
+    if selected_ids:
+        lines.append(f"✅ Выбрано: {len(selected_ids)}")
     if not items:
         lines.append("Список пуст.")
     else:
@@ -375,6 +422,7 @@ async def render_master_list(
         has_next,
         skills,
         prefix=prefix,
+        selected_ids=selected_ids,  # P1-14: Передаём выбранные
     )
     return "\n\n".join(lines), markup, items, skills, has_next
 

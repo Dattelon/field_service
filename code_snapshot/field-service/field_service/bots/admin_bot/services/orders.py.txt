@@ -87,7 +87,7 @@ class DBOrdersService:
             return _zone_storage_value(tz)
 
     async def list_cities(
-            self, *, query: Optional[str] = None, limit: int = 20
+            self, *, query: Optional[str] = None, limit: int = 20, city_ids: Optional[list[int]] = None
         ) -> list[CityRef]:
             matching = city_catalog.match_cities(query)
             if limit is not None and limit > 0:
@@ -95,13 +95,14 @@ class DBOrdersService:
             if not matching:
                 return []
             async with self._session_factory() as session:
-                rows = await session.execute(
-                    select(m.cities.id, m.cities.name)
-                    .where(
-                        m.cities.is_active == True,  # noqa: E712
-                        m.cities.name.in_(matching),
-                    )
+                stmt = select(m.cities.id, m.cities.name).where(
+                    m.cities.is_active == True,  # noqa: E712
+                    m.cities.name.in_(matching),
                 )
+                # RBAC: Фильтрация по visible cities для CITY_ADMIN
+                if city_ids is not None:
+                    stmt = stmt.where(m.cities.id.in_(city_ids))
+                rows = await session.execute(stmt)
                 fetched = {row.name: int(row.id) for row in rows}
             return [
                 CityRef(id=fetched[name], name=name)

@@ -15,7 +15,6 @@ from field_service.services import onboarding_service
 
 from ..keyboards import (
     districts_keyboard,
-    home_geo_keyboard,
     payout_methods_keyboard,
     pdn_keyboard,
     skills_keyboard,
@@ -41,6 +40,45 @@ AVAILABLE_PAYOUT_METHODS: tuple[m.PayoutMethod, ...] = (
     m.PayoutMethod.BANK_ACCOUNT,
 )
 
+# P1-12: Progress bar configuration
+TOTAL_ONBOARDING_STEPS = 13  # Excluding confirm step, removed home_geo
+STEP_MAPPING = {
+    OnboardingStates.pdn: 1,
+    OnboardingStates.last_name: 2,
+    OnboardingStates.first_name: 3,
+    OnboardingStates.middle_name: 4,
+    OnboardingStates.phone: 5,
+    OnboardingStates.city: 6,
+    OnboardingStates.districts: 7,
+    OnboardingStates.vehicle: 8,
+    OnboardingStates.skills: 9,
+    OnboardingStates.passport: 10,
+    OnboardingStates.selfie: 11,
+    OnboardingStates.payout_method: 12,
+    OnboardingStates.payout_requisites: 13,
+}
+
+
+def _format_progress_bar(current_step: int, total_steps: int = TOTAL_ONBOARDING_STEPS) -> str:
+    """
+    Форматирует прогресс-бар для онбординга.
+    
+    Пример: "Шаг 3 из 14: [▓▓▓░░░░░░░░░░░]"
+    """
+    filled = int((current_step / total_steps) * 14)  # 14 символов для визуального прогресса
+    empty = 14 - filled
+    bar = "▓" * filled + "░" * empty
+    return f"Шаг {current_step} из {total_steps}: [{bar}]"
+
+
+def _add_progress_to_text(text: str, state_name: str) -> str:
+    """Добавляет прогресс-бар к тексту сообщения."""
+    step_num = STEP_MAPPING.get(state_name)
+    if step_num is None:
+        return text
+    progress = _format_progress_bar(step_num)
+    return f"{progress}\n\n{text}"
+
 
 @router.callback_query(F.data == "m:onboarding:start")
 async def onboarding_start(
@@ -54,10 +92,11 @@ async def onboarding_start(
     await state.clear()
     await state.update_data(step_msg_ids=[], last_step_msg_id=None)
     await state.set_state(OnboardingStates.pdn)
+    text = _add_progress_to_text(MASTER_PDN_CONSENT, OnboardingStates.pdn)
     await push_step_message(
         callback,
         state,
-        MASTER_PDN_CONSENT,
+        text,
         reply_markup=pdn_keyboard(),
     )
     await callback.answer()
@@ -66,10 +105,11 @@ async def onboarding_start(
 @router.callback_query(OnboardingStates.pdn, F.data == "m:onboarding:pdn_accept")
 async def onboarding_pdn_accept(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(OnboardingStates.last_name)
+    text = _add_progress_to_text("Введите вашу фамилию (от 2 до 230 символов).", OnboardingStates.last_name)
     await push_step_message(
         callback,
         state,
-        "Введите вашу фамилию (от 2 до 230 символов).",
+        text,
     )
     await callback.answer()
 
@@ -91,10 +131,11 @@ async def onboarding_last_name(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(last_name=last_name)
     await state.set_state(OnboardingStates.first_name)
+    text = _add_progress_to_text("Введите ваше имя (от 2 до 230 символов).", OnboardingStates.first_name)
     await push_step_message(
         message,
         state,
-        "Введите ваше имя (от 2 до 230 символов).",
+        text,
     )
 
 
@@ -107,10 +148,11 @@ async def onboarding_first_name(message: Message, state: FSMContext) -> None:
         return
     await state.update_data(first_name=first_name)
     await state.set_state(OnboardingStates.middle_name)
+    text = _add_progress_to_text("Введите ваше отчество или прочерк-минус, если его нет.", OnboardingStates.middle_name)
     await push_step_message(
         message,
         state,
-        "Введите ваше отчество или прочерк-минус, если его нет.",
+        text,
     )
 
 
@@ -135,10 +177,11 @@ async def onboarding_middle_name(message: Message, state: FSMContext) -> None:
         return
     
     await state.set_state(OnboardingStates.phone)
+    text = _add_progress_to_text("Введите ваш телефон формата +7XXXXXXXXXX или 8XXXXXXXXXX.", OnboardingStates.phone)
     await push_step_message(
         message,
         state,
-        "Введите ваш телефон формата +7XXXXXXXXXX или 8XXXXXXXXXX.",
+        text,
     )
 
 
@@ -159,9 +202,8 @@ async def onboarding_phone(message: Message, state: FSMContext) -> None:
         return
     
     await state.set_state(OnboardingStates.city)
-    await message.answer(
-        "Напишите название города: можно начать вводить и увидеть подсказки."
-    )
+    text = _add_progress_to_text("Напишите название города: можно начать вводить и увидеть подсказки.", OnboardingStates.city)
+    await message.answer(text)
 
 
 @router.message(OnboardingStates.city)
@@ -193,7 +235,8 @@ async def onboarding_city_lookup(
     await state.update_data(
         city_options=[{"id": city.id, "name": city.name} for city in cities]
     )
-    await push_step_message(message, state, "Выберите ваш город:", inline_keyboard(options))
+    text = _add_progress_to_text("Выберите ваш город:", OnboardingStates.city)
+    await push_step_message(message, state, text, inline_keyboard(options))
 
 
 @router.callback_query(OnboardingStates.city, F.data.startswith("m:onboarding:city:"))
@@ -224,10 +267,11 @@ async def onboarding_city_pick(
             return
         else:
             await state.set_state(OnboardingStates.vehicle)
+            text = _add_progress_to_text("Есть ли у вас автомобиль?", OnboardingStates.vehicle)
             await push_step_message(
                 callback,
                 state,
-                "Есть ли у вас автомобиль?",
+                text,
                 vehicle_keyboard(),
             )
             await callback.answer()
@@ -239,10 +283,11 @@ async def onboarding_city_pick(
     msg = "Выберите районы работы (можно несколько)."
     if is_editing:
         msg = "Выберите районы работы (можно несколько). При смене города старые районы сброшены."
+    text = _add_progress_to_text(msg, OnboardingStates.districts)
     await push_step_message(
         callback,
         state,
-        msg,
+        text,
         keyboard,
     )
     await callback.answer()
@@ -310,10 +355,11 @@ async def onboarding_districts_done(callback: CallbackQuery, state: FSMContext) 
         return
     
     await state.set_state(OnboardingStates.vehicle)
+    text = _add_progress_to_text("Есть ли у вас автомобиль?", OnboardingStates.vehicle)
     await push_step_message(
         callback,
         state,
-        "Есть ли у вас автомобиль?",
+        text,
         vehicle_keyboard(),
     )
     await callback.answer()
@@ -370,7 +416,8 @@ async def _start_skills(
     await state.update_data(skills=skills_data, skill_ids=[])
     keyboard = _build_skills_keyboard(skills_data, set())
     await state.set_state(OnboardingStates.skills)
-    await push_step_message(event, state, "Выберите ваши навыки (можно несколько).", keyboard)
+    text = _add_progress_to_text("Выберите ваши навыки (можно несколько).", OnboardingStates.skills)
+    await push_step_message(event, state, text, keyboard)
 
 
 @router.callback_query(OnboardingStates.skills, F.data.startswith("m:onboarding:skill:"))
@@ -411,10 +458,11 @@ async def onboarding_skills_done(callback: CallbackQuery, state: FSMContext) -> 
         return
     
     await state.set_state(OnboardingStates.passport)
+    text = _add_progress_to_text("Загрузите фото или PDF паспорта (разворот с фото).", OnboardingStates.passport)
     await push_step_message(
         callback,
         state,
-        "Загрузите фото или PDF паспорта (разворот с фото).",
+        text,
     )
     await callback.answer()
 
@@ -429,7 +477,8 @@ async def onboarding_passport_file(message: Message, state: FSMContext) -> None:
         file_type = "DOCUMENT"
     await state.update_data(passport_file={"file_id": file_id, "file_type": file_type})
     await state.set_state(OnboardingStates.selfie)
-    await push_step_message(message, state, "Теперь загрузите селфи с паспортом (видно лицо).")
+    text = _add_progress_to_text("Теперь загрузите селфи с паспортом (видно лицо).", OnboardingStates.selfie)
+    await push_step_message(message, state, text)
 
 
 @router.message(OnboardingStates.passport)
@@ -442,10 +491,11 @@ async def onboarding_selfie_file(message: Message, state: FSMContext) -> None:
     file_id = message.photo[-1].file_id
     await state.update_data(selfie_file={"file_id": file_id, "file_type": "PHOTO"})
     await state.set_state(OnboardingStates.payout_method)
+    text = _add_progress_to_text("Выберите способ выплаты.", OnboardingStates.payout_method)
     await push_step_message(
         message,
         state,
-        "Выберите способ выплаты.",
+        text,
         payout_methods_keyboard(AVAILABLE_PAYOUT_METHODS),
     )
 
@@ -465,7 +515,8 @@ async def onboarding_payout_method(callback: CallbackQuery, state: FSMContext) -
         return
     await state.update_data(payout_method=method.value)
     await state.set_state(OnboardingStates.payout_requisites)
-    await push_step_message(callback, state, _payout_prompt(method))
+    text = _add_progress_to_text(_payout_prompt(method), OnboardingStates.payout_requisites)
+    await push_step_message(callback, state, text)
     await callback.answer()
 
 
@@ -489,77 +540,10 @@ async def onboarding_payout_requisites(message: Message, state: FSMContext) -> N
         await _show_summary(message, state)
         return
     
-    await state.set_state(OnboardingStates.home_geo)
-    await push_step_message(
-        message,
-        state,
-        "Укажите домашнюю геолокацию (необязательно) или пропустите этот шаг.",
-        home_geo_keyboard(),
-    )
-
-
-@router.callback_query(OnboardingStates.home_geo, F.data == "m:onboarding:home_geo_share")
-async def onboarding_home_geo_share(callback: CallbackQuery) -> None:
-    await callback.answer()
-    await callback.message.answer(
-        "Нажмите кнопку прикрепления в Telegram и выберите геолокацию, "
-        "либо отправьте координаты текстом: 55.75580, 37.61730."
-    )
-
-
-@router.callback_query(OnboardingStates.home_geo, F.data == "m:onboarding:home_geo_skip")
-async def onboarding_home_geo_skip(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(home_lat=None, home_lon=None)
-    
-    # P0-2: Проверка флага редактирования
-    data = await state.get_data()
-    if data.get("is_editing"):
-        await state.update_data(is_editing=False)
-        await callback.answer("Геолокация сброшена")
-    
-    await _show_summary(callback.message, state)
-    await callback.answer()
-
-
-@router.message(OnboardingStates.home_geo, F.content_type == ContentType.LOCATION)
-async def onboarding_home_geo_location(message: Message, state: FSMContext) -> None:
-    location = message.location
-    await state.update_data(home_lat=location.latitude, home_lon=location.longitude)
-    
-    # P0-2: Проверка флага редактирования
-    data = await state.get_data()
-    if data.get("is_editing"):
-        await state.update_data(is_editing=False)
-    
+    # Переходим сразу к summary (этап home_geo удалён)
     await _show_summary(message, state)
 
 
-@router.message(OnboardingStates.home_geo, F.content_type == ContentType.TEXT)
-async def onboarding_home_geo_text(message: Message, state: FSMContext) -> None:
-    text_value = (message.text or "").strip()
-    if "," not in text_value:
-        await message.answer("Формат координат: широта, долгота. Например: 55.75580, 37.61730.")
-        return
-    lat_part, lon_part = [part.strip() for part in text_value.split(",", 1)]
-    try:
-        latitude = float(lat_part)
-        longitude = float(lon_part)
-    except ValueError:
-        await message.answer("Неверный формат. Попробуйте снова.")
-        return
-    await state.update_data(home_lat=latitude, home_lon=longitude)
-    
-    # P0-2: Проверка флага редактирования
-    data = await state.get_data()
-    if data.get("is_editing"):
-        await state.update_data(is_editing=False)
-    
-    await _show_summary(message, state)
-
-
-@router.message(OnboardingStates.home_geo)
-async def onboarding_home_geo_other(message: Message) -> None:
-    await message.answer("Отправьте геолокацию или координаты.")
 
 
 async def _show_summary(event: Message | CallbackQuery, state: FSMContext) -> None:
@@ -591,10 +575,6 @@ async def _show_summary(event: Message | CallbackQuery, state: FSMContext) -> No
         f"Навыки: {', '.join(skill_names) if skill_names else '—'}",
         f"Способ выплаты: {_format_payout_summary(payout_method, payout_payload)}",
     ]
-    if data.get("home_lat") is not None and data.get("home_lon") is not None:
-        lines.append(f"Дом-база: {data['home_lat']:.5f}, {data['home_lon']:.5f}")
-    else:
-        lines.append("Дом-база: не указана")
 
     # P0-2: Кнопки редактирования
     edit_buttons = [
@@ -613,7 +593,6 @@ async def _show_summary(event: Message | CallbackQuery, state: FSMContext) -> No
         [InlineKeyboardButton(text="✏️ Изменить автомобиль", callback_data="m:onb:edit:vehicle")],
         [InlineKeyboardButton(text="✏️ Изменить навыки", callback_data="m:onb:edit:skills")],
         [InlineKeyboardButton(text="✏️ Изменить способ выплаты", callback_data="m:onb:edit:payout")],
-        [InlineKeyboardButton(text="✏️ Изменить дом-базу", callback_data="m:onb:edit:home_geo")],
         [InlineKeyboardButton(text="✅ Отправить на модерацию", callback_data="m:onboarding:confirm")],
     ])
 
@@ -630,10 +609,11 @@ async def onboarding_edit_name(callback: CallbackQuery, state: FSMContext) -> No
     """Переход к редактированию ФИО."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.last_name)
+    text = _add_progress_to_text("Введите новую фамилию (от 2 до 230 символов).", OnboardingStates.last_name)
     await push_step_message(
         callback,
         state,
-        "Введите новую фамилию (от 2 до 230 символов).",
+        text,
     )
     await callback.answer()
 
@@ -643,10 +623,11 @@ async def onboarding_edit_phone(callback: CallbackQuery, state: FSMContext) -> N
     """Переход к редактированию телефона."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.phone)
+    text = _add_progress_to_text("Введите новый телефон формата +7XXXXXXXXXX или 8XXXXXXXXXX.", OnboardingStates.phone)
     await push_step_message(
         callback,
         state,
-        "Введите новый телефон формата +7XXXXXXXXXX или 8XXXXXXXXXX.",
+        text,
     )
     await callback.answer()
 
@@ -656,9 +637,8 @@ async def onboarding_edit_city(callback: CallbackQuery, state: FSMContext) -> No
     """Переход к редактированию города."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.city)
-    await callback.message.answer(
-        "Напишите название города: можно начать вводить и увидеть подсказки."
-    )
+    text = _add_progress_to_text("Напишите название города: можно начать вводить и увидеть подсказки.", OnboardingStates.city)
+    await callback.message.answer(text)
     await callback.answer()
 
 
@@ -685,10 +665,11 @@ async def onboarding_edit_districts(
     await state.update_data(districts=districts, district_page=1)
     await state.set_state(OnboardingStates.districts)
     keyboard = _build_district_keyboard(districts, selected, page=1)
+    text = _add_progress_to_text("Выберите районы работы (можно несколько).", OnboardingStates.districts)
     await push_step_message(
         callback,
         state,
-        "Выберите районы работы (можно несколько).",
+        text,
         keyboard,
     )
     await callback.answer()
@@ -699,10 +680,11 @@ async def onboarding_edit_vehicle(callback: CallbackQuery, state: FSMContext) ->
     """Переход к редактированию наличия автомобиля."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.vehicle)
+    text = _add_progress_to_text("Есть ли у вас автомобиль?", OnboardingStates.vehicle)
     await push_step_message(
         callback,
         state,
-        "Есть ли у вас автомобиль?",
+        text,
         vehicle_keyboard(),
     )
     await callback.answer()
@@ -728,10 +710,11 @@ async def onboarding_edit_skills(
     await state.update_data(skills=skills_data)
     await state.set_state(OnboardingStates.skills)
     keyboard = _build_skills_keyboard(skills_data, selected)
+    text = _add_progress_to_text("Выберите ваши навыки (можно несколько).", OnboardingStates.skills)
     await push_step_message(
         callback, 
         state, 
-        "Выберите ваши навыки (можно несколько).", 
+        text, 
         keyboard
     )
     await callback.answer()
@@ -742,25 +725,12 @@ async def onboarding_edit_payout(callback: CallbackQuery, state: FSMContext) -> 
     """Переход к редактированию способа выплаты."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.payout_method)
+    text = _add_progress_to_text("Выберите способ выплаты.", OnboardingStates.payout_method)
     await push_step_message(
         callback,
         state,
-        "Выберите способ выплаты.",
+        text,
         payout_methods_keyboard(AVAILABLE_PAYOUT_METHODS),
-    )
-    await callback.answer()
-
-
-@router.callback_query(OnboardingStates.confirm, F.data == "m:onb:edit:home_geo")
-async def onboarding_edit_home_geo(callback: CallbackQuery, state: FSMContext) -> None:
-    """Переход к редактированию домашней геолокации."""
-    await state.update_data(is_editing=True)
-    await state.set_state(OnboardingStates.home_geo)
-    await push_step_message(
-        callback,
-        state,
-        "Укажите домашнюю геолокацию (необязательно) или пропустите этот шаг.",
-        home_geo_keyboard(),
     )
     await callback.answer()
 
@@ -807,13 +777,6 @@ async def onboarding_confirm(
     payout_method = m.PayoutMethod(data["payout_method"])
     master.payout_method = payout_method
     master.payout_data = data.get("payout_payload", {})
-
-    if data.get("home_lat") is not None and data.get("home_lon") is not None:
-        master.home_latitude = data["home_lat"]
-        master.home_longitude = data["home_lon"]
-    else:
-        master.home_latitude = None
-        master.home_longitude = None
 
     passport_info = data.get("passport_file", {})
     selfie_info = data.get("selfie_file", {})

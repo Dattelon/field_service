@@ -181,6 +181,15 @@ def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
                 )
             ]
         )
+        # P1-9: История заказов
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["history"],
+                    callback_data="m:hist",
+                )
+            ]
+        )
         rows.append(
             [
                 InlineKeyboardButton(
@@ -194,6 +203,14 @@ def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text=MAIN_MENU_BUTTONS["referral"],
                     callback_data="m:rf",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["statistics"],
+                    callback_data="m:stats",
                 )
             ]
         )

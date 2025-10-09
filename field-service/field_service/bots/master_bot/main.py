@@ -14,6 +14,7 @@ from field_service.bots.common.error_middleware import setup_error_middleware
 from field_service.bots.common.polling import poll_with_single_instance_guard
 from field_service.infra.notify import send_alert, send_log
 from field_service.services.heartbeat import run_heartbeat
+from field_service.services.break_reminder_scheduler import run_break_reminder  # P1-16
 
 from .handlers import router as master_router
 
@@ -55,6 +56,12 @@ async def main() -> int:
         name="master_heartbeat",
     )
 
+    # P1-16: Запуск планировщика напоминаний о перерывах
+    break_reminder_task = asyncio.create_task(
+        run_break_reminder(interval_seconds=60),
+        name="break_reminder",
+    )
+
     exit_code = 0
     try:
         logger.info("Starting master bot; allowed updates: %s", dp.resolve_used_update_types())
@@ -78,6 +85,11 @@ async def main() -> int:
             heartbeat_task.cancel()
             with suppress(asyncio.CancelledError):
                 await heartbeat_task
+        # P1-16: Отменяем задачу break_reminder
+        if break_reminder_task:
+            break_reminder_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await break_reminder_task
         await bot.session.close()
 
     return exit_code

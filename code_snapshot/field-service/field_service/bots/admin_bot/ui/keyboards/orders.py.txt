@@ -6,6 +6,8 @@ from typing import Mapping, Sequence, Optional
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from field_service.bots.common.copy_utils import copy_button
+
 from ...core.dto import (
     CommissionDetail,
     MasterBrief,
@@ -84,6 +86,15 @@ def order_card_keyboard(
     if show_guarantee:
         actions.button(text='🛡 Гарантия', callback_data=f'adm:q:gar:{order_id}')
     actions.button(text='👥 Назначить', callback_data=f'adm:q:as:{order_id}')
+    
+    # P1-19: Кнопки быстрого копирования
+    copy_row = InlineKeyboardBuilder()
+    copy_row.add(copy_button("📋 Телефон клиента", order_id, "cph", "adm"))
+    copy_row.add(copy_button("📋 Телефон мастера", order_id, "mph", "adm"))
+    copy_row.add(copy_button("📋 Адрес", order_id, "addr", "adm"))
+    copy_row.adjust(3)  # Три кнопки в ряд
+    kb.attach(copy_row)
+    
     if allow_return:
         # P0-6: Используем сохранённую страницу при возврате
         actions.button(text='⬅️ Назад', callback_data=f'adm:q:ret:{order_id}:{page}')

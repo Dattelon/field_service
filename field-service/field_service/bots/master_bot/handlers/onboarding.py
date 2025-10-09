@@ -416,7 +416,8 @@ async def _start_skills(
     await state.update_data(skills=skills_data, skill_ids=[])
     keyboard = _build_skills_keyboard(skills_data, set())
     await state.set_state(OnboardingStates.skills)
-    await push_step_message(event, state, "Выберите ваши навыки (можно несколько).", keyboard)
+    text = _add_progress_to_text("Выберите ваши навыки (можно несколько).", OnboardingStates.skills)
+    await push_step_message(event, state, text, keyboard)
 
 
 @router.callback_query(OnboardingStates.skills, F.data.startswith("m:onboarding:skill:"))
@@ -457,10 +458,11 @@ async def onboarding_skills_done(callback: CallbackQuery, state: FSMContext) -> 
         return
     
     await state.set_state(OnboardingStates.passport)
+    text = _add_progress_to_text("Загрузите фото или PDF паспорта (разворот с фото).", OnboardingStates.passport)
     await push_step_message(
         callback,
         state,
-        "Загрузите фото или PDF паспорта (разворот с фото).",
+        text,
     )
     await callback.answer()
 
@@ -475,7 +477,8 @@ async def onboarding_passport_file(message: Message, state: FSMContext) -> None:
         file_type = "DOCUMENT"
     await state.update_data(passport_file={"file_id": file_id, "file_type": file_type})
     await state.set_state(OnboardingStates.selfie)
-    await push_step_message(message, state, "Теперь загрузите селфи с паспортом (видно лицо).")
+    text = _add_progress_to_text("Теперь загрузите селфи с паспортом (видно лицо).", OnboardingStates.selfie)
+    await push_step_message(message, state, text)
 
 
 @router.message(OnboardingStates.passport)
@@ -488,10 +491,11 @@ async def onboarding_selfie_file(message: Message, state: FSMContext) -> None:
     file_id = message.photo[-1].file_id
     await state.update_data(selfie_file={"file_id": file_id, "file_type": "PHOTO"})
     await state.set_state(OnboardingStates.payout_method)
+    text = _add_progress_to_text("Выберите способ выплаты.", OnboardingStates.payout_method)
     await push_step_message(
         message,
         state,
-        "Выберите способ выплаты.",
+        text,
         payout_methods_keyboard(AVAILABLE_PAYOUT_METHODS),
     )
 
@@ -511,7 +515,8 @@ async def onboarding_payout_method(callback: CallbackQuery, state: FSMContext) -
         return
     await state.update_data(payout_method=method.value)
     await state.set_state(OnboardingStates.payout_requisites)
-    await push_step_message(callback, state, _payout_prompt(method))
+    text = _add_progress_to_text(_payout_prompt(method), OnboardingStates.payout_requisites)
+    await push_step_message(callback, state, text)
     await callback.answer()
 
 
@@ -604,10 +609,11 @@ async def onboarding_edit_name(callback: CallbackQuery, state: FSMContext) -> No
     """Переход к редактированию ФИО."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.last_name)
+    text = _add_progress_to_text("Введите новую фамилию (от 2 до 230 символов).", OnboardingStates.last_name)
     await push_step_message(
         callback,
         state,
-        "Введите новую фамилию (от 2 до 230 символов).",
+        text,
     )
     await callback.answer()
 
@@ -617,10 +623,11 @@ async def onboarding_edit_phone(callback: CallbackQuery, state: FSMContext) -> N
     """Переход к редактированию телефона."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.phone)
+    text = _add_progress_to_text("Введите новый телефон формата +7XXXXXXXXXX или 8XXXXXXXXXX.", OnboardingStates.phone)
     await push_step_message(
         callback,
         state,
-        "Введите новый телефон формата +7XXXXXXXXXX или 8XXXXXXXXXX.",
+        text,
     )
     await callback.answer()
 
@@ -630,9 +637,8 @@ async def onboarding_edit_city(callback: CallbackQuery, state: FSMContext) -> No
     """Переход к редактированию города."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.city)
-    await callback.message.answer(
-        "Напишите название города: можно начать вводить и увидеть подсказки."
-    )
+    text = _add_progress_to_text("Напишите название города: можно начать вводить и увидеть подсказки.", OnboardingStates.city)
+    await callback.message.answer(text)
     await callback.answer()
 
 
@@ -659,10 +665,11 @@ async def onboarding_edit_districts(
     await state.update_data(districts=districts, district_page=1)
     await state.set_state(OnboardingStates.districts)
     keyboard = _build_district_keyboard(districts, selected, page=1)
+    text = _add_progress_to_text("Выберите районы работы (можно несколько).", OnboardingStates.districts)
     await push_step_message(
         callback,
         state,
-        "Выберите районы работы (можно несколько).",
+        text,
         keyboard,
     )
     await callback.answer()
@@ -673,10 +680,11 @@ async def onboarding_edit_vehicle(callback: CallbackQuery, state: FSMContext) ->
     """Переход к редактированию наличия автомобиля."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.vehicle)
+    text = _add_progress_to_text("Есть ли у вас автомобиль?", OnboardingStates.vehicle)
     await push_step_message(
         callback,
         state,
-        "Есть ли у вас автомобиль?",
+        text,
         vehicle_keyboard(),
     )
     await callback.answer()
@@ -702,10 +710,11 @@ async def onboarding_edit_skills(
     await state.update_data(skills=skills_data)
     await state.set_state(OnboardingStates.skills)
     keyboard = _build_skills_keyboard(skills_data, selected)
+    text = _add_progress_to_text("Выберите ваши навыки (можно несколько).", OnboardingStates.skills)
     await push_step_message(
         callback, 
         state, 
-        "Выберите ваши навыки (можно несколько).", 
+        text, 
         keyboard
     )
     await callback.answer()
@@ -716,10 +725,11 @@ async def onboarding_edit_payout(callback: CallbackQuery, state: FSMContext) -> 
     """Переход к редактированию способа выплаты."""
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.payout_method)
+    text = _add_progress_to_text("Выберите способ выплаты.", OnboardingStates.payout_method)
     await push_step_message(
         callback,
         state,
-        "Выберите способ выплаты.",
+        text,
         payout_methods_keyboard(AVAILABLE_PAYOUT_METHODS),
     )
     await callback.answer()

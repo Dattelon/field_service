@@ -175,18 +175,20 @@ async def _start_new_order(cq, staff, state):
     await state.clear()
     await state.update_data(staff_id=staff.id, attachments=[], order_type=OrderType.NORMAL.value)
     await state.set_state(NewOrderFSM.city)
-    await _render_city_step(cq.message, state, page=1)
+    await _render_city_step(cq.message, state, page=1, staff=staff)
     await cq.answer()
 
 
-async def _render_city_step(message, state, page, query=None):
-    """Рендерит шаг выбора города."""
+async def _render_city_step(message, state, page, staff, query=None):
+    """Рендерит шаг выбора города с фильтрацией по visible_city_ids."""
     orders_service = _orders_service(message.bot)
+    # RBAC: Получаем разрешённые города для CITY_ADMIN
+    city_ids = visible_city_ids_for(staff)
     limit = 80
     if query:
-        cities = await orders_service.list_cities(query=query, limit=limit)
+        cities = await orders_service.list_cities(query=query, limit=limit, city_ids=city_ids)
     else:
-        cities = await orders_service.list_cities(limit=limit)
+        cities = await orders_service.list_cities(limit=limit, city_ids=city_ids)
     if not cities:
         try:
             await message.edit_text("Города не найдены. Нажмите /cancel, чтобы отменить.")
@@ -267,13 +269,13 @@ async def cb_new_order_cancel(cq: CallbackQuery, staff: StaffUser, state: FSMCon
 
 
 @router.callback_query(F.data.startswith("adm:new:city_page:"), StateFilter(NewOrderFSM.city))
-async def cb_new_order_city_page(cq: CallbackQuery, state: FSMContext) -> None:
+async def cb_new_order_city_page(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     """Пагинация по городам."""
     page = int(cq.data.split(":")[3])
     data = await state.get_data()
     query = data.get("city_query")
     await state.set_state(NewOrderFSM.city)
-    await _render_city_step(cq.message, state, page=page, query=query)
+    await _render_city_step(cq.message, state, page=page, staff=staff, query=query)
     await cq.answer()
 
 
@@ -292,13 +294,13 @@ async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None
 
 
 @router.message(StateFilter(NewOrderFSM.city))
-async def new_order_city_input(msg: Message, state: FSMContext) -> None:
+async def new_order_city_input(msg: Message, staff: StaffUser, state: FSMContext) -> None:
     """Ввод названия города для поиска."""
     query = (msg.text or "").strip()
     if len(query) < 2:
         await msg.answer("Минимум 2 символа. Попробуйте снова.")
         return
-    await _render_city_step(msg, state, page=1, query=query)
+    await _render_city_step(msg, state, page=1, staff=staff, query=query)
 
 
 @router.callback_query(F.data.startswith("adm:new:city:"), StateFilter(NewOrderFSM.city))
@@ -351,7 +353,7 @@ async def cb_new_order_district_page(cq: CallbackQuery, state: FSMContext) -> No
 
 
 @router.callback_query(F.data == "adm:new:city_back", StateFilter(NewOrderFSM.district))
-async def cb_new_order_city_back(cq: CallbackQuery, state: FSMContext) -> None:
+async def cb_new_order_city_back(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     """Вернуться к выбору города."""
     data = await state.get_data()
     await state.set_state(NewOrderFSM.city)
@@ -359,6 +361,7 @@ async def cb_new_order_city_back(cq: CallbackQuery, state: FSMContext) -> None:
         cq.message,
         state,
         page=data.get("city_page", 1),
+        staff=staff,
         query=data.get("city_query"),
     )
     await cq.answer()
