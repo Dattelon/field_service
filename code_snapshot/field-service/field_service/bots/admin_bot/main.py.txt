@@ -14,10 +14,15 @@ from aiogram.types import Update
 from field_service.config import settings
 from field_service.bots.common.error_middleware import setup_error_middleware
 from field_service.bots.common.polling import poll_with_single_instance_guard
+from field_service.bots.common.retry_handler import retry_router
+from field_service.bots.common.retry_middleware import setup_retry_middleware
 from field_service.infra.notify import send_alert, send_log
 from field_service.services.distribution_scheduler import run_scheduler
 from field_service.services.heartbeat import run_heartbeat
-from field_service.services.watchdogs import watchdog_commissions_overdue
+from field_service.services.watchdogs import (
+    watchdog_commissions_overdue,
+    watchdog_commission_deadline_reminders,  # P1-21
+)
 from field_service.services.autoclose_scheduler import autoclose_scheduler  # P1-01
 from field_service.services.unassigned_monitor import monitor_unassigned_orders
 
@@ -76,6 +81,9 @@ async def main() -> int:
     # Модерация и управление мастерами
     dp.include_router(admin_masters_router)
     dp.include_router(admin_moderation_router)
+    
+    # P1-13: Retry функциональность для повтора действий при ошибках
+    dp.include_router(retry_router)
 
     services = {
         "staff_service": DBStaffService(),
@@ -107,6 +115,9 @@ async def main() -> int:
         logs_chat_id=logs_chat_id,
         alerts_chat_id=alerts_chat_id,
     )
+    
+    # P1-13: Подключаем retry middleware для автоматического предложения повтора при ошибках
+    setup_retry_middleware(dp, enabled=True)
 
     heartbeat_task = asyncio.create_task(
         run_heartbeat(bot, name="admin", chat_id=logs_chat_id),
@@ -147,6 +158,15 @@ async def main() -> int:
         name="autoclose_scheduler",
     )
 
+    # P1-21: Напоминания о дедлайне комиссии (24ч, 6ч, 1ч)
+    deadline_reminders_task = asyncio.create_task(
+        watchdog_commission_deadline_reminders(
+            bot,
+            interval_seconds=1800,  # Проверка каждые 30 минут
+        ),
+        name="commission_deadline_reminders",
+    )
+
     exit_code = 0
     try:
         await poll_with_single_instance_guard(
@@ -165,7 +185,14 @@ async def main() -> int:
         await send_log(bot, message, chat_id=logs_chat_id)
         exit_code = 1
     finally:
-        for task in (heartbeat_task, scheduler_task, watchdog_task, autoclose_task, unassigned_task):
+        for task in (
+            heartbeat_task,
+            scheduler_task,
+            watchdog_task,
+            autoclose_task,
+            deadline_reminders_task,  # P1-21
+            unassigned_task,
+        ):
             if task:
                 task.cancel()
                 with suppress(asyncio.CancelledError):

@@ -12,6 +12,8 @@ from aiogram.enums import ParseMode
 from field_service.config import settings
 from field_service.bots.common.error_middleware import setup_error_middleware
 from field_service.bots.common.polling import poll_with_single_instance_guard
+from field_service.bots.common.retry_handler import retry_router  # P1-13
+from field_service.bots.common.retry_middleware import setup_retry_middleware  # P1-13
 from field_service.infra.notify import send_alert, send_log
 from field_service.services.heartbeat import run_heartbeat
 from field_service.services.break_reminder_scheduler import run_break_reminder  # P1-16
@@ -39,6 +41,9 @@ async def main() -> int:
     )
     dp = Dispatcher()
     dp.include_router(master_router)
+    
+    # P1-13: Retry функциональность для повтора действий при ошибках
+    dp.include_router(retry_router)
 
     alerts_chat_id = settings.alerts_channel_id
     logs_chat_id = settings.logs_channel_id
@@ -50,6 +55,9 @@ async def main() -> int:
         logs_chat_id=logs_chat_id,
         alerts_chat_id=alerts_chat_id,
     )
+    
+    # P1-13: Подключаем retry middleware для автоматического предложения повтора при ошибках
+    setup_retry_middleware(dp, enabled=True)
 
     heartbeat_task = asyncio.create_task(
         run_heartbeat(bot, name="master", chat_id=logs_chat_id),

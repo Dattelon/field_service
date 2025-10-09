@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardMarkup
 from sqlalchemy import select, update
 
 from field_service.db.session import SessionLocal
@@ -19,6 +20,7 @@ async def _drain_outbox_once(bot: Bot) -> None:
             select(
                 m.notifications_outbox.id,
                 m.notifications_outbox.master_id,
+                m.notifications_outbox.event,  # P1-16: добавили event
                 m.notifications_outbox.payload,
                 m.masters.tg_user_id,
             )
@@ -31,7 +33,7 @@ async def _drain_outbox_once(bot: Bot) -> None:
         if not items:
             return
         now = datetime.now(UTC)
-        for outbox_id, master_id, payload, tg_user_id in items:
+        for outbox_id, master_id, event, payload, tg_user_id in items:
             if not tg_user_id:
                 # пометим как обработанное без отправки
                 await session.execute(
@@ -41,8 +43,20 @@ async def _drain_outbox_once(bot: Bot) -> None:
                 )
                 continue
             text = str((payload or {}).get("message") or "Новая заявка")
+            
+            # P1-16: Для напоминания о перерыве добавляем клавиатуру
+            reply_markup: Optional[InlineKeyboardMarkup] = None
+            if event == "break_reminder":
+                from field_service.bots.master_bot.keyboards import break_reminder_keyboard
+                reply_markup = break_reminder_keyboard()
+            
             try:
-                await bot.send_message(int(tg_user_id), text)
+                await bot.send_message(
+                    int(tg_user_id),
+                    text,
+                    reply_markup=reply_markup,
+                    parse_mode="HTML"
+                )
             finally:
                 await session.execute(
                     update(m.notifications_outbox)

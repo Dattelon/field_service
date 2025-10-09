@@ -72,6 +72,14 @@ class OrderType(str, enum.Enum):
     GUARANTEE = "GUARANTEE"
 
 
+class ActorType(str, enum.Enum):
+    """Type of actor that changed order status."""
+    SYSTEM = "SYSTEM"
+    ADMIN = "ADMIN"
+    MASTER = "MASTER"
+    AUTO_DISTRIBUTION = "AUTO_DISTRIBUTION"
+
+
 class OfferState(str, enum.Enum):
     SENT = "SENT"
     VIEWED = "VIEWED"
@@ -529,12 +537,19 @@ class order_status_history(Base):
     changed_by_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL")
     )
+    actor_type: Mapped[ActorType] = mapped_column(
+        Enum(ActorType, name="actor_type"), nullable=False, index=True
+    )
+    context: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )
 
     __table_args__ = (
         Index("ix_order_status_history__order_created_at", "order_id", "created_at"),
+        Index("ix_order_status_history__actor_type", "actor_type"),
     )
 
 
@@ -946,3 +961,36 @@ class distribution_metrics(Base):
 
 
 
+
+
+# ===== Commission Deadline Notifications (P1-21) =====
+
+
+class commission_deadline_notifications(Base):
+    """Tracks sent deadline reminders to avoid duplicates."""
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    commission_id: Mapped[int] = mapped_column(
+        ForeignKey("commissions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    hours_before: Mapped[int] = mapped_column(
+        SmallInteger, 
+        nullable=False,
+        comment="Hours before deadline (24, 6, or 1)"
+    )
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    
+    __table_args__ = (
+        UniqueConstraint(
+            "commission_id", 
+            "hours_before", 
+            name="uq_commission_deadline_notifications__commission_hours"
+        ),
+        Index("ix_commission_deadline_notifications__commission", "commission_id"),
+    )

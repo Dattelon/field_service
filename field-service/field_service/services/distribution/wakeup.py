@@ -125,6 +125,13 @@ async def run(
                 reason="deferred_wakeup",
                 changed_by_staff_id=None,
                 changed_by_master_id=None,
+                actor_type=m.ActorType.AUTO_DISTRIBUTION,
+                context={
+                    "action": "auto_wakeup",
+                    "reason": "working_hours_started",
+                    "target_time_local": target_local,
+                    "system": "distribution_scheduler"
+                }
             )
         )
         _DEFERRED_LOGGED.discard(order_id)

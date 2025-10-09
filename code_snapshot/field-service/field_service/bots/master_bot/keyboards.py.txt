@@ -247,3 +247,15 @@ def _method_title(method: m.PayoutMethod) -> str:
 def close_order_cancel_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура с кнопкой отмены для процесса закрытия заказа."""
     return inline_keyboard([cancel_button(callback_data="m:act:cls:cancel")])
+
+
+
+# P1-16: Клавиатура для напоминания о перерыве
+def break_reminder_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для напоминания об окончании перерыва."""
+    return inline_keyboard(
+        [
+            [InlineKeyboardButton(text="🟢 Вернуться на смену", callback_data="m:sh:brk:ok")],
+            [InlineKeyboardButton(text="☕ Продлить перерыв на 2 часа", callback_data="m:sh:brk:extend")],
+        ]
+    )

@@ -4,8 +4,9 @@ from __future__ import annotations
 from typing import Mapping, Sequence, Optional
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from ...core.dto import CommissionDetail, StaffUser
+from ...core.dto import CommissionDetail, StaffUser, StaffRole
 
 
 def finance_menu(staff: StaffUser) -> InlineKeyboardMarkup:
@@ -13,24 +14,98 @@ def finance_menu(staff: StaffUser) -> InlineKeyboardMarkup:
     kb.button(text="⏳ Ожидают оплаты", callback_data="adm:f:aw:1")
     kb.button(text="✅ Оплаченные", callback_data="adm:f:pd:1")
     kb.button(text="⏰ Просроченные", callback_data="adm:f:ov:1")
+    kb.button(text="📊 По периодам", callback_data="adm:f:grouped:aw")  # P1-15: Группировка
     if staff.role is StaffRole.GLOBAL_ADMIN:
         kb.button(text="⚡ Одобрить все", callback_data="adm:f:bulk")  # P2-11: Массовое одобрение
         kb.button(text="💼 Реквизиты владельца", callback_data="adm:f:set")
     kb.button(text="⬅️ В меню", callback_data="adm:menu")
-    kb.adjust(2, 2) if staff.role != StaffRole.GLOBAL_ADMIN else kb.adjust(2, 2, 1, 1)
+    if staff.role != StaffRole.GLOBAL_ADMIN:
+        kb.adjust(2, 2, 1)
+    else:
+        kb.adjust(2, 2, 2, 1)
+    return kb.as_markup()
+
+
+def finance_grouped_keyboard(segment: str, groups: dict[str, int]) -> InlineKeyboardMarkup:
+    """
+    P1-15: Клавиатура для группированного вида комиссий.
+    
+    Args:
+        segment: 'aw', 'pd', 'ov'
+        groups: dict с количеством комиссий в каждой группе
+    """
+    kb = InlineKeyboardBuilder()
+    
+    # Карта названий периодов
+    period_labels = {
+        'today': f"📅 Сегодня ({groups.get('today', 0)})",
+        'yesterday': f"📅 Вчера ({groups.get('yesterday', 0)})",
+        'week': f"📅 Эта неделя ({groups.get('week', 0)})",
+        'month': f"📅 Этот месяц ({groups.get('month', 0)})",
+        'older': f"📅 Старше ({groups.get('older', 0)})",
+    }
+    
+    # Добавляем кнопки для непустых групп
+    for period in ['today', 'yesterday', 'week', 'month', 'older']:
+        count = groups.get(period, 0)
+        if count > 0:
+            kb.button(
+                text=period_labels[period],
+                callback_data=f"adm:f:grp:{segment}:{period}:1"
+            )
+    
+    # Кнопка возврата
+    kb.button(text="⬅️ Назад", callback_data="adm:f")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def finance_group_period_keyboard(segment: str, period: str, page: int, has_next: bool) -> InlineKeyboardMarkup:
+    """
+    P1-15: Клавиатура для просмотра комиссий внутри группы.
+    
+    Args:
+        segment: 'aw', 'pd', 'ov'
+        period: 'today', 'yesterday', 'week', 'month', 'older'
+        page: номер страницы
+        has_next: есть ли следующая страница
+    """
+    kb = InlineKeyboardBuilder()
+    
+    # Навигация по страницам
+    if page > 1:
+        kb.button(text="◀️ Назад", callback_data=f"adm:f:grp:{segment}:{period}:{page - 1}")
+    if has_next:
+        kb.button(text="▶️ Далее", callback_data=f"adm:f:grp:{segment}:{period}:{page + 1}")
+    
+    # Возврат к списку групп
+    kb.button(text="⬅️ К группам", callback_data=f"adm:f:grouped:{segment}")
+    kb.adjust(2, 1)
     return kb.as_markup()
 
 
 
 
-def finance_segment_keyboard(seg: str, page: int, has_next: bool) -> InlineKeyboardMarkup:
+def finance_segment_keyboard(seg: str, page: int, has_next: bool, grouped: bool = False) -> InlineKeyboardMarkup:
+    """P1-15: Клавиатура списка комиссий с опцией группировки."""
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
     kb = InlineKeyboardBuilder()
-    if page > 1:
-        kb.button(text="◀️ Назад", callback_data=f"adm:f:{seg}:{page - 1}")
-    if has_next:
-        kb.button(text="▶️ Далее", callback_data=f"adm:f:{seg}:{page + 1}")
+    
+    # Пагинация только для негруппированного списка
+    if not grouped:
+        if page > 1:
+            kb.button(text="◀️ Назад", callback_data=f"adm:f:{seg}:{page - 1}")
+        if has_next:
+            kb.button(text="▶️ Далее", callback_data=f"adm:f:{seg}:{page + 1}")
+    
+    # Кнопка переключения группировки
+    if grouped:
+        kb.button(text="📋 Обычный список", callback_data=f"adm:f:{seg}:1")
+    else:
+        kb.button(text="📊 По периодам", callback_data=f"adm:f:{seg}:grp")
+    
     kb.button(text="⬅️ Назад", callback_data="adm:f")
-    kb.adjust(2)
+    kb.adjust(2, 1) if not grouped else kb.adjust(1, 1)
     return kb.as_markup()
 
 

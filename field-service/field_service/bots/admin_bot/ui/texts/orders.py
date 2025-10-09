@@ -85,16 +85,46 @@ def order_card(order: OrderCard) -> str:
         if declined_count > 5:
             lines.append(f"  ... и ещё {declined_count - 5}")
     
-    # P1-02: История статусов
+    # P1-20: Детальная история статусов с контекстом
     if order.status_history:
         lines.append(f"\n📋 <b>История статусов:</b>")
         # Показываем последние 5 изменений
         for item in order.status_history[-5:]:
             from_status_text = item.from_status or "—"
             change_text = f"{from_status_text} → {item.to_status}"
-            lines.append(f"  • {change_text} — {item.changed_at_local}")
+            
+            # Иконка актора
+            actor_icon = {
+                "SYSTEM": "🤖",
+                "ADMIN": "👤",
+                "MASTER": "🔧",
+                "AUTO_DISTRIBUTION": "⚙️"
+            }.get(item.actor_type, "")
+            
+            # Основная строка с актором
+            actor_name = item.actor_name or ""
+            if actor_name:
+                lines.append(f"  {actor_icon} {change_text} — {item.changed_at_local}")
+                lines.append(f"    <i>Кто: {actor_name}</i>")
+            else:
+                lines.append(f"  {actor_icon} {change_text} — {item.changed_at_local}")
+            
+            # Причина
             if item.reason:
-                lines.append(f"    <i>{item.reason}</i>")
+                lines.append(f"    <i>Причина: {item.reason}</i>")
+            
+            # Дополнительный контекст из context (если есть важные данные)
+            if item.context:
+                ctx = item.context
+                if "candidates_count" in ctx and "round_number" in ctx:
+                    lines.append(f"    <i>Раунд {ctx['round_number']}, кандидатов: {ctx['candidates_count']}</i>")
+                elif "method" in ctx:
+                    method_text = {
+                        "auto_distribution": "Автораспределение",
+                        "manual_assign": "Ручное назначение",
+                        "admin_override": "Переназначение админом"
+                    }.get(ctx["method"], ctx["method"])
+                    lines.append(f"    <i>Метод: {method_text}</i>")
     
     return "\n".join(lines)
 

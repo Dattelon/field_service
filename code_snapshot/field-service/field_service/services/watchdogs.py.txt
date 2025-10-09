@@ -166,3 +166,182 @@ async def _notify_master_blocked(bot: Bot, event: CommissionOverdueEvent) -> Non
         )
 
 
+
+
+# ===== P1-21: Commission Deadline Reminders =====
+
+
+async def watchdog_commission_deadline_reminders(
+    bot: Bot,
+    interval_seconds: int = 600,
+    *,
+    iterations: int | None = None,
+) -> None:
+    """P1-21: Periodically check commissions and send deadline reminders at 24h, 6h, 1h before deadline."""
+    from datetime import timedelta
+    from sqlalchemy import and_, insert
+
+    REMINDER_HOURS = [24, 6, 1]  # Отправляем уведомления за 24ч, 6ч и 1ч
+    
+    sleep_for = max(60, int(interval_seconds) if interval_seconds else 600)
+    loops_done = 0
+    
+    while True:
+        try:
+            now = datetime.now(UTC)
+            async with SessionLocal() as session:
+                # Находим все комиссии в статусе WAIT_PAY
+                result = await session.execute(
+                    select(m.commissions)
+                    .where(
+                        and_(
+                            m.commissions.status == m.CommissionStatus.WAIT_PAY,
+                            m.commissions.deadline_at > now  # Ещё не просрочены
+                        )
+                    )
+                )
+                pending_commissions = result.scalars().all()
+                
+                notifications_sent = 0
+                
+                for commission in pending_commissions:
+                    time_until_deadline = commission.deadline_at - now
+                    hours_until = time_until_deadline.total_seconds() / 3600
+                    
+                    # Проверяем каждый порог уведомлений
+                    for reminder_hours in REMINDER_HOURS:
+                        # Нужно отправить если:
+                        # 1. До дедлайна осталось меньше reminder_hours
+                        # 2. Ещё не отправляли уведомление для этого порога
+                        if hours_until <= reminder_hours:
+                            # Проверяем не отправляли ли уже
+                            check = await session.execute(
+                                select(m.commission_deadline_notifications)
+                                .where(
+                                    and_(
+                                        m.commission_deadline_notifications.commission_id == commission.id,
+                                        m.commission_deadline_notifications.hours_before == reminder_hours
+                                    )
+                                )
+                            )
+                            already_sent = check.scalar_one_or_none()
+                            
+                            if not already_sent:
+                                # Отправляем уведомление
+                                sent = await _send_deadline_reminder(
+                                    bot, 
+                                    session, 
+                                    commission, 
+                                    reminder_hours
+                                )
+                                
+                                if sent:
+                                    # Записываем что отправили
+                                    await session.execute(
+                                        insert(m.commission_deadline_notifications).values(
+                                            commission_id=commission.id,
+                                            hours_before=reminder_hours
+                                        )
+                                    )
+                                    notifications_sent += 1
+                
+                await session.commit()
+                
+                if notifications_sent > 0:
+                    live_log.push(
+                        "watchdog",
+                        f"commission_deadline_reminders sent={notifications_sent}",
+                        level="INFO"
+                    )
+                    logger.info(
+                        "commission_deadline_reminders sent=%d notifications",
+                        notifications_sent
+                    )
+                    
+        except Exception as exc:
+            logger.exception("watchdog_commission_deadline_reminders error")
+            live_log.push(
+                "watchdog",
+                f"watchdog_commission_deadline_reminders error: {exc}",
+                level="ERROR"
+            )
+        
+        loops_done += 1
+        if iterations is not None and loops_done >= iterations:
+            break
+        
+        await asyncio.sleep(sleep_for)
+
+
+async def _send_deadline_reminder(
+    bot: Bot,
+    session,
+    commission: m.commissions,
+    hours_before: int
+) -> bool:
+    """Отправить уведомление мастеру о приближающемся дедлайне комиссии."""
+    try:
+        # Получаем мастера и заказ
+        result = await session.execute(
+            select(m.masters.tg_user_id, m.orders.id)
+            .join(m.orders, m.orders.id == commission.order_id)
+            .where(m.masters.id == commission.master_id)
+        )
+        row = result.first()
+        
+        if not row or not row.tg_user_id:
+            logger.warning(
+                "Cannot send deadline reminder: master %s has no tg_user_id",
+                commission.master_id
+            )
+            return False
+        
+        tg_user_id = row.tg_user_id
+        order_id = row.id
+        
+        # Формируем текст уведомления
+        if hours_before == 24:
+            time_text = "24 часа"
+            emoji = "⏰"
+        elif hours_before == 6:
+            time_text = "6 часов"
+            emoji = "⚠️"
+        else:  # 1 hour
+            time_text = "1 час"
+            emoji = "🔴"
+        
+        amount_str = f"{commission.amount:.2f}₽"
+        
+        message = (
+            f"{emoji} <b>Напоминание об оплате комиссии</b>\n\n"
+            f"До дедлайна оплаты комиссии осталось <b>{time_text}</b>\n\n"
+            f"📋 Заказ #{order_id}\n"
+            f"💰 Сумма: {amount_str}\n\n"
+            f"Пожалуйста, отметьте оплату или загрузите чек в разделе \"Финансы\".\n\n"
+            f"⚠️ При просрочке оплаты ваш аккаунт будет заблокирован."
+        )
+        
+        # Отправляем уведомление
+        await bot.send_message(
+            chat_id=tg_user_id,
+            text=message,
+            parse_mode="HTML"
+        )
+        
+        logger.info(
+            "commission_deadline_reminder sent: commission=%s master=%s hours=%s",
+            commission.id,
+            commission.master_id,
+            hours_before
+        )
+        
+        return True
+        
+    except Exception as exc:
+        logger.warning(
+            "Failed to send deadline reminder for commission %s: %s",
+            commission.id,
+            exc,
+            exc_info=True
+        )
+        return False

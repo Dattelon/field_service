@@ -27,6 +27,8 @@ from .finance import (
     finance_reject_cancel_keyboard,
     owner_pay_actions_keyboard,
     owner_pay_edit_keyboard,
+    finance_grouped_keyboard,  # P1-15
+    finance_group_period_keyboard,  # P1-15
 )
 from .reports import (
     reports_menu_keyboard,
@@ -69,6 +71,8 @@ __all__ = [
     'finance_reject_cancel_keyboard',
     'owner_pay_actions_keyboard',
     'owner_pay_edit_keyboard',
+    'finance_grouped_keyboard',  # P1-15
+    'finance_group_period_keyboard',  # P1-15
     # Reports
     'reports_menu_keyboard',
     'reports_periods_keyboard',

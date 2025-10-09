@@ -92,9 +92,21 @@ field-service/
 │   ├── P1-12_PROGRESS_BAR.md
 │   ├── P1-12_QUICKSTART.md
 │   ├── P1-12_SUMMARY.md
+│   ├── P1-13_QUICKSTART.md
+│   ├── P1-13_RETRY_ACTION.md
+│   ├── P1-13_SUMMARY.md
+│   ├── P1-15_COMPLETE.md
+│   ├── P1-15_FILES.md
+│   ├── P1-15_FINANCE_GROUPING.md
+│   ├── P1-15_QUICKSTART.md
+│   ├── P1-15_SUMMARY.md
+│   ├── P1-16_BREAK_REMINDER.md
 │   ├── P1-17_QUICKSTART.md
 │   ├── P1-17_STATISTICS.md
 │   ├── P1-17_SUMMARY.md
+│   ├── P1-21_DEADLINE_REMINDERS.md
+│   ├── P1-21_QUICKSTART.md
+│   ├── P1-21_SUMMARY.md
 │   ├── P1-9_CHEATSHEET.md
 │   ├── P1-9_COMPLETE.md
 │   ├── P1-9_CONTINUE_CONTEXT.md
@@ -206,6 +218,9 @@ field-service/
 │   │   │   ├── error_middleware.py
 │   │   │   ├── fsm_timeout.py
 │   │   │   ├── polling.py
+│   │   │   ├── retry_context.py
+│   │   │   ├── retry_handler.py
+│   │   │   ├── retry_middleware.py
 │   │   │   └── telegram_safe.py
 │   │   └── master_bot/
 │   │       ├── __init__.py
@@ -245,6 +260,7 @@ field-service/
 │   │   └── structured_logging.py
 │   └── services/
 │       ├── autoclose_scheduler.py
+│       ├── break_reminder_scheduler.py
 │       ├── candidates.py
 │       ├── commission_service.py
 │       ├── distribution_metrics_service.py
@@ -280,6 +296,7 @@ field-service/
 │   ├── 2025-10-07_add_commission_indexes.sql
 │   ├── 2025-10-07_add_districts.sql
 │   ├── 2025-10-07_create_distribution_metrics.sql
+│   ├── 2025-10-09_create_commission_deadline_notifications.sql
 │   ├── add_all_cities.sql
 │   ├── add_all_cities_final.sql
 │   ├── add_districts.sql
@@ -363,7 +380,9 @@ field-service/
 │   ├── test_orders_model_compat.py
 │   ├── test_owner_requisites.py
 │   ├── test_p1_10_push_offer_notification.py
+│   ├── test_p1_16_break_reminder.py
 │   ├── test_p1_9_history_orders.py
+│   ├── test_retry_action.py
 │   ├── test_single_instance.py
 │   ├── test_smoke.py
 │   ├── test_staff_access.py

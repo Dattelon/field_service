@@ -79,6 +79,11 @@ class MasterActionFSM(StatesGroup):
     limit_value = State()
 
 
+class ModerationBulkFSM(StatesGroup):
+    """FSM для массовых операций модерации (P1-14)."""
+    reject_reason = State()  # Причина для массового отклонения
+
+
 
 
 class ReportsExportFSM(StatesGroup):
@@ -117,6 +122,7 @@ __all__ = [
     "AccessCodeNewFSM",
     "FinanceActionFSM",
     "MasterActionFSM",
+    "ModerationBulkFSM",  # P1-14: Массовые операции модерации
     "NewOrderFSM",
     "QuickOrderFSM",  # P0-5: Быстрое создание заказа
     "OwnerPayEditFSM",

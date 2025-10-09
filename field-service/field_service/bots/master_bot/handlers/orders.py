@@ -271,6 +271,13 @@ async def offer_accept(
             to_status=m.OrderStatus.ASSIGNED,
             changed_by_master_id=master.id,
             reason="accepted_by_master",
+            actor_type=m.ActorType.MASTER,
+            context={
+                "master_id": master.id,
+                "master_name": f"{master.last_name} {master.first_name}".strip(),
+                "action": "offer_accepted",
+                "method": "manual_accept"
+            }
         )
     )
     

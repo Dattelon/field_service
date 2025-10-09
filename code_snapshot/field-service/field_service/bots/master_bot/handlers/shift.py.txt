@@ -76,3 +76,21 @@ async def shift_break_end(callback: CallbackQuery, session: AsyncSession, master
     await _answer(callback, SHIFT_MESSAGES["break_finished"])
     if callback.message:
         await _render_start(callback.message, master)
+
+
+
+# P1-16: Продление перерыва
+@router.callback_query(F.data == "m:sh:brk:extend")
+async def shift_break_extend(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
+    """Продлевает текущий перерыв ещё на 2 часа."""
+    if master.shift_status != m.ShiftStatus.BREAK:
+        await _answer(callback, SHIFT_MESSAGES["not_break"])
+        return
+    
+    # Продлеваем перерыв
+    master.break_until = now_utc() + BREAK_DURATION
+    await session.commit()
+    
+    await _answer(callback, SHIFT_MESSAGES["break_extended"])
+    if callback.message:
+        await _render_start(callback.message, master)

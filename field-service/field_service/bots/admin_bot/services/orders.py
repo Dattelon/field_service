@@ -514,9 +514,16 @@ class DBOrdersService:
                         m.order_status_history.reason,
                         m.order_status_history.changed_by_staff_id,
                         m.order_status_history.changed_by_master_id,
+                        m.order_status_history.actor_type,
+                        m.order_status_history.context,
                         m.order_status_history.created_at,
+                        m.staff_users.full_name.label("staff_name"),
+                        m.masters.full_name.label("master_name"),
                     )
+                    .select_from(m.order_status_history)
                     .join(m.orders, m.orders.id == m.order_status_history.order_id)
+                    .outerjoin(m.staff_users, m.order_status_history.changed_by_staff_id == m.staff_users.id)
+                    .outerjoin(m.masters, m.order_status_history.changed_by_master_id == m.masters.id)
                     .where(m.order_status_history.order_id == order_id)
                     .order_by(m.order_status_history.created_at.desc())
                     .limit(limited)
@@ -529,6 +536,17 @@ class DBOrdersService:
                 rows = await session.execute(stmt)
                 items: list[OrderStatusHistoryItem] = []
                 for row in rows:
+                    # Определяем имя актора
+                    actor_name = None
+                    if row.staff_name:
+                        actor_name = f"Админ: {row.staff_name}"
+                    elif row.master_name:
+                        actor_name = f"Мастер: {row.master_name}"
+                    elif row.actor_type == m.ActorType.AUTO_DISTRIBUTION:
+                        actor_name = "Автораспределение"
+                    elif row.actor_type == m.ActorType.SYSTEM:
+                        actor_name = "Система"
+                    
                     items.append(
                         OrderStatusHistoryItem(
                             id=row.id,
@@ -538,6 +556,9 @@ class DBOrdersService:
                             changed_by_staff_id=row.changed_by_staff_id,
                             changed_by_master_id=row.changed_by_master_id,
                             changed_at_local=_format_created_at(row.created_at) or "",
+                            actor_type=row.actor_type.value if row.actor_type else "SYSTEM",
+                            actor_name=actor_name,
+                            context=dict(row.context) if row.context else {},
                         )
                     )
                 return tuple(items)
@@ -621,7 +642,7 @@ class DBOrdersService:
     async def _load_status_history(
             self, session: AsyncSession, order_id: int, tz: ZoneInfo
         ) -> tuple[OrderStatusHistoryItem, ...]:
-            """Load order status change history."""
+            """Load order status change history with detailed context."""
             rows = await session.execute(
                 select(
                     m.order_status_history.id,
@@ -630,13 +651,31 @@ class DBOrdersService:
                     m.order_status_history.reason,
                     m.order_status_history.changed_by_staff_id,
                     m.order_status_history.changed_by_master_id,
+                    m.order_status_history.actor_type,
+                    m.order_status_history.context,
                     m.order_status_history.created_at,
+                    m.staff_users.full_name.label("staff_name"),
+                    m.masters.full_name.label("master_name"),
                 )
+                .select_from(m.order_status_history)
+                .outerjoin(m.staff_users, m.order_status_history.changed_by_staff_id == m.staff_users.id)
+                .outerjoin(m.masters, m.order_status_history.changed_by_master_id == m.masters.id)
                 .where(m.order_status_history.order_id == order_id)
                 .order_by(m.order_status_history.created_at.asc())
             )
             items = []
             for row in rows:
+                # Определяем имя актора
+                actor_name = None
+                if row.staff_name:
+                    actor_name = f"Админ: {row.staff_name}"
+                elif row.master_name:
+                    actor_name = f"Мастер: {row.master_name}"
+                elif row.actor_type == m.ActorType.AUTO_DISTRIBUTION:
+                    actor_name = "Автораспределение"
+                elif row.actor_type == m.ActorType.SYSTEM:
+                    actor_name = "Система"
+                
                 items.append(
                     OrderStatusHistoryItem(
                         id=row.id,
@@ -646,6 +685,9 @@ class DBOrdersService:
                         changed_by_staff_id=row.changed_by_staff_id,
                         changed_by_master_id=row.changed_by_master_id,
                         changed_at_local=_format_created_at(row.created_at) or "",
+                        actor_type=row.actor_type.value if row.actor_type else "SYSTEM",
+                        actor_name=actor_name,
+                        context=dict(row.context) if row.context else {},
                     )
                 )
             return tuple(items)
@@ -919,6 +961,9 @@ class DBOrdersService:
                             )
                             for att in data.attachments
                         )
+                    # Получаем информацию о создателе заказа для контекста
+                    staff_info = await _load_staff_access(session, data.created_by_staff_id) if data.created_by_staff_id else None
+                    
                     session.add(
                         m.order_status_history(
                             order_id=order.id,
@@ -926,6 +971,16 @@ class DBOrdersService:
                             to_status=initial_status,
                             reason="created_by_staff",
                             changed_by_staff_id=data.created_by_staff_id,
+                            actor_type=m.ActorType.ADMIN,
+                            context={
+                                "staff_id": data.created_by_staff_id,
+                                "staff_name": staff_info.full_name if staff_info else None,
+                                "action": "order_creation",
+                                "initial_status": initial_status.value,
+                                "deferred_reason": "outside_working_hours" if initial_status == m.OrderStatus.DEFERRED else None,
+                                "has_preferred_master": data.preferred_master_id is not None,
+                                "is_guarantee": data.order_type == OrderType.GUARANTEE
+                            }
                         )
                     )
                 return order.id
@@ -1083,6 +1138,13 @@ class DBOrdersService:
                             to_status=m.OrderStatus.CANCELED,
                             reason=reason,
                             changed_by_staff_id=staff.id if staff else None,
+                            actor_type=m.ActorType.ADMIN if staff else m.ActorType.SYSTEM,
+                            context={
+                                "staff_id": staff.id if staff else None,
+                                "staff_name": staff.full_name if staff else None,
+                                "cancel_reason": reason,
+                                "action": "manual_cancel"
+                            }
                         )
                     )
                     await session.execute(
@@ -1144,6 +1206,10 @@ class DBOrdersService:
                     order.updated_at = datetime.now(UTC)
                     order.version = (order.version or 0) + 1
                     order.cancel_reason = None
+                    
+                    # Получаем имя мастера для контекста
+                    master_name = f"{master.last_name} {master.first_name}".strip()
+                    
                     session.add(
                         m.order_status_history(
                             order_id=order.id,
@@ -1151,6 +1217,15 @@ class DBOrdersService:
                             to_status=m.OrderStatus.ASSIGNED,
                             reason="manual_assign",
                             changed_by_staff_id=staff.id if staff else None,
+                            actor_type=m.ActorType.ADMIN,
+                            context={
+                                "staff_id": staff.id if staff else None,
+                                "staff_name": staff.full_name if staff else None,
+                                "master_id": master.id,
+                                "master_name": master_name,
+                                "action": "manual_assignment",
+                                "method": "admin_override"
+                            }
                         )
                     )
                     

@@ -946,3 +946,36 @@ class distribution_metrics(Base):
 
 
 
+
+
+# ===== Commission Deadline Notifications (P1-21) =====
+
+
+class commission_deadline_notifications(Base):
+    """Tracks sent deadline reminders to avoid duplicates."""
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    commission_id: Mapped[int] = mapped_column(
+        ForeignKey("commissions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    hours_before: Mapped[int] = mapped_column(
+        SmallInteger, 
+        nullable=False,
+        comment="Hours before deadline (24, 6, or 1)"
+    )
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    
+    __table_args__ = (
+        UniqueConstraint(
+            "commission_id", 
+            "hours_before", 
+            name="uq_commission_deadline_notifications__commission_hours"
+        ),
+        Index("ix_commission_deadline_notifications__commission", "commission_id"),
+    )

@@ -8,15 +8,25 @@ from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from field_service.services import live_log, owner_requisites_service
 
 from ...core.dto import StaffRole, StaffUser, WaitPayRecipient, CommissionListItem, CommissionDetail
 from ...core.filters import StaffRoleFilter
-from ...ui.keyboards import finance_menu, owner_pay_actions_keyboard, owner_pay_edit_keyboard, finance_segment_keyboard, finance_card_actions, finance_reject_cancel_keyboard
+from ...ui.keyboards import (
+    finance_menu,
+    owner_pay_actions_keyboard,
+    owner_pay_edit_keyboard,
+    finance_segment_keyboard,
+    finance_card_actions,
+    finance_reject_cancel_keyboard,
+    finance_grouped_keyboard,  # P1-15
+    finance_group_period_keyboard,  # P1-15
+)
 from ...core.states import OwnerPayEditFSM, FinanceActionFSM
+from ...core.access import visible_city_ids_for  # P1-15
 from ...utils.helpers import get_service
 
 
@@ -743,12 +753,218 @@ async def _render_finance_segment(
     await message.edit_text(text, reply_markup=markup)
 
 
+async def _render_finance_segment_grouped(
+    message,
+    staff: StaffUser,
+    segment: str,
+    state: FSMContext,
+) -> None:
+    """P1-15: Отображение комиссий с группировкой по периодам."""
+    finance_service = _finance_service(message.bot)
+    groups = await finance_service.list_commissions_grouped(
+        segment,
+        city_ids=visible_city_ids_for(staff),
+    )
+
+    await state.update_data(fin_segment=segment, fin_grouped=True)
+
+    title = FINANCE_SEGMENT_TITLES.get(segment, segment.upper())
+    
+    # Эмодзи для периодов
+    PERIOD_LABELS = {
+        'today': '📅 Сегодня',
+        'yesterday': '📆 Вчера',
+        'week': '📊 Эта неделя',
+        'month': '📈 Этот месяц',
+        'older': '📜 Старые'
+    }
+    
+    PERIOD_ORDER = ['today', 'yesterday', 'week', 'month', 'older']
+    
+    if not groups:
+        text = f"<b>{title}</b>\n\nНет комиссий."
+    else:
+        lines = [f"<b>{title} (по периодам)</b>", ""]
+        button_rows: list[list[InlineKeyboardButton]] = []
+        
+        total_count = sum(len(items) for items in groups.values())
+        lines.append(f"<i>Всего: {total_count}</i>\n")
+        
+        # Отображаем группы в порядке актуальности
+        for period in PERIOD_ORDER:
+            if period not in groups or not groups[period]:
+                continue
+            
+            items = groups[period]
+            period_label = PERIOD_LABELS.get(period, period)
+            lines.append(f"\n{period_label} ({len(items)})")
+            lines.append("─" * 30)
+            
+            for item in items[:20]:  # Показываем max 20 в каждой группе
+                lines.append(f"  {html.escape(finance_list_line(item))}")
+                
+                # Добавляем кнопку для каждой комиссии
+                button_label = f"#{item.id} • {item.amount:.0f}₽"
+                button_rows.append([
+                    InlineKeyboardButton(
+                        text=button_label,
+                        callback_data=f"adm:f:cm:card:{item.id}",
+                    )
+                ])
+            
+            if len(items) > 20:
+                lines.append(f"  <i>... и ещё {len(items) - 20}</i>")
+        
+        text = "\n".join(lines)
+        
+        # Добавляем навигационную клавиатуру
+        nav_markup = finance_segment_keyboard(segment, page=1, has_next=False, grouped=True)
+        button_rows.extend(nav_markup.inline_keyboard)
+        markup = InlineKeyboardMarkup(inline_keyboard=button_rows)
+        
+        await message.edit_text(text, reply_markup=markup, parse_mode="HTML")
+
+
+# ============================================
+# P1-15: ГРУППИРОВКА КОМИССИЙ ПО ПЕРИОДАМ
+# ============================================
+
+@router.callback_query(
+    F.data.startswith("adm:f:grouped:"),
+    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
+)
+async def cb_finance_grouped_menu(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """P1-15: Показать меню групп для выбранного сегмента."""
+    if not cq.message or not cq.data:
+        await _safe_answer(cq)
+        return
+    
+    parts = cq.data.split(":")
+    segment = parts[3] if len(parts) > 3 else "aw"
+    
+    finance_service = _finance_service(cq.message.bot)
+    groups_data = await finance_service.list_commissions_grouped(
+        segment,
+        city_ids=visible_city_ids_for(staff),
+    )
+    
+    # Подсчитываем количество комиссий в каждой группе
+    groups_count = {period: len(items) for period, items in groups_data.items()}
+    
+    title = FINANCE_SEGMENT_TITLES.get(segment, segment.upper())
+    
+    if not groups_count:
+        text = f"<b>{title} - По периодам</b>\n\n📭 Нет комиссий."
+    else:
+        total = sum(groups_count.values())
+        text = f"<b>{title} - По периодам</b>\n\n📊 Всего комиссий: {total}\n\nВыберите период:"
+    
+    from ...ui.keyboards import finance_grouped_keyboard
+    markup = finance_grouped_keyboard(segment, groups_count)
+    
+    try:
+        await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
+    except TelegramBadRequest as exc:
+        if "message is not modified" not in str(exc).lower():
+            await cq.message.answer(text, reply_markup=markup, parse_mode="HTML")
+    
+    await _safe_answer(cq)
+
+
+@router.callback_query(
+    F.data.regexp(r"^adm:f:grp:(\w+):(\w+):(\d+)$"),
+    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
+)
+async def cb_finance_group_period(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """P1-15: Показать комиссии конкретного периода."""
+    if not cq.message or not cq.data:
+        await _safe_answer(cq)
+        return
+    
+    parts = cq.data.split(":")
+    segment = parts[3]  # aw, pd, ov
+    period = parts[4]   # today, yesterday, week, month, older
+    page = int(parts[5])
+    
+    finance_service = _finance_service(cq.message.bot)
+    groups_data = await finance_service.list_commissions_grouped(
+        segment,
+        city_ids=visible_city_ids_for(staff),
+    )
+    
+    items = groups_data.get(period, [])
+    
+    # Пагинация
+    page_size = 10
+    offset = (page - 1) * page_size
+    paginated_items = items[offset:offset + page_size + 1]
+    has_next = len(paginated_items) > page_size
+    display_items = paginated_items[:page_size]
+    
+    # Названия периодов
+    PERIOD_LABELS = {
+        'today': '📅 Сегодня',
+        'yesterday': '📆 Вчера',
+        'week': '📊 Эта неделя',
+        'month': '📈 Этот месяц',
+        'older': '📜 Старые'
+    }
+    
+    period_label = PERIOD_LABELS.get(period, period)
+    title = FINANCE_SEGMENT_TITLES.get(segment, segment.upper())
+    
+    if not display_items:
+        text = f"<b>{title} - {period_label}</b>\n\n📭 Нет комиссий."
+    else:
+        lines = [f"<b>{title} - {period_label}</b>", f"Страница {page}", ""]
+        for item in display_items:
+            lines.append(f"• {html.escape(finance_list_line(item))}")
+        text = "\n".join(lines)
+    
+    # Кнопки для комиссий
+    button_rows: list[list[InlineKeyboardButton]] = []
+    for item in display_items:
+        label = f"#{item.id} • {item.amount:.0f}₽"
+        button_rows.append([
+            InlineKeyboardButton(
+                text=label,
+                callback_data=f"adm:f:cm:card:{item.id}",
+            )
+        ])
+    
+    # Навигация
+    from ...ui.keyboards import finance_group_period_keyboard
+    nav_markup = finance_group_period_keyboard(segment, period, page, has_next)
+    button_rows.extend(nav_markup.inline_keyboard)
+    markup = InlineKeyboardMarkup(inline_keyboard=button_rows)
+    
+    try:
+        await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
+    except TelegramBadRequest as exc:
+        if "message is not modified" not in str(exc).lower():
+            await cq.message.answer(text, reply_markup=markup, parse_mode="HTML")
+    
+    await _safe_answer(cq)
+
+
 @router.callback_query(
     F.data.startswith("adm:f:aw:"),
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_finance_aw(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """P1-15: Handler для списка 'Ожидают оплаты' с поддержкой группировки."""
     parts = cq.data.split(":")
+    
+    # Проверяем режим группировки
+    if len(parts) > 3 and parts[3] == "grp":
+        if cq.message is None:
+            await _safe_answer(cq)
+            return
+        await _render_finance_segment_grouped(cq.message, staff, "aw", state)
+        await _safe_answer(cq)
+        return
+    
+    # Обычный список с пагинацией
     page = 1
     if len(parts) > 3:
         try:
@@ -767,7 +983,19 @@ async def cb_finance_aw(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_finance_pd(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """P1-15: Handler для списка 'Оплаченные' с поддержкой группировки."""
     parts = cq.data.split(":")
+    
+    # Проверяем режим группировки
+    if len(parts) > 3 and parts[3] == "grp":
+        if cq.message is None:
+            await _safe_answer(cq)
+            return
+        await _render_finance_segment_grouped(cq.message, staff, "pd", state)
+        await _safe_answer(cq)
+        return
+    
+    # Обычный список с пагинацией
     page = 1
     if len(parts) > 3:
         try:
@@ -786,7 +1014,19 @@ async def cb_finance_pd(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_finance_ov(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """P1-15: Handler для списка 'Просроченные' с поддержкой группировки."""
     parts = cq.data.split(":")
+    
+    # Проверяем режим группировки
+    if len(parts) > 3 and parts[3] == "grp":
+        if cq.message is None:
+            await _safe_answer(cq)
+            return
+        await _render_finance_segment_grouped(cq.message, staff, "ov", state)
+        await _safe_answer(cq)
+        return
+    
+    # Обычный список с пагинацией
     page = 1
     if len(parts) > 3:
         try:

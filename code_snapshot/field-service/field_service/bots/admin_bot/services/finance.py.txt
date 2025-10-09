@@ -229,6 +229,112 @@ class DBFinanceService:
             )
         return items, has_next
 
+    async def list_commissions_grouped(
+        self,
+        segment: str,
+        *,
+        city_ids: Optional[Iterable[int]],
+    ) -> dict[str, list[CommissionListItem]]:
+        """
+        P1-15: Возвращает комиссии сгруппированные по периодам.
+        
+        Returns:
+            dict с ключами: 'today', 'yesterday', 'week', 'month', 'older'
+        """
+        from datetime import date, timedelta
+        
+        status_map = {
+            "aw": [
+                m.CommissionStatus.WAIT_PAY.value,
+                m.CommissionStatus.REPORTED.value,
+            ],
+            "pd": [m.CommissionStatus.APPROVED.value],
+            "ov": [m.CommissionStatus.OVERDUE.value],
+        }
+        statuses = status_map.get(segment, [m.CommissionStatus.WAIT_PAY.value])
+        
+        async with self._session_factory() as session:
+            stmt = (
+                select(
+                    m.commissions.id,
+                    m.commissions.order_id,
+                    m.commissions.amount,
+                    m.commissions.status,
+                    m.commissions.deadline_at,
+                    m.commissions.created_at,
+                    m.masters.full_name,
+                    m.masters.id.label("master_id"),
+                    m.orders.city_id,
+                )
+                .select_from(m.commissions)
+                .join(m.orders, m.orders.id == m.commissions.order_id)
+                .join(m.masters, m.masters.id == m.commissions.master_id, isouter=True)
+                .where(m.commissions.status.in_(statuses))
+                .order_by(m.commissions.created_at.desc())
+                .limit(200)  # Ограничим чтобы не перегружать UI
+            )
+            if city_ids is not None:
+                ids = [int(cid) for cid in city_ids]
+                if not ids:
+                    return {}
+                stmt = stmt.where(m.orders.city_id.in_(ids))
+            
+            rows = await session.execute(stmt)
+            fetched = rows.all()
+        
+        # Вычисляем границы периодов
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        week_ago = today - timedelta(days=7)
+        month_ago = today - timedelta(days=30)
+        
+        # Группируем комиссии
+        groups: dict[str, list[CommissionListItem]] = {
+            'today': [],
+            'yesterday': [],
+            'week': [],
+            'month': [],
+            'older': []
+        }
+        
+        for row in fetched:
+            # Преобразуем created_at в date
+            if row.created_at:
+                if hasattr(row.created_at, 'date'):
+                    created_date = row.created_at.date()
+                else:
+                    created_date = row.created_at
+            else:
+                created_date = today
+            
+            # Определяем период
+            if created_date == today:
+                period = 'today'
+            elif created_date == yesterday:
+                period = 'yesterday'
+            elif created_date >= week_ago:
+                period = 'week'
+            elif created_date >= month_ago:
+                period = 'month'
+            else:
+                period = 'older'
+            
+            # Создаём CommissionListItem
+            deadline = _format_created_at(row.deadline_at)
+            item = CommissionListItem(
+                id=row.id,
+                order_id=row.order_id,
+                master_id=row.master_id,
+                master_name=row.full_name,
+                status=row.status,
+                amount=Decimal(row.amount or 0),
+                deadline_at_local=deadline if deadline else None,
+            )
+            groups[period].append(item)
+        
+        # Удаляем пустые группы
+        return {k: v for k, v in groups.items() if v}
+
     async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
         async with self._session_factory() as session:
             rows = await session.execute(
