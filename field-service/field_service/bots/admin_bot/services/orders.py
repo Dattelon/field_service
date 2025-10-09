@@ -1284,7 +1284,7 @@ class DBOrdersService:
 
     async def activate_deferred_order(self, order_id: int, staff_id: int) -> bool:
         """
-        Перевести DEFERRED заказ в PENDING (активировать поиск мастера).
+        Перевести DEFERRED заказ в SEARCHING (активировать поиск мастера).
         
         Args:
             order_id: ID заказа
@@ -1314,13 +1314,13 @@ class DBOrdersService:
                 if order.status != m.OrderStatus.DEFERRED:
                     return False
                 
-                # Переводим в PENDING (или SEARCHING для обычных, GUARANTEE для гарантийных)
+                # Переводим в SEARCHING (или GUARANTEE для гарантийных)
                 prev_status = order.status
                 order_type = _raw_order_type(order)
                 if order_type == m.OrderType.GUARANTEE:
                     new_status = m.OrderStatus.GUARANTEE
                 else:
-                    new_status = m.OrderStatus.PENDING
+                    new_status = m.OrderStatus.SEARCHING
                 
                 order.status = new_status
                 order.updated_at = datetime.now(UTC)
@@ -1334,6 +1334,7 @@ class DBOrdersService:
                         to_status=new_status,
                         reason="activated_by_admin",
                         changed_by_staff_id=staff.id if staff else None,
+                        actor_type=m.ActorType.ADMIN,
                     )
                 )
                 
@@ -1345,7 +1346,7 @@ class DBOrdersService:
                 )
         
         # Автораспределение будет запущено в следующем тике (каждые 30 секунд)
-        # Заказ перешёл в статус PENDING/SEARCHING/GUARANTEE и будет обработан автоматически
+        # Заказ перешёл в статус SEARCHING/GUARANTEE и будет обработан автоматически
         return True
 
 

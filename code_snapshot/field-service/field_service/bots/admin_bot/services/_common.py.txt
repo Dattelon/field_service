@@ -103,6 +103,7 @@ QUEUE_STATUSES = {
     m.OrderStatus.WORKING,
     m.OrderStatus.PAYMENT,
     m.OrderStatus.GUARANTEE,
+    m.OrderStatus.DEFERRED,
 }
 
 ACTIVE_ORDER_STATUSES = (
@@ -185,6 +186,7 @@ QUEUE_STATUSES = {
     m.OrderStatus.WORKING,
     m.OrderStatus.PAYMENT,
     m.OrderStatus.GUARANTEE,
+    m.OrderStatus.DEFERRED,
 }
 
 ACTIVE_ORDER_STATUSES = (
