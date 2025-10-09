@@ -14,17 +14,20 @@ API_ID = 25078350
 API_HASH = "f544a1a967172e8cc8a05a0115b98b69"
 
 # ==========================================
+# SESSION CONFIGURATION
+# ==========================================
+# StringSession для надежного подключения (более стабильно чем файловая сессия)
+SESSION_STRING = "1ApWapzMBu2k9f1PKZu0sdT3q06Oa35jBdE5w6SjD6MFZAReNr0irKbYqw0nF-vqb6k67tLiap7I6W-evugFk5YKUShS9SftGOcDjxKi08jyVXNN1HI5fhsS7XTZJS7FcSOruSofx65vi-hVMGtJE-PJPLt5fzvsTzPW2y2Q2oxkwgyF8-Sk379NUKIwOuCvGZmJLi3YeB6MsoQ6hQNRUwHeltB-ajKxjeI_CeZcbFFSaMA3UPlkVN0UkpsRMe3BS86ZfTN3aVk1BgJ3KTZlIMs7rAZQbs-BaplTwFiNJSVlZh950kX6WG93yciOnUswYXsBEESy0QKGT2kVW274spEKKzOlYdls="
+
+# Старая файловая сессия (оставлено для совместимости, но не используется)
+SESSION_FILE = Path(__file__).parent / "test_session.session"
+
+# ==========================================
 # TEST PHONE NUMBER
 # ==========================================
 # Номер телефона для тестового аккаунта
 # Формат: +79991234567
-TEST_PHONE = os.getenv("TELEGRAM_TEST_PHONE", "")  # Заполнить при первом запуске
-
-# ==========================================
-# SESSION FILE
-# ==========================================
-# Файл с сохраненной сессией (создастся автоматически после авторизации)
-SESSION_FILE = Path(__file__).parent / "test_session.session"
+TEST_PHONE = os.getenv("TELEGRAM_TEST_PHONE", "+79031751130")
 
 # ==========================================
 # BOT USERNAMES
@@ -56,14 +59,14 @@ def validate_config():
     """Проверка наличия всех необходимых настроек"""
     errors = []
     
-    if not TEST_PHONE:
-        errors.append("TEST_PHONE не указан. Укажите в переменной окружения TELEGRAM_TEST_PHONE")
+    if not SESSION_STRING:
+        errors.append("SESSION_STRING не указан")
     
     if not MASTER_BOT_USERNAME:
-        errors.append("MASTER_BOT_USERNAME не указан. Укажите в переменной окружения MASTER_BOT_USERNAME")
+        errors.append("MASTER_BOT_USERNAME не указан")
     
     if not ADMIN_BOT_USERNAME:
-        errors.append("ADMIN_BOT_USERNAME не указан. Укажите в переменной окружения ADMIN_BOT_USERNAME")
+        errors.append("ADMIN_BOT_USERNAME не указан")
     
     if errors:
         raise ValueError(
@@ -74,14 +77,13 @@ if __name__ == "__main__":
     print("=== Telegram UI Testing Configuration ===")
     print(f"API ID: {API_ID}")
     print(f"API Hash: {API_HASH[:8]}...")
-    print(f"Test Phone: {TEST_PHONE or '❌ НЕ УКАЗАН'}")
-    print(f"Session File: {SESSION_FILE}")
-    print(f"Master Bot: @{MASTER_BOT_USERNAME or '❌ НЕ УКАЗАН'}")
-    print(f"Admin Bot: @{ADMIN_BOT_USERNAME or '❌ НЕ УКАЗАН'}")
+    print(f"Session String: {SESSION_STRING[:20]}...")
+    print(f"Master Bot: @{MASTER_BOT_USERNAME}")
+    print(f"Admin Bot: @{ADMIN_BOT_USERNAME}")
     print()
     
     try:
         validate_config()
-        print("✅ Конфигурация валидна!")
+        print("OK - Configuration valid!")
     except ValueError as e:
-        print(f"❌ {e}")
+        print(f"ERROR: {e}")

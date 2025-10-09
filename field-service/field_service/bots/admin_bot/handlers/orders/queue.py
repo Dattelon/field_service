@@ -14,7 +14,9 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from field_service.db.models import OrderStatus
 from field_service.services.guarantee_service import GuaranteeError
+from field_service.bots.common.breadcrumbs import AdminPaths, add_breadcrumbs_to_text
 
+# P1-23: Breadcrumbs navigation
 from ...core.access import visible_city_ids_for
 from ...core.dto import (
     CityRef,
@@ -548,7 +550,10 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
         lines.append("💭 Список пуст")
     lines.append("")
     lines.append(f"📄 Страница: {page}")
-    text = "\n".join(lines)
+    
+    # P1-23: Add breadcrumbs navigation
+    text_without_breadcrumbs = "\n".join(lines)
+    text = add_breadcrumbs_to_text(text_without_breadcrumbs, AdminPaths.ORDERS_QUEUE)
 
     markup = queue_list_keyboard(items, page=page, has_next=has_next)
     await _edit_or_reply(message, text, markup, state)

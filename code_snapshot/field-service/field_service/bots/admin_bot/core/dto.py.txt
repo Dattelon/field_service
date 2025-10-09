@@ -149,6 +149,9 @@ class OrderStatusHistoryItem:
     changed_by_staff_id: Optional[int]
     changed_by_master_id: Optional[int]
     changed_at_local: str
+    actor_type: str
+    actor_name: Optional[str] = None  # Имя админа/мастера для отображения
+    context: Mapping[str, any] = None  # Дополнительные детали
 
 
 @dataclass(frozen=True)

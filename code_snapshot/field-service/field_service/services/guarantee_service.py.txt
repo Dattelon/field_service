@@ -117,6 +117,13 @@ async def create_from_closed_order(
             to_status=m.OrderStatus.GUARANTEE,
             reason="guarantee_created",
             changed_by_staff_id=created_by_staff_id,
+            actor_type=m.ActorType.ADMIN if created_by_staff_id else m.ActorType.SYSTEM,
+            context={
+                "action": "guarantee_order_creation",
+                "source_order_id": source_order_id,
+                "created_by_staff_id": created_by_staff_id,
+                "order_type": "GUARANTEE"
+            },
             created_at=datetime.now(UTC),
         )
     )

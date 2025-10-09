@@ -6,6 +6,9 @@ from typing import Iterable, Mapping
 
 from field_service.db import models as m
 
+# P1-23: Breadcrumbs navigation
+from ..common import MasterPaths, add_breadcrumbs_to_text
+
 # Onboarding flow texts (missing constants used by handlers)
 ONBOARDING_ALREADY_VERIFIED = "Вы уже верифицированы."
 ONBOARDING_SENT = "Заявка отправлена на модерацию."
@@ -122,7 +125,11 @@ def offer_card(
         f"🛠 Категория: {_escape(category)}",
         f"💬 Описание: {description_text}",
     ]
-    return "\n".join(lines)
+    
+    # P1-23: Add breadcrumbs navigation
+    text = "\n".join(lines)
+    breadcrumb_path = MasterPaths.offer_card(order_id)
+    return add_breadcrumbs_to_text(text, breadcrumb_path)
 
 
 @dataclass(slots=True)
@@ -156,6 +163,15 @@ class ActiveOrderCard:
         if self.category:
             lines.insert(3, f"🛠 Категория: {_escape(self.category)}")
         return lines
+    
+    def render(self) -> str:
+        """Render card with breadcrumbs navigation.
+        
+        P1-23: Added breadcrumbs support.
+        """
+        text = "\n".join(self.lines())
+        breadcrumb_path = MasterPaths.active_order_card(self.order_id)
+        return add_breadcrumbs_to_text(text, breadcrumb_path)
 
 
 ACTIVE_STATUS_ACTIONS: Mapping[m.OrderStatus, tuple[str, str]] = {

@@ -14,6 +14,8 @@ from sqlalchemy import and_, func, insert, null, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.bots.common import safe_answer_callback, safe_edit_or_send, safe_send_message
+# P1-23: Breadcrumbs navigation
+from field_service.bots.common import MasterPaths, add_breadcrumbs_to_text
 from field_service.bots.common.copy_utils import copy_button, format_copy_message
 from field_service.db import models as m
 from field_service.config import settings
@@ -793,7 +795,11 @@ async def _render_offers(
     keyboard_rows.append(_nav_row("m:menu"))
 
     keyboard = inline_keyboard(keyboard_rows)
-    text = "\n".join(lines)
+    
+    # P1-23: Add breadcrumbs navigation
+    text_without_breadcrumbs = "\n".join(lines)
+    text = add_breadcrumbs_to_text(text_without_breadcrumbs, MasterPaths.NEW_ORDERS)
+    
     try:
         await safe_edit_or_send(event, text, keyboard)
     except Exception as exc:  # telemetry for hard-to-reproduce UI issues
@@ -933,7 +939,12 @@ async def _render_active_order(
 
     keyboard_rows.append(_nav_row("m:act"))
     keyboard = inline_keyboard(keyboard_rows)
-    text = "\n".join(text_lines)
+    
+    # P1-23: Add breadcrumbs navigation
+    text_without_breadcrumbs = "\n".join(text_lines)
+    breadcrumb_path = MasterPaths.active_order_card(order.id)
+    text = add_breadcrumbs_to_text(text_without_breadcrumbs, breadcrumb_path)
+    
     try:
         await safe_edit_or_send(event, text, keyboard)
     except Exception as exc:

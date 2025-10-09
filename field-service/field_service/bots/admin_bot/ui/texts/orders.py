@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Mapping
 
 from field_service.db import OrderCategory
+from field_service.bots.common.breadcrumbs import AdminPaths, add_breadcrumbs_to_text
 
 from ...core.dto import (
     CommissionDetail,
@@ -126,7 +127,10 @@ def order_card(order: OrderCard) -> str:
                     }.get(ctx["method"], ctx["method"])
                     lines.append(f"    <i>Метод: {method_text}</i>")
     
-    return "\n".join(lines)
+    # P1-23: Add breadcrumbs navigation
+    text = "\n".join(lines)
+    breadcrumb_path = AdminPaths.order_card(order.id)
+    return add_breadcrumbs_to_text(text, breadcrumb_path)
 
 
 
@@ -188,7 +192,11 @@ def new_order_summary(data: Mapping[str, object]) -> str:
         lines.append("Описание: " + str(data['description']))
     if data.get('attachments_count'):
         lines.append(f"Вложения: {data['attachments_count']}")
-    return "\n".join(lines)
+    
+    # P1-23: Add breadcrumbs navigation
+    text = "\n".join(lines)
+    breadcrumb_path = AdminPaths.ORDERS_CREATE
+    return add_breadcrumbs_to_text(text, breadcrumb_path)
 
 
 __all__ = [

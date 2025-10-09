@@ -61,6 +61,7 @@ field-service/
 │       ├── 2025_10_05_0004_add_centroids.py
 │       ├── 2025_10_05_0005_escalation_notifications.py
 │       ├── 2025_10_06_0001_distribution_metrics.py
+│       ├── 2025_10_09_0001_order_history_details.py
 │       └── 2cad62ab4b40_merge_heads_unify_branches.py
 ├── data/
 │   ├── all_districts_complete.csv
@@ -107,6 +108,8 @@ field-service/
 │   ├── P1-21_DEADLINE_REMINDERS.md
 │   ├── P1-21_QUICKSTART.md
 │   ├── P1-21_SUMMARY.md
+│   ├── P1-23_BREADCRUMBS.md
+│   ├── P1-23_QUICKSTART.md
 │   ├── P1-9_CHEATSHEET.md
 │   ├── P1-9_COMPLETE.md
 │   ├── P1-9_CONTINUE_CONTEXT.md
@@ -114,6 +117,7 @@ field-service/
 │   ├── P1-9_HISTORY_ORDERS.md
 │   ├── P1-9_QUICKSTART.md
 │   ├── P1-9_SUMMARY.md
+│   ├── P1_15_SUMMARY.md
 │   ├── QUICK_START_DISTRICTS.md
 │   ├── STRUCTURED_LOGGING.md
 │   └── archive/
@@ -214,6 +218,7 @@ field-service/
 │   │   │       └── normalizers.py
 │   │   ├── common/
 │   │   │   ├── __init__.py
+│   │   │   ├── breadcrumbs.py
 │   │   │   ├── copy_utils.py
 │   │   │   ├── error_middleware.py
 │   │   │   ├── fsm_timeout.py
@@ -296,7 +301,10 @@ field-service/
 │   ├── 2025-10-07_add_commission_indexes.sql
 │   ├── 2025-10-07_add_districts.sql
 │   ├── 2025-10-07_create_distribution_metrics.sql
+│   ├── 2025-10-09_clean_test_data.sql
 │   ├── 2025-10-09_create_commission_deadline_notifications.sql
+│   ├── 2025-10-09_setup_test_admin.sql
+│   ├── 2025-10-09_TESTING_SETUP_INSTRUCTIONS.md
 │   ├── add_all_cities.sql
 │   ├── add_all_cities_final.sql
 │   ├── add_districts.sql
@@ -380,6 +388,7 @@ field-service/
 │   ├── test_orders_model_compat.py
 │   ├── test_owner_requisites.py
 │   ├── test_p1_10_push_offer_notification.py
+│   ├── test_p1_15_finance_grouped.py
 │   ├── test_p1_16_break_reminder.py
 │   ├── test_p1_9_history_orders.py
 │   ├── test_retry_action.py

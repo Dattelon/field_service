@@ -5,10 +5,11 @@ Helper-класс для работы с Telegram-ботами в тестах
 
 import asyncio
 from typing import Optional, List
-from telethon import TelegramClient, events
-from telethon.tl.types import Message, KeyboardButton, KeyboardButtonCallback
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+from telethon.tl.types import Message
 from tests.telegram_ui.config import (
-    API_ID, API_HASH, SESSION_FILE,
+    API_ID, API_HASH, SESSION_STRING,
     MESSAGE_TIMEOUT, BUTTON_CLICK_DELAY
 )
 
@@ -22,42 +23,45 @@ class BotTestClient:
     
     async def start(self):
         """Запуск клиента"""
-        if not SESSION_FILE.exists():
-            raise FileNotFoundError(
-                f"Файл сессии не найден: {SESSION_FILE}\n"
-                "Запустите setup_client.py для первичной авторизации"
+        if not SESSION_STRING:
+            raise ValueError(
+                "SESSION_STRING не указана в config.py\n"
+                "Запустите auth_string_session.py для создания сессии"
             )
         
-        # TelegramClient автоматически добавляет .session, передаём путь БЕЗ расширения
-        session_name = str(SESSION_FILE).replace('.session', '')
-        self.client = TelegramClient(session_name, API_ID, API_HASH)
+        # Используем StringSession для надежности
+        self.client = TelegramClient(
+            StringSession(SESSION_STRING), 
+            API_ID, 
+            API_HASH
+        )
         
-        # Подключаемся без интерактивного запроса (сессия уже существует)
+        # Подключаемся
         await self.client.connect()
         
         # Проверяем что сессия валидна
         if not await self.client.is_user_authorized():
             await self.client.disconnect()
             raise RuntimeError(
-                "Сессия не авторизована или устарела!\n"
-                "Запустите setup_client.py для создания новой сессии"
+                "Сессия не авторизована!\n"
+                "Запустите auth_string_session.py для создания новой сессии"
             )
         
         me = await self.client.get_me()
-        print(f"✅ Клиент запущен: {me.first_name} (@{me.username or 'no_username'})")
+        print(f"OK - Client started: {me.first_name} (@{me.username or 'no_username'}) [ID:{me.id}]")
     
     async def stop(self):
         """Остановка клиента"""
         if self.client:
             await self.client.disconnect()
-            print("🛑 Клиент остановлен")
+            print("Client stopped")
     
     async def send_command(self, bot_username: str, command: str) -> Message:
         """Отправить команду боту и получить ответ"""
         if not bot_username.startswith("@"):
             bot_username = f"@{bot_username}"
         
-        print(f"📤 Отправляем: {command} -> {bot_username}")
+        print(f"Sending: {command} -> {bot_username}")
         
         # Отправляем команду
         await self.client.send_message(bot_username, command)
@@ -67,41 +71,41 @@ class BotTestClient:
         
         if message:
             self._last_message = message
-            print(f"📥 Получен ответ ({len(message.text)} символов)")
+            print(f"Received: {len(message.text)} chars")
             return message
         else:
-            raise TimeoutError(f"Не получен ответ от {bot_username} за {MESSAGE_TIMEOUT}с")
+            raise TimeoutError(f"No response from {bot_username} in {MESSAGE_TIMEOUT}s")
     
     async def _wait_for_message(self, bot_username: str, timeout: int = MESSAGE_TIMEOUT) -> Optional[Message]:
         """Ожидание сообщения от бота"""
         try:
-            # Сначала ждём достаточно времени чтобы бот успел обработать и ответить
-            await asyncio.sleep(3)  # Увеличиваем задержку для надёжности
+            # Ждём достаточно времени чтобы бот успел обработать
+            await asyncio.sleep(3)
             
             # Получаем последнее сообщение
             messages = await self.client.get_messages(bot_username, limit=1)
             if messages:
                 return messages[0]
         except Exception as e:
-            print(f"⚠️ Ошибка при получении сообщения: {e}")
+            print(f"WARNING: Error getting message: {e}")
         
         return None
     
     async def click_button(self, text: str, bot_username: Optional[str] = None) -> Message:
         """Нажать кнопку по тексту"""
         if not self._last_message:
-            raise ValueError("Нет последнего сообщения. Сначала отправьте команду")
+            raise ValueError("No last message. Send command first")
         
         message = self._last_message
         
         if not message.buttons:
-            raise ValueError("В последнем сообщении нет кнопок")
+            raise ValueError("No buttons in last message")
         
         # Ищем кнопку по тексту
         for row in message.buttons:
             for button in row:
                 if button.text == text:
-                    print(f"🔘 Нажимаем кнопку: {text}")
+                    print(f"Clicking button: {text}")
                     
                     # Кликаем
                     await button.click()
@@ -122,10 +126,10 @@ class BotTestClient:
                     
                     if new_message:
                         self._last_message = new_message
-                        print(f"📥 Получен ответ после клика ({len(new_message.text)} символов)")
+                        print(f"Received after click: {len(new_message.text)} chars")
                         return new_message
                     else:
-                        raise TimeoutError(f"Не получен ответ после клика по кнопке '{text}'")
+                        raise TimeoutError(f"No response after clicking '{text}'")
         
         # Если кнопка не найдена
         available_buttons = []
@@ -133,8 +137,8 @@ class BotTestClient:
             available_buttons.extend([btn.text for btn in row])
         
         raise ValueError(
-            f"Кнопка '{text}' не найдена. "
-            f"Доступные кнопки: {', '.join(available_buttons)}"
+            f"Button '{text}' not found. "
+            f"Available: {', '.join(available_buttons)}"
         )
     
     async def get_last_message(self, bot_username: str) -> Optional[Message]:
@@ -150,25 +154,25 @@ class BotTestClient:
         msg = message or self._last_message
         
         if not msg:
-            raise ValueError("Нет сообщения для проверки")
+            raise ValueError("No message to check")
         
         if text not in msg.text:
             raise AssertionError(
-                f"Текст '{text}' не найден в сообщении.\n"
-                f"Сообщение: {msg.text[:200]}..."
+                f"Text '{text}' not found in message.\n"
+                f"Message: {msg.text[:200]}..."
             )
         
-        print(f"✅ Текст найден: '{text}'")
+        print(f"OK - Text found: '{text}'")
     
     def assert_has_buttons(self, button_texts: List[str], message: Optional[Message] = None):
         """Проверить наличие кнопок в сообщении"""
         msg = message or self._last_message
         
         if not msg:
-            raise ValueError("Нет сообщения для проверки")
+            raise ValueError("No message to check")
         
         if not msg.buttons:
-            raise AssertionError("В сообщении нет кнопок")
+            raise AssertionError("No buttons in message")
         
         # Собираем все тексты кнопок
         available_buttons = []
@@ -179,11 +183,11 @@ class BotTestClient:
         for text in button_texts:
             if text not in available_buttons:
                 raise AssertionError(
-                    f"Кнопка '{text}' не найдена.\n"
-                    f"Доступные кнопки: {', '.join(available_buttons)}"
+                    f"Button '{text}' not found.\n"
+                    f"Available: {', '.join(available_buttons)}"
                 )
         
-        print(f"✅ Все кнопки найдены: {', '.join(button_texts)}")
+        print(f"OK - All buttons found: {', '.join(button_texts)}")
     
     async def __aenter__(self):
         """Context manager support"""

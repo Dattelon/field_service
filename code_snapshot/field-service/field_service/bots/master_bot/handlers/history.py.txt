@@ -12,7 +12,8 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from field_service.bots.common import safe_answer_callback, safe_edit_or_send
+# P1-23: Breadcrumbs navigation
+from field_service.bots.common import MasterPaths, add_breadcrumbs_to_text, safe_answer_callback, safe_edit_or_send
 from field_service.db import models as m
 from field_service.services import time_service
 from field_service.config import settings
@@ -114,7 +115,7 @@ async def history_card(
     await session.refresh(order, ["city", "district", "category"])
     
     # Формируем карточку
-    text = history_order_card(
+    text_without_breadcrumbs = history_order_card(
         order_id=order.id,
         status=ORDER_STATUS_TITLES.get(order.status, order.status),
         city=order.city.name if order.city else "—",
@@ -132,6 +133,10 @@ async def history_card(
         created_at=order.created_at,
         closed_at=order.updated_at if order.status == m.OrderStatus.CLOSED else None,
     )
+    
+    # P1-23: Add breadcrumbs navigation
+    breadcrumb_path = MasterPaths.history_order_card(order.id)
+    text = add_breadcrumbs_to_text(text_without_breadcrumbs, breadcrumb_path)
     
     # Кнопки возврата
     back_callback = f"m:hist:{page}"
@@ -320,5 +325,8 @@ async def _render_history(
     
     keyboard = inline_keyboard(rows)
     
+    # P1-23: Add breadcrumbs navigation
+    text_with_breadcrumbs = add_breadcrumbs_to_text(text, MasterPaths.HISTORY)
+    
     if callback.message:
-        await safe_edit_or_send(callback.message, text, keyboard)
+        await safe_edit_or_send(callback.message, text_with_breadcrumbs, keyboard)
