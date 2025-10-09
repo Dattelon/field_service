@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Iterable, Mapping, Optional, Sequence
+from types import SimpleNamespace
 
 from sqlalchemy import delete, func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
