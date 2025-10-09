@@ -267,10 +267,11 @@ async def onboarding_city_pick(
             return
         else:
             await state.set_state(OnboardingStates.vehicle)
+            text = _add_progress_to_text("Есть ли у вас автомобиль?", OnboardingStates.vehicle)
             await push_step_message(
                 callback,
                 state,
-                "Есть ли у вас автомобиль?",
+                text,
                 vehicle_keyboard(),
             )
             await callback.answer()
@@ -282,10 +283,11 @@ async def onboarding_city_pick(
     msg = "Выберите районы работы (можно несколько)."
     if is_editing:
         msg = "Выберите районы работы (можно несколько). При смене города старые районы сброшены."
+    text = _add_progress_to_text(msg, OnboardingStates.districts)
     await push_step_message(
         callback,
         state,
-        msg,
+        text,
         keyboard,
     )
     await callback.answer()
@@ -353,10 +355,11 @@ async def onboarding_districts_done(callback: CallbackQuery, state: FSMContext) 
         return
     
     await state.set_state(OnboardingStates.vehicle)
+    text = _add_progress_to_text("Есть ли у вас автомобиль?", OnboardingStates.vehicle)
     await push_step_message(
         callback,
         state,
-        "Есть ли у вас автомобиль?",
+        text,
         vehicle_keyboard(),
     )
     await callback.answer()
