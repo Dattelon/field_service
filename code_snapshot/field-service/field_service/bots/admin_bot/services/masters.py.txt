@@ -636,6 +636,7 @@ class DBMastersService:
                     .where(m.masters.id == master_id)
                     .values(
                         verified=True,
+                        is_active=True,  # Активируем мастера при одобрении
                         moderation_status=m.ModerationStatus.APPROVED,
                         verified_at=datetime.now(UTC),
                         verified_by=by_staff_id,

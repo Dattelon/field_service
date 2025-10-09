@@ -268,7 +268,11 @@ async def cb_new_order_cancel(cq: CallbackQuery, staff: StaffUser, state: FSMCon
         pass
 
 
-@router.callback_query(F.data.startswith("adm:new:city_page:"), StateFilter(NewOrderFSM.city))
+@router.callback_query(
+    F.data.startswith("adm:new:city_page:"),
+    StateFilter(NewOrderFSM.city),
+    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
+)
 async def cb_new_order_city_page(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     """Пагинация по городам."""
     page = int(cq.data.split(":")[3])

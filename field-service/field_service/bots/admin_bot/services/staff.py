@@ -26,6 +26,7 @@ class _StaffAccess:
     role: m.StaffRole
     is_active: bool
     city_ids: frozenset[int]
+    full_name: Optional[str] = None
 
 
 class AccessCodeError(RuntimeError):
@@ -72,6 +73,7 @@ class _StaffAccess:
     role: m.StaffRole
     is_active: bool
     city_ids: frozenset[int]
+    full_name: Optional[str] = None
 
 
 async def _load_staff_access(
@@ -94,6 +96,7 @@ async def _load_staff_access(
         role=staff.role,
         is_active=staff.is_active,
         city_ids=city_ids,
+        full_name=staff.full_name,
     )
 
 

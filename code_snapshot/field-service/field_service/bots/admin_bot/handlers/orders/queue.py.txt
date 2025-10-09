@@ -177,7 +177,7 @@ CATEGORY_CHOICES: tuple[tuple[OrderCategory, str], ...] = (
     (OrderCategory.PLUMBING, "Сантехника"),
     (OrderCategory.APPLIANCES, "Бытовая техника"),
     (OrderCategory.WINDOWS, "Окна и двери"),
-    (OrderCategory.HANDYMAN, "Универсал на час"),
+    (OrderCategory.HANDYMAN, "Мелкий ремонт"),
     (OrderCategory.ROADSIDE, "Автопомощь"),
 )
 CATEGORY_LABELS = {category: label for category, label in CATEGORY_CHOICES}
@@ -286,6 +286,8 @@ def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False, page
     allow_return = status not in {'CANCELED', 'CLOSED'}
     allow_cancel = status not in {'CANCELED', 'CLOSED'}
     is_deferred = status == 'DEFERRED'  # ⚠️ Новый параметр
+    # 🔧 BUGFIX: Проверяем наличие мастера
+    has_master = bool(order.master_id)
     return order_card_keyboard(
         order.id,
         attachments=order.attachments,
@@ -294,6 +296,7 @@ def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False, page
         show_guarantee=show_guarantee,
         is_deferred=is_deferred,
         page=page,  # P0-6: Передаём page для возврата
+        has_master=has_master,  # 🔧 BUGFIX: Передаём флаг наличия мастера
     )
 
 
@@ -584,8 +587,8 @@ async def cb_orders_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     counts = await orders_service.count_orders_by_sections(city_ids)
 
     text = (
-        "\U0001f4e6 <b>\u0417\u0430\u044f\0432\043a\0438</b>\n\n"
-        "\u0412\u044b\u0431\0435\0440\0438\0442\0435 \u0440\u0430\0437\0434\0435\043b \u0434\043b\044f \u043f\0440\043e\0441\043c\043e\0442\0440\0430 \u0437\0430\044f\0432\043e\043a."
+        "📦 <b>Заявки</b>\n\n"
+        "Выберите раздел для просмотра заявок."
     )
 
     markup = orders_menu(staff, counts)

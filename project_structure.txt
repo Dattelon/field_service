@@ -345,6 +345,7 @@ field-service/
 │   ├── SNAPSHOT_SCRIPTS_SUMMARY.md
 │   └── update_global_admin.sql
 ├── tests/
+│   ├── BUSINESS_LOGIC_TESTS_SUMMARY.md
 │   ├── conftest.py
 │   ├── CONTINUE_CONTEXT.md
 │   ├── POSTGRESQL_MIGRATION.md
@@ -358,6 +359,8 @@ field-service/
 │   ├── test_admin_finance_ui.py
 │   ├── test_admin_masters_keyboard.py
 │   ├── test_admin_services.py
+│   ├── test_business_logic_edge_cases.py
+│   ├── TEST_BUSINESS_LOGIC_README.md
 │   ├── test_commission_service.py
 │   ├── test_dist_log_format.py
 │   ├── test_distribution_metrics.py
@@ -377,6 +380,7 @@ field-service/
 │   ├── TEST_FIX_1_3_ISSUES_REPORT.md
 │   ├── test_fixes_stage_1.py
 │   ├── test_fsm_timeout.py
+│   ├── test_full_business_logic.py
 │   ├── test_heartbeat.py
 │   ├── TEST_INSTRUCTIONS.md
 │   ├── test_load_race_condition.py

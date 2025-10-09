@@ -17,6 +17,8 @@ from ..keyboards import (
     districts_keyboard,
     payout_methods_keyboard,
     pdn_keyboard,
+    sbp_bank_keyboard,  # 🔧 Добавлен импорт
+    SBP_BANKS,  # 🔧 Добавлен импорт списка банков
     skills_keyboard,
     vehicle_keyboard,
 )
@@ -41,7 +43,7 @@ AVAILABLE_PAYOUT_METHODS: tuple[m.PayoutMethod, ...] = (
 )
 
 # P1-12: Progress bar configuration
-TOTAL_ONBOARDING_STEPS = 13  # Excluding confirm step, removed home_geo
+TOTAL_ONBOARDING_STEPS = 14  # 🔧 Обновлено: было 13, добавлен шаг выбора банка для СБП
 STEP_MAPPING = {
     OnboardingStates.pdn: 1,
     OnboardingStates.last_name: 2,
@@ -56,6 +58,7 @@ STEP_MAPPING = {
     OnboardingStates.selfie: 11,
     OnboardingStates.payout_method: 12,
     OnboardingStates.payout_requisites: 13,
+    OnboardingStates.payout_sbp_bank: 14,  # 🔧 Новый шаг для выбора банка СБП
 }
 
 
@@ -527,6 +530,28 @@ async def onboarding_payout_requisites(message: Message, state: FSMContext) -> N
     if not method_value:
         await message.answer("Сначала выберите способ выплаты.")
         return
+    
+    # 🔧 НОВАЯ ЛОГИКА: Для СБП сохраняем телефон и переходим к выбору банка
+    if method_value == m.PayoutMethod.SBP.value:
+        try:
+            phone = onboarding_service.normalize_phone(message.text or "")
+        except onboarding_service.ValidationError as exc:
+            await message.answer(str(exc))
+            return
+        
+        await state.update_data(sbp_phone=phone)
+        await state.set_state(OnboardingStates.payout_sbp_bank)
+        
+        text = _add_progress_to_text("Выберите ваш банк для СБП:", OnboardingStates.payout_sbp_bank)
+        await push_step_message(
+            message,
+            state,
+            text,
+            sbp_bank_keyboard(),
+        )
+        return
+    
+    # Для остальных способов - старая логика
     try:
         payout = onboarding_service.validate_payout(method_value, message.text or "")
     except onboarding_service.ValidationError as exc:
@@ -542,6 +567,47 @@ async def onboarding_payout_requisites(message: Message, state: FSMContext) -> N
     
     # Переходим сразу к summary (этап home_geo удалён)
     await _show_summary(message, state)
+
+
+@router.callback_query(OnboardingStates.payout_sbp_bank, F.data.startswith("m:onb:sbp_bank:"))
+async def onboarding_sbp_bank_select(callback: CallbackQuery, state: FSMContext) -> None:
+    """🔧 Обработчик выбора банка для СБП."""
+    bank_code = callback.data.split(":")[-1]
+    
+    # Получаем название банка
+    bank_name = next(
+        (name for code, name in SBP_BANKS if code == bank_code),
+        bank_code
+    )
+    
+    data = await state.get_data()
+    sbp_phone = data.get("sbp_phone")
+    
+    if not sbp_phone:
+        await callback.answer("Ошибка: телефон не найден. Начните заново.", show_alert=True)
+        return
+    
+    # Сохраняем полные данные СБП
+    payload = {
+        "sbp_phone": sbp_phone,
+        "sbp_bank": bank_code,
+        "sbp_bank_name": bank_name,
+    }
+    
+    await state.update_data(
+        payout_method=m.PayoutMethod.SBP.value,
+        payout_payload=payload
+    )
+    
+    # Проверка редактирования
+    if data.get("is_editing"):
+        await state.update_data(is_editing=False)
+        await _show_summary(callback.message, state)
+        await callback.answer(f"Банк {bank_name} выбран")
+        return
+    
+    await _show_summary(callback.message, state)
+    await callback.answer(f"Банк {bank_name} выбран")
 
 
 
@@ -913,7 +979,14 @@ def _format_payout_summary(method_value: str | None, payload: dict | None) -> st
         return f"Карта *{last4}" if last4 else "Карта"
     if method is m.PayoutMethod.SBP:
         phone = payload.get('sbp_phone', '')
-        return f"СБП {phone}".strip() or "СБП"
+        bank_name = payload.get('sbp_bank_name', '')
+        # 🔧 ОБНОВЛЕНО: Показываем и телефон, и банк
+        if phone and bank_name:
+            return f"СБП {phone} ({bank_name})"
+        elif phone:
+            return f"СБП {phone}"
+        else:
+            return "СБП"
     if method is m.PayoutMethod.YOOMONEY:
         account = payload.get('account', '')
         return f"ЮMoney {account}".strip() or "ЮMoney"

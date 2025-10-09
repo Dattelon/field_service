@@ -41,11 +41,16 @@ TABLES = [
     m.orders.__table__,
     m.attachments.__table__,
     m.commissions.__table__,
+    m.commission_deadline_notifications.__table__,
     m.referrals.__table__,
     m.referral_rewards.__table__,
     m.order_status_history.__table__,
     m.settings.__table__,
     m.geocache.__table__,
+    m.admin_audit_log.__table__,
+    m.notifications_outbox.__table__,
+    m.order_autoclose_queue.__table__,
+    m.distribution_metrics.__table__,
 ]
 
 
@@ -66,15 +71,22 @@ async def engine() -> AsyncIterator[AsyncEngine]:
     
     # Создаём все таблицы один раз
     async with engine.begin() as conn:
-        # Создаём staff_users вручную (не через metadata)
+        # Создаём ENUM types
+        await conn.execute(sa.text("DROP TYPE IF EXISTS staff_role CASCADE"))
         await conn.execute(sa.text("""
-            CREATE TABLE IF NOT EXISTS staff_users (
+            CREATE TYPE staff_role AS ENUM ('GLOBAL_ADMIN', 'CITY_ADMIN', 'LOGIST')
+        """))
+        
+        # Пересоздаём staff_users вручную (не через metadata)
+        await conn.execute(sa.text("DROP TABLE IF EXISTS staff_users CASCADE"))
+        await conn.execute(sa.text("""
+            CREATE TABLE staff_users (
                 id SERIAL PRIMARY KEY,
                 tg_user_id BIGINT UNIQUE,
                 username VARCHAR(64),
                 full_name VARCHAR(160),
                 phone VARCHAR(32),
-                role VARCHAR(10) NOT NULL,
+                role staff_role NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE NOT NULL,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -125,12 +137,16 @@ async def _clean_database(session: AsyncSession) -> None:
     Быстрее чем DROP/CREATE и сохраняет структуру.
     """
     tables_to_clean = [
+        "commission_deadline_notifications",
         "order_status_history",
         "attachments", 
         "offers",
         "commissions",
         "referrals",
         "referral_rewards",
+        "notifications_outbox",
+        "order_autoclose_queue",
+        "distribution_metrics",
         "orders",
         "master_districts",
         "master_skills",
@@ -139,13 +155,14 @@ async def _clean_database(session: AsyncSession) -> None:
         "staff_access_code_cities",
         "staff_access_codes",
         "staff_cities",
-        "staff_users",  # ✅ Добавлено
+        "staff_users",
         "streets",
         "districts",
         "cities",
         "skills",
         "settings",
         "geocache",
+        "admin_audit_log",
     ]
     
     try:

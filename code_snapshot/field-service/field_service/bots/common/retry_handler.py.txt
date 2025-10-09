@@ -11,7 +11,7 @@ import logging
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Update
 
 from .retry_context import (
     RetryContext,
@@ -83,9 +83,9 @@ async def retry_execute(callback: CallbackQuery, state: FSMContext):
         },
     )
 
-    # Заменяем callback_data на оригинальный
-    # Это позволит router'у найти правильный handler
-    callback.data = ctx.callback_data
+    # Создаем копию callback с оригинальным callback_data
+    # CallbackQuery это frozen Pydantic модель, поэтому используем model_copy
+    modified_callback = callback.model_copy(update={"data": ctx.callback_data})
 
     # Повторяем обработку
     # Router автоматически найдёт нужный handler по callback.data
@@ -97,8 +97,14 @@ async def retry_execute(callback: CallbackQuery, state: FSMContext):
         dp = bot.get("dp")  # Dispatcher должен быть сохранён в bot["dp"]
 
         if dp:
+            # Создаем новый Update с модифицированным callback
+            update = Update(
+                update_id=0,  # Не важно для повторной обработки
+                callback_query=modified_callback,
+            )
+            
             # Обрабатываем через dispatcher
-            await dp.feed_update(bot, callback)
+            await dp.feed_update(bot, update)
 
             # Если успешно - очищаем контекст
             await clear_retry_context(state)

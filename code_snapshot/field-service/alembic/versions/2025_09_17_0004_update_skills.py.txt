@@ -18,12 +18,12 @@ def upgrade():
     op.execute(
         """
         INSERT INTO skills (code, name, is_active) VALUES
-            ('ELEC', '', true),
-            ('PLUMB', '', true),
-            ('APPLI', ' ', true),
-            ('WINDOWS', '', true),
-            ('HANDY', '  ', true),
-            ('AUTOHELP', '', true)
+            ('ELEC', 'Электрика', true),
+            ('PLUMB', 'Сантехника', true),
+            ('APPLI', 'Бытовая техника', true),
+            ('WINDOWS', 'Окна и двери', true),
+            ('HANDY', 'Мелкий ремонт', true),
+            ('AUTOHELP', 'Автопомощь', true)
         ON CONFLICT (code) DO UPDATE SET
             name = EXCLUDED.name,
             is_active = EXCLUDED.is_active

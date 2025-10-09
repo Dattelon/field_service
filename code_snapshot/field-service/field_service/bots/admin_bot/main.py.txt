@@ -78,9 +78,9 @@ async def main() -> int:
     # CR-2025-10-03-007: Финансы
     dp.include_router(finance_router)
     
-    # Модерация и управление мастерами
-    dp.include_router(admin_masters_router)
+    # Модерация и управление мастерами (moderation ПЕРЕД masters, т.к. masters имеет catch-all)
     dp.include_router(admin_moderation_router)
+    dp.include_router(admin_masters_router)
     
     # P1-13: Retry функциональность для повтора действий при ошибках
     dp.include_router(retry_router)

@@ -17,6 +17,7 @@ from field_service.bots.common.retry_middleware import setup_retry_middleware  #
 from field_service.infra.notify import send_alert, send_log
 from field_service.services.heartbeat import run_heartbeat
 from field_service.services.break_reminder_scheduler import run_break_reminder  # P1-16
+from field_service.services.notifications_watcher import run_master_notifications  # Отправка уведомлений мастерам
 
 from .handlers import router as master_router
 
@@ -70,6 +71,12 @@ async def main() -> int:
         name="break_reminder",
     )
 
+    # Запуск worker для отправки уведомлений мастерам
+    notifications_task = asyncio.create_task(
+        run_master_notifications(bot, interval_seconds=5),
+        name="master_notifications",
+    )
+
     exit_code = 0
     try:
         logger.info("Starting master bot; allowed updates: %s", dp.resolve_used_update_types())
@@ -98,6 +105,11 @@ async def main() -> int:
             break_reminder_task.cancel()
             with suppress(asyncio.CancelledError):
                 await break_reminder_task
+        # Отменяем задачу notifications
+        if notifications_task:
+            notifications_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await notifications_task
         await bot.session.close()
 
     return exit_code

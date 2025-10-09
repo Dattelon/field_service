@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional, Sequence
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db import models as m
@@ -122,6 +122,25 @@ class DBDistributionService:
 
                 status_enum = _coerce_order_status(getattr(data, "status", None))
                 logistic_mark = getattr(data, "dist_escalated_logist_at", None)
+
+                # 🔧 BUGFIX: Переводим DEFERRED → SEARCHING перед распределением
+                if status_enum == m.OrderStatus.DEFERRED:
+                    await session.execute(
+                        update(m.orders)
+                        .where(m.orders.id == order_id)
+                        .values(status=m.OrderStatus.SEARCHING)
+                    )
+                    await session.execute(
+                        insert(m.order_status_history).values(
+                            order_id=order_id,
+                            from_status=m.OrderStatus.DEFERRED,
+                            to_status=m.OrderStatus.SEARCHING,
+                            changed_by_staff_id=by_staff_id,
+                            reason="Принудительный запуск распределения из админ-бота",
+                        )
+                    )
+                    status_enum = m.OrderStatus.SEARCHING
+                    _push_dist_log(f"[dist] order={order_id} DEFERRED→SEARCHING (forced by staff #{by_staff_id})", level="INFO")
 
                 if data.district_id is None:
                     if logistic_mark is None:
@@ -327,9 +346,11 @@ class DBDistributionService:
                     return False, "   "
 
                 status = getattr(order, "status", None)
+                # 🔧 BUGFIX: Разрешаем ручное назначение для DEFERRED
                 allowed_statuses = {
                     m.OrderStatus.SEARCHING,
                     m.OrderStatus.GUARANTEE,
+                    m.OrderStatus.DEFERRED,
                 }
                 status_enum = (
                     status if isinstance(status, m.OrderStatus) else m.OrderStatus(str(status))
@@ -338,6 +359,24 @@ class DBDistributionService:
                 )
                 if status_enum not in allowed_statuses:
                     return False, "   "
+
+                # 🔧 BUGFIX: Переводим DEFERRED → SEARCHING при ручном назначении
+                if status_enum == m.OrderStatus.DEFERRED:
+                    await session.execute(
+                        update(m.orders)
+                        .where(m.orders.id == order_id)
+                        .values(status=m.OrderStatus.SEARCHING)
+                    )
+                    await session.execute(
+                        insert(m.order_status_history).values(
+                            order_id=order_id,
+                            from_status=m.OrderStatus.DEFERRED,
+                            to_status=m.OrderStatus.SEARCHING,
+                            changed_by_staff_id=by_staff_id,
+                            reason="Ручное назначение из админ-бота",
+                        )
+                    )
+                    status_enum = m.OrderStatus.SEARCHING
 
                 category = getattr(order, "category", None)
                 skill_code = dw._skill_code_for_category(category)

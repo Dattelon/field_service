@@ -991,7 +991,23 @@ async def _relay_document(current_bot, *, chat_id: int, file_id: str, file_type:
         logger.warning('Relay via master bot failed', exc_info=True)
         return False
 
-async def show_documents(cq: CallbackQuery, staff: StaffUser) -> None:
+
+async def _clear_document_messages(bot: Bot, state: FSMContext, chat_id: int) -> None:
+    """Очистить сообщения с документами из чата."""
+    data = await state.get_data()
+    doc_msg_ids = data.get("document_msg_ids", [])
+    
+    for msg_id in doc_msg_ids:
+        try:
+            await bot.delete_message(chat_id, msg_id)
+        except Exception:
+            pass
+    
+    # Очищаем список после удаления
+    await state.update_data(document_msg_ids=[])
+
+
+async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     try:
         action = parse_master_action(cq.data)
     except ValueError:
@@ -1002,23 +1018,36 @@ async def show_documents(cq: CallbackQuery, staff: StaffUser) -> None:
         await cq.answer()
     except Exception:
         pass
+    
+    # Очищаем старые документы перед показом новых
+    if cq.message:
+        await _clear_document_messages(cq.bot, state, cq.message.chat.id)
+    
     service = _masters_service(cq.bot)
     detail = await service.get_master_detail(master_id)
     if not detail or not detail.documents:
         if cq.message:
             await cq.message.answer("Документы отсутствуют")
         return
+    
     chat_id = cq.message.chat.id if cq.message else None
+    sent_msg_ids = []
+    
     for document in detail.documents:
         caption = document.caption or document.document_type or ''
         file_type = (document.file_type or '').upper()
+        sent_msg = None
         try:
             if file_type == 'PHOTO':
-                await cq.message.answer_photo(document.file_id, caption=caption)
+                sent_msg = await cq.message.answer_photo(document.file_id, caption=caption)
             elif file_type == 'DOCUMENT':
-                await cq.message.answer_document(document.file_id, caption=caption)
+                sent_msg = await cq.message.answer_document(document.file_id, caption=caption)
             else:
-                await cq.message.answer(f"Неизвестный тип файла: {document.file_type}")
+                sent_msg = await cq.message.answer(f"Неизвестный тип файла: {document.file_type}")
+            
+            # Сохраняем message_id отправленного документа
+            if sent_msg:
+                sent_msg_ids.append(sent_msg.message_id)
         except Exception:
             if chat_id is not None:
                 ok = await _relay_document(cq.bot, chat_id=chat_id, file_id=document.file_id, file_type=file_type, caption=caption, filename=(document.file_name or None))
@@ -1026,6 +1055,9 @@ async def show_documents(cq: CallbackQuery, staff: StaffUser) -> None:
                     logger.warning('Failed to send document', exc_info=True)
             else:
                 logger.warning('Failed to send document', exc_info=True)
+    
+    # Сохраняем message_id документов в state
+    await state.update_data(document_msg_ids=sent_msg_ids)
 @router.callback_query(
     F.data.startswith("adm:m:del:") | F.data.startswith("adm:mod:del:"),
     StaffRoleFilter(MANAGE_ROLES),
@@ -1114,10 +1146,10 @@ async def perform_delete(cq: CallbackQuery, staff: StaffUser) -> None:
     logger.info(f"Delete handler completed for master_id={master_id}")
 
 
-# Отладочный обработчик для неперехваченных callback
-@router.callback_query(F.data.startswith("adm:m:") | F.data.startswith("adm:mod:"))
+# Отладочный обработчик для неперехваченных callback (только adm:m:, БЕЗ adm:mod:)
+@router.callback_query(F.data.startswith("adm:m:"))
 async def catch_unhandled_master_callbacks(cq: CallbackQuery) -> None:
-    """Ловит все необработанные callback для мастеров."""
+    """Ловит все необработанные callback для мастеров (исключая модерацию)."""
     logger.warning(f"[UNHANDLED CALLBACK] Masters router: {cq.data}")
     await cq.answer(f"Обработчик для '{cq.data}' не найден", show_alert=True)
 
@@ -1132,6 +1164,8 @@ __all__ = [
     "notify_master_event",
     "parse_master_action",
     "RejectReasonState",
+    "show_documents",
+    "_clear_document_messages",
 ]
 
 

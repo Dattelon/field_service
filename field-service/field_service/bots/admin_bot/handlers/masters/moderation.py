@@ -44,6 +44,10 @@ async def _get_selected_ids(state: FSMContext) -> set[int]:
     StaffRoleFilter(MOD_VIEW_ROLES),
 )
 async def moderation_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    # Очищаем документы при возврате в список
+    if cq.message:
+        await admin_masters._clear_document_messages(cq.bot, state, cq.message.chat.id)
+    
     parts = cq.data.split(":")
     group = "mod"
     category = "all"
@@ -82,7 +86,11 @@ async def moderation_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext
     F.data.startswith("adm:mod:card:"),
     StaffRoleFilter(MOD_VIEW_ROLES),
 )
-async def moderation_card(cq: CallbackQuery, staff: StaffUser) -> None:
+async def moderation_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    # Очищаем документы при открытии карточки
+    if cq.message:
+        await admin_masters._clear_document_messages(cq.bot, state, cq.message.chat.id)
+    
     try:
         action = admin_masters.parse_master_action(cq.data)
     except ValueError:
@@ -182,9 +190,9 @@ async def moderation_reject(cq: CallbackQuery, state: FSMContext, staff: StaffUs
     F.data.startswith("adm:mod:docs"),
     StaffRoleFilter(MOD_VIEW_ROLES),
 )
-async def moderation_docs(cq: CallbackQuery, staff: StaffUser) -> None:
+async def moderation_docs(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     # reuse master handler for docs
-    await admin_masters.show_documents(cq, staff)
+    await admin_masters.show_documents(cq, staff, state)
 
 
 @router.callback_query(

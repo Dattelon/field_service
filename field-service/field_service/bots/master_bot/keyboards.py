@@ -108,6 +108,45 @@ def payout_methods_keyboard(methods: Iterable[m.PayoutMethod]) -> InlineKeyboard
     return inline_keyboard(rows)
 
 
+# 🔧 Список банков для СБП
+SBP_BANKS = [
+    ("sber", "Сбербанк"),
+    ("tinkoff", "Тинькофф"),
+    ("vtb", "ВТБ"),
+    ("alfa", "Альфа-Банк"),
+    ("raiff", "Райффайзенбанк"),
+    ("gpb", "Газпромбанк"),
+    ("mts", "МТС Банк"),
+    ("psb", "ПСБ"),
+    ("open", "Открытие"),
+    ("sovcom", "Совкомбанк"),
+    ("rsb", "Россельхозбанк"),
+    ("ak_bars", "Ак Барс"),
+    ("uralsib", "Уралсиб"),
+    ("mkb", "МКБ"),
+    ("other", "Другой банк"),
+]
+
+
+def sbp_bank_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура выбора банка для СБП."""
+    rows: list[list[InlineKeyboardButton]] = []
+    # Добавляем кнопки парами
+    for i in range(0, len(SBP_BANKS), 2):
+        row = []
+        for j in range(2):
+            idx = i + j
+            if idx < len(SBP_BANKS):
+                code, name = SBP_BANKS[idx]
+                row.append(
+                    InlineKeyboardButton(text=name, callback_data=f"m:onb:sbp_bank:{code}")
+                )
+        if row:
+            rows.append(row)
+    rows.append(cancel_button())
+    return inline_keyboard(rows)
+
+
 def home_geo_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
         [

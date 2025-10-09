@@ -17,6 +17,7 @@ class OnboardingStates(StatesGroup):
     selfie = State()
     payout_method = State()
     payout_requisites = State()
+    payout_sbp_bank = State()  # 🔧 Выбор банка для СБП
     confirm = State()
 
 

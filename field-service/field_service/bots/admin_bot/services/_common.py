@@ -103,6 +103,7 @@ QUEUE_STATUSES = {
     m.OrderStatus.WORKING,
     m.OrderStatus.PAYMENT,
     m.OrderStatus.GUARANTEE,
+    m.OrderStatus.DEFERRED,
 }
 
 ACTIVE_ORDER_STATUSES = (
@@ -185,6 +186,7 @@ QUEUE_STATUSES = {
     m.OrderStatus.WORKING,
     m.OrderStatus.PAYMENT,
     m.OrderStatus.GUARANTEE,
+    m.OrderStatus.DEFERRED,
 }
 
 ACTIVE_ORDER_STATUSES = (
@@ -207,6 +209,7 @@ class _StaffAccess:
     role: m.StaffRole
     is_active: bool
     city_ids: frozenset[int]
+    full_name: Optional[str] = None
 
 
 async def _load_staff_access(
@@ -229,6 +232,7 @@ async def _load_staff_access(
         role=staff.role,
         is_active=staff.is_active,
         city_ids=city_ids,
+        full_name=staff.full_name,
     )
 
 

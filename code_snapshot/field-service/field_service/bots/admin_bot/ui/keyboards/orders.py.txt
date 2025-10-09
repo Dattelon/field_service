@@ -67,6 +67,7 @@ def order_card_keyboard(
     show_guarantee: bool = False,
     is_deferred: bool = False,  # ⚠️ Новый параметр
     page: int = 1,  # P0-6: Страница для возврата
+    has_master: bool = False,  # 🔧 BUGFIX: Проверка наличия мастера
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for attachment in attachments:
@@ -90,9 +91,12 @@ def order_card_keyboard(
     # P1-19: Кнопки быстрого копирования
     copy_row = InlineKeyboardBuilder()
     copy_row.add(copy_button("📋 Телефон клиента", order_id, "cph", "adm"))
-    copy_row.add(copy_button("📋 Телефон мастера", order_id, "mph", "adm"))
+    # 🔧 BUGFIX: Показывать "Телефон мастера" только если мастер назначен
+    if has_master:
+        copy_row.add(copy_button("📋 Телефон мастера", order_id, "mph", "adm"))
     copy_row.add(copy_button("📋 Адрес", order_id, "addr", "adm"))
-    copy_row.adjust(3)  # Три кнопки в ряд
+    # Адаптивное количество кнопок в ряду
+    copy_row.adjust(3 if has_master else 2)
     kb.attach(copy_row)
     
     if allow_return:
