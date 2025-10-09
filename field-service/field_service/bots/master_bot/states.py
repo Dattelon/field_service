@@ -17,7 +17,6 @@ class OnboardingStates(StatesGroup):
     selfie = State()
     payout_method = State()
     payout_requisites = State()
-    home_geo = State()
     confirm = State()
 
 

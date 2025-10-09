@@ -214,8 +214,26 @@ async def _render_city_step(message, state, page, query=None):
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
 async def cb_new_order_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Начать создание заказа."""
+    """Показать выбор режима создания заказа (P0-5)."""
+    await state.clear()
+    from ...ui.keyboards import create_order_mode_keyboard
+    await cq.message.edit_text(
+        "Выберите режим создания заказа:\n\n"
+        "⚡ <b>Быстрое создание</b> - только обязательные поля (5 шагов)\n"
+        "📝 <b>Полное создание</b> - все поля с адресом и деталями",
+        reply_markup=create_order_mode_keyboard(),
+    )
+    await cq.answer()
+
+
+@router.callback_query(
+    F.data == "adm:new:mode:full",
+    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
+)
+async def cb_new_order_full_mode(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """Начать полное создание заказа."""
     await _start_new_order(cq, staff, state)
+
 
 
 @router.message(

@@ -74,6 +74,14 @@ field-service/
 │   ├── DISTRICTS_MIGRATION_2025-10-04.md
 │   ├── GEO_IMPORT.md
 │   ├── HOW_TO_LOAD_DISTRICTS.md
+│   ├── P0-2_COMPLETE.md
+│   ├── P0-2_onboarding_changes.py
+│   ├── P0-2_ONBOARDING_EDIT.md
+│   ├── P0-2_QUICKSTART.md
+│   ├── P0-2_SUMMARY.md
+│   ├── P1-10_PATCH.py
+│   ├── P1-10_PUSH_OFFER_NOTIFICATIONS.md
+│   ├── P1-10_QUICKSTART.md
 │   ├── QUICK_START_DISTRICTS.md
 │   ├── STRUCTURED_LOGGING.md
 │   └── archive/
@@ -130,7 +138,8 @@ field-service/
 │   │   │   │   ├── orders/
 │   │   │   │   │   ├── __init__.py
 │   │   │   │   │   ├── create.py
-│   │   │   │   │   └── queue.py
+│   │   │   │   │   ├── queue.py
+│   │   │   │   │   └── quick_create.py
 │   │   │   │   ├── staff/
 │   │   │   │   │   ├── __init__.py
 │   │   │   │   │   ├── access_codes.py
@@ -328,6 +337,7 @@ field-service/
 │   ├── test_master_start_cancel.py
 │   ├── test_orders_model_compat.py
 │   ├── test_owner_requisites.py
+│   ├── test_p1_10_push_offer_notification.py
 │   ├── test_single_instance.py
 │   ├── test_smoke.py
 │   ├── test_staff_access.py

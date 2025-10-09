@@ -16,6 +16,16 @@ from ...core.dto import (
 from ...ui.texts import master_brief_line
 
 
+def create_order_mode_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура выбора режима создания заказа (P0-5)."""
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⚡ Быстрое создание", callback_data="adm:new:mode:quick")
+    kb.button(text="📝 Полное создание", callback_data="adm:new:mode:full")
+    kb.button(text="❌ Отмена", callback_data="adm:new:cancel")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
 def queue_list_keyboard(
     items: Sequence[OrderListItem], *, page: int, has_next: bool
 ) -> InlineKeyboardMarkup:
@@ -164,17 +174,18 @@ def new_order_city_keyboard(
     *,
     page: int,
     total_pages: int,
+    prefix: str = "new",  # P0-5: Параметр для быстрого/полного режима
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for city_id, name in city_buttons:
-        kb.button(text=name, callback_data=f"adm:new:city:{city_id}")
+        kb.button(text=name, callback_data=f"adm:{prefix}:city:{city_id}")
     kb.adjust(2)
     nav = InlineKeyboardBuilder()
     if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:new:city_page:{page - 1}")
+        nav.button(text="◀️ Назад", callback_data=f"adm:{prefix}:city_page:{page - 1}")
     if page < total_pages:
-        nav.button(text="▶️ Далее", callback_data=f"adm:new:city_page:{page + 1}")
-    nav.button(text="🔍 Поиск", callback_data="adm:new:city_search")
+        nav.button(text="▶️ Далее", callback_data=f"adm:{prefix}:city_page:{page + 1}")
+    nav.button(text="🔍 Поиск", callback_data=f"adm:{prefix}:city_search")
     nav.button(text="✖️ Отменить", callback_data="adm:new:cancel")
     kb.attach(nav)
     return kb.as_markup()
@@ -187,19 +198,20 @@ def new_order_district_keyboard(
     *,
     page: int,
     has_next: bool,
+    prefix: str = "new",  # P0-5: Параметр для быстрого/полного режима
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for district_id, name in districts:
-        kb.button(text=name, callback_data=f"adm:new:district:{district_id}")
+        kb.button(text=name, callback_data=f"adm:{prefix}:district:{district_id}")
     if districts:
         kb.adjust(1)
-    kb.button(text="🚫 Без района", callback_data="adm:new:district:none")
+    kb.button(text="🚫 Без района", callback_data=f"adm:{prefix}:district:none")
     nav = InlineKeyboardBuilder()
     if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:new:district_page:{page - 1}")
+        nav.button(text="◀️ Назад", callback_data=f"adm:{prefix}:district_page:{page - 1}")
     if has_next:
-        nav.button(text="▶️ Далее", callback_data=f"adm:new:district_page:{page + 1}")
-    nav.button(text="⬅️ Назад", callback_data="adm:new:city_back")
+        nav.button(text="▶️ Далее", callback_data=f"adm:{prefix}:district_page:{page + 1}")
+    nav.button(text="⬅️ Назад", callback_data=f"adm:{prefix}:city_back")
     kb.attach(nav)
     return kb.as_markup()
 
@@ -260,10 +272,13 @@ def new_order_attachments_keyboard(has_any: bool) -> InlineKeyboardMarkup:
 
 
 
-def new_order_slot_keyboard(options: Sequence[tuple[str, str]]) -> InlineKeyboardMarkup:
+def new_order_slot_keyboard(
+    options: Sequence[tuple[str, str]], 
+    prefix: str = "new"  # P0-5: Параметр для быстрого/полного режима
+) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for key, label in options:
-        kb.button(text=label, callback_data=f"adm:new:slot:{key}")
+        kb.button(text=label, callback_data=f"adm:{prefix}:slot:{key}")
     kb.adjust(1)
     kb.button(text="✖️ Отменить", callback_data="adm:new:cancel")
     return kb.as_markup()
@@ -271,10 +286,10 @@ def new_order_slot_keyboard(options: Sequence[tuple[str, str]]) -> InlineKeyboar
 
 
 
-def new_order_asap_late_keyboard() -> InlineKeyboardMarkup:
+def new_order_asap_late_keyboard(prefix: str = "new") -> InlineKeyboardMarkup:  # P0-5: Параметр для быстрого/полного режима
     kb = InlineKeyboardBuilder()
-    kb.button(text="✅ Ок", callback_data="adm:new:slot:lateok")
-    kb.button(text="🔁 Перезапланировать", callback_data="adm:new:slot:reslot")
+    kb.button(text="✅ Ок", callback_data=f"adm:{prefix}:slot:lateok")
+    kb.button(text="🔁 Перезапланировать", callback_data=f"adm:{prefix}:slot:reslot")
     kb.adjust(1)
     return kb.as_markup()
 
@@ -282,9 +297,9 @@ def new_order_asap_late_keyboard() -> InlineKeyboardMarkup:
 
 
 
-def new_order_confirm_keyboard() -> InlineKeyboardMarkup:
+def new_order_confirm_keyboard(prefix: str = "new") -> InlineKeyboardMarkup:  # P0-5: Параметр для быстрого/полного режима
     kb = InlineKeyboardBuilder()
-    kb.button(text="✅ Подтвердить", callback_data="adm:new:confirm")
+    kb.button(text="✅ Подтвердить", callback_data=f"adm:{prefix}:confirm")
     kb.button(text="⬅️ Назад", callback_data="adm:new:cancel")
     return kb.as_markup()
 

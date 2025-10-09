@@ -97,6 +97,17 @@ class StaffEditFSM(StatesGroup):
     confirm = State()
 
 
+class QuickOrderFSM(StatesGroup):
+    """FSM для быстрого создания заказа (P0-5)."""
+    city = State()
+    district = State()
+    client_phone = State()
+    category = State()
+    slot = State()
+    confirm = State()
+    confirm_deferred = State()  # ⚠️ Подтверждение создания в нерабочее время
+
+
 __all__ = [
     "QueueFiltersFSM",
     "QueueActionFSM",
@@ -104,6 +115,7 @@ __all__ = [
     "FinanceActionFSM",
     "MasterActionFSM",
     "NewOrderFSM",
+    "QuickOrderFSM",  # P0-5: Быстрое создание заказа
     "OwnerPayEditFSM",
     "SettingsEditFSM",
     "StaffCityEditFSM",

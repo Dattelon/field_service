@@ -1,6 +1,7 @@
 """Admin bot keyboards."""
 from .common import main_menu, orders_menu, back_to_menu
 from .orders import (
+    create_order_mode_keyboard,  # P0-5: Выбор режима создания
     queue_list_keyboard,
     order_card_keyboard,
     queue_cancel_keyboard,
@@ -43,6 +44,7 @@ __all__ = [
     'orders_menu',
     'back_to_menu',
     # Orders
+    'create_order_mode_keyboard',  # P0-5: Выбор режима создания
     'queue_list_keyboard',
     'order_card_keyboard',
     'queue_cancel_keyboard',
