@@ -335,7 +335,7 @@ async def on_owner_requisites_edit_menu(
         return
     settings_service = _settings_service(cq.message.bot)
     snapshot = await settings_service.get_owner_pay_snapshot()
-    lines = ["<b> </b>", "   :"]
+    lines = ["<b>Редактирование реквизитов</b>", "", "Текущие значения:"]
     for field, label in _OWNER_FIELDS.items():
         current = snapshot.get(field)
         if field == "methods":
@@ -344,7 +344,7 @@ async def on_owner_requisites_edit_menu(
             rendered = current or ""
         else:
             rendered = ""
-        lines.append(f" {label}: {html.escape(rendered)}")
+        lines.append(f"• {label}: {html.escape(rendered) if rendered else '—'}")
     try:
         await cq.message.edit_text("\n".join(lines), reply_markup=owner_pay_edit_keyboard())
     except TelegramBadRequest as exc:
@@ -368,7 +368,7 @@ async def on_owner_requisites_field_select(
         return
     field = cq.data.split(":", maxsplit=3)[-1]
     if field not in _OWNER_FIELDS:
-        await _safe_answer(cq, " ", show_alert=True)
+        await _safe_answer(cq, "Неизвестное поле", show_alert=True)
         return
     settings_service = _settings_service(cq.message.bot)
     snapshot = await settings_service.get_owner_pay_snapshot()
@@ -376,22 +376,22 @@ async def on_owner_requisites_field_select(
     if field == "methods":
         rendered = _format_methods(current or [])
         prompt = (
-            "     (card, sbp, cash).\n"
-            "   ,  ."
+            "Введите способы оплаты (card, sbp, cash).\n"
+            "Можно указать несколько через запятую."
         )
     elif field == "sbp_qr_file_id":
-        rendered = "" if current else " "
-        prompt = " /  QR-   file_id.    ."
+        rendered = "QR-код загружен" if current else "QR-код не загружен"
+        prompt = "Отправьте изображение или документ QR-кода для СБП. Либо отправьте file_id. Для удаления отправьте: -"
     else:
         rendered = current or ""
-        prompt = "  .    ."
+        prompt = "Введите новое значение. Для удаления отправьте: -"
     await state.set_state(OwnerPayEditFSM.value)
     await state.update_data(
         owner_pay_field=field,
         owner_pay_origin=(cq.message.chat.id, cq.message.message_id),
     )
     await cq.message.answer(
-        f"<b>{_OWNER_FIELDS[field]}</b>\n : {html.escape(str(rendered))}\n\n{prompt}"
+        f"<b>{_OWNER_FIELDS[field]}</b>\nТекущее значение: {html.escape(str(rendered))}\n\n{prompt}"
     )
     await _safe_answer(cq)
 
@@ -406,7 +406,7 @@ async def on_owner_requisites_edit_cancel(
     origin = _get_origin(data)
     await state.set_state(None)
     await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer(" .")
+    await msg.answer("❌ Редактирование отменено.")
     await _rerender_origin(msg.bot, staff, origin)
 
 
@@ -608,7 +608,7 @@ async def on_owner_requisites_edit_value(
     field = data.get("owner_pay_field")
     if not field or field not in _OWNER_FIELDS:
         await state.set_state(None)
-        await msg.answer("  ,     .")
+        await msg.answer("Ошибка: поле для редактирования не найдено, начните редактирование заново.")
         return
     origin = _get_origin(data)
     try:
@@ -619,7 +619,7 @@ async def on_owner_requisites_edit_value(
     snapshot = await _update_owner_snapshot(msg.bot, field, value)
     await state.set_state(None)
     await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer(" .")
+    await msg.answer("✅ Значение сохранено.")
     live_log.push("finance", f"owner_pay:{field} updated by staff {staff.id}")
     await _rerender_origin(msg.bot, staff, origin)
 
@@ -633,27 +633,11 @@ async def on_owner_requisites_broadcast(
     staff: StaffUser,
     state: FSMContext,
 ) -> None:
+    """Removed: broadcast function is no longer used. Requisites are shown in master's commission details."""
     if not cq.message:
         await _safe_answer(cq)
         return
-    finance_service = _finance_service(cq.message.bot)
-    settings_service = _settings_service(cq.message.bot)
-    snapshot = await settings_service.get_owner_pay_snapshot()
-    recipients = await finance_service.list_wait_pay_recipients()
-    if not recipients:
-        await _safe_answer(cq, "    ", show_alert=True)
-        return
-    sent, failed = await _broadcast_owner_requisites(cq.message.bot, recipients, snapshot)
-    live_log.push(
-        "finance",
-        f"owner_pay broadcast by staff {staff.id}: sent={sent} failed={failed}",
-    )
-    await _safe_answer(cq, " ")
-    summary = f"  {sent} ."
-    if failed:
-        summary += f"   : {failed}."
-    await cq.message.answer(summary, reply_markup=finance_menu(staff))
-    await _rerender_origin(cq.message.bot, staff, (cq.message.chat.id, cq.message.message_id))
+    await _safe_answer(cq, "Эта функция больше не используется. Реквизиты автоматически показываются мастерам в разделе комиссий.", show_alert=True)
 
 
 # ============================================

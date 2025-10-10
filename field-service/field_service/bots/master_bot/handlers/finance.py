@@ -234,6 +234,21 @@ async def _render_commission_list(
     if not current:
         lines.append("Комиссий в этом разделе пока нет.")
     else:
+        # НОВОЕ: Для раздела "К оплате" показываем информацию о реквизитах
+        if mode == "aw" and current:
+            lines.append("")
+            lines.append("💼 <b>Реквизиты для оплаты:</b>")
+            # Берём реквизиты из первой комиссии (все комиссии используют одни и те же реквизиты владельца)
+            first_commission = current[0]
+            snapshot_text = format_pay_snapshot(first_commission.pay_to_snapshot)
+            if snapshot_text:
+                lines.append(snapshot_text)
+            else:
+                lines.append("⚠️ Реквизиты пока не заполнены администратором.")
+            lines.append("")
+            lines.append("<i>Оплатите комиссию по указанным реквизитам и прикрепите чек в карточке комиссии.</i>")
+            lines.append("")
+        
         for commission in current:
             lines.append(_commission_summary_line(commission))
             lines.append(
@@ -355,6 +370,18 @@ async def _render_commission_card(
     check_status = "✅ Чеки загружены" if commission.has_checks else "⚠️ Чеки ещё не загружены"
     lines.append(check_status)
 
+    # НОВОЕ: Показываем реквизиты для оплаты комиссии
+    if commission.status in {m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED, m.CommissionStatus.OVERDUE}:
+        lines.append("")
+        lines.append("<b>💼 Реквизиты для оплаты комиссии:</b>")
+        
+        snapshot_text = format_pay_snapshot(commission.pay_to_snapshot)
+        if snapshot_text:
+            lines.append(snapshot_text)
+        else:
+            lines.append("⚠️ Реквизиты пока не заполнены администратором.")
+            lines.append("Обратитесь к администратору для уточнения реквизитов.")
+
     buttons: list[list[InlineKeyboardButton]] = []
     
     # P0-7: Кнопка перехода к заказу
@@ -366,9 +393,13 @@ async def _render_commission_card(
             )
         ])
     
-    buttons.append([
-        InlineKeyboardButton(text="📄 Реквизиты", callback_data=f"m:fin:cm:pt:{commission.id}")
-    ])
+    # Кнопка "Показать QR-код", если он есть
+    qr_id = commission.pay_to_snapshot.get("sbp_qr_file_id") if commission.pay_to_snapshot else None
+    if qr_id and commission.status in {m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED, m.CommissionStatus.OVERDUE}:
+        buttons.append([
+            InlineKeyboardButton(text="🔲 Показать QR-код СБП", callback_data=f"m:fin:cm:pt:{commission.id}")
+        ])
+    
     buttons.append([
         InlineKeyboardButton(text="📎 Прикрепить чек", callback_data=f"m:fin:cm:chk:{commission.id}")
     ])

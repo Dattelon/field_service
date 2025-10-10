@@ -42,7 +42,7 @@ FSM_TIMEOUT_MESSAGE = "Сессия истекла. Нажмите /start"
 
 MAIN_MENU_BUTTONS = {
     "shift_on": "🟢 Включить смену",
-    "shift_break": "☕ Перерыв 2 часа",
+    "shift_break": "☕ Перерыв",
     "shift_break_end": "🟢 Включить смену",
     "shift_off": "🔴 Выключить смену",
     "new_orders": "🆕 Новые заказы",
@@ -71,9 +71,11 @@ ORDER_STATUS_TITLES: Mapping[m.OrderStatus, str] = {
 SHIFT_MESSAGES = {
     "started": "Смена начата.",
     "finished": "Смена завершена.",
-    "break_started": "Перерыв 2 часа начат.",
+    "break_choose": "☕ <b>Выберите длительность перерыва:</b>",
+    "break_started": "Перерыв на {duration} начат.",
     "break_finished": "Вы вернулись на смену.",
-    "break_extended": "Перерыв продлён ещё на 2 часа.",  # P1-16
+    "break_extend_choose": "☕ <b>На сколько продлить перерыв?</b>",
+    "break_extended": "Перерыв продлён на {duration}.",
     "inactive": "Смена не активна.",
     "not_break": "Сейчас не перерыв.",
     "blocked": "Смена недоступна: аккаунт заблокирован.",

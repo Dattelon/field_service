@@ -139,9 +139,9 @@ def finance_reject_cancel_keyboard(commission_id: int) -> InlineKeyboardMarkup:
 
 def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text=" ", callback_data="adm:f:set:edit")
-    kb.button(text="  ", callback_data="adm:f:set:bc")
-    kb.button(text=" ", callback_data="adm:f")
+    kb.button(text="✏️ Редактировать", callback_data="adm:f:set:edit")
+    kb.button(text="📢 Разослать мастерам", callback_data="adm:f:set:bc")
+    kb.button(text="⬅️ Назад", callback_data="adm:f")
     kb.adjust(2, 1)
     return kb.as_markup()
 
@@ -151,20 +151,20 @@ def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
 def owner_pay_edit_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     field_labels = [
-        ("methods", " "),
-        ("card_number", " "),
-        ("card_holder", " "),
-        ("card_bank", " "),
-        ("sbp_phone", " "),
-        ("sbp_bank", " "),
-        ("sbp_qr_file_id", "QR-"),
-        ("other_text", ""),
-        ("comment_template", " "),
+        ("methods", "💳 Способы оплаты"),
+        ("card_number", "🔢 Номер карты"),
+        ("card_holder", "👤 Держатель карты"),
+        ("card_bank", "🏦 Банк карты"),
+        ("sbp_phone", "📱 Телефон СБП"),
+        ("sbp_bank", "🏦 Банк СБП"),
+        ("sbp_qr_file_id", "🔲 QR-код СБП"),
+        ("other_text", "📝 Дополнительно"),
+        ("comment_template", "💬 Шаблон комментария"),
     ]
     for field, label in field_labels:
         kb.button(text=label, callback_data=f"adm:f:set:field:{field}")
     kb.adjust(2)
-    kb.button(text=" ", callback_data="adm:f:set")
+    kb.button(text="⬅️ Назад", callback_data="adm:f:set")
     return kb.as_markup()
 
 

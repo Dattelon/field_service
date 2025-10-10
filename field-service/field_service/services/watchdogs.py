@@ -428,3 +428,79 @@ async def watchdog_expired_offers(
             break
         
         await asyncio.sleep(sleep_for)
+
+
+# ===== Expired Breaks Watchdog =====
+
+
+async def watchdog_expired_breaks(
+    interval_seconds: int = 60,
+    *,
+    iterations: int | None = None,
+) -> None:
+    """
+    Периодически проверяет и снимает со смены мастеров с истёкшим перерывом.
+    
+    После окончания перерыва (break_until) мастер автоматически снимается со смены:
+    - shift_status = SHIFT_OFF
+    - is_on_shift = False
+    - break_until = None
+    """
+    from sqlalchemy import text
+    
+    sleep_for = max(30, int(interval_seconds) if interval_seconds else 60)
+    loops_done = 0
+    
+    while True:
+        try:
+            now = datetime.now(UTC)
+            async with SessionLocal() as session:
+                # Находим всех мастеров на перерыве с истёкшим временем
+                result = await session.execute(
+                    text("""
+                        UPDATE masters
+                        SET 
+                            shift_status = 'SHIFT_OFF',
+                            is_on_shift = false,
+                            break_until = NULL,
+                            updated_at = NOW()
+                        WHERE shift_status = 'BREAK'
+                          AND break_until IS NOT NULL
+                          AND break_until <= NOW()
+                        RETURNING id, tg_user_id, full_name
+                    """)
+                )
+                expired_breaks = result.fetchall()
+                await session.commit()
+                
+                if expired_breaks:
+                    live_log.push(
+                        "watchdog",
+                        f"expired_breaks count={len(expired_breaks)}",
+                        level="INFO"
+                    )
+                    for master_id, tg_user_id, full_name in expired_breaks:
+                        logger.info(
+                            "break_expired master=%s name=%s",
+                            master_id,
+                            full_name or "???"
+                        )
+                        live_log.push(
+                            "watchdog",
+                            f"break_expired mid={master_id} tg={tg_user_id}",
+                            level="INFO"
+                        )
+                        
+        except Exception as exc:
+            logger.exception("watchdog_expired_breaks error")
+            live_log.push(
+                "watchdog",
+                f"watchdog_expired_breaks error: {exc}",
+                level="ERROR"
+            )
+        
+        loops_done += 1
+        if iterations is not None and loops_done >= iterations:
+            break
+        
+        await asyncio.sleep(sleep_for)

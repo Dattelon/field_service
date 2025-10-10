@@ -18,6 +18,7 @@ from field_service.infra.notify import send_alert, send_log
 from field_service.services.heartbeat import run_heartbeat
 from field_service.services.break_reminder_scheduler import run_break_reminder  # P1-16
 from field_service.services.notifications_watcher import run_master_notifications  # Отправка уведомлений мастерам
+from field_service.services.watchdogs import watchdog_expired_breaks  # Автоснятие со смены после перерыва
 
 from .handlers import router as master_router
 
@@ -70,6 +71,12 @@ async def main() -> int:
         run_break_reminder(interval_seconds=60),
         name="break_reminder",
     )
+    
+    # Автоматическое снятие со смены после истечения перерыва
+    expired_breaks_task = asyncio.create_task(
+        watchdog_expired_breaks(interval_seconds=60),
+        name="expired_breaks",
+    )
 
     # Запуск worker для отправки уведомлений мастерам
     notifications_task = asyncio.create_task(
@@ -105,6 +112,11 @@ async def main() -> int:
             break_reminder_task.cancel()
             with suppress(asyncio.CancelledError):
                 await break_reminder_task
+        # Отменяем задачу expired_breaks
+        if expired_breaks_task:
+            expired_breaks_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await expired_breaks_task
         # Отменяем задачу notifications
         if notifications_task:
             notifications_task.cancel()
