@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import logging
 import re
 from typing import Any, Iterable, Optional
 
@@ -31,6 +32,7 @@ from ...utils.helpers import get_service
 
 
 router = Router(name="admin_finance")
+_log = logging.getLogger("admin_bot.finance")
 
 
 # CR-2025-10-03-012: Safe callback answer wrapper
@@ -1177,7 +1179,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
 
     if action == "ok":
         # CR-2025-10-03-011: Красивый UI для подтверждения оплаты
-        logger.info(f"finance_card: action=ok commission_id={commission_id} amount={detail.amount}")
+        _log.info(f"finance_card: action=ok commission_id={commission_id} amount={detail.amount}")
         
         await state.update_data(
             commission_id=commission_id,
@@ -1187,7 +1189,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             source_chat_id=cq.message.chat.id,
             source_message_id=cq.message.message_id,
         )
-        logger.info(f"finance_card: state updated")
+        _log.info(f"finance_card: state updated")
         
         # Показываем кнопки для быстрого одобрения
         from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -1196,10 +1198,10 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
         kb.button(text="📝 Изменить сумму", callback_data=f"adm:f:cm:editamt:{commission_id}")
         kb.button(text="❌ Отмена", callback_data=f"adm:f:cm:card:{commission_id}")
         kb.adjust(1)
-        logger.info(f"finance_card: keyboard built, buttons={len(kb.export())}")
+        _log.info(f"finance_card: keyboard built, buttons={len(kb.export())}")
         
         text_to_send = f"{text_body}\n\n<b>Подтвердить оплату?</b>"
-        logger.info(f"finance_card: text prepared, length={len(text_to_send)}")
+        _log.info(f"finance_card: text prepared, length={len(text_to_send)}")
         
         try:
             await cq.message.edit_text(
@@ -1207,13 +1209,13 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
                 reply_markup=kb.as_markup(),
                 disable_web_page_preview=True,
             )
-            logger.info(f"finance_card: message edited successfully")
+            _log.info(f"finance_card: message edited successfully")
         except Exception as exc:
-            logger.exception(f"finance_card: edit_text failed: {exc}")
+            _log.exception(f"finance_card: edit_text failed: {exc}")
             raise
         
         await _safe_answer(cq)
-        logger.info(f"finance_card: callback answered, returning")
+        _log.info(f"finance_card: callback answered, returning")
         return
 
     if action == "blk":
