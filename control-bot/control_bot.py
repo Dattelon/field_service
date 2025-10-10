@@ -79,6 +79,9 @@ def main_menu() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🏥 Здоровье", callback_data="health")
         ],
         [
+            InlineKeyboardButton(text="💾 Бекапы БД", callback_data="backups"),
+        ],
+        [
             InlineKeyboardButton(text="🚀 Деплой", callback_data="deploy_confirm"),
         ],
         [
@@ -289,6 +292,352 @@ async def show_health(callback: CallbackQuery, **kwargs):
         ]),
         parse_mode="HTML"
     )
+
+# ==================== БЕКАПЫ БД ====================
+
+# Меню бекапов
+@dp.callback_query(F.data == "backups")
+@check_admin
+async def show_backups_menu(callback: CallbackQuery, **kwargs):
+    keyboard = [
+        [
+            InlineKeyboardButton(text="📋 Список бекапов", callback_data="backups_list"),
+        ],
+        [
+            InlineKeyboardButton(text="➕ Создать бекап", callback_data="backup_create_confirm"),
+        ],
+        [
+            InlineKeyboardButton(text="🔄 Восстановить", callback_data="backup_restore_list"),
+        ],
+        [
+            InlineKeyboardButton(text="🗑️ Удалить старые", callback_data="backup_cleanup_confirm"),
+        ],
+        [
+            InlineKeyboardButton(text="« Назад", callback_data="menu")
+        ]
+    ]
+    await callback.message.edit_text(
+        "💾 <b>Управление бекапами БД</b>\n\n"
+        "Выберите действие:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+# Список бекапов
+@dp.callback_query(F.data == "backups_list")
+@check_admin
+async def show_backups_list(callback: CallbackQuery, **kwargs):
+    await callback.answer("⏳ Загружаю список бекапов...")
+    
+    # Получаем список бекапов
+    cmd = "ls -lh /backups/field-service/*.sql.gz | awk '{print $9, $5, $6, $7, $8}' | sort -r | head -20"
+    output, exit_code = ssh_execute(cmd, timeout=10)
+    
+    if exit_code != 0 or not output:
+        await callback.message.edit_text(
+            "💾 <b>Бекапы БД</b>\n\n"
+            "❌ Не удалось получить список бекапов\n\n"
+            f"<pre>{output[:500] if output else 'Нет данных'}</pre>",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="« Назад", callback_data="backups")]
+            ]),
+            parse_mode="HTML"
+        )
+        return
+    
+    # Парсим вывод
+    backups_text = "💾 <b>Список бекапов БД</b>\n\n"
+    backups_text += "<b>Последние 20 бекапов:</b>\n\n"
+    
+    lines = output.strip().split('\n')
+    for line in lines:
+        parts = line.split()
+        if len(parts) >= 5:
+            filepath = parts[0]
+            filename = filepath.split('/')[-1]
+            size = parts[1]
+            date_time = ' '.join(parts[2:5])
+            
+            backups_text += f"📁 <code>{filename}</code>\n"
+            backups_text += f"   📊 Размер: {size}\n"
+            backups_text += f"   🕐 Дата: {date_time}\n\n"
+    
+    # Получаем общий размер
+    cmd_size = "du -sh /backups/field-service/ 2>/dev/null | awk '{print $1}'"
+    total_size, _ = ssh_execute(cmd_size, timeout=5)
+    
+    if total_size:
+        backups_text += f"\n💽 <b>Общий размер бекапов:</b> {total_size.strip()}"
+    
+    if len(backups_text) > 3900:
+        backups_text = backups_text[:3900] + "\n\n<i>...список обрезан</i>"
+    
+    await callback.message.edit_text(
+        backups_text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Обновить", callback_data="backups_list")],
+            [InlineKeyboardButton(text="« Назад", callback_data="backups")]
+        ]),
+        parse_mode="HTML"
+    )
+
+# Создание бекапа - подтверждение
+@dp.callback_query(F.data == "backup_create_confirm")
+@check_admin
+async def backup_create_confirm(callback: CallbackQuery, **kwargs):
+    await callback.message.edit_text(
+        "💾 <b>Создание бекапа БД</b>\n\n"
+        "⚠️ Будет создан полный бекап базы данных.\n\n"
+        "Продолжить?",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Создать бекап", callback_data="backup_create_execute")],
+            [InlineKeyboardButton(text="« Назад", callback_data="backups")]
+        ]),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+# Создание бекапа - выполнение
+@dp.callback_query(F.data == "backup_create_execute")
+@check_admin
+async def backup_create_execute(callback: CallbackQuery, **kwargs):
+    await callback.answer()
+    await callback.message.edit_text(
+        "💾 <b>Создание бекапа...</b>\n\n"
+        "⏳ Пожалуйста, подождите...",
+        parse_mode="HTML"
+    )
+    
+    # Создаём бекап через скрипт
+    cmd = "/usr/local/bin/field-service-backup.sh manual"
+    output, exit_code = ssh_execute(cmd, timeout=120)
+    
+    emoji = "✅" if exit_code == 0 else "❌"
+    
+    # Получаем последний созданный бекап
+    cmd_last = "ls -lh /backups/field-service/*.sql.gz | tail -1 | awk '{print $9, $5, $6, $7, $8}'"
+    last_backup, _ = ssh_execute(cmd_last, timeout=5)
+    
+    result_text = f"{emoji} <b>Создание бекапа</b>\n\n"
+    
+    if exit_code == 0:
+        result_text += "✅ Бекап успешно создан!\n\n"
+        if last_backup:
+            parts = last_backup.strip().split()
+            if len(parts) >= 5:
+                filename = parts[0].split('/')[-1]
+                size = parts[1]
+                date_time = ' '.join(parts[2:5])
+                result_text += f"📁 <code>{filename}</code>\n"
+                result_text += f"📊 Размер: {size}\n"
+                result_text += f"🕐 Дата: {date_time}\n"
+    else:
+        result_text += "❌ Ошибка при создании бекапа\n\n"
+        result_text += f"<pre>{output[:500]}</pre>"
+    
+    await callback.message.edit_text(
+        result_text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Список бекапов", callback_data="backups_list")],
+            [InlineKeyboardButton(text="« Назад", callback_data="backups")]
+        ]),
+        parse_mode="HTML"
+    )
+
+# Восстановление - список бекапов для выбора
+@dp.callback_query(F.data == "backup_restore_list")
+@check_admin
+async def backup_restore_list(callback: CallbackQuery, **kwargs):
+    await callback.answer("⏳ Загружаю список бекапов...")
+    
+    # Получаем последние 10 бекапов
+    cmd = "ls -1 /backups/field-service/*.sql.gz | sort -r | head -10"
+    output, exit_code = ssh_execute(cmd, timeout=10)
+    
+    if exit_code != 0 or not output:
+        await callback.message.edit_text(
+            "🔄 <b>Восстановление БД</b>\n\n"
+            "❌ Не удалось получить список бекапов",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="« Назад", callback_data="backups")]
+            ]),
+            parse_mode="HTML"
+        )
+        return
+    
+    # Создаём кнопки для каждого бекапа
+    keyboard = []
+    files = output.strip().split('\n')
+    
+    for filepath in files[:10]:
+        filename = filepath.split('/')[-1]
+        # Извлекаем дату из имени файла (формат: field-service_YYYYMMDD_HHMMSS.sql.gz)
+        try:
+            date_part = filename.split('_')[1:3]
+            if len(date_part) == 2:
+                date_str = f"{date_part[0]} {date_part[1].split('.')[0]}"
+                button_text = f"📅 {date_str}"
+            else:
+                button_text = filename[:30]
+        except:
+            button_text = filename[:30]
+        
+        keyboard.append([
+            InlineKeyboardButton(
+                text=button_text,
+                callback_data=f"restore_{filename}"
+            )
+        ])
+    
+    keyboard.append([InlineKeyboardButton(text="« Назад", callback_data="backups")])
+    
+    await callback.message.edit_text(
+        "🔄 <b>Восстановление БД</b>\n\n"
+        "⚠️ <b>ВНИМАНИЕ!</b> Восстановление перезапишет текущую БД!\n\n"
+        "Выберите бекап для восстановления:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
+        parse_mode="HTML"
+    )
+
+# Восстановление - подтверждение
+@dp.callback_query(F.data.startswith("restore_"))
+@check_admin
+async def backup_restore_confirm(callback: CallbackQuery, **kwargs):
+    filename = callback.data.replace("restore_", "")
+    
+    await callback.message.edit_text(
+        "🔄 <b>Восстановление БД</b>\n\n"
+        f"⚠️ <b>КРИТИЧЕСКОЕ ДЕЙСТВИЕ!</b>\n\n"
+        f"Будет восстановлен бекап:\n"
+        f"📁 <code>{filename}</code>\n\n"
+        f"Это:\n"
+        f"• Остановит все боты\n"
+        f"• Перезапишет текущую БД\n"
+        f"• Запустит боты заново\n\n"
+        f"⚠️ Все текущие данные будут УДАЛЕНЫ!\n\n"
+        f"Вы УВЕРЕНЫ?",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⚠️ ДА, ВОССТАНОВИТЬ", callback_data=f"restore_exec_{filename}")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="backups")]
+        ]),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+# Восстановление - выполнение
+@dp.callback_query(F.data.startswith("restore_exec_"))
+@check_admin
+async def backup_restore_execute(callback: CallbackQuery, **kwargs):
+    filename = callback.data.replace("restore_exec_", "")
+    filepath = f"/backups/field-service/{filename}"
+    
+    await callback.answer()
+    await callback.message.edit_text(
+        "🔄 <b>Восстановление БД...</b>\n\n"
+        "⏳ Это займёт несколько минут.\n"
+        "Пожалуйста, подождите...",
+        parse_mode="HTML"
+    )
+    
+    restore_steps = [
+        ("Остановка ботов", f"cd {PROJECT_PATH} && docker compose stop admin-bot master-bot"),
+        ("Проверка бекапа", f"test -f {filepath} && echo 'OK' || echo 'NOT FOUND'"),
+        ("Восстановление БД", f"cd {PROJECT_PATH} && zcat {filepath} | docker compose exec -T postgres psql -U fieldservice -d fieldservice"),
+        ("Запуск ботов", f"cd {PROJECT_PATH} && docker compose up -d admin-bot master-bot"),
+    ]
+    
+    result_text = "🔄 <b>Результат восстановления:</b>\n\n"
+    
+    for step_name, cmd in restore_steps:
+        result_text += f"⏳ {step_name}...\n"
+        await callback.message.edit_text(result_text, parse_mode="HTML")
+        
+        timeout = 180 if "Восстановление" in step_name else 60
+        output, exit_code = ssh_execute(cmd, timeout=timeout)
+        
+        emoji = "✅" if exit_code == 0 else "❌"
+        result_text = result_text.replace(f"⏳ {step_name}...", f"{emoji} {step_name}")
+        
+        if exit_code != 0:
+            result_text += f"\n\n❌ <b>Ошибка:</b>\n<pre>{output[:500]}</pre>"
+            break
+    
+    result_text += "\n\n"
+    result_text += "✅ Восстановление завершено!" if exit_code == 0 else "❌ Восстановление завершилось с ошибками"
+    
+    await callback.message.edit_text(
+        result_text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📊 Проверить статус", callback_data="status")],
+            [InlineKeyboardButton(text="« Назад", callback_data="backups")]
+        ]),
+        parse_mode="HTML"
+    )
+
+# Очистка старых бекапов - подтверждение
+@dp.callback_query(F.data == "backup_cleanup_confirm")
+@check_admin
+async def backup_cleanup_confirm(callback: CallbackQuery, **kwargs):
+    # Получаем количество старых бекапов
+    cmd = "find /backups/field-service/ -name '*.sql.gz' -mtime +30 | wc -l"
+    count, _ = ssh_execute(cmd, timeout=10)
+    
+    count_num = int(count.strip()) if count.strip().isdigit() else 0
+    
+    await callback.message.edit_text(
+        "🗑️ <b>Удаление старых бекапов</b>\n\n"
+        f"Будут удалены бекапы старше 30 дней.\n\n"
+        f"📊 Найдено: {count_num} файлов\n\n"
+        "Продолжить?",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Удалить", callback_data="backup_cleanup_execute")],
+            [InlineKeyboardButton(text="« Назад", callback_data="backups")]
+        ]),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+# Очистка старых бекапов - выполнение
+@dp.callback_query(F.data == "backup_cleanup_execute")
+@check_admin
+async def backup_cleanup_execute(callback: CallbackQuery, **kwargs):
+    await callback.answer()
+    await callback.message.edit_text(
+        "🗑️ <b>Удаление старых бекапов...</b>\n\n"
+        "⏳ Пожалуйста, подождите...",
+        parse_mode="HTML"
+    )
+    
+    # Удаляем бекапы старше 30 дней
+    cmd = "find /backups/field-service/ -name '*.sql.gz' -mtime +30 -delete -print"
+    output, exit_code = ssh_execute(cmd, timeout=30)
+    
+    deleted_count = len(output.strip().split('\n')) if output.strip() else 0
+    
+    emoji = "✅" if exit_code == 0 else "❌"
+    result_text = f"{emoji} <b>Очистка бекапов</b>\n\n"
+    
+    if exit_code == 0:
+        result_text += f"✅ Удалено файлов: {deleted_count}\n\n"
+        if output and deleted_count > 0:
+            files_list = '\n'.join([f.split('/')[-1] for f in output.strip().split('\n')[:10]])
+            result_text += f"<pre>{files_list}</pre>"
+            if deleted_count > 10:
+                result_text += f"\n<i>...и ещё {deleted_count - 10} файлов</i>"
+    else:
+        result_text += "❌ Ошибка при удалении"
+    
+    await callback.message.edit_text(
+        result_text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Список бекапов", callback_data="backups_list")],
+            [InlineKeyboardButton(text="« Назад", callback_data="backups")]
+        ]),
+        parse_mode="HTML"
+    )
+
+# ==================== КОНЕЦ СЕКЦИИ БЕКАПОВ ====================
 
 # Деплой - подтверждение
 @dp.callback_query(F.data == "deploy_confirm")
