@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.2.2 — 2025-10-10
+### Исправления
+- **P0-BUGFIX-EXPIRED-OFFERS**: Добавлен dedicated watchdog для автоматической обработки истёкших офферов. Исправлена критическая проблема когда мастера пропадали из списков ручного назначения из-за "зависших" офферов в состоянии `SENT` после истечения `expires_at`. Watchdog `watchdog_expired_offers()` работает каждые 60 секунд, помечает все истёкшие офферы как `EXPIRED` и логирует в `live_log`. Ранее офферы обрабатывались только внутри `distribution_scheduler` для заказов в очереди, что приводило к задержкам до 15+ минут.
+- **IMPORT-FIX-MASTERS**: Исправлен `NameError: name 'select_candidates' is not defined` в `field_service/bots/admin_bot/services/masters.py`. Добавлен недостающий импорт `from field_service.services.candidates import select_candidates`.
+
+### Добавлено
+- Watchdog `watchdog_expired_offers()` в `field_service/services/watchdogs.py` с интервалом 60 секунд
+- Автоматический запуск watchdog вместе с админ-ботом
+- Тесты `tests/test_watchdog_expired_offers.py` (6 test cases)
+- Документация `docs/BUGFIX_EXPIRED_OFFERS_WATCHDOG.md`
+- Quickstart `docs/BUGFIX_EXPIRED_OFFERS_QUICKSTART.md`
+
 ## v1.2.1 — 2025-10-03
 ### Исправления
 - **CR-2025-10-03-FIX**: Исправлена валидация `staff.id` для GLOBAL_ADMIN в финансовых обработчиках. GLOBAL_ADMIN с `staff.id=0` теперь может подтверждать и отклонять комиссии. Изменена проверка с `staff.id <= 0` на `staff.id < 0` в трёх обработчиках (`cb_finance_approve_instant`, `finance_reject_reason`, `finance_approve_amount`).

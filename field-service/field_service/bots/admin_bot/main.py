@@ -22,6 +22,7 @@ from field_service.services.heartbeat import run_heartbeat
 from field_service.services.watchdogs import (
     watchdog_commissions_overdue,
     watchdog_commission_deadline_reminders,  # P1-21
+    watchdog_expired_offers,  # Watchdog для истёкших офферов
 )
 from field_service.services.autoclose_scheduler import autoclose_scheduler  # P1-01
 from field_service.services.unassigned_monitor import monitor_unassigned_orders
@@ -167,6 +168,14 @@ async def main() -> int:
         name="commission_deadline_reminders",
     )
 
+    # Watchdog для истёкших офферов
+    expired_offers_task = asyncio.create_task(
+        watchdog_expired_offers(
+            interval_seconds=60,  # Проверка каждую минуту
+        ),
+        name="expired_offers_watchdog",
+    )
+
     exit_code = 0
     try:
         await poll_with_single_instance_guard(
@@ -191,6 +200,7 @@ async def main() -> int:
             watchdog_task,
             autoclose_task,
             deadline_reminders_task,  # P1-21
+            expired_offers_task,  # Watchdog истёкших офферов
             unassigned_task,
         ):
             if task:

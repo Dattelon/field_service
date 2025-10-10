@@ -702,12 +702,25 @@ async def _candidates(
 async def _send_offer(
     session: AsyncSession, *, oid: int, mid: int, round_number: int, sla_seconds: int
 ) -> bool:
+    # Проверяем нет ли активного оффера для этой пары (защита от дублирования)
+    existing = await session.execute(
+        text("""
+            SELECT 1 FROM offers 
+            WHERE order_id = :oid 
+              AND master_id = :mid 
+              AND state IN ('SENT', 'VIEWED', 'ACCEPTED')
+            LIMIT 1
+        """).bindparams(oid=oid, mid=mid)
+    )
+    if existing.scalar_one_or_none():
+        return False  # Активный оффер уже существует
+    
+    # Создаём новый оффер
     ins = await session.execute(
         text(
             """
         INSERT INTO offers(order_id, master_id, round_number, state, sent_at, expires_at)
         VALUES (:oid, :mid, :r, 'SENT', NOW(), NOW() + make_interval(secs => :sla))
-        ON CONFLICT ON CONSTRAINT uq_offers__order_master DO NOTHING
         RETURNING id
         """
         ).bindparams(oid=oid, mid=mid, r=round_number, sla=sla_seconds)

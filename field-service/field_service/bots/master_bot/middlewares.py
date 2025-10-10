@@ -21,9 +21,12 @@ class DbSessionMiddleware(BaseMiddleware):
             data["session"] = session
             try:
                 result = await handler(event, data)
-            finally:
+            except Exception:
+                # При ошибке - откатываем транзакцию
                 if session.in_transaction():
                     await session.rollback()
+                raise
+            # При успехе - НЕ трогаем сессию, обработчик сам делает commit
             return result
 
 

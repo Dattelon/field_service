@@ -345,3 +345,68 @@ async def _send_deadline_reminder(
             exc_info=True
         )
         return False
+
+
+# ===== Expired Offers Watchdog =====
+
+
+async def watchdog_expired_offers(
+    interval_seconds: int = 60,
+    *,
+    iterations: int | None = None,
+) -> None:
+    """Periodically mark expired offers as EXPIRED."""
+    from sqlalchemy import text
+    
+    sleep_for = max(30, int(interval_seconds) if interval_seconds else 60)
+    loops_done = 0
+    
+    while True:
+        try:
+            now = datetime.now(UTC)
+            async with SessionLocal() as session:
+                # Помечаем все истёкшие офферы как EXPIRED
+                result = await session.execute(
+                    text("""
+                        UPDATE offers
+                        SET state = 'EXPIRED', responded_at = NOW()
+                        WHERE state = 'SENT'
+                          AND expires_at <= NOW()
+                        RETURNING id, order_id, master_id
+                    """)
+                )
+                expired_offers = result.fetchall()
+                await session.commit()
+                
+                if expired_offers:
+                    live_log.push(
+                        "watchdog",
+                        f"expired_offers count={len(expired_offers)}",
+                        level="INFO"
+                    )
+                    for offer_id, order_id, master_id in expired_offers:
+                        logger.info(
+                            "offer_expired id=%s order=%s master=%s",
+                            offer_id,
+                            order_id,
+                            master_id
+                        )
+                        live_log.push(
+                            "watchdog",
+                            f"offer_expired oid={offer_id} order={order_id} master={master_id}",
+                            level="INFO"
+                        )
+                        
+        except Exception as exc:
+            logger.exception("watchdog_expired_offers error")
+            live_log.push(
+                "watchdog",
+                f"watchdog_expired_offers error: {exc}",
+                level="ERROR"
+            )
+        
+        loops_done += 1
+        if iterations is not None and loops_done >= iterations:
+            break
+        
+        await asyncio.sleep(sleep_for)

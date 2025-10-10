@@ -10,7 +10,7 @@ from aiogram import Bot, F, Router
 import logging
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, ContentType, InlineKeyboardButton, InlineKeyboardMarkup, Message
-from sqlalchemy import and_, func, insert, null, select, update
+from sqlalchemy import and_, func, insert, null, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.bots.common import safe_answer_callback, safe_edit_or_send, safe_send_message
@@ -161,8 +161,10 @@ async def offer_accept(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
+    _log.info("offer_accept START: master=%s callback_data=%s", master.id, callback.data)
     try:
         order_id, page = _parse_offer_callback_payload(callback.data, "acc")
+        _log.info("offer_accept: parsed order_id=%s page=%s", order_id, page)
     except ValueError as exc:
         _log.warning("offer_accept invalid callback: %s", exc)
         await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
@@ -170,6 +172,7 @@ async def offer_accept(
         return
 
     if master.is_blocked:
+        _log.info("offer_accept: master=%s is BLOCKED, rejecting", master.id)
         # P0-4: Показываем причину блокировки
         block_reason = getattr(master, 'blocked_reason', None)
         alert_text = alert_account_blocked(block_reason)
@@ -178,10 +181,13 @@ async def offer_accept(
 
     limit = await _get_active_limit(session, master)
     active_orders = await _count_active_orders(session, master.id)
+    _log.info("offer_accept: master=%s limit=%s active=%s", master.id, limit, active_orders)
     if limit and active_orders >= limit:
+        _log.info("offer_accept: master=%s LIMIT REACHED, rejecting", master.id)
         await safe_answer_callback(callback, ALERT_LIMIT_REACHED, show_alert=True)
         return
 
+    _log.info("offer_accept: acquiring lock on order=%s", order_id)
     # ✅ FIX 1.1: Атомарная блокировка заказа с FOR UPDATE SKIP LOCKED
     # Предотвращает Race Condition при параллельных запросах от разных мастеров
     order_snapshot = await session.execute(
@@ -205,6 +211,8 @@ async def offer_accept(
     current_status: m.OrderStatus = row.status
     assigned_master_id = row.assigned_master_id
     current_version = row.version or 1
+    _log.info("offer_accept: order=%s status=%s assigned_master=%s", 
+             order_id, current_status, assigned_master_id)
 
     # ✅ FIX 1.2: Разрешаем принятие DEFERRED заказов
     # Если заказ в DEFERRED, разрешаем принять и автоматически переводим в ASSIGNED
@@ -216,6 +224,7 @@ async def offer_accept(
     }
 
     if assigned_master_id is not None or current_status not in allowed_statuses:
+        _log.info("offer_accept: order=%s ALREADY TAKEN or wrong status, rejecting", order_id)
         await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
         await _render_offers(callback, session, master, page=page)
         return
@@ -227,7 +236,9 @@ async def offer_accept(
             order_id, master.id
         )
 
+    _log.info("offer_accept: checking offer for order=%s master=%s", order_id, master.id)
     # ✅ BUGFIX: Проверяем что оффер существует и не истёк
+    # ВАЖНО: Берём самый свежий оффер (ORDER BY id DESC)
     offer_check = await session.execute(
         select(m.offers.state, m.offers.expires_at)
         .where(
@@ -236,6 +247,7 @@ async def offer_accept(
                 m.offers.master_id == master.id
             )
         )
+        .order_by(m.offers.id.desc())  # ✅ Берём самый свежий оффер
         .limit(1)
     )
     offer_row = offer_check.first()
@@ -247,6 +259,7 @@ async def offer_accept(
         return
     
     offer_state, expires_at = offer_row
+    _log.info("offer_accept: offer state=%s expires_at=%s", offer_state, expires_at)
     
     # Проверяем что оффер в статусе SENT или VIEWED
     if offer_state not in (m.OfferState.SENT, m.OfferState.VIEWED):
@@ -264,6 +277,12 @@ async def offer_accept(
     
     # Проверяем что оффер не истёк по времени
     now_utc = datetime.now(timezone.utc)
+    _log.info(
+        "offer_accept: time check: now_utc=%s expires_at=%s is_expired=%s",
+        now_utc.isoformat(),
+        expires_at.isoformat() if expires_at else None,
+        (expires_at < now_utc) if expires_at else False
+    )
     if expires_at and expires_at < now_utc:
         _log.info("offer_accept: offer expired by time for order=%s master=%s (expires_at=%s)", 
                  order_id, master.id, expires_at.isoformat())
@@ -271,6 +290,7 @@ async def offer_accept(
         await _render_offers(callback, session, master, page=page)
         return
 
+    _log.info("offer_accept: starting UPDATE orders for order=%s master=%s", order_id, master.id)
     updated = await session.execute(
         update(m.orders)
         .where(
@@ -289,16 +309,52 @@ async def offer_accept(
         )
         .returning(m.orders.id)
     )
+    _log.info("offer_accept: UPDATE orders completed for order=%s, checking result...", order_id)
+    
     if not updated.first():
+        _log.warning("offer_accept: UPDATE orders returned 0 rows for order=%s (already taken or status changed)", order_id)
         await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
         await _render_offers(callback, session, master, page=page)
         return
 
-    await session.execute(
+    _log.info("offer_accept: UPDATE orders SUCCESS for order=%s, starting UPDATE offers...", order_id)
+    # Обновляем только активный оффер мастера (SENT/VIEWED → ACCEPTED)
+    # ВАЖНО: Добавляем проверку expires_at в WHERE чтобы избежать race condition с watchdog
+    offer_update_result = await session.execute(
         update(m.offers)
-        .where((m.offers.order_id == order_id) & (m.offers.master_id == master.id))
+        .where(
+            and_(
+                m.offers.order_id == order_id,
+                m.offers.master_id == master.id,
+                m.offers.state.in_((m.OfferState.SENT, m.OfferState.VIEWED)),
+                # ✅ Атомарная проверка: оффер не должен быть истёкшим
+                or_(
+                    m.offers.expires_at.is_(None),
+                    m.offers.expires_at > func.now()
+                )
+            )
+        )
         .values(state=m.OfferState.ACCEPTED, responded_at=func.now())
+        .returning(m.offers.id)
     )
+    _log.info("offer_accept: UPDATE offers completed for order=%s master=%s, checking result...", order_id, master.id)
+    
+    # Если не удалось обновить - оффер истёк или уже обработан
+    offer_first = offer_update_result.first()
+    _log.info("offer_accept: UPDATE offers result for order=%s: %s", order_id, "SUCCESS" if offer_first else "FAILED")
+    if not offer_first:
+        _log.warning(
+            "offer_accept: failed to update offer to ACCEPTED for order=%s master=%s (likely expired or changed state)",
+            order_id, master.id
+        )
+        await safe_answer_callback(callback, "⏰ Время истекло. Заказ ушёл другим мастерам.", show_alert=True)
+        # Откатываем изменения в orders
+        await session.rollback()
+        await _render_offers(callback, session, master, page=page)
+        return
+    
+    _log.info("offer_accept: canceling other masters' offers for order=%s", order_id)
+    # Отменяем офферы других мастеров
     await session.execute(
         update(m.offers)
         .where(
@@ -310,25 +366,37 @@ async def offer_accept(
         )
         .values(state=m.OfferState.CANCELED, responded_at=func.now())
     )
-    await session.execute(
-        insert(m.order_status_history).values(
-            order_id=order_id,
-            from_status=current_status,
-            to_status=m.OrderStatus.ASSIGNED,
-            changed_by_master_id=master.id,
-            reason="accepted_by_master",
-            actor_type=m.ActorType.MASTER,
-            context={
-                "master_id": master.id,
-                "master_name": f"{master.last_name} {master.first_name}".strip(),
-                "action": "offer_accepted",
-                "method": "manual_accept"
-            }
-        )
-    )
+    _log.info("offer_accept: other masters' offers canceled for order=%s, inserting status history", order_id)
     
+    try:
+        await session.execute(
+            insert(m.order_status_history).values(
+                order_id=order_id,
+                from_status=current_status,
+                to_status=m.OrderStatus.ASSIGNED,
+                changed_by_master_id=master.id,
+                reason="accepted_by_master",
+                actor_type=m.ActorType.MASTER,
+                context={
+                    "master_id": master.id,
+                    "master_name": f"{master.last_name} {master.first_name}".strip(),
+                    "action": "offer_accepted",
+                    "method": "manual_accept"
+                }
+            )
+        )
+        _log.info("offer_accept: status history inserted successfully for order=%s", order_id)
+    except Exception as history_err:
+        _log.exception("offer_accept: FAILED to insert status history for order=%s: %s", order_id, history_err)
+        await session.rollback()
+        await safe_answer_callback(callback, "❌ Ошибка при принятии заказа", show_alert=True)
+        await _render_offers(callback, session, master, page=page)
+        return
+    
+    _log.info("offer_accept: starting distribution_metrics recording for order=%s", order_id)
     # ✅ STEP 4.1: Запись метрик распределения для аналитики
     try:
+        _log.info("offer_accept: fetching order info for metrics, order=%s", order_id)
         # Получаем полную информацию о заказе для метрик
         order_info = await session.execute(
             select(
@@ -343,6 +411,7 @@ async def offer_accept(
             ).where(m.orders.id == order_id)
         )
         order_row = order_info.first()
+        _log.info("offer_accept: order info fetched, fetching offer stats for order=%s", order_id)
         
         # Получаем раунд и количество кандидатов из offers
         offer_stats = await session.execute(
@@ -352,11 +421,14 @@ async def offer_accept(
             ).where(m.offers.order_id == order_id)
         )
         stats_row = offer_stats.first()
+        _log.info("offer_accept: offer stats fetched for order=%s, order_row=%s stats_row=%s", 
+                 order_id, order_row is not None, stats_row is not None)
         
         if order_row and stats_row:
             now_utc = datetime.now(timezone.utc)
             time_to_assign = int((now_utc - order_row.created_at).total_seconds()) if order_row.created_at else None
             
+            _log.info("offer_accept: inserting distribution_metrics for order=%s", order_id)
             await session.execute(
                 insert(m.distribution_metrics).values(
                     order_id=order_id,
@@ -385,7 +457,9 @@ async def offer_accept(
         # Метрики не должны ломать основной процесс
         _log.error("Failed to record distribution_metrics for order=%s: %s", order_id, metrics_err)
     
+    _log.info("offer_accept: committing transaction for order=%s", order_id)
     await session.commit()
+    _log.info("offer_accept: transaction committed successfully for order=%s", order_id)
 
     await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=True)
     await _render_offers(callback, session, master, page=page)

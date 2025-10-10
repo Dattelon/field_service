@@ -10,6 +10,7 @@ field-service/
 ├── BUGFIX_DEFERRED_COMPLETE.md
 ├── BUGFIX_DEFERRED_DISTRIBUTION.md
 ├── BUGFIX_DEFERRED_QUICKSTART.md
+├── BUGFIX_EXPIRED_OFFERS_QUICKSTART.md
 ├── BUGFIX_SBP_BANK_ONBOARDING.md
 ├── BUGFIX_SBP_QUICKSTART.md
 ├── CHANGELOG.md
@@ -76,6 +77,9 @@ field-service/
 │   ├── BUGFIX_CITY_ADMIN_FILTER.md
 │   ├── BUGFIX_CITY_ADMIN_QUICKSTART.md
 │   ├── BUGFIX_CITY_ADMIN_SUMMARY.md
+│   ├── BUGFIX_EXPIRED_OFFERS_QUICKSTART.md
+│   ├── BUGFIX_EXPIRED_OFFERS_WATCHDOG.md
+│   ├── BUGFIX_OFFERS_CONSTRAINT.md
 │   ├── CHANGE_REQUEST_DISTRICTS_2025-10-04.md
 │   ├── CHANGE_REQUESTS.md
 │   ├── CONTINUE_P1_CONTEXT.md
@@ -310,6 +314,7 @@ field-service/
 │   ├── 2025-10-09_create_commission_deadline_notifications.sql
 │   ├── 2025-10-09_setup_test_admin.sql
 │   ├── 2025-10-09_TESTING_SETUP_INSTRUCTIONS.md
+│   ├── 2025-10-10_fix_offers_constraint.sql
 │   ├── add_all_cities.sql
 │   ├── add_all_cities_final.sql
 │   ├── add_districts.sql
@@ -408,6 +413,7 @@ field-service/
 │   ├── test_step_3_optimizations.py
 │   ├── test_structured_logging.py
 │   ├── test_time_service_boundaries.py
+│   ├── test_watchdog_expired_offers.py
 │   ├── test_watchdogs_overdue.py
 │   ├── TESTING_GUIDELINES.md
 │   └── TESTING_QUICK_REF.md

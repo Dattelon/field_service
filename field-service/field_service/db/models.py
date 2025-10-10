@@ -582,16 +582,24 @@ class offers(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("order_id", "master_id", name="uq_offers__order_master"),
+        # Partial unique index: уникальность только для активных офферов
+        Index(
+            "uq_offers__order_master_active",
+            "order_id",
+            "master_id",
+            unique=True,
+            postgresql_where=text("state IN ('SENT', 'VIEWED', 'ACCEPTED')"),
+        ),
         Index("ix_offers__order_state", "order_id", "state"),
         Index("ix_offers__master_state", "master_id", "state"),
-        #  :  ACCEPTED       (  Alembic 0001)
+        # Уникальность ACCEPTED оффера: только один принятый оффер на заказ
         Index(
             "uix_offers__order_accepted_once",
             "order_id",
             unique=True,
             postgresql_where=text("state = 'ACCEPTED'"),
         ),
+        Index("ix_offers__expires_at", "expires_at"),  # Для watchdog
     )
 
 

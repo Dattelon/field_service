@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import live_log
+from field_service.services.candidates import select_candidates
 
 from ..core.dto import (
     MasterBrief, MasterListItem, MasterDocument, MasterDetail,

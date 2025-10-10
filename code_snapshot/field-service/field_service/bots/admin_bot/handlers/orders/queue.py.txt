@@ -1074,8 +1074,6 @@ async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
 
     # ⚠️ ПРОВЕРКА СТАТУСА DEFERRED
     if (order.status or "").upper() == "DEFERRED":
-        from aiogram.utils.keyboard import InlineKeyboardBuilder
-        
         builder = InlineKeyboardBuilder()
         builder.button(text="✅ Да, запустить", callback_data=f"adm:q:as:auto:force:{order_id}")
         builder.button(text="❌ Отмена", callback_data=f"adm:q:card:{order_id}")
@@ -1116,8 +1114,8 @@ async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
     text_body = "\n".join(lines)
 
     builder = InlineKeyboardBuilder()
-    builder.button(text=" ", callback_data=f"adm:q:card:{order_id}")
-    builder.button(text=" ", callback_data=f"adm:q:as:{order_id}")
+    builder.button(text="📋 К карточке", callback_data=f"adm:q:card:{order_id}")
+    builder.button(text="👤 Назначить", callback_data=f"adm:q:as:{order_id}")
     builder.adjust(1)
 
     try:
