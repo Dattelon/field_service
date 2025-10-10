@@ -330,8 +330,17 @@ async def show_backups_menu(callback: CallbackQuery, **kwargs):
 async def show_backups_list(callback: CallbackQuery, **kwargs):
     await callback.answer("⏳ Загружаю список бекапов...")
     
-    # Получаем список бекапов
-    cmd = "ls -lh /backups/field-service/*.sql.gz | awk '{print $9, $5, $6, $7, $8}' | sort -r | head -20"
+    # Получаем список бекапов из всех директорий
+    cmd = """
+    echo '=== DAILY BACKUPS (last 7 days) ===' && \
+    ls -lht /opt/backups/daily/field_service_*.sql.gz 2>/dev/null | head -10 && \
+    echo '' && \
+    echo '=== WEEKLY BACKUPS (last 4 weeks) ===' && \
+    ls -lht /opt/backups/weekly/field_service_*.sql.gz 2>/dev/null | head -5 && \
+    echo '' && \
+    echo '=== MONTHLY BACKUPS (last 12 months) ===' && \
+    ls -lht /opt/backups/monthly/field_service_*.sql.gz 2>/dev/null | head -5
+    """
     output, exit_code = ssh_execute(cmd, timeout=10)
     
     if exit_code != 0 or not output:
@@ -346,29 +355,22 @@ async def show_backups_list(callback: CallbackQuery, **kwargs):
         )
         return
     
-    # Парсим вывод
+    # Парсим вывод - теперь просто показываем весь отформатированный вывод
     backups_text = "💾 <b>Список бекапов БД</b>\n\n"
-    backups_text += "<b>Последние 20 бекапов:</b>\n\n"
     
-    lines = output.strip().split('\n')
-    for line in lines:
-        parts = line.split()
-        if len(parts) >= 5:
-            filepath = parts[0]
-            filename = filepath.split('/')[-1]
-            size = parts[1]
-            date_time = ' '.join(parts[2:5])
-            
-            backups_text += f"📁 <code>{filename}</code>\n"
-            backups_text += f"   📊 Размер: {size}\n"
-            backups_text += f"   🕐 Дата: {date_time}\n\n"
+    if output:
+        # Форматируем вывод для Telegram
+        formatted = output.replace('=== ', '📂 <b>').replace(' ===', '</b>')
+        backups_text += f"<pre>{formatted}</pre>"
+    else:
+        backups_text += "❌ Бекапы не найдены"
     
-    # Получаем общий размер
-    cmd_size = "du -sh /backups/field-service/ 2>/dev/null | awk '{print $1}'"
+    # Получаем общий размер всех бекапов
+    cmd_size = "du -sh /opt/backups/ 2>/dev/null | awk '{print $1}'"
     total_size, _ = ssh_execute(cmd_size, timeout=5)
     
-    if total_size:
-        backups_text += f"\n💽 <b>Общий размер бекапов:</b> {total_size.strip()}"
+    if total_size and total_size.strip():
+        backups_text += f"\n\n💽 <b>Общий размер:</b> {total_size.strip()}"
     
     if len(backups_text) > 3900:
         backups_text = backups_text[:3900] + "\n\n<i>...список обрезан</i>"
@@ -416,7 +418,7 @@ async def backup_create_execute(callback: CallbackQuery, **kwargs):
     emoji = "✅" if exit_code == 0 else "❌"
     
     # Получаем последний созданный бекап
-    cmd_last = "ls -lh /backups/field-service/*.sql.gz | tail -1 | awk '{print $9, $5, $6, $7, $8}'"
+    cmd_last = "ls -lht /opt/backups/manual/field_service_*.sql.gz 2>/dev/null | head -1"
     last_backup, _ = ssh_execute(cmd_last, timeout=5)
     
     result_text = f"{emoji} <b>Создание бекапа</b>\n\n"
@@ -451,8 +453,13 @@ async def backup_create_execute(callback: CallbackQuery, **kwargs):
 async def backup_restore_list(callback: CallbackQuery, **kwargs):
     await callback.answer("⏳ Загружаю список бекапов...")
     
-    # Получаем последние 10 бекапов
-    cmd = "ls -1 /backups/field-service/*.sql.gz | sort -r | head -10"
+    # Получаем последние 10 бекапов из всех директорий
+    cmd = """
+    (ls -1t /opt/backups/daily/field_service_*.sql.gz 2>/dev/null; \
+     ls -1t /opt/backups/weekly/field_service_*.sql.gz 2>/dev/null; \
+     ls -1t /opt/backups/monthly/field_service_*.sql.gz 2>/dev/null; \
+     ls -1t /opt/backups/manual/field_service_*.sql.gz 2>/dev/null) | head -10
+    """
     output, exit_code = ssh_execute(cmd, timeout=10)
     
     if exit_code != 0 or not output:
@@ -472,7 +479,7 @@ async def backup_restore_list(callback: CallbackQuery, **kwargs):
     
     for filepath in files[:10]:
         filename = filepath.split('/')[-1]
-        # Извлекаем дату из имени файла (формат: field-service_YYYYMMDD_HHMMSS.sql.gz)
+        # Извлекаем дату из имени файла (формат: field_service_YYYYMMDD_HHMMSS.sql.gz)
         try:
             date_part = filename.split('_')[1:3]
             if len(date_part) == 2:
@@ -486,7 +493,7 @@ async def backup_restore_list(callback: CallbackQuery, **kwargs):
         keyboard.append([
             InlineKeyboardButton(
                 text=button_text,
-                callback_data=f"restore_{filename}"
+                callback_data=f"restore_{filepath}"  # Передаём полный путь
             )
         ])
     
@@ -504,7 +511,8 @@ async def backup_restore_list(callback: CallbackQuery, **kwargs):
 @dp.callback_query(F.data.startswith("restore_"))
 @check_admin
 async def backup_restore_confirm(callback: CallbackQuery, **kwargs):
-    filename = callback.data.replace("restore_", "")
+    filepath = callback.data.replace("restore_", "")
+    filename = filepath.split('/')[-1]  # Извлекаем имя файла для отображения
     
     await callback.message.edit_text(
         "🔄 <b>Восстановление БД</b>\n\n"
@@ -518,7 +526,7 @@ async def backup_restore_confirm(callback: CallbackQuery, **kwargs):
         f"⚠️ Все текущие данные будут УДАЛЕНЫ!\n\n"
         f"Вы УВЕРЕНЫ?",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="⚠️ ДА, ВОССТАНОВИТЬ", callback_data=f"restore_exec_{filename}")],
+            [InlineKeyboardButton(text="⚠️ ДА, ВОССТАНОВИТЬ", callback_data=f"restore_exec_{filepath}")],
             [InlineKeyboardButton(text="❌ Отмена", callback_data="backups")]
         ]),
         parse_mode="HTML"
@@ -529,8 +537,7 @@ async def backup_restore_confirm(callback: CallbackQuery, **kwargs):
 @dp.callback_query(F.data.startswith("restore_exec_"))
 @check_admin
 async def backup_restore_execute(callback: CallbackQuery, **kwargs):
-    filename = callback.data.replace("restore_exec_", "")
-    filepath = f"/backups/field-service/{filename}"
+    filepath = callback.data.replace("restore_exec_", "")  # Получаем полный путь
     
     await callback.answer()
     await callback.message.edit_text(
@@ -579,8 +586,8 @@ async def backup_restore_execute(callback: CallbackQuery, **kwargs):
 @dp.callback_query(F.data == "backup_cleanup_confirm")
 @check_admin
 async def backup_cleanup_confirm(callback: CallbackQuery, **kwargs):
-    # Получаем количество старых бекапов
-    cmd = "find /backups/field-service/ -name '*.sql.gz' -mtime +30 | wc -l"
+    # Получаем количество старых бекапов (manual старше 30 дней)
+    cmd = "find /opt/backups/manual/ -name 'field_service_*.sql.gz' -mtime +30 2>/dev/null | wc -l"
     count, _ = ssh_execute(cmd, timeout=10)
     
     count_num = int(count.strip()) if count.strip().isdigit() else 0
@@ -609,8 +616,8 @@ async def backup_cleanup_execute(callback: CallbackQuery, **kwargs):
         parse_mode="HTML"
     )
     
-    # Удаляем бекапы старше 30 дней
-    cmd = "find /backups/field-service/ -name '*.sql.gz' -mtime +30 -delete -print"
+    # Удаляем manual бекапы старше 30 дней
+    cmd = "find /opt/backups/manual/ -name 'field_service_*.sql.gz' -mtime +30 -delete -print 2>/dev/null"
     output, exit_code = ssh_execute(cmd, timeout=30)
     
     deleted_count = len(output.strip().split('\n')) if output.strip() else 0
