@@ -128,6 +128,7 @@ async def process_autoclose_queue(
                                 from_status=m.OrderStatus.CLOSED,
                                 to_status=m.OrderStatus.CLOSED,
                                 reason="autoclose_24h",
+                                actor_type=m.ActorType.SYSTEM,
                             )
                         )
                         

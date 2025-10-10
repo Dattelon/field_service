@@ -227,6 +227,50 @@ async def offer_accept(
             order_id, master.id
         )
 
+    # ✅ BUGFIX: Проверяем что оффер существует и не истёк
+    offer_check = await session.execute(
+        select(m.offers.state, m.offers.expires_at)
+        .where(
+            and_(
+                m.offers.order_id == order_id,
+                m.offers.master_id == master.id
+            )
+        )
+        .limit(1)
+    )
+    offer_row = offer_check.first()
+    
+    if offer_row is None:
+        _log.warning("offer_accept: no offer found for order=%s master=%s", order_id, master.id)
+        await safe_answer_callback(callback, "⚠️ Оффер не найден", show_alert=True)
+        await _render_offers(callback, session, master, page=page)
+        return
+    
+    offer_state, expires_at = offer_row
+    
+    # Проверяем что оффер в статусе SENT или VIEWED
+    if offer_state not in (m.OfferState.SENT, m.OfferState.VIEWED):
+        if offer_state == m.OfferState.EXPIRED:
+            _log.info("offer_accept: offer expired for order=%s master=%s", order_id, master.id)
+            await safe_answer_callback(callback, "⏰ Время истекло. Заказ ушёл другим мастерам.", show_alert=True)
+        elif offer_state == m.OfferState.DECLINED:
+            _log.info("offer_accept: offer already declined for order=%s master=%s", order_id, master.id)
+            await safe_answer_callback(callback, "❌ Вы уже отклонили этот заказ", show_alert=True)
+        else:
+            _log.info("offer_accept: offer in wrong state=%s for order=%s master=%s", offer_state, order_id, master.id)
+            await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
+        await _render_offers(callback, session, master, page=page)
+        return
+    
+    # Проверяем что оффер не истёк по времени
+    now_utc = datetime.now(timezone.utc)
+    if expires_at and expires_at < now_utc:
+        _log.info("offer_accept: offer expired by time for order=%s master=%s (expires_at=%s)", 
+                 order_id, master.id, expires_at.isoformat())
+        await safe_answer_callback(callback, "⏰ Время истекло. Заказ ушёл другим мастерам.", show_alert=True)
+        await _render_offers(callback, session, master, page=page)
+        return
+
     updated = await session.execute(
         update(m.orders)
         .where(
@@ -686,6 +730,7 @@ async def active_close_act(
                 to_status=m.OrderStatus.CLOSED,
                 changed_by_master_id=master.id,
                 reason="guarantee_completed",
+                actor_type=m.ActorType.MASTER,
             )
         )
         # P1-01: Добавляем в очередь автозакрытия
@@ -705,6 +750,7 @@ async def active_close_act(
                 to_status=m.OrderStatus.PAYMENT,
                 changed_by_master_id=master.id,
                 reason="master_uploaded_act",
+                actor_type=m.ActorType.MASTER,
             )
         )
         await CommissionService(session).create_for_order(order_id)
@@ -984,6 +1030,7 @@ async def _update_order_status(
             to_status=new,
             changed_by_master_id=master_id,
             reason=reason,
+            actor_type=m.ActorType.MASTER,
         )
     )
     await session.commit()
@@ -1008,6 +1055,7 @@ async def _load_offers(session: AsyncSession, master_id: int) -> list[SimpleName
             m.offers.master_id == master_id,
             m.offers.state.in_((m.OfferState.SENT, m.OfferState.VIEWED)),
             m.orders.status != m.OrderStatus.DEFERRED,  # ✅ Скрываем DEFERRED от мастеров
+            m.offers.expires_at > func.now(),  # ✅ BUGFIX: Скрываем истёкшие офферы
         )
         .order_by(m.offers.sent_at.desc(), m.offers.order_id.desc())
     )

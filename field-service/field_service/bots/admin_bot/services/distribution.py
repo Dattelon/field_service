@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Sequence
 
 from sqlalchemy import func, insert, select, update
@@ -13,7 +13,7 @@ from field_service.db.session import SessionLocal
 from field_service.services import distribution_scheduler as dw
 from field_service.services.candidates import select_candidates
 
-from ..core.dto import MasterBrief
+from ..core.dto import MasterBrief, OrderType
 
 
 # Common utilities from _common
@@ -51,6 +51,7 @@ from ._common import (
 )
 
 
+@dataclass
 class AutoAssignResult:
     message: str
     master_id: Optional[int] = None
@@ -136,6 +137,7 @@ class DBDistributionService:
                             from_status=m.OrderStatus.DEFERRED,
                             to_status=m.OrderStatus.SEARCHING,
                             changed_by_staff_id=by_staff_id,
+                            actor_type=m.ActorType.ADMIN,
                             reason="Принудительный запуск распределения из админ-бота",
                         )
                     )
@@ -157,6 +159,7 @@ class DBDistributionService:
                                 order_id=order_id,
                                 from_status=status_enum,
                                 to_status=status_enum,
+                                actor_type=m.ActorType.AUTO_DISTRIBUTION,
                                 reason=f"{dw.ESC_REASON_LOGIST}:no_district",
                             )
                         )
@@ -183,8 +186,8 @@ class DBDistributionService:
                     or order_type is OrderType.GUARANTEE
                 )
 
-                cfg = await dw._load_config(session)  # type: ignore[attr-defined]
-                current_round = await dw.current_round(session, order_id)
+                cfg = await dw._load_config()  # type: ignore[attr-defined]
+                current_round = await dw._current_round(session, order_id)
                 if current_round >= cfg.rounds:
                     return False, AutoAssignResult(
                         "   ",
@@ -248,12 +251,12 @@ class DBDistributionService:
 
                     master_id = int(candidates[0]["mid"])
                     next_round = current_round + 1
-                    sent = await dw.send_offer(
+                    sent = await dw._send_offer(
                         session,
-                        order_id,
-                        master_id,
-                        next_round,
-                        cfg.sla_seconds,
+                        oid=order_id,
+                        mid=master_id,
+                        round_number=next_round,
+                        sla_seconds=cfg.sla_seconds,
                     )
                     if not sent:
                         conflict = (
@@ -264,6 +267,21 @@ class DBDistributionService:
                             "    ",
                             code="offer_conflict",
                         )
+
+                    # Отправить push-уведомление мастеру о новом оффере
+                    try:
+                        from field_service.services.push_notifications import notify_master, NotificationEvent
+                        order_data = await dw._get_order_notification_data(session, order_id)
+                        if order_data:
+                            await notify_master(
+                                session,
+                                master_id=master_id,
+                                event=NotificationEvent.NEW_OFFER,
+                                **order_data,
+                            )
+                            _push_dist_log(f"[dist] Push notification queued for master#{master_id} about order#{order_id}")
+                    except Exception as e:
+                        _push_dist_log(f"[dist] Failed to queue notification for master#{master_id}: {e}", level="ERROR")
 
                     await session.execute(
                         update(m.orders)
@@ -305,6 +323,7 @@ class DBDistributionService:
                             order_id=order_id,
                             from_status=status_enum,
                             to_status=status_enum,
+                            actor_type=m.ActorType.AUTO_DISTRIBUTION,
                             reason=f"{dw.ESC_REASON_LOGIST}:no_candidates",
                         )
                     )
@@ -373,6 +392,7 @@ class DBDistributionService:
                             from_status=m.OrderStatus.DEFERRED,
                             to_status=m.OrderStatus.SEARCHING,
                             changed_by_staff_id=by_staff_id,
+                            actor_type=m.ActorType.ADMIN,
                             reason="Ручное назначение из админ-бота",
                         )
                     )
@@ -445,18 +465,33 @@ class DBDistributionService:
                 if existing_offer.first() is not None:
                     return False, "    "
 
-                cfg = await dw._load_config(session)
-                current_round = await dw.current_round(session, order_id)
+                cfg = await dw._load_config()
+                current_round = await dw._current_round(session, order_id)
                 round_number = (current_round or 0) + 1
-                sent = await dw.send_offer(
+                sent = await dw._send_offer(
                     session,
-                    order_id,
-                    master_id,
-                    round_number,
-                    cfg.sla_seconds,
+                    oid=order_id,
+                    mid=master_id,
+                    round_number=round_number,
+                    sla_seconds=cfg.sla_seconds,
                 )
                 if not sent:
                     return False, "   "
+
+                # Отправить push-уведомление мастеру о новом оффере
+                try:
+                    from field_service.services.push_notifications import notify_master, NotificationEvent
+                    order_data = await dw._get_order_notification_data(session, order_id)
+                    if order_data:
+                        await notify_master(
+                            session,
+                            master_id=master_id,
+                            event=NotificationEvent.NEW_OFFER,
+                            **order_data,
+                        )
+                        _push_dist_log(f"[dist] Push notification queued for master#{master_id} about order#{order_id}")
+                except Exception as e:
+                    _push_dist_log(f"[dist] Failed to queue notification for master#{master_id}: {e}", level="ERROR")
 
                 await session.execute(
                     update(m.orders)

@@ -52,6 +52,10 @@ DEFERRED_LOGGED: set[int] = set()
 WORKDAY_START_DEFAULT = time_service.parse_time_string(env_settings.workday_start, default=time(10, 0))
 WORKDAY_END_DEFAULT = time_service.parse_time_string(env_settings.workday_end, default=time(20, 0))
 
+# Escalation reason constants
+ESC_REASON_LOGIST = "distribution_escalate_logist"
+ESC_REASON_ADMIN = "distribution_escalate_admin"
+
 # ✅ STEP 3.1: Кэш конфигурации распределения
 _CONFIG_CACHE: Optional[DistConfig] = None
 _CONFIG_CACHE_TIMESTAMP: Optional[datetime] = None
@@ -301,6 +305,86 @@ async def _current_round(session: AsyncSession, order_id: int) -> int:
     return r
 
 
+async def _max_active_limit_for(session: AsyncSession) -> int:
+    """Return the global default max active orders (fallback 5)."""
+    value = await get_int("max_active_orders", DEFAULT_MAX_ACTIVE_LIMIT)
+    # Safety guard: at least 1 active order allowed.
+    return max(1, int(value))
+
+
+# ===== Logging helpers =====
+
+
+def fmt_rank_item(row: dict) -> str:
+    """Format a ranked candidate item for logging."""
+    shift_flag = 1 if row.get("shift") else 0
+    car_flag = 1 if row.get("car") else 0
+    avg_val = float(row.get("avg_week") or 0)
+    rating_val = float(row.get("rating", 0) or 0)
+    rnd_val = float(row.get("rnd", 0) or 0)
+    return (
+        f"{{mid={row['mid']} shift={shift_flag} car={car_flag} "
+        f"avg_week={avg_val:.0f} rating={rating_val:.1f} "
+        f"score=car({car_flag})>avg({avg_val:.0f})>rat({rating_val:.1f})>rnd({rnd_val:.2f})}}"
+    )
+
+
+def log_tick_header(order_row, round_num: int, rounds_total: int, sla: int, candidates_cnt: int) -> str:
+    """Format header for distribution tick."""
+    order_type = (
+        "GUARANTEE"
+        if str(getattr(order_row, "status", "")) == m.OrderStatus.GUARANTEE.value
+        else "NORMAL"
+    )
+    district = getattr(order_row, "district_id", None)
+    cat = (
+        getattr(order_row, "category", None)
+        or getattr(order_row, "category_code", None)
+        or "-"
+    )
+    order_id = getattr(order_row, "id", None)
+    city_id = getattr(order_row, "city_id", None)
+    return (
+        f"[dist] order={order_id} city={city_id} "
+        f"district={district if district is not None else '-'} cat={cat} type={order_type}\n"
+        f"round={round_num}/{rounds_total} sla={sla}s candidates={candidates_cnt}"
+    )
+
+
+def log_decision_offer(mid: int, until: datetime) -> str:
+    """Log offer decision."""
+    return f"decision=offer mid={mid} until={until.isoformat()}"
+
+
+def log_force_first(mid: int) -> str:
+    """Log forcing preferred master as first candidate."""
+    return f"force_first=preferred_master mid={mid}"
+
+
+def log_skip_no_district(order_id: int) -> str:
+    """Log skipping order due to missing district."""
+    return f"[dist] order={order_id} skip_auto: no_district  escalate=logist_now"
+
+
+def log_skip_no_category(order_id: int, category = None) -> str:
+    """Log skipping order due to missing/invalid category."""
+    value = category if category not in (None, "") else "-"
+    return (
+        f"[dist] order={order_id} skip_auto: no_category_filter "
+        f"category={value} -> escalate=logist_now"
+    )
+
+
+def log_escalate(order_id: int) -> str:
+    """Log escalation due to no candidates."""
+    return f"[dist] order={order_id} candidates=0  escalate=logist"
+
+
+def log_escalate_admin(order_id: int) -> str:
+    """Log escalation to admin."""
+    return f"[dist] order={order_id} escalate=admin"
+
+
 async def _transition_orders(
     session: AsyncSession,
     *,
@@ -333,6 +417,7 @@ async def _transition_orders(
                 "from_status": old_status,
                 "to_status": new_status,
                 "reason": reason,
+                "actor_type": m.ActorType.SYSTEM,
             }
             for oid in order_ids
         ],
@@ -414,6 +499,7 @@ async def _wake_deferred_orders(
                 from_status=m.OrderStatus.DEFERRED,
                 to_status=m.OrderStatus.SEARCHING,
                 reason='deferred_wakeup',
+                actor_type=m.ActorType.SYSTEM,  # 🐛 FIX: добавлено обязательное поле
                 changed_by_staff_id=None,
                 changed_by_master_id=None,
             )

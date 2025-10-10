@@ -1051,7 +1051,7 @@ async def cb_queue_assign_menu(cq: CallbackQuery, staff: StaffUser) -> None:
 
 
 @queue_router.callback_query(
-    F.data.startswith("adm:q:as:auto:"),
+    F.data.startswith("adm:q:as:auto:") & ~F.data.contains(":force:"),
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:

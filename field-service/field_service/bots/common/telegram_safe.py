@@ -197,3 +197,42 @@ async def safe_answer_callback(
 
 async def safe_send_message(bot: Bot, chat_id: int, text: str, **kwargs: Any) -> Message:
     return await _queue_call(bot, lambda: bot.send_message(chat_id, text, **kwargs))
+
+
+async def safe_delete_and_send(
+    callback: CallbackQuery,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    **kwargs: Any,
+) -> Message | None:
+    """Delete the callback message and send a new one. Perfect for menu navigation."""
+    if callback.message is None:
+        if callback.from_user is not None:
+            return await _queue_call(
+                callback.bot,
+                lambda: callback.bot.send_message(
+                    callback.from_user.id,
+                    text,
+                    reply_markup=reply_markup,
+                    **kwargs,
+                ),
+            )
+        return None
+
+    # Удаляем старое сообщение
+    try:
+        await _queue_call(callback.bot, lambda: callback.message.delete())
+    except TelegramBadRequest as exc:
+        _LOGGER.debug("safe_delete_and_send: delete failed: %s", exc, exc_info=True)
+
+    # Отправляем новое
+    chat_id = callback.message.chat.id
+    return await _queue_call(
+        callback.bot,
+        lambda: callback.bot.send_message(
+            chat_id,
+            text,
+            reply_markup=reply_markup,
+            **kwargs,
+        ),
+    )

@@ -5,7 +5,11 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from field_service.bots.common import safe_answer_callback, safe_edit_or_send
+from field_service.bots.common import (
+    safe_answer_callback,
+    safe_delete_and_send,
+    safe_edit_or_send,
+)
 from field_service.db import models as m
 
 from ..keyboards import main_menu_keyboard, start_onboarding_keyboard
@@ -36,16 +40,71 @@ async def handle_cancel(message: Message, state: FSMContext, master: m.masters) 
 async def handle_cancel_callback(callback: CallbackQuery, state: FSMContext, master: m.masters) -> None:
     """Обработчик для кнопки ❌ Отменить - возвращает в главное меню из любого FSM-состояния."""
     await state.clear()
-    if callback.message:
-        await _render_start(callback.message, master)
+    
+    # Подготовка контента меню
+    moderation = getattr(master, "moderation_status", m.ModerationStatus.PENDING)
+    verified = getattr(master, "verified", False)
+    is_deleted = getattr(master, "is_deleted", False)
+
+    if is_deleted:
+        text = START_BLOCKED
+        keyboard = start_onboarding_keyboard()
+    elif not verified:
+        text = START_NOT_APPROVED
+        keyboard = start_onboarding_keyboard()
+    else:
+        text = START_APPROVED
+        keyboard = main_menu_keyboard(master)
+
+    if isinstance(text, (tuple, list)):
+        text = "\n".join(str(part) for part in text)
+
+    status_label = _STATUS_TITLES.get(moderation, str(moderation))
+    lines = [
+        "<b>Field Service — мастер</b>",
+        f"Статус анкеты: {status_label}",
+        "",
+        escape_html(text),
+    ]
+    
+    # Удаляем старое сообщение и отправляем новое
+    await safe_delete_and_send(callback, "\n".join(lines), keyboard)
     await safe_answer_callback(callback, "✅ Действие отменено")
 
 
 @router.callback_query(F.data == "m:menu")
 async def handle_menu(callback: CallbackQuery, state: FSMContext, master: m.masters) -> None:
+    """Обработчик кнопки 🏠 Меню - удаляет текущее сообщение и показывает главное меню."""
     await state.clear()
-    if callback.message:
-        await _render_start(callback.message, master)
+    
+    # Подготовка контента меню
+    moderation = getattr(master, "moderation_status", m.ModerationStatus.PENDING)
+    verified = getattr(master, "verified", False)
+    is_deleted = getattr(master, "is_deleted", False)
+
+    if is_deleted:
+        text = START_BLOCKED
+        keyboard = start_onboarding_keyboard()
+    elif not verified:
+        text = START_NOT_APPROVED
+        keyboard = start_onboarding_keyboard()
+    else:
+        text = START_APPROVED
+        keyboard = main_menu_keyboard(master)
+
+    if isinstance(text, (tuple, list)):
+        text = "\n".join(str(part) for part in text)
+
+    status_label = _STATUS_TITLES.get(moderation, str(moderation))
+    lines = [
+        "<b>Field Service — мастер</b>",
+        f"Статус анкеты: {status_label}",
+        "",
+        escape_html(text),
+    ]
+    
+    # Удаляем старое сообщение и отправляем новое
+    await safe_delete_and_send(callback, "\n".join(lines), keyboard)
     await safe_answer_callback(callback)
 
 

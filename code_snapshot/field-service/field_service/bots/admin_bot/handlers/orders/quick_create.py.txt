@@ -23,6 +23,7 @@ from ...ui.keyboards import (
     assign_menu_keyboard,
     new_order_asap_late_keyboard,
     new_order_city_keyboard,
+    new_order_confirm_keyboard,
     new_order_district_keyboard,
     new_order_slot_keyboard,
     order_card_keyboard,

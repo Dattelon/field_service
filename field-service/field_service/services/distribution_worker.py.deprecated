@@ -133,6 +133,7 @@ async def _append_history(
             from_status=status,
             to_status=status,
             reason=reason,
+            actor_type=m.ActorType.AUTO_DISTRIBUTION,
         )
     )
 

@@ -7,6 +7,11 @@ field-service/
 ├── add_cities_script.py
 ├── admin_bot.log
 ├── alembic.ini
+├── BUGFIX_DEFERRED_COMPLETE.md
+├── BUGFIX_DEFERRED_DISTRIBUTION.md
+├── BUGFIX_DEFERRED_QUICKSTART.md
+├── BUGFIX_SBP_BANK_ONBOARDING.md
+├── BUGFIX_SBP_QUICKSTART.md
 ├── CHANGELOG.md
 ├── docker-compose.yml
 ├── fix_indents_v2.py

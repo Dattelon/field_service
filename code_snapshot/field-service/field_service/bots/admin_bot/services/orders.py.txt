@@ -1334,6 +1334,7 @@ class DBOrdersService:
                         to_status=new_status,
                         reason="activated_by_admin",
                         changed_by_staff_id=staff.id if staff else None,
+                        actor_type=m.ActorType.ADMIN,
                     )
                 )
                 

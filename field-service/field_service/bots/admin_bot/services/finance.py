@@ -490,6 +490,7 @@ class DBFinanceService:
                             to_status=m.OrderStatus.CLOSED,
                             changed_by_staff_id=by_staff_id,
                             reason='commission_paid',
+                            actor_type=m.ActorType.ADMIN,
                         )
                     )
 

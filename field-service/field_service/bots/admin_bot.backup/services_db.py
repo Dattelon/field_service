@@ -2517,6 +2517,7 @@ class DBDistributionService:
                                 from_status=status_enum,
                                 to_status=status_enum,
                                 reason=f"{dw.ESC_REASON_LOGIST}:no_district",
+                                actor_type=m.ActorType.AUTO_DISTRIBUTION,
                             )
                         )
                     message = dw.log_skip_no_district(order_id)
@@ -2665,6 +2666,7 @@ class DBDistributionService:
                             from_status=status_enum,
                             to_status=status_enum,
                             reason=f"{dw.ESC_REASON_LOGIST}:no_candidates",
+                            actor_type=m.ActorType.AUTO_DISTRIBUTION,
                         )
                     )
 
@@ -3887,6 +3889,7 @@ class DBFinanceService:
                             to_status=m.OrderStatus.CLOSED,
                             changed_by_staff_id=by_staff_id,
                             reason='commission_paid',
+                            actor_type=m.ActorType.ADMIN,
                         )
                     )
 

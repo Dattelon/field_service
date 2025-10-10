@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.exceptions import TelegramBadRequest
 
+from field_service.bots.common import safe_delete_and_send
 from ...core.dto import StaffRole, StaffUser
 from ...core.filters import StaffRoleFilter
 from ...ui.keyboards import main_menu, finance_menu
@@ -78,9 +79,10 @@ async def not_allowed_start(message: Message, state: FSMContext) -> None:
     F.data == "adm:menu",
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
-async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Вернуться в главное меню."""
-    await cq.message.edit_text("Главное меню:", reply_markup=main_menu(staff))
+async def cb_menu(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    """Вернуться в главное меню - удаляет старое сообщение и показывает новое."""
+    await state.clear()
+    await safe_delete_and_send(cq, "Главное меню:", reply_markup=main_menu(staff))
     await safe_answer(cq)
 
 
