@@ -80,6 +80,9 @@ def main_menu() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text="🚀 Деплой", callback_data="deploy_confirm"),
+        ],
+        [
+            InlineKeyboardButton(text="🔄 Git Pull + Деплой", callback_data="git_deploy_confirm"),
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -88,6 +91,14 @@ def main_menu() -> InlineKeyboardMarkup:
 def deploy_menu() -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton(text="⚠️ Подтвердить деплой", callback_data="deploy_execute")],
+        [InlineKeyboardButton(text="« Назад", callback_data="menu")]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# Меню Git деплоя
+def git_deploy_menu() -> InlineKeyboardMarkup:
+    keyboard = [
+        [InlineKeyboardButton(text="⚠️ Подтвердить Git Pull + Деплой", callback_data="git_deploy_execute")],
         [InlineKeyboardButton(text="« Назад", callback_data="menu")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -337,6 +348,77 @@ async def deploy_execute(callback: CallbackQuery, **kwargs):
     
     result_text += "\n\n"
     result_text += "✅ Деплой завершён!" if exit_code == 0 else "❌ Деплой завершился с ошибками"
+    
+    await callback.message.edit_text(
+        result_text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📊 Проверить статус", callback_data="status")],
+            [InlineKeyboardButton(text="📋 Посмотреть логи", callback_data="logs")],
+            [InlineKeyboardButton(text="« Назад", callback_data="menu")]
+        ]),
+        parse_mode="HTML"
+    )
+
+# Git Деплой - подтверждение
+@dp.callback_query(F.data == "git_deploy_confirm")
+@check_admin
+async def git_deploy_confirm(callback: CallbackQuery, **kwargs):
+    await callback.message.edit_text(
+        "🔄 <b>Git Pull + Деплой на продакшн</b>\n\n"
+        "⚠️ <b>ВНИМАНИЕ!</b>\n\n"
+        "Это запустит полный деплой с обновлением из GitHub:\n"
+        "• Git pull (получение последнего кода)\n"
+        "• Создание бэкапа БД\n"
+        "• Сборка Docker образов\n"
+        "• Применение миграций\n"
+        "• Перезапуск ботов\n\n"
+        "Это займёт 3-5 минут.\n\n"
+        "Продолжить?",
+        reply_markup=git_deploy_menu(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+# Git Деплой - выполнение
+@dp.callback_query(F.data == "git_deploy_execute")
+@check_admin
+async def git_deploy_execute(callback: CallbackQuery, **kwargs):
+    await callback.answer()
+    await callback.message.edit_text(
+        "🔄 <b>Запускаю Git Pull + Деплой...</b>\n\n"
+        "⏳ Это займёт несколько минут.\n"
+        "Пожалуйста, подождите...",
+        parse_mode="HTML"
+    )
+    
+    deploy_steps = [
+        ("Git Pull", f"cd {PROJECT_PATH} && git fetch origin main && git reset --hard origin/main"),
+        ("Восстановление .env", f"cp /tmp/field-service.env.backup {PROJECT_PATH}/.env"),
+        ("Создание бэкапа", "/usr/local/bin/field-service-backup.sh daily"),
+        ("Проверка статуса", f"cd {PROJECT_PATH} && docker compose ps"),
+        ("Сборка образов", f"cd {PROJECT_PATH} && docker compose build"),
+        ("Применение миграций", f"cd {PROJECT_PATH} && docker compose run --rm admin-bot alembic upgrade head"),
+        ("Перезапуск", f"cd {PROJECT_PATH} && docker compose up -d --no-deps admin-bot master-bot"),
+    ]
+    
+    result_text = "🔄 <b>Результат Git Pull + Деплоя:</b>\n\n"
+    
+    for step_name, cmd in deploy_steps:
+        result_text += f"⏳ {step_name}...\n"
+        await callback.message.edit_text(result_text, parse_mode="HTML")
+        
+        timeout = 300 if "build" in cmd.lower() else 120
+        output, exit_code = ssh_execute(cmd, timeout=timeout)
+        
+        emoji = "✅" if exit_code == 0 else "❌"
+        result_text = result_text.replace(f"⏳ {step_name}...", f"{emoji} {step_name}")
+        
+        if exit_code != 0:
+            result_text += f"\n\n❌ <b>Ошибка:</b>\n<pre>{output[:500]}</pre>"
+            break
+    
+    result_text += "\n\n"
+    result_text += "✅ Git Pull + Деплой завершён!" if exit_code == 0 else "❌ Деплой завершился с ошибками"
     
     await callback.message.edit_text(
         result_text,
