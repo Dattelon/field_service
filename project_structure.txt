@@ -15,6 +15,7 @@ field-service/
 ├── BUGFIX_SBP_QUICKSTART.md
 ├── CHANGELOG.md
 ├── docker-compose.yml
+├── Dockerfile
 ├── fix_indents_v2.py
 ├── master_bot_error.log
 ├── master_bot_output.log

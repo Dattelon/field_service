@@ -3,15 +3,17 @@ from __future__ import annotations
 
 import json
 from datetime import time
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select, text
+from sqlalchemy import insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import time_service
+from field_service.services import settings_service as settings_store
+from field_service.services import owner_requisites_service as owner_reqs
 
 
 # Common utilities from _common
