@@ -469,7 +469,8 @@ async def offer_accept(
     _log.info("offer_accept: session cache expired for order=%s", order_id)
 
     await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=True)
-    await _render_offers(callback, session, master, page=page)
+    # Переход к карточке принятого заказа вместо списка предложений
+    await _render_active_order(callback, session, master, order_id=order_id)
 
 
 # P0-1: Промежуточный шаг - показываем диалог подтверждения
@@ -1007,13 +1008,93 @@ async def _render_active_order(
     master: m.masters,
     order_id: int | None,
 ) -> None:
+    """Отображает активные заказы мастера.
+    
+    Если order_id=None - показывает список всех активных заказов.
+    Если order_id передан - показывает карточку конкретного заказа.
+    """
+    if order_id is None:
+        # Показываем список всех активных заказов
+        active_orders = await _load_active_orders(session, master.id)
+        
+        if not active_orders:
+            await safe_edit_or_send(
+                event,
+                NO_ACTIVE_ORDERS,
+                inline_keyboard([
+                    _nav_row("m:menu")
+                ]),
+            )
+            return
+        
+        # Формируем заголовок
+        count = len(active_orders)
+        if count == 1:
+            header = "<b>📦 Активный заказ</b>"
+        else:
+            header = f"<b>📦 Активные заказы ({count})</b>"
+        
+        lines = [header, ""]
+        keyboard_rows: list[list[InlineKeyboardButton]] = []
+        
+        for row in active_orders:
+            order = row.order
+            status_title = ORDER_STATUS_TITLES.get(order.status, order.status.value)
+            slot_text = _timeslot_text(
+                order.timeslot_start_utc,
+                order.timeslot_end_utc,
+                getattr(row, "city_tz", None),
+            )
+            
+            # Добавляем строку с кратким описанием заказа
+            category = (
+                order.category.value
+                if isinstance(order.category, m.OrderCategory)
+                else str(order.category or "—")
+            )
+            line = f"#{order.id} • {row.city or '—'}"
+            if row.district:
+                line += f", {row.district}"
+            line += f" • {category}"
+            if slot_text:
+                line += f" • {slot_text}"
+            line += f"\n🔁 {status_title}"
+            lines.append(line)
+            
+            # Добавляем кнопку для открытия карточки
+            keyboard_rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=f"Открыть #{order.id}",
+                        callback_data=f"m:act:card:{order.id}",
+                    )
+                ]
+            )
+            lines.append("")  # Пустая строка между заказами
+        
+        keyboard_rows.append(_nav_row("m:menu"))
+        keyboard = inline_keyboard(keyboard_rows)
+        
+        # P1-23: Add breadcrumbs navigation
+        text_without_breadcrumbs = "\n".join(lines)
+        text = add_breadcrumbs_to_text(text_without_breadcrumbs, MasterPaths.ACTIVE_ORDERS)
+        
+        try:
+            await safe_edit_or_send(event, text, keyboard)
+        except Exception as exc:
+            _log.exception("render_active_orders_list failed: %s", exc)
+            if isinstance(event, CallbackQuery) and event.message is not None:
+                await event.message.answer(text)
+        return
+    
+    # Показываем карточку конкретного заказа
     row = await _load_active_order(session, master.id, order_id)
     if row is None:
         await safe_edit_or_send(
             event,
-            NO_ACTIVE_ORDERS,
+            "❌ Заказ не найден или уже не активен.",
             inline_keyboard([
-                _nav_row("m:menu")
+                _nav_row("m:act")
             ]),
         )
         return
@@ -1186,6 +1267,43 @@ async def _load_offer_detail(
     if not row:
         return None
     return SimpleNamespace(order=row.orders, city=row.city, city_tz=row.city_tz, district=row.district, street=row.street)
+
+
+async def _load_active_orders(
+    session: AsyncSession,
+    master_id: int,
+) -> list[SimpleNamespace]:
+    """Загружает список всех активных заказов мастера."""
+    stmt = (
+        select(
+            m.orders,
+            m.cities.name.label("city"),
+            m.cities.timezone.label("city_tz"),
+            m.districts.name.label("district"),
+            m.streets.name.label("street"),
+        )
+        .join(m.cities, m.cities.id == m.orders.city_id)
+        .outerjoin(m.districts, m.districts.id == m.orders.district_id)
+        .outerjoin(m.streets, m.streets.id == m.orders.street_id)
+        .where(
+            m.orders.assigned_master_id == master_id,
+            m.orders.status.in_(ACTIVE_STATUSES),
+        )
+        .order_by(m.orders.updated_at.desc(), m.orders.id.desc())
+    )
+    result = await session.execute(stmt)
+    rows = []
+    for row in result:
+        rows.append(
+            SimpleNamespace(
+                order=row.orders,
+                city=row.city,
+                city_tz=row.city_tz,
+                district=row.district,
+                street=row.street,
+            )
+        )
+    return rows
 
 
 async def _load_active_order(

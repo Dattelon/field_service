@@ -215,7 +215,7 @@ def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["active_order"],
+                    text=MAIN_MENU_BUTTONS["active_orders"],
                     callback_data="m:act",
                 )
             ]

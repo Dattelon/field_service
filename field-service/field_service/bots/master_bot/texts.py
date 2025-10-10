@@ -46,7 +46,7 @@ MAIN_MENU_BUTTONS = {
     "shift_break_end": "🟢 Включить смену",
     "shift_off": "🔴 Выключить смену",
     "new_orders": "🆕 Новые заказы",
-    "active_order": "📦 Активный заказ",
+    "active_orders": "📦 Активные заказы",
     "history": "📋 История заказов",  # P1-9
     "finance": "💳 Финансы",
     "referral": "🎁 Реферальная программа",

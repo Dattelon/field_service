@@ -100,7 +100,8 @@ class MasterPaths:
     
     # Orders section
     NEW_ORDERS = MAIN + ["Новые заказы"]
-    ACTIVE_ORDER = MAIN + ["Активный заказ"]
+    ACTIVE_ORDERS = MAIN + ["Активные заказы"]
+    ACTIVE_ORDER = MAIN + ["Активный заказ"]  # Оставляем для обратной совместимости
     HISTORY = MAIN + ["История заказов"]
     
     # Finance section
@@ -126,7 +127,7 @@ class MasterPaths:
     @staticmethod
     def active_order_card(order_id: int) -> list[str]:
         """Build path for active order card."""
-        return MasterPaths.ACTIVE_ORDER + [f"Заказ #{order_id}"]
+        return MasterPaths.ACTIVE_ORDERS + [f"Заказ #{order_id}"]
     
     @staticmethod
     def history_order_card(order_id: int) -> list[str]:
