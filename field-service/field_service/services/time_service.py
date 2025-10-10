@@ -213,11 +213,11 @@ def compute_slot(
 def _day_prefix(target: date, today: date) -> Optional[str]:
     delta = (target - today).days
     if delta == 0:
-        return "???????"
+        return "сегодня"
     if delta == 1:
-        return "??????"
+        return "завтра"
     if delta == -1:
-        return "?????"
+        return "вчера"
     return None
 
 
