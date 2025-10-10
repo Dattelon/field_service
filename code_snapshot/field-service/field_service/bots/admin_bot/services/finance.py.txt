@@ -5,7 +5,7 @@ from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 from typing import Any, Iterable, Optional, Sequence
 
-from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db import models as m

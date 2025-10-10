@@ -16,6 +16,8 @@ field-service/
 ├── CHANGELOG.md
 ├── docker-compose.yml
 ├── fix_indents_v2.py
+├── master_bot_error.log
+├── master_bot_output.log
 ├── mypy.ini
 ├── P1_02_UI_IMPROVEMENTS_COMPLETE.md
 ├── pytest.ini
@@ -79,6 +81,8 @@ field-service/
 │   ├── BUGFIX_CITY_ADMIN_SUMMARY.md
 │   ├── BUGFIX_EXPIRED_OFFERS_QUICKSTART.md
 │   ├── BUGFIX_EXPIRED_OFFERS_WATCHDOG.md
+│   ├── BUGFIX_OFFER_ACCEPT_CACHE.md
+│   ├── BUGFIX_OFFER_ACCEPT_QUICKSTART.md
 │   ├── BUGFIX_OFFERS_CONSTRAINT.md
 │   ├── CHANGE_REQUEST_DISTRICTS_2025-10-04.md
 │   ├── CHANGE_REQUESTS.md
@@ -128,6 +132,7 @@ field-service/
 │   ├── P1-9_SUMMARY.md
 │   ├── P1_15_SUMMARY.md
 │   ├── QUICK_START_DISTRICTS.md
+│   ├── SESSION_2025-10-10_OFFER_ACCEPT_BUG.md
 │   ├── STRUCTURED_LOGGING.md
 │   └── archive/
 │       ├── APPLY_HOTFIX.md
@@ -399,6 +404,7 @@ field-service/
 │   ├── test_master_offer_callbacks.py
 │   ├── test_master_start_cancel.py
 │   ├── test_master_statistics.py
+│   ├── test_offer_accept_cache_bug.py
 │   ├── test_orders_model_compat.py
 │   ├── test_owner_requisites.py
 │   ├── test_p1_10_push_offer_notification.py

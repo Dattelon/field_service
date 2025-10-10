@@ -379,7 +379,7 @@ async def offer_accept(
                 actor_type=m.ActorType.MASTER,
                 context={
                     "master_id": master.id,
-                    "master_name": f"{master.last_name} {master.first_name}".strip(),
+                    "master_name": master.full_name or "",
                     "action": "offer_accepted",
                     "method": "manual_accept"
                 }
@@ -393,8 +393,8 @@ async def offer_accept(
         await _render_offers(callback, session, master, page=page)
         return
     
+    # ✅ STEP 4.1: Запись метрик распределения (ДО commit, но ошибки игнорируются)
     _log.info("offer_accept: starting distribution_metrics recording for order=%s", order_id)
-    # ✅ STEP 4.1: Запись метрик распределения для аналитики
     try:
         _log.info("offer_accept: fetching order info for metrics, order=%s", order_id)
         # Получаем полную информацию о заказе для метрик
@@ -412,7 +412,6 @@ async def offer_accept(
         )
         order_row = order_info.first()
         _log.info("offer_accept: order info fetched, fetching offer stats for order=%s", order_id)
-        
         # Получаем раунд и количество кандидатов из offers
         offer_stats = await session.execute(
             select(
@@ -441,8 +440,9 @@ async def offer_accept(
                     was_escalated_to_admin=(order_row.dist_escalated_admin_at is not None),
                     city_id=order_row.city_id,
                     district_id=order_row.district_id,
-                    category=order_row.category,
-                    order_type=order_row.type,
+                    # ✅ BUGFIX: Конвертируем Enum в строку для VARCHAR колонок
+                    category=order_row.category.value if hasattr(order_row.category, 'value') else str(order_row.category),
+                    order_type=order_row.type.value if hasattr(order_row.type, 'value') else str(order_row.type),
                     metadata_json={
                         "accepted_via": "master_bot",
                         "from_status": current_status.value if hasattr(current_status, 'value') else str(current_status),
@@ -454,12 +454,19 @@ async def offer_accept(
                 order_id, master.id, stats_row.max_round, stats_row.total_candidates, time_to_assign
             )
     except Exception as metrics_err:
-        # Метрики не должны ломать основной процесс
+        # Метрики не должны ломать основной процесс - просто логируем ошибку
         _log.error("Failed to record distribution_metrics for order=%s: %s", order_id, metrics_err)
+        # НЕ делаем rollback - метрики опциональны, основные данные должны сохраниться
     
+    # ✅ CRITICAL: Commit всех изменений (orders, offers, history, metrics)
     _log.info("offer_accept: committing transaction for order=%s", order_id)
     await session.commit()
     _log.info("offer_accept: transaction committed successfully for order=%s", order_id)
+    
+    # ✅ BUGFIX: Сбрасываем кэш SQLAlchemy после commit
+    # Без этого _render_offers будет читать устаревшие данные из кэша
+    session.expire_all()
+    _log.info("offer_accept: session cache expired for order=%s", order_id)
 
     await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=True)
     await _render_offers(callback, session, master, page=page)
@@ -1048,11 +1055,8 @@ async def _render_active_order(
             [InlineKeyboardButton(text=title, callback_data=f"{prefix}:{order.id}")]
         )
 
-    # P0-4: Добавляем кнопку "Позвонить клиенту" для активных статусов
-    if (order.status in ACTIVE_STATUSES or order.status == m.OrderStatus.PAYMENT) and order.client_phone:
-        keyboard_rows.append(
-            [InlineKeyboardButton(text="📞 Позвонить клиенту", url=f"tel:{order.client_phone}")]
-        )
+    # P0-4: Кнопка "Позвонить клиенту" убрана т.к. tel: ссылки не работают в Telegram
+    # Телефон виден в тексте и копируется через кнопку "📋 Телефон"
     
     # P1-19: Кнопки быстрого копирования
     if order.status in ACTIVE_STATUSES or order.status == m.OrderStatus.PAYMENT:

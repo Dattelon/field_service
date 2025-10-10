@@ -942,10 +942,8 @@ class distribution_metrics(Base):
         nullable=True,
         index=True
     )
-    category: Mapped[Optional[str]] = mapped_column(
-        Enum(OrderCategory, name="ordercategory"),
-        nullable=True
-    )
+    # ✅ BUGFIX: Используем String вместо Enum т.к. в БД это VARCHAR
+    category: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     order_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     
     # Дополнительные данные

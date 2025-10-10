@@ -1177,6 +1177,8 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
 
     if action == "ok":
         # CR-2025-10-03-011: Красивый UI для подтверждения оплаты
+        logger.info(f"finance_card: action=ok commission_id={commission_id} amount={detail.amount}")
+        
         await state.update_data(
             commission_id=commission_id,
             segment=segment,
@@ -1185,6 +1187,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             source_chat_id=cq.message.chat.id,
             source_message_id=cq.message.message_id,
         )
+        logger.info(f"finance_card: state updated")
         
         # Показываем кнопки для быстрого одобрения
         from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -1193,13 +1196,24 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
         kb.button(text="📝 Изменить сумму", callback_data=f"adm:f:cm:editamt:{commission_id}")
         kb.button(text="❌ Отмена", callback_data=f"adm:f:cm:card:{commission_id}")
         kb.adjust(1)
+        logger.info(f"finance_card: keyboard built, buttons={len(kb.export())}")
         
-        await cq.message.edit_text(
-            f"{text_body}\n\n<b>Подтвердить оплату?</b>",
-            reply_markup=kb.as_markup(),
-            disable_web_page_preview=True,
-        )
+        text_to_send = f"{text_body}\n\n<b>Подтвердить оплату?</b>"
+        logger.info(f"finance_card: text prepared, length={len(text_to_send)}")
+        
+        try:
+            await cq.message.edit_text(
+                text_to_send,
+                reply_markup=kb.as_markup(),
+                disable_web_page_preview=True,
+            )
+            logger.info(f"finance_card: message edited successfully")
+        except Exception as exc:
+            logger.exception(f"finance_card: edit_text failed: {exc}")
+            raise
+        
         await _safe_answer(cq)
+        logger.info(f"finance_card: callback answered, returning")
         return
 
     if action == "blk":

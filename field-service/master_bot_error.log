@@ -1,3 +1,144 @@
-2025-10-10 13:37:45,406 INFO [__main__] Starting master bot; allowed updates: ['callback_query', 'message']
-2025-10-10 13:37:45,417 INFO [aiogram.dispatcher] Start polling
-2025-10-10 13:38:07,186 INFO [aiogram.dispatcher] Run polling for bot @BotZaMaster_bot id=8423680284 - 'BotZaMaster'
+2025-10-10 13:41:42,894 INFO [__main__] Starting master bot; allowed updates: ['callback_query', 'message']
+2025-10-10 13:41:42,903 INFO [aiogram.dispatcher] Start polling
+2025-10-10 13:42:04,236 INFO [aiogram.dispatcher] Run polling for bot @BotZaMaster_bot id=8423680284 - 'BotZaMaster'
+2025-10-10 13:42:12,783 INFO [master_bot.debug] Message uid=332786197 chat=332786197 type=ContentType.TEXT text='/start'
+2025-10-10 13:42:13,017 INFO [aiogram.event] Update id=266071726 is handled. Duration 234 ms by bot id=8423680284
+2025-10-10 13:42:46,839 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new'
+2025-10-10 13:42:46,880 INFO [master_bot.orders] offers_root: uid=332786197 order_id=None
+2025-10-10 13:42:47,235 INFO [aiogram.event] Update id=266071727 is handled. Duration 405 ms by bot id=8423680284
+2025-10-10 13:45:27,728 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:menu'
+2025-10-10 13:45:28,164 INFO [aiogram.event] Update id=266071728 is handled. Duration 422 ms by bot id=8423680284
+2025-10-10 13:45:29,038 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:act'
+2025-10-10 13:45:29,063 INFO [master_bot.orders] active_order_entry: uid=332786197 order_id=None
+2025-10-10 13:45:29,278 INFO [aiogram.event] Update id=266071729 is handled. Duration 250 ms by bot id=8423680284
+2025-10-10 13:45:30,545 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:menu'
+2025-10-10 13:45:30,762 INFO [aiogram.event] Update id=266071730 is handled. Duration 219 ms by bot id=8423680284
+2025-10-10 13:50:02,551 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new'
+2025-10-10 13:50:02,569 INFO [master_bot.orders] offers_root: uid=332786197 order_id=None
+2025-10-10 13:50:02,837 INFO [aiogram.event] Update id=266071731 is handled. Duration 312 ms by bot id=8423680284
+2025-10-10 13:50:03,836 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new:card:15:1'
+2025-10-10 13:50:03,852 INFO [master_bot.orders] offers_card: uid=332786197 order_id=15
+2025-10-10 13:50:04,280 INFO [aiogram.event] Update id=266071732 is handled. Duration 452 ms by bot id=8423680284
+2025-10-10 13:50:05,723 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new:acc:15:1'
+2025-10-10 13:50:05,738 INFO [master_bot.orders] offer_accept START: master=86 callback_data=m:new:acc:15:1
+2025-10-10 13:50:05,739 INFO [master_bot.orders] offer_accept: parsed order_id=15 page=1
+2025-10-10 13:50:05,750 INFO [master_bot.orders] offer_accept: master=86 limit=1 active=0
+2025-10-10 13:50:05,750 INFO [master_bot.orders] offer_accept: acquiring lock on order=15
+2025-10-10 13:50:05,754 INFO [master_bot.orders] offer_accept: order=15 status=OrderStatus.SEARCHING assigned_master=None
+2025-10-10 13:50:05,755 INFO [master_bot.orders] offer_accept: checking offer for order=15 master=86
+2025-10-10 13:50:05,759 INFO [master_bot.orders] offer_accept: offer state=OfferState.SENT expires_at=2025-10-10 10:51:47.742566+00:00
+2025-10-10 13:50:05,760 INFO [master_bot.orders] offer_accept: time check: now_utc=2025-10-10T10:50:05.760532+00:00 expires_at=2025-10-10T10:51:47.742566+00:00 is_expired=False
+2025-10-10 13:50:05,761 INFO [master_bot.orders] offer_accept: starting UPDATE orders for order=15 master=86
+2025-10-10 13:50:05,766 INFO [master_bot.orders] offer_accept: UPDATE orders completed for order=15, checking result...
+2025-10-10 13:50:05,767 INFO [master_bot.orders] offer_accept: UPDATE orders SUCCESS for order=15, starting UPDATE offers...
+2025-10-10 13:50:05,773 INFO [master_bot.orders] offer_accept: UPDATE offers completed for order=15 master=86, checking result...
+2025-10-10 13:50:05,773 INFO [master_bot.orders] offer_accept: UPDATE offers result for order=15: SUCCESS
+2025-10-10 13:50:05,774 INFO [master_bot.orders] offer_accept: canceling other masters' offers for order=15
+2025-10-10 13:50:05,779 INFO [master_bot.orders] offer_accept: other masters' offers canceled for order=15, inserting status history
+2025-10-10 13:50:05,796 INFO [master_bot.orders] offer_accept: status history inserted successfully for order=15
+2025-10-10 13:50:05,796 INFO [master_bot.orders] offer_accept: starting distribution_metrics recording for order=15
+2025-10-10 13:50:05,797 INFO [master_bot.orders] offer_accept: fetching order info for metrics, order=15
+2025-10-10 13:50:05,799 INFO [master_bot.orders] offer_accept: order info fetched, fetching offer stats for order=15
+2025-10-10 13:50:05,803 INFO [master_bot.orders] offer_accept: offer stats fetched for order=15, order_row=True stats_row=True
+2025-10-10 13:50:05,804 INFO [master_bot.orders] offer_accept: inserting distribution_metrics for order=15
+2025-10-10 13:50:05,809 ERROR [master_bot.orders] Failed to record distribution_metrics for order=15: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) <class 'asyncpg.exceptions.UndefinedObjectError'>: type "ordercategory" does not exist
+[SQL: INSERT INTO distribution_metrics (order_id, master_id, round_number, candidates_count, time_to_assign_seconds, preferred_master_used, was_escalated_to_logist, was_escalated_to_admin, city_id, district_id, category, order_type, metadata_json) VALUES ($1::INTEGER, $2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::BOOLEAN, $7::BOOLEAN, $8::BOOLEAN, $9::INTEGER, $10::INTEGER, $11::ordercategory, $12::VARCHAR, $13::JSONB) RETURNING distribution_metrics.id]
+[parameters: (15, 86, 12, 1, 8018, False, False, False, 203, 2333, 'ELECTRICS', <OrderType.NORMAL: 'NORMAL'>, '{"accepted_via": "master_bot", "from_status": "SEARCHING"}')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-10-10 13:50:05,809 INFO [master_bot.orders] offer_accept: committing transaction for order=15
+2025-10-10 13:50:05,811 INFO [master_bot.orders] offer_accept: transaction committed successfully for order=15
+2025-10-10 13:50:05,954 INFO [aiogram.event] Update id=266071733 is handled. Duration 250 ms by bot id=8423680284
+2025-10-10 13:50:19,521 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:menu'
+2025-10-10 13:50:19,758 INFO [aiogram.event] Update id=266071734 is handled. Duration 234 ms by bot id=8423680284
+2025-10-10 13:50:21,078 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:act'
+2025-10-10 13:50:21,097 INFO [master_bot.orders] active_order_entry: uid=332786197 order_id=None
+2025-10-10 13:50:21,242 INFO [aiogram.event] Update id=266071735 is handled. Duration 155 ms by bot id=8423680284
+2025-10-10 13:50:25,580 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:menu'
+2025-10-10 13:50:25,950 INFO [aiogram.event] Update id=266071736 is handled. Duration 375 ms by bot id=8423680284
+2025-10-10 13:50:27,319 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new'
+2025-10-10 13:50:27,338 INFO [master_bot.orders] offers_root: uid=332786197 order_id=None
+2025-10-10 13:50:27,505 INFO [aiogram.event] Update id=266071737 is handled. Duration 188 ms by bot id=8423680284
+2025-10-10 13:50:28,366 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new:card:15:1'
+2025-10-10 13:50:28,385 INFO [master_bot.orders] offers_card: uid=332786197 order_id=15
+2025-10-10 13:50:28,545 INFO [aiogram.event] Update id=266071738 is handled. Duration 187 ms by bot id=8423680284
+2025-10-10 13:50:29,206 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new:acc:15:1'
+2025-10-10 13:50:29,223 INFO [master_bot.orders] offer_accept START: master=86 callback_data=m:new:acc:15:1
+2025-10-10 13:50:29,223 INFO [master_bot.orders] offer_accept: parsed order_id=15 page=1
+2025-10-10 13:50:29,230 INFO [master_bot.orders] offer_accept: master=86 limit=1 active=0
+2025-10-10 13:50:29,230 INFO [master_bot.orders] offer_accept: acquiring lock on order=15
+2025-10-10 13:50:29,234 INFO [master_bot.orders] offer_accept: order=15 status=OrderStatus.SEARCHING assigned_master=None
+2025-10-10 13:50:29,234 INFO [master_bot.orders] offer_accept: checking offer for order=15 master=86
+2025-10-10 13:50:29,236 INFO [master_bot.orders] offer_accept: offer state=OfferState.SENT expires_at=2025-10-10 10:51:47.742566+00:00
+2025-10-10 13:50:29,237 INFO [master_bot.orders] offer_accept: time check: now_utc=2025-10-10T10:50:29.236624+00:00 expires_at=2025-10-10T10:51:47.742566+00:00 is_expired=False
+2025-10-10 13:50:29,237 INFO [master_bot.orders] offer_accept: starting UPDATE orders for order=15 master=86
+2025-10-10 13:50:29,241 INFO [master_bot.orders] offer_accept: UPDATE orders completed for order=15, checking result...
+2025-10-10 13:50:29,241 INFO [master_bot.orders] offer_accept: UPDATE orders SUCCESS for order=15, starting UPDATE offers...
+2025-10-10 13:50:29,246 INFO [master_bot.orders] offer_accept: UPDATE offers completed for order=15 master=86, checking result...
+2025-10-10 13:50:29,247 INFO [master_bot.orders] offer_accept: UPDATE offers result for order=15: SUCCESS
+2025-10-10 13:50:29,248 INFO [master_bot.orders] offer_accept: canceling other masters' offers for order=15
+2025-10-10 13:50:29,254 INFO [master_bot.orders] offer_accept: other masters' offers canceled for order=15, inserting status history
+2025-10-10 13:50:29,257 INFO [master_bot.orders] offer_accept: status history inserted successfully for order=15
+2025-10-10 13:50:29,259 INFO [master_bot.orders] offer_accept: starting distribution_metrics recording for order=15
+2025-10-10 13:50:29,259 INFO [master_bot.orders] offer_accept: fetching order info for metrics, order=15
+2025-10-10 13:50:29,263 INFO [master_bot.orders] offer_accept: order info fetched, fetching offer stats for order=15
+2025-10-10 13:50:29,266 INFO [master_bot.orders] offer_accept: offer stats fetched for order=15, order_row=True stats_row=True
+2025-10-10 13:50:29,267 INFO [master_bot.orders] offer_accept: inserting distribution_metrics for order=15
+2025-10-10 13:50:29,271 ERROR [master_bot.orders] Failed to record distribution_metrics for order=15: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) <class 'asyncpg.exceptions.UndefinedObjectError'>: type "ordercategory" does not exist
+[SQL: INSERT INTO distribution_metrics (order_id, master_id, round_number, candidates_count, time_to_assign_seconds, preferred_master_used, was_escalated_to_logist, was_escalated_to_admin, city_id, district_id, category, order_type, metadata_json) VALUES ($1::INTEGER, $2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::BOOLEAN, $7::BOOLEAN, $8::BOOLEAN, $9::INTEGER, $10::INTEGER, $11::ordercategory, $12::VARCHAR, $13::JSONB) RETURNING distribution_metrics.id]
+[parameters: (15, 86, 12, 1, 8041, False, False, False, 203, 2333, 'ELECTRICS', <OrderType.NORMAL: 'NORMAL'>, '{"accepted_via": "master_bot", "from_status": "SEARCHING"}')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-10-10 13:50:29,272 INFO [master_bot.orders] offer_accept: committing transaction for order=15
+2025-10-10 13:50:29,275 INFO [master_bot.orders] offer_accept: transaction committed successfully for order=15
+2025-10-10 13:50:29,438 INFO [aiogram.event] Update id=266071739 is handled. Duration 233 ms by bot id=8423680284
+2025-10-10 13:50:31,418 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new:card:15:1'
+2025-10-10 13:50:31,444 INFO [master_bot.orders] offers_card: uid=332786197 order_id=15
+2025-10-10 13:50:31,641 INFO [aiogram.event] Update id=266071740 is handled. Duration 234 ms by bot id=8423680284
+2025-10-10 13:50:33,116 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:menu'
+2025-10-10 13:50:33,551 INFO [aiogram.event] Update id=266071741 is handled. Duration 437 ms by bot id=8423680284
+2025-10-10 13:50:34,658 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:act'
+2025-10-10 13:50:34,683 INFO [master_bot.orders] active_order_entry: uid=332786197 order_id=None
+2025-10-10 13:50:34,847 INFO [aiogram.event] Update id=266071742 is handled. Duration 202 ms by bot id=8423680284
+2025-10-10 13:51:22,112 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:menu'
+2025-10-10 13:51:22,749 INFO [aiogram.event] Update id=266071743 is handled. Duration 641 ms by bot id=8423680284
+2025-10-10 13:51:24,186 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new'
+2025-10-10 13:51:24,203 INFO [master_bot.orders] offers_root: uid=332786197 order_id=None
+2025-10-10 13:51:24,491 INFO [aiogram.event] Update id=266071744 is handled. Duration 297 ms by bot id=8423680284
+2025-10-10 13:51:24,920 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new:card:15:1'
+2025-10-10 13:51:24,935 INFO [master_bot.orders] offers_card: uid=332786197 order_id=15
+2025-10-10 13:51:25,359 INFO [aiogram.event] Update id=266071745 is handled. Duration 437 ms by bot id=8423680284
+2025-10-10 13:51:25,733 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:new:acc:15:1'
+2025-10-10 13:51:25,740 INFO [master_bot.orders] offer_accept START: master=86 callback_data=m:new:acc:15:1
+2025-10-10 13:51:25,740 INFO [master_bot.orders] offer_accept: parsed order_id=15 page=1
+2025-10-10 13:51:25,744 INFO [master_bot.orders] offer_accept: master=86 limit=1 active=0
+2025-10-10 13:51:25,744 INFO [master_bot.orders] offer_accept: acquiring lock on order=15
+2025-10-10 13:51:25,746 INFO [master_bot.orders] offer_accept: order=15 status=OrderStatus.SEARCHING assigned_master=None
+2025-10-10 13:51:25,746 INFO [master_bot.orders] offer_accept: checking offer for order=15 master=86
+2025-10-10 13:51:25,749 INFO [master_bot.orders] offer_accept: offer state=OfferState.SENT expires_at=2025-10-10 10:51:47.742566+00:00
+2025-10-10 13:51:25,749 INFO [master_bot.orders] offer_accept: time check: now_utc=2025-10-10T10:51:25.749173+00:00 expires_at=2025-10-10T10:51:47.742566+00:00 is_expired=False
+2025-10-10 13:51:25,749 INFO [master_bot.orders] offer_accept: starting UPDATE orders for order=15 master=86
+2025-10-10 13:51:25,752 INFO [master_bot.orders] offer_accept: UPDATE orders completed for order=15, checking result...
+2025-10-10 13:51:25,753 INFO [master_bot.orders] offer_accept: UPDATE orders SUCCESS for order=15, starting UPDATE offers...
+2025-10-10 13:51:25,756 INFO [master_bot.orders] offer_accept: UPDATE offers completed for order=15 master=86, checking result...
+2025-10-10 13:51:25,756 INFO [master_bot.orders] offer_accept: UPDATE offers result for order=15: SUCCESS
+2025-10-10 13:51:25,757 INFO [master_bot.orders] offer_accept: canceling other masters' offers for order=15
+2025-10-10 13:51:25,760 INFO [master_bot.orders] offer_accept: other masters' offers canceled for order=15, inserting status history
+2025-10-10 13:51:25,763 INFO [master_bot.orders] offer_accept: status history inserted successfully for order=15
+2025-10-10 13:51:25,763 INFO [master_bot.orders] offer_accept: starting distribution_metrics recording for order=15
+2025-10-10 13:51:25,763 INFO [master_bot.orders] offer_accept: fetching order info for metrics, order=15
+2025-10-10 13:51:25,771 INFO [master_bot.orders] offer_accept: order info fetched, fetching offer stats for order=15
+2025-10-10 13:51:25,774 INFO [master_bot.orders] offer_accept: offer stats fetched for order=15, order_row=True stats_row=True
+2025-10-10 13:51:25,774 INFO [master_bot.orders] offer_accept: inserting distribution_metrics for order=15
+2025-10-10 13:51:25,778 ERROR [master_bot.orders] Failed to record distribution_metrics for order=15: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) <class 'asyncpg.exceptions.UndefinedObjectError'>: type "ordercategory" does not exist
+[SQL: INSERT INTO distribution_metrics (order_id, master_id, round_number, candidates_count, time_to_assign_seconds, preferred_master_used, was_escalated_to_logist, was_escalated_to_admin, city_id, district_id, category, order_type, metadata_json) VALUES ($1::INTEGER, $2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::BOOLEAN, $7::BOOLEAN, $8::BOOLEAN, $9::INTEGER, $10::INTEGER, $11::ordercategory, $12::VARCHAR, $13::JSONB) RETURNING distribution_metrics.id]
+[parameters: (15, 86, 12, 1, 8098, False, False, False, 203, 2333, 'ELECTRICS', <OrderType.NORMAL: 'NORMAL'>, '{"accepted_via": "master_bot", "from_status": "SEARCHING"}')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-10-10 13:51:25,779 INFO [master_bot.orders] offer_accept: committing transaction for order=15
+2025-10-10 13:51:25,780 INFO [master_bot.orders] offer_accept: transaction committed successfully for order=15
+2025-10-10 13:51:26,034 INFO [aiogram.event] Update id=266071746 is handled. Duration 297 ms by bot id=8423680284
+2025-10-10 13:51:40,497 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:menu'
+2025-10-10 13:51:40,713 INFO [aiogram.event] Update id=266071747 is handled. Duration 218 ms by bot id=8423680284
+2025-10-10 13:51:41,728 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:act'
+2025-10-10 13:51:41,744 INFO [master_bot.orders] active_order_entry: uid=332786197 order_id=None
+2025-10-10 13:51:41,889 INFO [aiogram.event] Update id=266071748 is handled. Duration 172 ms by bot id=8423680284
+2025-10-10 13:51:42,665 INFO [master_bot.debug] Callback uid=332786197 chat=332786197 data='m:menu'
+2025-10-10 13:51:42,927 INFO [aiogram.event] Update id=266071749 is handled. Duration 265 ms by bot id=8423680284

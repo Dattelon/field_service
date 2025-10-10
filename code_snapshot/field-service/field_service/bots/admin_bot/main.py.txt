@@ -160,9 +160,10 @@ async def main() -> int:
     )
 
     # P1-21: Напоминания о дедлайне комиссии (24ч, 6ч, 1ч)
+    # Передаём master_bot_token чтобы уведомления шли мастерам в их бот!
     deadline_reminders_task = asyncio.create_task(
         watchdog_commission_deadline_reminders(
-            bot,
+            master_bot_token=settings.master_bot_token,  # ← master_bot для мастеров!
             interval_seconds=1800,  # Проверка каждые 30 минут
         ),
         name="commission_deadline_reminders",

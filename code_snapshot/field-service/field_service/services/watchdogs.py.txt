@@ -172,105 +172,123 @@ async def _notify_master_blocked(bot: Bot, event: CommissionOverdueEvent) -> Non
 
 
 async def watchdog_commission_deadline_reminders(
-    bot: Bot,
+    master_bot_token: str,
     interval_seconds: int = 600,
     *,
     iterations: int | None = None,
 ) -> None:
-    """P1-21: Periodically check commissions and send deadline reminders at 24h, 6h, 1h before deadline."""
+    """P1-21: Periodically check commissions and send deadline reminders at 24h, 6h, 1h before deadline.
+    
+    Args:
+        master_bot_token: Token master-бота для отправки уведомлений мастерам
+        interval_seconds: Интервал проверки в секундах
+        iterations: Количество итераций (None = бесконечно)
+    """
     from datetime import timedelta
     from sqlalchemy import and_, insert
+    from aiogram.client.default import DefaultBotProperties
+    from aiogram.enums import ParseMode
 
     REMINDER_HOURS = [24, 6, 1]  # Отправляем уведомления за 24ч, 6ч и 1ч
+    
+    # Создаём master bot instance для отправки мастерам
+    master_bot = Bot(
+        master_bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
     
     sleep_for = max(60, int(interval_seconds) if interval_seconds else 600)
     loops_done = 0
     
-    while True:
-        try:
-            now = datetime.now(UTC)
-            async with SessionLocal() as session:
-                # Находим все комиссии в статусе WAIT_PAY
-                result = await session.execute(
-                    select(m.commissions)
-                    .where(
-                        and_(
-                            m.commissions.status == m.CommissionStatus.WAIT_PAY,
-                            m.commissions.deadline_at > now  # Ещё не просрочены
+    try:
+        while True:
+            try:
+                now = datetime.now(UTC)
+                async with SessionLocal() as session:
+                    # Находим все комиссии в статусе WAIT_PAY
+                    result = await session.execute(
+                        select(m.commissions)
+                        .where(
+                            and_(
+                                m.commissions.status == m.CommissionStatus.WAIT_PAY,
+                                m.commissions.deadline_at > now  # Ещё не просрочены
+                            )
                         )
                     )
-                )
-                pending_commissions = result.scalars().all()
-                
-                notifications_sent = 0
-                
-                for commission in pending_commissions:
-                    time_until_deadline = commission.deadline_at - now
-                    hours_until = time_until_deadline.total_seconds() / 3600
+                    pending_commissions = result.scalars().all()
                     
-                    # Проверяем каждый порог уведомлений
-                    for reminder_hours in REMINDER_HOURS:
-                        # Нужно отправить если:
-                        # 1. До дедлайна осталось меньше reminder_hours
-                        # 2. Ещё не отправляли уведомление для этого порога
-                        if hours_until <= reminder_hours:
-                            # Проверяем не отправляли ли уже
-                            check = await session.execute(
-                                select(m.commission_deadline_notifications)
-                                .where(
-                                    and_(
-                                        m.commission_deadline_notifications.commission_id == commission.id,
-                                        m.commission_deadline_notifications.hours_before == reminder_hours
-                                    )
-                                )
-                            )
-                            already_sent = check.scalar_one_or_none()
-                            
-                            if not already_sent:
-                                # Отправляем уведомление
-                                sent = await _send_deadline_reminder(
-                                    bot, 
-                                    session, 
-                                    commission, 
-                                    reminder_hours
-                                )
-                                
-                                if sent:
-                                    # Записываем что отправили
-                                    await session.execute(
-                                        insert(m.commission_deadline_notifications).values(
-                                            commission_id=commission.id,
-                                            hours_before=reminder_hours
+                    notifications_sent = 0
+                    
+                    for commission in pending_commissions:
+                        time_until_deadline = commission.deadline_at - now
+                        hours_until = time_until_deadline.total_seconds() / 3600
+                        
+                        # Проверяем каждый порог уведомлений
+                        for reminder_hours in REMINDER_HOURS:
+                            # Нужно отправить если:
+                            # 1. До дедлайна осталось меньше reminder_hours
+                            # 2. Ещё не отправляли уведомление для этого порога
+                            if hours_until <= reminder_hours:
+                                # Проверяем не отправляли ли уже
+                                check = await session.execute(
+                                    select(m.commission_deadline_notifications)
+                                    .where(
+                                        and_(
+                                            m.commission_deadline_notifications.commission_id == commission.id,
+                                            m.commission_deadline_notifications.hours_before == reminder_hours
                                         )
                                     )
-                                    notifications_sent += 1
-                
-                await session.commit()
-                
-                if notifications_sent > 0:
-                    live_log.push(
-                        "watchdog",
-                        f"commission_deadline_reminders sent={notifications_sent}",
-                        level="INFO"
-                    )
-                    logger.info(
-                        "commission_deadline_reminders sent=%d notifications",
-                        notifications_sent
-                    )
+                                )
+                                already_sent = check.scalar_one_or_none()
+                                
+                                if not already_sent:
+                                    # Отправляем уведомление мастеру через master_bot
+                                    sent = await _send_deadline_reminder(
+                                        master_bot,  # ← Используем master_bot!
+                                        session, 
+                                        commission, 
+                                        reminder_hours
+                                    )
+                                    
+                                    if sent:
+                                        # Записываем что отправили
+                                        await session.execute(
+                                            insert(m.commission_deadline_notifications).values(
+                                                commission_id=commission.id,
+                                                hours_before=reminder_hours
+                                            )
+                                        )
+                                        notifications_sent += 1
                     
-        except Exception as exc:
-            logger.exception("watchdog_commission_deadline_reminders error")
-            live_log.push(
-                "watchdog",
-                f"watchdog_commission_deadline_reminders error: {exc}",
-                level="ERROR"
-            )
-        
-        loops_done += 1
-        if iterations is not None and loops_done >= iterations:
-            break
-        
-        await asyncio.sleep(sleep_for)
+                    await session.commit()
+                    
+                    if notifications_sent > 0:
+                        live_log.push(
+                            "watchdog",
+                            f"commission_deadline_reminders sent={notifications_sent}",
+                            level="INFO"
+                        )
+                        logger.info(
+                            "commission_deadline_reminders sent=%d notifications",
+                            notifications_sent
+                        )
+                        
+            except Exception as exc:
+                logger.exception("watchdog_commission_deadline_reminders error")
+                live_log.push(
+                    "watchdog",
+                    f"watchdog_commission_deadline_reminders error: {exc}",
+                    level="ERROR"
+                )
+            
+            loops_done += 1
+            if iterations is not None and loops_done >= iterations:
+                break
+            
+            await asyncio.sleep(sleep_for)
+    finally:
+        # Закрываем master_bot session
+        await master_bot.session.close()
 
 
 async def _send_deadline_reminder(
