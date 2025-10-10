@@ -290,6 +290,7 @@ async def offer_accept(
         await _render_offers(callback, session, master, page=page)
         return
 
+    _log.info("offer_accept: starting UPDATE orders for order=%s master=%s", order_id, master.id)
     updated = await session.execute(
         update(m.orders)
         .where(
@@ -308,11 +309,15 @@ async def offer_accept(
         )
         .returning(m.orders.id)
     )
+    _log.info("offer_accept: UPDATE orders completed for order=%s, checking result...", order_id)
+    
     if not updated.first():
+        _log.warning("offer_accept: UPDATE orders returned 0 rows for order=%s (already taken or status changed)", order_id)
         await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
         await _render_offers(callback, session, master, page=page)
         return
 
+    _log.info("offer_accept: UPDATE orders SUCCESS for order=%s, starting UPDATE offers...", order_id)
     # Обновляем только активный оффер мастера (SENT/VIEWED → ACCEPTED)
     # ВАЖНО: Добавляем проверку expires_at в WHERE чтобы избежать race condition с watchdog
     offer_update_result = await session.execute(
@@ -332,9 +337,12 @@ async def offer_accept(
         .values(state=m.OfferState.ACCEPTED, responded_at=func.now())
         .returning(m.offers.id)
     )
+    _log.info("offer_accept: UPDATE offers completed for order=%s master=%s, checking result...", order_id, master.id)
     
     # Если не удалось обновить - оффер истёк или уже обработан
-    if not offer_update_result.first():
+    offer_first = offer_update_result.first()
+    _log.info("offer_accept: UPDATE offers result for order=%s: %s", order_id, "SUCCESS" if offer_first else "FAILED")
+    if not offer_first:
         _log.warning(
             "offer_accept: failed to update offer to ACCEPTED for order=%s master=%s (likely expired or changed state)",
             order_id, master.id
@@ -344,6 +352,8 @@ async def offer_accept(
         await session.rollback()
         await _render_offers(callback, session, master, page=page)
         return
+    
+    _log.info("offer_accept: canceling other masters' offers for order=%s", order_id)
     # Отменяем офферы других мастеров
     await session.execute(
         update(m.offers)
@@ -356,25 +366,37 @@ async def offer_accept(
         )
         .values(state=m.OfferState.CANCELED, responded_at=func.now())
     )
-    await session.execute(
-        insert(m.order_status_history).values(
-            order_id=order_id,
-            from_status=current_status,
-            to_status=m.OrderStatus.ASSIGNED,
-            changed_by_master_id=master.id,
-            reason="accepted_by_master",
-            actor_type=m.ActorType.MASTER,
-            context={
-                "master_id": master.id,
-                "master_name": f"{master.last_name} {master.first_name}".strip(),
-                "action": "offer_accepted",
-                "method": "manual_accept"
-            }
-        )
-    )
+    _log.info("offer_accept: other masters' offers canceled for order=%s, inserting status history", order_id)
     
+    try:
+        await session.execute(
+            insert(m.order_status_history).values(
+                order_id=order_id,
+                from_status=current_status,
+                to_status=m.OrderStatus.ASSIGNED,
+                changed_by_master_id=master.id,
+                reason="accepted_by_master",
+                actor_type=m.ActorType.MASTER,
+                context={
+                    "master_id": master.id,
+                    "master_name": f"{master.last_name} {master.first_name}".strip(),
+                    "action": "offer_accepted",
+                    "method": "manual_accept"
+                }
+            )
+        )
+        _log.info("offer_accept: status history inserted successfully for order=%s", order_id)
+    except Exception as history_err:
+        _log.exception("offer_accept: FAILED to insert status history for order=%s: %s", order_id, history_err)
+        await session.rollback()
+        await safe_answer_callback(callback, "❌ Ошибка при принятии заказа", show_alert=True)
+        await _render_offers(callback, session, master, page=page)
+        return
+    
+    _log.info("offer_accept: starting distribution_metrics recording for order=%s", order_id)
     # ✅ STEP 4.1: Запись метрик распределения для аналитики
     try:
+        _log.info("offer_accept: fetching order info for metrics, order=%s", order_id)
         # Получаем полную информацию о заказе для метрик
         order_info = await session.execute(
             select(
@@ -389,6 +411,7 @@ async def offer_accept(
             ).where(m.orders.id == order_id)
         )
         order_row = order_info.first()
+        _log.info("offer_accept: order info fetched, fetching offer stats for order=%s", order_id)
         
         # Получаем раунд и количество кандидатов из offers
         offer_stats = await session.execute(
@@ -398,11 +421,14 @@ async def offer_accept(
             ).where(m.offers.order_id == order_id)
         )
         stats_row = offer_stats.first()
+        _log.info("offer_accept: offer stats fetched for order=%s, order_row=%s stats_row=%s", 
+                 order_id, order_row is not None, stats_row is not None)
         
         if order_row and stats_row:
             now_utc = datetime.now(timezone.utc)
             time_to_assign = int((now_utc - order_row.created_at).total_seconds()) if order_row.created_at else None
             
+            _log.info("offer_accept: inserting distribution_metrics for order=%s", order_id)
             await session.execute(
                 insert(m.distribution_metrics).values(
                     order_id=order_id,
@@ -431,7 +457,9 @@ async def offer_accept(
         # Метрики не должны ломать основной процесс
         _log.error("Failed to record distribution_metrics for order=%s: %s", order_id, metrics_err)
     
+    _log.info("offer_accept: committing transaction for order=%s", order_id)
     await session.commit()
+    _log.info("offer_accept: transaction committed successfully for order=%s", order_id)
 
     await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=True)
     await _render_offers(callback, session, master, page=page)
