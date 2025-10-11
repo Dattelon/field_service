@@ -35,6 +35,27 @@ router = Router(name="admin_finance")
 _log = logging.getLogger("admin_bot.finance")
 
 
+# BUGFIX 2025-10-10: Helper для получения staff в FSM Message handlers
+async def _get_staff_from_message(msg: Message) -> StaffUser | None:
+    """
+    Получаем staff напрямую из сервиса, т.к. глобальный middleware
+    не всегда применяется к FSM Message handlers.
+    """
+    if not msg.from_user:
+        return None
+    
+    from ...infrastructure.registry import get_service
+    staff_service = get_service("staff_service")
+    if not staff_service:
+        return None
+    
+    return await staff_service.get_by_tg_id_or_username(
+        tg_id=msg.from_user.id,
+        username=msg.from_user.username,
+        update_tg_id=False,
+    )
+
+
 # CR-2025-10-03-012: Safe callback answer wrapper
 async def _safe_answer(cq: CallbackQuery, text: str = "", show_alert: bool = False) -> None:
     """Safely answer callback query, ignoring 'query is too old' errors."""
@@ -366,7 +387,8 @@ async def on_owner_requisites_field_select(
     if not cq.message or not cq.data:
         await _safe_answer(cq)
         return
-    field = cq.data.split(":", maxsplit=3)[-1]
+    # Извлекаем имя поля из callback_data: "adm:f:set:field:methods" -> "methods"
+    field = cq.data.split(":")[-1]
     if field not in _OWNER_FIELDS:
         await _safe_answer(cq, "Неизвестное поле", show_alert=True)
         return
@@ -390,23 +412,75 @@ async def on_owner_requisites_field_select(
         owner_pay_field=field,
         owner_pay_origin=(cq.message.chat.id, cq.message.message_id),
     )
+    
+    # Добавляем кнопку отмены
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    kb = InlineKeyboardBuilder()
+    kb.button(text="❌ Отмена", callback_data="adm:f:set:edit:cancel")
+    
     await cq.message.answer(
-        f"<b>{_OWNER_FIELDS[field]}</b>\nТекущее значение: {html.escape(str(rendered))}\n\n{prompt}"
+        f"<b>{_OWNER_FIELDS[field]}</b>\nТекущее значение: {html.escape(str(rendered))}\n\n{prompt}",
+        reply_markup=kb.as_markup()
     )
+    await _safe_answer(cq)
+
+
+@router.callback_query(
+    F.data == "adm:f:set:edit:cancel",
+    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
+)
+async def on_owner_requisites_edit_cancel_button(
+    cq: CallbackQuery,
+    staff: StaffUser,
+    state: FSMContext,
+) -> None:
+    """Обработчик кнопки отмены редактирования поля."""
+    if not cq.message:
+        await _safe_answer(cq)
+        return
+    data = await state.get_data()
+    origin = _get_origin(data)
+    await state.set_state(None)
+    await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
+    await cq.message.answer("❌ Редактирование отменено.")
+    await _rerender_origin(cq.message.bot, staff, origin)
     await _safe_answer(cq)
 
 
 @router.message(StateFilter(OwnerPayEditFSM.value), F.text == "/cancel")
 async def on_owner_requisites_edit_cancel(
     msg: Message,
-    staff: StaffUser,
     state: FSMContext,
+    staff: StaffUser | None = None,
 ) -> None:
+    # BUGFIX 2025-10-10: Получаем staff напрямую, если middleware не передал
+    if not staff:
+        staff = await _get_staff_from_message(msg)
+    if not staff:
+        await state.clear()
+        await msg.answer("❌ Ошибка доступа. Попробуйте начать редактирование заново через меню.")
+        return
+    
+    # SECURITY: Проверяем роль - только GLOBAL_ADMIN может редактировать реквизиты владельца
+    if staff.role != StaffRole.GLOBAL_ADMIN:
+        await state.clear()
+        await msg.answer("❌ Доступ запрещён. Редактировать реквизиты владельца может только глобальный администратор.")
+        return
+    
     data = await state.get_data()
     origin = _get_origin(data)
     await state.set_state(None)
     await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer("❌ Редактирование отменено.")
+    
+    # Показываем кнопки возврата
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📋 Реквизиты владельца", callback_data="adm:f:set")
+    kb.button(text="✏️ Редактировать", callback_data="adm:f:set:edit")
+    kb.button(text="💰 К финансам", callback_data="adm:f")
+    kb.adjust(1)
+    
+    await msg.answer("❌ Редактирование отменено.", reply_markup=kb.as_markup())
     await _rerender_origin(msg.bot, staff, origin)
 
 
@@ -601,9 +675,23 @@ async def on_finance_bulk_approve_execute(
 @router.message(StateFilter(OwnerPayEditFSM.value))
 async def on_owner_requisites_edit_value(
     msg: Message,
-    staff: StaffUser,
     state: FSMContext,
+    staff: StaffUser | None = None,
 ) -> None:
+    # BUGFIX 2025-10-10: Получаем staff напрямую, если middleware не передал
+    if not staff:
+        staff = await _get_staff_from_message(msg)
+    if not staff:
+        await state.clear()
+        await msg.answer("❌ Ошибка доступа. Попробуйте начать редактирование заново через меню.")
+        return
+    
+    # SECURITY: Проверяем роль - только GLOBAL_ADMIN может редактировать реквизиты владельца
+    if staff.role != StaffRole.GLOBAL_ADMIN:
+        await state.clear()
+        await msg.answer("❌ Доступ запрещён. Редактировать реквизиты владельца может только глобальный администратор.")
+        return
+    
     data = await state.get_data()
     field = data.get("owner_pay_field")
     if not field or field not in _OWNER_FIELDS:
@@ -619,7 +707,19 @@ async def on_owner_requisites_edit_value(
     snapshot = await _update_owner_snapshot(msg.bot, field, value)
     await state.set_state(None)
     await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer("✅ Значение сохранено.")
+    
+    # Показываем подтверждение с кнопкой возврата
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📋 Реквизиты владельца", callback_data="adm:f:set")
+    kb.button(text="✏️ Продолжить редактирование", callback_data="adm:f:set:edit")
+    kb.button(text="💰 К финансам", callback_data="adm:f")
+    kb.adjust(1)
+    
+    await msg.answer(
+        f"✅ Значение сохранено.\n\n<b>{_OWNER_FIELDS[field]}</b> обновлено.",
+        reply_markup=kb.as_markup()
+    )
     live_log.push("finance", f"owner_pay:{field} updated by staff {staff.id}")
     await _rerender_origin(msg.bot, staff, origin)
 
@@ -1245,7 +1345,19 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
 
 
 @router.message(StateFilter(FinanceActionFSM.reject_reason))
-async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+async def finance_reject_reason(
+    msg: Message,
+    state: FSMContext,
+    staff: StaffUser | None = None,
+) -> None:
+    # BUGFIX 2025-10-10: Получаем staff напрямую, если middleware не передал
+    if not staff:
+        staff = await _get_staff_from_message(msg)
+    if not staff:
+        await state.clear()
+        await msg.answer("❌ Ошибка доступа. Попробуйте начать операцию заново через меню.")
+        return
+    
     reason = (msg.text or "").strip()
     
     # Обработка отмены
@@ -1307,10 +1419,16 @@ async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContex
 
 
 @router.message(StateFilter(FinanceActionFSM.approve_amount))
-async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+async def finance_approve_amount(
+    msg: Message,
+    state: FSMContext,
+    staff: StaffUser | None = None,
+) -> None:
     from decimal import Decimal
     
-    # CR-2025-10-03-FIX: Validate staff.id before database operations
+    # BUGFIX 2025-10-10: Получаем staff напрямую, если middleware не передал
+    if not staff:
+        staff = await _get_staff_from_message(msg)
     if not staff or staff.id is None or staff.id <= 0:
         await state.clear()
         await msg.answer("❌ Ошибка: некорректный ID персонала")
