@@ -63,8 +63,17 @@ def _format_break_time_left(break_until: datetime) -> str:
 
 @router.message(CommandStart())
 async def handle_start(message: Message, state: FSMContext, master: m.masters) -> None:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"handle_start: START uid={message.from_user.id if message.from_user else 'None'} master_id={master.id if master else 'None'}")
     await state.clear()
-    await _render_start(message, master)
+    logger.info(f"handle_start: calling _render_start")
+    try:
+        await _render_start(message, master)
+        logger.info(f"handle_start: _render_start completed")
+    except Exception as e:
+        logger.exception(f"handle_start: ERROR {e}")
+        raise
 
 @router.message(Command("cancel"))
 async def handle_cancel(message: Message, state: FSMContext, master: m.masters) -> None:
