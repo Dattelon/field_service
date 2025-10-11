@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+from datetime import datetime, timezone
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
@@ -14,7 +15,7 @@ from field_service.db import models as m
 
 from ..keyboards import main_menu_keyboard, start_onboarding_keyboard
 from ..texts import START_APPROVED, START_BLOCKED, START_NOT_APPROVED
-from ..utils import escape_html
+from ..utils import escape_html, now_utc
 
 router = Router(name="master_start")
 
@@ -23,6 +24,41 @@ _STATUS_TITLES = {
     m.ModerationStatus.APPROVED: "Одобрено",
     m.ModerationStatus.REJECTED: "Отклонено",
 }
+
+
+def _format_break_time_left(break_until: datetime) -> str:
+    """
+    Форматирует оставшееся время перерыва в человеко-читаемый вид.
+    
+    Args:
+        break_until: Время окончания перерыва (UTC)
+    
+    Returns:
+        Строка вида "⏰ Перерыв до 14:30 (осталось 45 мин)"
+    """
+    now = now_utc()
+    
+    # Если перерыв уже закончился
+    if break_until <= now:
+        return "⏰ Перерыв закончился"
+    
+    # Вычисляем оставшееся время
+    time_left = break_until - now
+    total_seconds = int(time_left.total_seconds())
+    
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    
+    # Форматируем время окончания перерыва (локальное время)
+    break_time_str = break_until.strftime("%H:%M")
+    
+    # Форматируем оставшееся время
+    if hours > 0:
+        time_left_str = f"{hours} ч {minutes} мин"
+    else:
+        time_left_str = f"{minutes} мин"
+    
+    return f"⏰ Перерыв до {break_time_str} (осталось {time_left_str})"
 
 
 @router.message(CommandStart())
@@ -64,8 +100,15 @@ async def handle_cancel_callback(callback: CallbackQuery, state: FSMContext, mas
         "<b>Field Service — мастер</b>",
         f"Статус анкеты: {status_label}",
         "",
-        escape_html(text),
     ]
+    
+    # Если мастер на перерыве, показываем таймер
+    if verified and master.shift_status == m.ShiftStatus.BREAK and master.break_until:
+        break_info = _format_break_time_left(master.break_until)
+        lines.append(break_info)
+        lines.append("")
+    
+    lines.append(escape_html(text))
     
     # Удаляем старое сообщение и отправляем новое
     await safe_delete_and_send(callback, "\n".join(lines), keyboard)
@@ -100,8 +143,15 @@ async def handle_menu(callback: CallbackQuery, state: FSMContext, master: m.mast
         "<b>Field Service — мастер</b>",
         f"Статус анкеты: {status_label}",
         "",
-        escape_html(text),
     ]
+    
+    # Если мастер на перерыве, показываем таймер
+    if verified and master.shift_status == m.ShiftStatus.BREAK and master.break_until:
+        break_info = _format_break_time_left(master.break_until)
+        lines.append(break_info)
+        lines.append("")
+    
+    lines.append(escape_html(text))
     
     # Удаляем старое сообщение и отправляем новое
     await safe_delete_and_send(callback, "\n".join(lines), keyboard)
@@ -132,8 +182,16 @@ async def _render_start(message: Message, master: m.masters) -> None:
         "<b>Field Service — мастер</b>",
         f"Статус анкеты: {status_label}",
         "",
-        escape_html(text),
     ]
+    
+    # Если мастер на перерыве, показываем таймер
+    if verified and master.shift_status == m.ShiftStatus.BREAK and master.break_until:
+        break_info = _format_break_time_left(master.break_until)
+        lines.append(break_info)
+        lines.append("")
+    
+    lines.append(escape_html(text))
+    
     await safe_edit_or_send(message, "\n".join(lines), keyboard)
 
 

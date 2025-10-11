@@ -289,12 +289,32 @@ def close_order_cancel_keyboard() -> InlineKeyboardMarkup:
 
 
 
+# P1-16: Клавиатура выбора длительности перерыва
+def break_duration_keyboard(extend_mode: bool = False) -> InlineKeyboardMarkup:
+    """
+    Клавиатура выбора длительности перерыва.
+    
+    Args:
+        extend_mode: Если True, используется для продления перерыва (другие callback_data)
+    """
+    prefix = "m:sh:brk:ext:" if extend_mode else "m:sh:brk:"
+    
+    return inline_keyboard(
+        [
+            [InlineKeyboardButton(text="☕ 15 минут", callback_data=f"{prefix}15m")],
+            [InlineKeyboardButton(text="🍔 1 час", callback_data=f"{prefix}1h")],
+            [InlineKeyboardButton(text="😴 2 часа", callback_data=f"{prefix}2h")],
+            cancel_button(),
+        ]
+    )
+
+
 # P1-16: Клавиатура для напоминания о перерыве
 def break_reminder_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура для напоминания об окончании перерыва."""
     return inline_keyboard(
         [
             [InlineKeyboardButton(text="🟢 Вернуться на смену", callback_data="m:sh:brk:ok")],
-            [InlineKeyboardButton(text="☕ Продлить перерыв на 2 часа", callback_data="m:sh:brk:extend")],
+            [InlineKeyboardButton(text="☕ Продлить перерыв", callback_data="m:sh:brk:extend")],
         ]
     )

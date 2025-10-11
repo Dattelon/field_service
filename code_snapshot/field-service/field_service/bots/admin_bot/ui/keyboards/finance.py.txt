@@ -140,9 +140,8 @@ def finance_reject_cancel_keyboard(commission_id: int) -> InlineKeyboardMarkup:
 def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text="✏️ Редактировать", callback_data="adm:f:set:edit")
-    kb.button(text="📢 Разослать мастерам", callback_data="adm:f:set:bc")
     kb.button(text="⬅️ Назад", callback_data="adm:f")
-    kb.adjust(2, 1)
+    kb.adjust(1)
     return kb.as_markup()
 
 

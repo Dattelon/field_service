@@ -681,7 +681,7 @@ async def deploy_execute(callback: CallbackQuery, **kwargs):
     deploy_steps = [
         ("Создание бэкапа", "/usr/local/bin/field-service-backup.sh daily"),
         ("Проверка статуса", f"cd {PROJECT_PATH} && docker compose ps"),
-        ("Сборка образов", f"cd {PROJECT_PATH} && docker compose build"),
+        ("Сборка образов", f"cd {PROJECT_PATH} && docker compose build --no-cache"),
         ("Применение миграций", f"cd {PROJECT_PATH} && docker compose run --rm admin-bot alembic upgrade head"),
         ("Перезапуск", f"cd {PROJECT_PATH} && docker compose up -d --no-deps admin-bot master-bot"),
     ]
@@ -752,7 +752,7 @@ async def git_deploy_execute(callback: CallbackQuery, **kwargs):
         ("Восстановление .env", f"cp /tmp/field-service.env.backup {PROJECT_PATH}/.env"),
         ("Создание бэкапа", "/usr/local/bin/field-service-backup.sh daily"),
         ("Проверка статуса", f"cd {PROJECT_PATH} && docker compose ps"),
-        ("Сборка образов", f"cd {PROJECT_PATH} && docker compose build"),
+        ("Сборка образов", f"cd {PROJECT_PATH} && docker compose build --no-cache"),
         ("Применение миграций", f"cd {PROJECT_PATH} && docker compose run --rm admin-bot alembic upgrade head"),
         ("Перезапуск", f"cd {PROJECT_PATH} && docker compose up -d --no-deps admin-bot master-bot"),
     ]

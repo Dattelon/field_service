@@ -11,17 +11,22 @@ field-service/
 ├── BUGFIX_DEFERRED_DISTRIBUTION.md
 ├── BUGFIX_DEFERRED_QUICKSTART.md
 ├── BUGFIX_EXPIRED_OFFERS_QUICKSTART.md
+├── BUGFIX_OWNER_REQUISITES_2025-10-10.md
+├── BUGFIX_OWNER_REQUISITES_AND_BREAKS_2025-10-10.md
 ├── BUGFIX_SBP_BANK_ONBOARDING.md
 ├── BUGFIX_SBP_QUICKSTART.md
 ├── CHANGELOG.md
+├── CHANGELOG_FLEXIBLE_BREAKS.md
 ├── docker-compose.yml
 ├── Dockerfile
 ├── fix_indents_v2.py
+├── FLEXIBLE_BREAKS_DEPLOYMENT.md
 ├── master_bot_error.log
 ├── master_bot_output.log
 ├── mypy.ini
 ├── P1_02_UI_IMPROVEMENTS_COMPLETE.md
 ├── pytest.ini
+├── QUICKSTART_FLEXIBLE_BREAKS.md
 ├── QUICKSTART_P1_02.md
 ├── README.md
 ├── requirements.txt
@@ -420,6 +425,7 @@ field-service/
 │   ├── test_step_3_optimizations.py
 │   ├── test_structured_logging.py
 │   ├── test_time_service_boundaries.py
+│   ├── test_watchdog_expired_breaks.py
 │   ├── test_watchdog_expired_offers.py
 │   ├── test_watchdogs_overdue.py
 │   ├── TESTING_GUIDELINES.md

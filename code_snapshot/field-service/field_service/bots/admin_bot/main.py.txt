@@ -23,6 +23,7 @@ from field_service.services.watchdogs import (
     watchdog_commissions_overdue,
     watchdog_commission_deadline_reminders,  # P1-21
     watchdog_expired_offers,  # Watchdog для истёкших офферов
+    watchdog_expired_breaks,  # BUGFIX 2025-10-10: Авто-завершение перерывов
 )
 from field_service.services.autoclose_scheduler import autoclose_scheduler  # P1-01
 from field_service.services.unassigned_monitor import monitor_unassigned_orders
@@ -73,19 +74,7 @@ async def main() -> int:
     # Глобальное логирование всех callback (для отладки)
     dp.update.outer_middleware(log_all_callbacks_middleware)
     
-    # P2-08: Используем только модульные роутеры из handlers/
-    dp.include_router(create_combined_router())
-    
-    # CR-2025-10-03-007: Финансы
-    dp.include_router(finance_router)
-    
-    # Модерация и управление мастерами (moderation ПЕРЕД masters, т.к. masters имеет catch-all)
-    dp.include_router(admin_moderation_router)
-    dp.include_router(admin_masters_router)
-    
-    # P1-13: Retry функциональность для повтора действий при ошибках
-    dp.include_router(retry_router)
-
+    # CRITICAL: Сначала создаём сервисы и регистрируем middleware
     services = {
         "staff_service": DBStaffService(),
         "orders_service": DBOrdersService(),
@@ -102,8 +91,22 @@ async def main() -> int:
     if seeded:
         logger.info("Seeded %d GLOBAL_ADMIN from GLOBAL_ADMINS_TG_IDS", seeded)
 
+    # CRITICAL: Middleware ДОЛЖЕН быть зарегистрирован ДО include_router()
     superuser_ids = set(settings.admin_bot_superusers) | set(settings.global_admins_tg_ids)
     dp.update.middleware(StaffAccessMiddleware(staff_service, superuser_ids))
+    
+    # P2-08: Используем только модульные роутеры из handlers/
+    dp.include_router(create_combined_router())
+    
+    # CR-2025-10-03-007: Финансы
+    dp.include_router(finance_router)
+    
+    # Модерация и управление мастерами (moderation ПЕРЕД masters, т.к. masters имеет catch-all)
+    dp.include_router(admin_moderation_router)
+    dp.include_router(admin_masters_router)
+    
+    # P1-13: Retry функциональность для повтора действий при ошибках
+    dp.include_router(retry_router)
 
     channel_settings = await services["settings_service"].get_channel_settings()
     alerts_chat_id = channel_settings.get("alerts_channel_id") or settings.alerts_channel_id
@@ -177,6 +180,14 @@ async def main() -> int:
         name="expired_offers_watchdog",
     )
 
+    # BUGFIX 2025-10-10: Watchdog для автоматического завершения просроченных перерывов
+    expired_breaks_task = asyncio.create_task(
+        watchdog_expired_breaks(
+            interval_seconds=60,  # Проверка каждую минуту
+        ),
+        name="expired_breaks_watchdog",
+    )
+
     exit_code = 0
     try:
         await poll_with_single_instance_guard(
@@ -202,6 +213,7 @@ async def main() -> int:
             autoclose_task,
             deadline_reminders_task,  # P1-21
             expired_offers_task,  # Watchdog истёкших офферов
+            expired_breaks_task,  # BUGFIX 2025-10-10: Watchdog просроченных перерывов
             unassigned_task,
         ):
             if task:
