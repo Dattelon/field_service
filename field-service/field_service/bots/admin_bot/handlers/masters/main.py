@@ -956,10 +956,6 @@ async def change_limit(message: Message, state: FSMContext, staff: StaffUser) ->
     await state.clear()
 
 
-@router.callback_query(
-    F.data.startswith("adm:m:docs"),
-    StaffRoleFilter(VIEW_ROLES),
-)
 async def _relay_document(current_bot, *, chat_id: int, file_id: str, file_type: str, caption: str = "", filename: str | None = None) -> bool:
     token = getattr(env_settings, 'master_bot_token', None)
     if not token:
@@ -1007,13 +1003,21 @@ async def _clear_document_messages(bot: Bot, state: FSMContext, chat_id: int) ->
     await state.update_data(document_msg_ids=[])
 
 
+@router.callback_query(
+    F.data.startswith("adm:m:docs") | F.data.startswith("adm:mod:docs"),
+    StaffRoleFilter(VIEW_ROLES),
+)
 async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    logger.info(f"[DOCS] Handler called for {cq.data}")
     try:
         action = parse_master_action(cq.data)
     except ValueError:
+        logger.error(f"[DOCS] Failed to parse action from {cq.data}")
         await cq.answer("Некорректный идентификатор", show_alert=True)
         return
     master_id = action.master_id
+    logger.info(f"[DOCS] Master ID: {master_id}")
+    
     try:
         await cq.answer()
     except Exception:
@@ -1025,37 +1029,51 @@ async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext)
     
     service = _masters_service(cq.bot)
     detail = await service.get_master_detail(master_id)
+    logger.info(f"[DOCS] Master detail fetched. Has detail: {detail is not None}")
+    
     if not detail or not detail.documents:
+        logger.info(f"[DOCS] No documents found. detail={detail is not None}, documents={len(detail.documents) if detail else 0}")
         if cq.message:
             await cq.message.answer("Документы отсутствуют")
         return
     
+    logger.info(f"[DOCS] Found {len(detail.documents)} documents")
     chat_id = cq.message.chat.id if cq.message else None
     sent_msg_ids = []
     
-    for document in detail.documents:
+    for idx, document in enumerate(detail.documents):
         caption = document.caption or document.document_type or ''
         file_type = (document.file_type or '').upper()
+        logger.info(f"[DOCS] Document {idx+1}: type={file_type}, file_id={document.file_id[:20]}...")
         sent_msg = None
         try:
             if file_type == 'PHOTO':
+                logger.info(f"[DOCS] Sending photo {idx+1}")
                 sent_msg = await cq.message.answer_photo(document.file_id, caption=caption)
             elif file_type == 'DOCUMENT':
+                logger.info(f"[DOCS] Sending document {idx+1}")
                 sent_msg = await cq.message.answer_document(document.file_id, caption=caption)
             else:
+                logger.warning(f"[DOCS] Unknown file type: {document.file_type}")
                 sent_msg = await cq.message.answer(f"Неизвестный тип файла: {document.file_type}")
             
             # Сохраняем message_id отправленного документа
             if sent_msg:
                 sent_msg_ids.append(sent_msg.message_id)
-        except Exception:
+                logger.info(f"[DOCS] Document {idx+1} sent successfully")
+        except Exception as e:
+            logger.error(f"[DOCS] Failed to send document {idx+1} directly: {e}", exc_info=True)
             if chat_id is not None:
+                logger.info(f"[DOCS] Trying relay for document {idx+1}")
                 ok = await _relay_document(cq.bot, chat_id=chat_id, file_id=document.file_id, file_type=file_type, caption=caption, filename=(document.file_name or None))
                 if not ok:
-                    logger.warning('Failed to send document', exc_info=True)
+                    logger.warning(f'[DOCS] Relay failed for document {idx+1}', exc_info=True)
+                else:
+                    logger.info(f"[DOCS] Document {idx+1} sent via relay")
             else:
-                logger.warning('Failed to send document', exc_info=True)
+                logger.warning('[DOCS] No chat_id for relay', exc_info=True)
     
+    logger.info(f"[DOCS] Completed. Sent {len(sent_msg_ids)} documents")
     # Сохраняем message_id документов в state
     await state.update_data(document_msg_ids=sent_msg_ids)
 @router.callback_query(

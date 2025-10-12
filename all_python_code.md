@@ -1,65 +1,531 @@
-# Python source listing
+# Field Service - Vse Python faily proekta
 
-## \ProjectF\analyze_code.py
+**Sozdan:** 2025-10-12 13:03:42  
+**Vsego failov:** 260  
+
+---
+
+## Statistika po direktoriyam
+
+- **control-bot**: 1 файлов (33.84 KB)
+- **field-service**: 222 файлов (1870.02 KB)
+- **kornevaya direktoriya**: 3 файлов (19.52 KB)
+- **tests**: 32 файлов (196.71 KB)
+- **tools**: 2 файлов (3.04 KB)
+
+---
+
+## Oglavlenie
+
+
+### control-bot
+
+- [control-bot/control_bot.py](#control-bot-control-botpy)
+
+### field-service
+
+- [field-service/add_all_districts.py](#field-service-add-all-districtspy)
+- [field-service/add_cities_script.py](#field-service-add-cities-scriptpy)
+- [field-service/alembic/env.py](#field-service-alembic-envpy)
+- [field-service/alembic/versions/0010_order_autoclose.py](#field-service-alembic-versions-0010-order-autoclosepy)
+- [field-service/alembic/versions/2025_09_17_0001_init_schema.py](#field-service-alembic-versions-2025-09-17-0001-init-schemapy)
+- [field-service/alembic/versions/2025_09_17_0002_master_fsm.py](#field-service-alembic-versions-2025-09-17-0002-master-fsmpy)
+- [field-service/alembic/versions/2025_09_17_0003_seed_cities.py](#field-service-alembic-versions-2025-09-17-0003-seed-citiespy)
+- [field-service/alembic/versions/2025_09_17_0003_seed_demo_data.py](#field-service-alembic-versions-2025-09-17-0003-seed-demo-datapy)
+- [field-service/alembic/versions/2025_09_17_0004_update_skills.py](#field-service-alembic-versions-2025-09-17-0004-update-skillspy)
+- [field-service/alembic/versions/2025_09_17_0005_admin_settings.py](#field-service-alembic-versions-2025-09-17-0005-admin-settingspy)
+- [field-service/alembic/versions/2025_09_18_0005_admin_enhancements.py](#field-service-alembic-versions-2025-09-18-0005-admin-enhancementspy)
+- [field-service/alembic/versions/2025_09_18_0006_staff_access_codes.py](#field-service-alembic-versions-2025-09-18-0006-staff-access-codespy)
+- [field-service/alembic/versions/2025_09_18_0007_master_active_limit.py](#field-service-alembic-versions-2025-09-18-0007-master-active-limitpy)
+- [field-service/alembic/versions/2025_09_19_0008_distribution_indexes.py](#field-service-alembic-versions-2025-09-19-0008-distribution-indexespy)
+- [field-service/alembic/versions/2025_09_19_0009_commission_rework.py](#field-service-alembic-versions-2025-09-19-0009-commission-reworkpy)
+- [field-service/alembic/versions/2025_09_19_0010_owner_pay_settings.py](#field-service-alembic-versions-2025-09-19-0010-owner-pay-settingspy)
+- [field-service/alembic/versions/2025_09_19_0011_guarantee_cycle.py](#field-service-alembic-versions-2025-09-19-0011-guarantee-cyclepy)
+- [field-service/alembic/versions/2025_09_19_0011_master_invite_codes.py](#field-service-alembic-versions-2025-09-19-0011-master-invite-codespy)
+- [field-service/alembic/versions/2025_09_19_0012_spec_indexes.py](#field-service-alembic-versions-2025-09-19-0012-spec-indexespy)
+- [field-service/alembic/versions/2025_09_19_0013_order_status_v12.py](#field-service-alembic-versions-2025-09-19-0013-order-status-v12py)
+- [field-service/alembic/versions/2025_09_19_0014_admin_bot_core.py](#field-service-alembic-versions-2025-09-19-0014-admin-bot-corepy)
+- [field-service/alembic/versions/2025_09_20_0015_distribution_escalations.py](#field-service-alembic-versions-2025-09-20-0015-distribution-escalationspy)
+- [field-service/alembic/versions/2025_09_20_0016_referral_rewards_update.py](#field-service-alembic-versions-2025-09-20-0016-referral-rewards-updatepy)
+- [field-service/alembic/versions/2025_09_22_0001_staff_visibility_indexes.py](#field-service-alembic-versions-2025-09-22-0001-staff-visibility-indexespy)
+- [field-service/alembic/versions/2025_09_22_0002_orders_v12_compat.py](#field-service-alembic-versions-2025-09-22-0002-orders-v12-compatpy)
+- [field-service/alembic/versions/2025_09_23_0003_staff_access_rework.py](#field-service-alembic-versions-2025-09-23-0003-staff-access-reworkpy)
+- [field-service/alembic/versions/2025_09_27_0002_orders_add_v12_fields.py](#field-service-alembic-versions-2025-09-27-0002-orders-add-v12-fieldspy)
+- [field-service/alembic/versions/2025_09_27_0003_orders_drop_legacy_fields.py](#field-service-alembic-versions-2025-09-27-0003-orders-drop-legacy-fieldspy)
+- [field-service/alembic/versions/2025_09_27_0004_orders_add_category_enum_v12.py](#field-service-alembic-versions-2025-09-27-0004-orders-add-category-enum-v12py)
+- [field-service/alembic/versions/2025_09_rename_admin_to_global_admin.py](#field-service-alembic-versions-2025-09-rename-admin-to-global-adminpy)
+- [field-service/alembic/versions/2025_10_01_0001_admin_master_moderation.py](#field-service-alembic-versions-2025-10-01-0001-admin-master-moderationpy)
+- [field-service/alembic/versions/2025_10_01_0002_cities_timezone.py](#field-service-alembic-versions-2025-10-01-0002-cities-timezonepy)
+- [field-service/alembic/versions/2025_10_02_0003_geo_enhancements.py](#field-service-alembic-versions-2025-10-02-0003-geo-enhancementspy)
+- [field-service/alembic/versions/2025_10_05_0004_add_centroids.py](#field-service-alembic-versions-2025-10-05-0004-add-centroidspy)
+- [field-service/alembic/versions/2025_10_05_0005_escalation_notifications.py](#field-service-alembic-versions-2025-10-05-0005-escalation-notificationspy)
+- [field-service/alembic/versions/2025_10_06_0001_distribution_metrics.py](#field-service-alembic-versions-2025-10-06-0001-distribution-metricspy)
+- [field-service/alembic/versions/2025_10_09_0001_order_history_details.py](#field-service-alembic-versions-2025-10-09-0001-order-history-detailspy)
+- [field-service/alembic/versions/2cad62ab4b40_merge_heads_unify_branches.py](#field-service-alembic-versions-2cad62ab4b40-merge-heads-unify-branchespy)
+- [field-service/docs/P0-2_onboarding_changes.py](#field-service-docs-p0-2-onboarding-changespy)
+- [field-service/docs/P1-10_PATCH.py](#field-service-docs-p1-10-patchpy)
+- [field-service/field_service/__init__.py](#field-service-field-service---init--py)
+- [field-service/field_service/bots/admin_bot/__init__.py](#field-service-field-service-bots-admin-bot---init--py)
+- [field-service/field_service/bots/admin_bot/core/__init__.py](#field-service-field-service-bots-admin-bot-core---init--py)
+- [field-service/field_service/bots/admin_bot/core/access.py](#field-service-field-service-bots-admin-bot-core-accesspy)
+- [field-service/field_service/bots/admin_bot/core/dto.py](#field-service-field-service-bots-admin-bot-core-dtopy)
+- [field-service/field_service/bots/admin_bot/core/filters.py](#field-service-field-service-bots-admin-bot-core-filterspy)
+- [field-service/field_service/bots/admin_bot/core/middlewares.py](#field-service-field-service-bots-admin-bot-core-middlewarespy)
+- [field-service/field_service/bots/admin_bot/core/rbac.py](#field-service-field-service-bots-admin-bot-core-rbacpy)
+- [field-service/field_service/bots/admin_bot/core/states.py](#field-service-field-service-bots-admin-bot-core-statespy)
+- [field-service/field_service/bots/admin_bot/core/utils.py](#field-service-field-service-bots-admin-bot-core-utilspy)
+- [field-service/field_service/bots/admin_bot/handlers/__init__.py](#field-service-field-service-bots-admin-bot-handlers---init--py)
+- [field-service/field_service/bots/admin_bot/handlers/common/__init__.py](#field-service-field-service-bots-admin-bot-handlers-common---init--py)
+- [field-service/field_service/bots/admin_bot/handlers/common/helpers.py](#field-service-field-service-bots-admin-bot-handlers-common-helperspy)
+- [field-service/field_service/bots/admin_bot/handlers/common/menu.py](#field-service-field-service-bots-admin-bot-handlers-common-menupy)
+- [field-service/field_service/bots/admin_bot/handlers/finance/__init__.py](#field-service-field-service-bots-admin-bot-handlers-finance---init--py)
+- [field-service/field_service/bots/admin_bot/handlers/finance/main.py](#field-service-field-service-bots-admin-bot-handlers-finance-mainpy)
+- [field-service/field_service/bots/admin_bot/handlers/masters/__init__.py](#field-service-field-service-bots-admin-bot-handlers-masters---init--py)
+- [field-service/field_service/bots/admin_bot/handlers/masters/main.py](#field-service-field-service-bots-admin-bot-handlers-masters-mainpy)
+- [field-service/field_service/bots/admin_bot/handlers/masters/moderation.py](#field-service-field-service-bots-admin-bot-handlers-masters-moderationpy)
+- [field-service/field_service/bots/admin_bot/handlers/orders/__init__.py](#field-service-field-service-bots-admin-bot-handlers-orders---init--py)
+- [field-service/field_service/bots/admin_bot/handlers/orders/copy_data.py](#field-service-field-service-bots-admin-bot-handlers-orders-copy-datapy)
+- [field-service/field_service/bots/admin_bot/handlers/orders/create.py](#field-service-field-service-bots-admin-bot-handlers-orders-createpy)
+- [field-service/field_service/bots/admin_bot/handlers/orders/queue.py](#field-service-field-service-bots-admin-bot-handlers-orders-queuepy)
+- [field-service/field_service/bots/admin_bot/handlers/orders/quick_create.py](#field-service-field-service-bots-admin-bot-handlers-orders-quick-createpy)
+- [field-service/field_service/bots/admin_bot/handlers/staff/__init__.py](#field-service-field-service-bots-admin-bot-handlers-staff---init--py)
+- [field-service/field_service/bots/admin_bot/handlers/staff/access_codes.py](#field-service-field-service-bots-admin-bot-handlers-staff-access-codespy)
+- [field-service/field_service/bots/admin_bot/handlers/staff/management.py](#field-service-field-service-bots-admin-bot-handlers-staff-managementpy)
+- [field-service/field_service/bots/admin_bot/handlers/system/__init__.py](#field-service-field-service-bots-admin-bot-handlers-system---init--py)
+- [field-service/field_service/bots/admin_bot/handlers/system/logs.py](#field-service-field-service-bots-admin-bot-handlers-system-logspy)
+- [field-service/field_service/bots/admin_bot/handlers/system/reports.py](#field-service-field-service-bots-admin-bot-handlers-system-reportspy)
+- [field-service/field_service/bots/admin_bot/handlers/system/settings.py](#field-service-field-service-bots-admin-bot-handlers-system-settingspy)
+- [field-service/field_service/bots/admin_bot/infrastructure/__init__.py](#field-service-field-service-bots-admin-bot-infrastructure---init--py)
+- [field-service/field_service/bots/admin_bot/infrastructure/queue_state.py](#field-service-field-service-bots-admin-bot-infrastructure-queue-statepy)
+- [field-service/field_service/bots/admin_bot/infrastructure/registry.py](#field-service-field-service-bots-admin-bot-infrastructure-registrypy)
+- [field-service/field_service/bots/admin_bot/main.py](#field-service-field-service-bots-admin-bot-mainpy)
+- [field-service/field_service/bots/admin_bot/services/__init__.py](#field-service-field-service-bots-admin-bot-services---init--py)
+- [field-service/field_service/bots/admin_bot/services/_common.py](#field-service-field-service-bots-admin-bot-services--commonpy)
+- [field-service/field_service/bots/admin_bot/services/distribution.py](#field-service-field-service-bots-admin-bot-services-distributionpy)
+- [field-service/field_service/bots/admin_bot/services/finance.py](#field-service-field-service-bots-admin-bot-services-financepy)
+- [field-service/field_service/bots/admin_bot/services/masters.py](#field-service-field-service-bots-admin-bot-services-masterspy)
+- [field-service/field_service/bots/admin_bot/services/orders.py](#field-service-field-service-bots-admin-bot-services-orderspy)
+- [field-service/field_service/bots/admin_bot/services/settings.py](#field-service-field-service-bots-admin-bot-services-settingspy)
+- [field-service/field_service/bots/admin_bot/services/staff.py](#field-service-field-service-bots-admin-bot-services-staffpy)
+- [field-service/field_service/bots/admin_bot/ui/keyboards/__init__.py](#field-service-field-service-bots-admin-bot-ui-keyboards---init--py)
+- [field-service/field_service/bots/admin_bot/ui/keyboards/common.py](#field-service-field-service-bots-admin-bot-ui-keyboards-commonpy)
+- [field-service/field_service/bots/admin_bot/ui/keyboards/finance.py](#field-service-field-service-bots-admin-bot-ui-keyboards-financepy)
+- [field-service/field_service/bots/admin_bot/ui/keyboards/orders.py](#field-service-field-service-bots-admin-bot-ui-keyboards-orderspy)
+- [field-service/field_service/bots/admin_bot/ui/keyboards/reports.py](#field-service-field-service-bots-admin-bot-ui-keyboards-reportspy)
+- [field-service/field_service/bots/admin_bot/ui/keyboards/settings.py](#field-service-field-service-bots-admin-bot-ui-keyboards-settingspy)
+- [field-service/field_service/bots/admin_bot/ui/texts/__init__.py](#field-service-field-service-bots-admin-bot-ui-texts---init--py)
+- [field-service/field_service/bots/admin_bot/ui/texts/common.py](#field-service-field-service-bots-admin-bot-ui-texts-commonpy)
+- [field-service/field_service/bots/admin_bot/ui/texts/finance.py](#field-service-field-service-bots-admin-bot-ui-texts-financepy)
+- [field-service/field_service/bots/admin_bot/ui/texts/orders.py](#field-service-field-service-bots-admin-bot-ui-texts-orderspy)
+- [field-service/field_service/bots/admin_bot/utils/__init__.py](#field-service-field-service-bots-admin-bot-utils---init--py)
+- [field-service/field_service/bots/admin_bot/utils/helpers.py](#field-service-field-service-bots-admin-bot-utils-helperspy)
+- [field-service/field_service/bots/admin_bot/utils/normalizers.py](#field-service-field-service-bots-admin-bot-utils-normalizerspy)
+- [field-service/field_service/bots/common/__init__.py](#field-service-field-service-bots-common---init--py)
+- [field-service/field_service/bots/common/breadcrumbs.py](#field-service-field-service-bots-common-breadcrumbspy)
+- [field-service/field_service/bots/common/copy_utils.py](#field-service-field-service-bots-common-copy-utilspy)
+- [field-service/field_service/bots/common/error_middleware.py](#field-service-field-service-bots-common-error-middlewarepy)
+- [field-service/field_service/bots/common/fsm_timeout.py](#field-service-field-service-bots-common-fsm-timeoutpy)
+- [field-service/field_service/bots/common/polling.py](#field-service-field-service-bots-common-pollingpy)
+- [field-service/field_service/bots/common/retry_context.py](#field-service-field-service-bots-common-retry-contextpy)
+- [field-service/field_service/bots/common/retry_handler.py](#field-service-field-service-bots-common-retry-handlerpy)
+- [field-service/field_service/bots/common/retry_middleware.py](#field-service-field-service-bots-common-retry-middlewarepy)
+- [field-service/field_service/bots/common/telegram_safe.py](#field-service-field-service-bots-common-telegram-safepy)
+- [field-service/field_service/bots/master_bot/__init__.py](#field-service-field-service-bots-master-bot---init--py)
+- [field-service/field_service/bots/master_bot/dto.py](#field-service-field-service-bots-master-bot-dtopy)
+- [field-service/field_service/bots/master_bot/filters.py](#field-service-field-service-bots-master-bot-filterspy)
+- [field-service/field_service/bots/master_bot/finance.py](#field-service-field-service-bots-master-bot-financepy)
+- [field-service/field_service/bots/master_bot/handlers/__init__.py](#field-service-field-service-bots-master-bot-handlers---init--py)
+- [field-service/field_service/bots/master_bot/handlers/finance.py](#field-service-field-service-bots-master-bot-handlers-financepy)
+- [field-service/field_service/bots/master_bot/handlers/history.py](#field-service-field-service-bots-master-bot-handlers-historypy)
+- [field-service/field_service/bots/master_bot/handlers/onboarding.py](#field-service-field-service-bots-master-bot-handlers-onboardingpy)
+- [field-service/field_service/bots/master_bot/handlers/orders.py](#field-service-field-service-bots-master-bot-handlers-orderspy)
+- [field-service/field_service/bots/master_bot/handlers/referral.py](#field-service-field-service-bots-master-bot-handlers-referralpy)
+- [field-service/field_service/bots/master_bot/handlers/shift.py](#field-service-field-service-bots-master-bot-handlers-shiftpy)
+- [field-service/field_service/bots/master_bot/handlers/start.py](#field-service-field-service-bots-master-bot-handlers-startpy)
+- [field-service/field_service/bots/master_bot/handlers/statistics.py](#field-service-field-service-bots-master-bot-handlers-statisticspy)
+- [field-service/field_service/bots/master_bot/keyboards.py](#field-service-field-service-bots-master-bot-keyboardspy)
+- [field-service/field_service/bots/master_bot/main.py](#field-service-field-service-bots-master-bot-mainpy)
+- [field-service/field_service/bots/master_bot/middlewares.py](#field-service-field-service-bots-master-bot-middlewarespy)
+- [field-service/field_service/bots/master_bot/service_registry.py](#field-service-field-service-bots-master-bot-service-registrypy)
+- [field-service/field_service/bots/master_bot/states.py](#field-service-field-service-bots-master-bot-statespy)
+- [field-service/field_service/bots/master_bot/texts.py](#field-service-field-service-bots-master-bot-textspy)
+- [field-service/field_service/bots/master_bot/utils.py](#field-service-field-service-bots-master-bot-utilspy)
+- [field-service/field_service/config.py](#field-service-field-service-configpy)
+- [field-service/field_service/data/__init__.py](#field-service-field-service-data---init--py)
+- [field-service/field_service/data/cities.py](#field-service-field-service-data-citiespy)
+- [field-service/field_service/db/__init__.py](#field-service-field-service-db---init--py)
+- [field-service/field_service/db/base.py](#field-service-field-service-db-basepy)
+- [field-service/field_service/db/models.py](#field-service-field-service-db-modelspy)
+- [field-service/field_service/db/pg_enums.py](#field-service-field-service-db-pg-enumspy)
+- [field-service/field_service/db/session.py](#field-service-field-service-db-sessionpy)
+- [field-service/field_service/infra/__init__.py](#field-service-field-service-infra---init--py)
+- [field-service/field_service/infra/logging_utils.py](#field-service-field-service-infra-logging-utilspy)
+- [field-service/field_service/infra/notify.py](#field-service-field-service-infra-notifypy)
+- [field-service/field_service/infra/structured_logging.py](#field-service-field-service-infra-structured-loggingpy)
+- [field-service/field_service/services/autoclose_scheduler.py](#field-service-field-service-services-autoclose-schedulerpy)
+- [field-service/field_service/services/break_reminder_scheduler.py](#field-service-field-service-services-break-reminder-schedulerpy)
+- [field-service/field_service/services/candidates.py](#field-service-field-service-services-candidatespy)
+- [field-service/field_service/services/commission_service.py](#field-service-field-service-services-commission-servicepy)
+- [field-service/field_service/services/distribution/__init__.py](#field-service-field-service-services-distribution---init--py)
+- [field-service/field_service/services/distribution/wakeup.py](#field-service-field-service-services-distribution-wakeuppy)
+- [field-service/field_service/services/distribution_metrics_service.py](#field-service-field-service-services-distribution-metrics-servicepy)
+- [field-service/field_service/services/distribution_scheduler.py](#field-service-field-service-services-distribution-schedulerpy)
+- [field-service/field_service/services/export_service.py](#field-service-field-service-services-export-servicepy)
+- [field-service/field_service/services/guarantee_service.py](#field-service-field-service-services-guarantee-servicepy)
+- [field-service/field_service/services/heartbeat.py](#field-service-field-service-services-heartbeatpy)
+- [field-service/field_service/services/live_log.py](#field-service-field-service-services-live-logpy)
+- [field-service/field_service/services/notifications.py](#field-service-field-service-services-notificationspy)
+- [field-service/field_service/services/notifications_watcher.py](#field-service-field-service-services-notifications-watcherpy)
+- [field-service/field_service/services/onboarding_service.py](#field-service-field-service-services-onboarding-servicepy)
+- [field-service/field_service/services/owner_requisites_service.py](#field-service-field-service-services-owner-requisites-servicepy)
+- [field-service/field_service/services/push_notifications.py](#field-service-field-service-services-push-notificationspy)
+- [field-service/field_service/services/referral_service.py](#field-service-field-service-services-referral-servicepy)
+- [field-service/field_service/services/settings_service.py](#field-service-field-service-services-settings-servicepy)
+- [field-service/field_service/services/time_service.py](#field-service-field-service-services-time-servicepy)
+- [field-service/field_service/services/unassigned_monitor.py](#field-service-field-service-services-unassigned-monitorpy)
+- [field-service/field_service/services/watchdogs.py](#field-service-field-service-services-watchdogspy)
+- [field-service/fix_indents_v2.py](#field-service-fix-indents-v2py)
+- [field-service/scripts/audit_legacy.py](#field-service-scripts-audit-legacypy)
+- [field-service/scripts/db_structure_snapshot.py](#field-service-scripts-db-structure-snapshotpy)
+- [field-service/scripts/import_districts.py](#field-service-scripts-import-districtspy)
+- [field-service/temp_fix_indents.py](#field-service-temp-fix-indentspy)
+- [field-service/tests/conftest.py](#field-service-tests-conftestpy)
+- [field-service/tests/test_admin_bot_manual_assign.py](#field-service-tests-test-admin-bot-manual-assignpy)
+- [field-service/tests/test_admin_bot_new_order.py](#field-service-tests-test-admin-bot-new-orderpy)
+- [field-service/tests/test_admin_bot_queue_actions.py](#field-service-tests-test-admin-bot-queue-actionspy)
+- [field-service/tests/test_admin_bot_queue_card.py](#field-service-tests-test-admin-bot-queue-cardpy)
+- [field-service/tests/test_admin_bot_queue_filters.py](#field-service-tests-test-admin-bot-queue-filterspy)
+- [field-service/tests/test_admin_bot_queue_list.py](#field-service-tests-test-admin-bot-queue-listpy)
+- [field-service/tests/test_admin_finance_ui.py](#field-service-tests-test-admin-finance-uipy)
+- [field-service/tests/test_admin_masters_keyboard.py](#field-service-tests-test-admin-masters-keyboardpy)
+- [field-service/tests/test_admin_services.py](#field-service-tests-test-admin-servicespy)
+- [field-service/tests/test_business_logic_edge_cases.py](#field-service-tests-test-business-logic-edge-casespy)
+- [field-service/tests/test_commission_service.py](#field-service-tests-test-commission-servicepy)
+- [field-service/tests/test_dist_log_format.py](#field-service-tests-test-dist-log-formatpy)
+- [field-service/tests/test_distribution_metrics.py](#field-service-tests-test-distribution-metricspy)
+- [field-service/tests/test_distribution_scheduler.py](#field-service-tests-test-distribution-schedulerpy)
+- [field-service/tests/test_e2e_escalation_debug.py](#field-service-tests-test-e2e-escalation-debugpy)
+- [field-service/tests/test_e2e_escalation_notifications.py](#field-service-tests-test-e2e-escalation-notificationspy)
+- [field-service/tests/test_e2e_escalation_notifications_fixed.py](#field-service-tests-test-e2e-escalation-notifications-fixedpy)
+- [field-service/tests/test_e2e_fixes_step1.py](#field-service-tests-test-e2e-fixes-step1py)
+- [field-service/tests/test_e2e_step_1_4_escalation_notifications.py](#field-service-tests-test-e2e-step-1-4-escalation-notificationspy)
+- [field-service/tests/test_export_service.py](#field-service-tests-test-export-servicepy)
+- [field-service/tests/test_fix_1_3_comprehensive.py](#field-service-tests-test-fix-1-3-comprehensivepy)
+- [field-service/tests/test_fixes_stage_1.py](#field-service-tests-test-fixes-stage-1py)
+- [field-service/tests/test_fsm_timeout.py](#field-service-tests-test-fsm-timeoutpy)
+- [field-service/tests/test_full_business_logic.py](#field-service-tests-test-full-business-logicpy)
+- [field-service/tests/test_heartbeat.py](#field-service-tests-test-heartbeatpy)
+- [field-service/tests/test_load_race_condition.py](#field-service-tests-test-load-race-conditionpy)
+- [field-service/tests/test_logging_utils.py](#field-service-tests-test-logging-utilspy)
+- [field-service/tests/test_master_finance.py](#field-service-tests-test-master-financepy)
+- [field-service/tests/test_master_offer_callbacks.py](#field-service-tests-test-master-offer-callbackspy)
+- [field-service/tests/test_master_start_cancel.py](#field-service-tests-test-master-start-cancelpy)
+- [field-service/tests/test_master_statistics.py](#field-service-tests-test-master-statisticspy)
+- [field-service/tests/test_offer_accept_cache_bug.py](#field-service-tests-test-offer-accept-cache-bugpy)
+- [field-service/tests/test_orders_model_compat.py](#field-service-tests-test-orders-model-compatpy)
+- [field-service/tests/test_owner_requisites.py](#field-service-tests-test-owner-requisitespy)
+- [field-service/tests/test_p1_10_push_offer_notification.py](#field-service-tests-test-p1-10-push-offer-notificationpy)
+- [field-service/tests/test_p1_15_finance_grouped.py](#field-service-tests-test-p1-15-finance-groupedpy)
+- [field-service/tests/test_p1_16_break_reminder.py](#field-service-tests-test-p1-16-break-reminderpy)
+- [field-service/tests/test_p1_9_history_orders.py](#field-service-tests-test-p1-9-history-orderspy)
+- [field-service/tests/test_retry_action.py](#field-service-tests-test-retry-actionpy)
+- [field-service/tests/test_single_instance.py](#field-service-tests-test-single-instancepy)
+- [field-service/tests/test_smoke.py](#field-service-tests-test-smokepy)
+- [field-service/tests/test_staff_access.py](#field-service-tests-test-staff-accesspy)
+- [field-service/tests/test_step_2_logical_improvements.py](#field-service-tests-test-step-2-logical-improvementspy)
+- [field-service/tests/test_step_3_optimizations.py](#field-service-tests-test-step-3-optimizationspy)
+- [field-service/tests/test_structured_logging.py](#field-service-tests-test-structured-loggingpy)
+- [field-service/tests/test_time_service_boundaries.py](#field-service-tests-test-time-service-boundariespy)
+- [field-service/tests/test_watchdog_expired_breaks.py](#field-service-tests-test-watchdog-expired-breakspy)
+- [field-service/tests/test_watchdog_expired_offers.py](#field-service-tests-test-watchdog-expired-offerspy)
+- [field-service/tests/test_watchdogs_overdue.py](#field-service-tests-test-watchdogs-overduepy)
+- [field-service/tools/check_no_mojibake.py](#field-service-tools-check-no-mojibakepy)
+- [field-service/tools/collect_code.py](#field-service-tools-collect-codepy)
+- [field-service/tools/fix_mojibake_in_repo.py](#field-service-tools-fix-mojibake-in-repopy)
+- [field-service/tools/fix_mojibake_per_line.py](#field-service-tools-fix-mojibake-per-linepy)
+- [field-service/tools/load_geo_catalog.py](#field-service-tools-load-geo-catalogpy)
+- [field-service/tools/patch_strings.py](#field-service-tools-patch-stringspy)
+- [field-service/tools/tools/collect_code.py](#field-service-tools-tools-collect-codepy)
+
+### kornevaya direktoriya
+
+- [collect_all_py_to_md.py](#collect-all-py-to-mdpy)
+- [collect_structure.py](#collect-structurepy)
+- [export_code_snapshot.py](#export-code-snapshotpy)
+
+### tests
+
+- [tests/e2e/conftest.py](#tests-e2e-conftestpy)
+- [tests/e2e/coverage_analyzer.py](#tests-e2e-coverage-analyzerpy)
+- [tests/e2e/quick_start.py](#tests-e2e-quick-startpy)
+- [tests/e2e/run_all_tests.py](#tests-e2e-run-all-testspy)
+- [tests/e2e/test_additional_scenarios.py](#tests-e2e-test-additional-scenariospy)
+- [tests/e2e/test_order_lifecycle_all_scenarios.py](#tests-e2e-test-order-lifecycle-all-scenariospy)
+- [tests/telegram_ui/__init__.py](#tests-telegram-ui---init--py)
+- [tests/telegram_ui/auth_interactive.py](#tests-telegram-ui-auth-interactivepy)
+- [tests/telegram_ui/auth_string_session.py](#tests-telegram-ui-auth-string-sessionpy)
+- [tests/telegram_ui/bot_client.py](#tests-telegram-ui-bot-clientpy)
+- [tests/telegram_ui/check_session_advanced.py](#tests-telegram-ui-check-session-advancedpy)
+- [tests/telegram_ui/check_session_simple.py](#tests-telegram-ui-check-session-simplepy)
+- [tests/telegram_ui/config.py](#tests-telegram-ui-configpy)
+- [tests/telegram_ui/conftest.py](#tests-telegram-ui-conftestpy)
+- [tests/telegram_ui/create_verified_session.py](#tests-telegram-ui-create-verified-sessionpy)
+- [tests/telegram_ui/diagnose_session.py](#tests-telegram-ui-diagnose-sessionpy)
+- [tests/telegram_ui/direct_test.py](#tests-telegram-ui-direct-testpy)
+- [tests/telegram_ui/helpers/__init__.py](#tests-telegram-ui-helpers---init--py)
+- [tests/telegram_ui/helpers/admin_helpers.py](#tests-telegram-ui-helpers-admin-helperspy)
+- [tests/telegram_ui/helpers/master_helpers.py](#tests-telegram-ui-helpers-master-helperspy)
+- [tests/telegram_ui/helpers/order_helpers.py](#tests-telegram-ui-helpers-order-helperspy)
+- [tests/telegram_ui/mock_telegram.py](#tests-telegram-ui-mock-telegrampy)
+- [tests/telegram_ui/quick_bot_test.py](#tests-telegram-ui-quick-bot-testpy)
+- [tests/telegram_ui/run_tests.py](#tests-telegram-ui-run-testspy)
+- [tests/telegram_ui/setup_client.py](#tests-telegram-ui-setup-clientpy)
+- [tests/telegram_ui/test_auth.py](#tests-telegram-ui-test-authpy)
+- [tests/telegram_ui/test_connection.py](#tests-telegram-ui-test-connectionpy)
+- [tests/telegram_ui/test_lifecycle_p0.py](#tests-telegram-ui-test-lifecycle-p0py)
+- [tests/telegram_ui/test_master_onboarding.py](#tests-telegram-ui-test-master-onboardingpy)
+- [tests/telegram_ui/test_mock_examples.py](#tests-telegram-ui-test-mock-examplespy)
+- [tests/telegram_ui/test_quick_check.py](#tests-telegram-ui-test-quick-checkpy)
+- [tests/telegram_ui/test_string_direct.py](#tests-telegram-ui-test-string-directpy)
+
+### tools
+
+- [tools/_bulk_fix_handlers.py](#tools--bulk-fix-handlerspy)
+- [tools/_fix_handlers_encoding.py](#tools--fix-handlers-encodingpy)
+
+---
+
+## Ishodnyi kod
+
+## `collect_all_py_to_md.py`
+
+**Strok:** 214  
+**Razmer:** 7.14 KB
+
 ```python
-import os
+#!/usr/bin/env python3
+"""
+Сборка всех .py файлов проекта в один .md файл
+Исключает кэш, venv и служебные директории
+"""
+
 from pathlib import Path
+from datetime import datetime
+import re
 
-project_root = Path(r"C:\ProjectF\field-service")
-py_files = [f for f in project_root.rglob("*.py") if "__pycache__" not in str(f)]
+# Конфигурация
+PROJECT_ROOT = Path(__file__).parent
+OUTPUT_FILE = PROJECT_ROOT / "all_python_code.md"
 
-print(f"Python файлов: {len(py_files)}")
-print(f"\nТоп-10 самых больших:")
-sizes = [(f.stat().st_size, f.relative_to(project_root)) for f in py_files]
-for size, path in sorted(sizes, reverse=True)[:10]:
-    print(f"  {size:>6} bytes - {path}")
+# Директории для исключения
+EXCLUDE_DIRS = {
+    # Python
+    '__pycache__', '.pytest_cache', '.ruff_cache', '.mypy_cache',
+    '.tox', '.nox', 'htmlcov', '.coverage',
+    # Git
+    '.git', '.github',
+    # Виртуальные окружения
+    'venv', 'env', '.env', '.venv', 'virtualenv',
+    # Node.js
+    'node_modules',
+    # IDE
+    '.vscode', '.idea', '.vs',
+    # Временные и build
+    '.local', 'dist', 'build', 'egg-info',
+    # Снапшоты
+    'code_snapshot',
+    # Backup
+    'backup', '.backup',
+    # Alembic versions (миграции - можно исключить)
+    # 'versions'  # Раскомментируй если не нужны миграции
+}
+
+# Паттерны для исключения файлов
+EXCLUDE_PATTERNS = {
+    '.deprecated', '.backup', '.old', '.bak', '_backup'
+}
+
+def should_include_file(file_path: Path) -> bool:
+    """Проверяет, нужно ли включать файл"""
+    
+    # Только .py файлы
+    if file_path.suffix != '.py':
+        return False
+    
+    # Проверка на deprecated/backup в имени
+    for pattern in EXCLUDE_PATTERNS:
+        if pattern in file_path.name.lower():
+            return False
+    
+    # Проверка директорий в пути
+    for part in file_path.parts:
+        if part in EXCLUDE_DIRS:
+            return False
+        for pattern in EXCLUDE_PATTERNS:
+            if pattern in part.lower():
+                return False
+    
+    return True
+
+def get_file_section(file_path: Path, project_root: Path) -> str:
+    """Создаёт секцию для файла в markdown"""
+    
+    rel_path = file_path.relative_to(project_root)
+    rel_path_str = str(rel_path).replace('\\', '/')
+    
+    # Определяем уровень заголовка по глубине вложенности
+    depth = len(rel_path.parts)
+    header_level = min(depth + 1, 6)  # Максимум 6 уровней в markdown
+    header = '#' * header_level
+    
+    # Читаем содержимое файла
+    try:
+        content = file_path.read_text(encoding='utf-8')
+        lines_count = content.count('\n') + 1
+    except Exception as e:
+        content = f"# Oshibka chteniya faila: {e}"
+        lines_count = 0
+    
+    # Формируем секцию
+    section = f"\n{header} `{rel_path_str}`\n\n"
+    section += f"**Strok:** {lines_count}  \n"
+    section += f"**Razmer:** {file_path.stat().st_size / 1024:.2f} KB\n\n"
+    section += "```python\n"
+    section += content
+    section += "\n```\n"
+    section += "\n---\n"
+    
+    return section
+
+def collect_python_files():
+    """Собирает все Python файлы в один markdown"""
+    
+    print(f"Sborka vseh Python failov proekta")
+    print(f"Koren: {PROJECT_ROOT}")
+    print(f"Vyhodnoy fail: {OUTPUT_FILE}")
+    print()
+    
+    # Находим все .py файлы
+    print("Poisk .py failov...")
+    py_files = []
+    
+    for file_path in PROJECT_ROOT.rglob('*.py'):
+        if should_include_file(file_path):
+            py_files.append(file_path)
+    
+    # Сортируем файлы по пути для структурированности
+    py_files.sort(key=lambda p: str(p.relative_to(PROJECT_ROOT)))
+    
+    print(f"OK Naydeno failov: {len(py_files)}")
+    print()
+    
+    # Группируем файлы по основным директориям
+    file_groups = {}
+    for file_path in py_files:
+        rel_path = file_path.relative_to(PROJECT_ROOT)
+        # Берём первую директорию как группу
+        if len(rel_path.parts) > 1:
+            group = rel_path.parts[0]
+        else:
+            group = "kornevaya direktoriya"
+        
+        if group not in file_groups:
+            file_groups[group] = []
+        file_groups[group].append(file_path)
+    
+    # Создаём markdown файл
+    print("Sozdanie markdown faila...")
+    
+    total_lines = 0
+    total_size = 0
+    
+    content = f"""# Field Service - Vse Python faily proekta
+
+**Sozdan:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  
+**Vsego failov:** {len(py_files)}  
+
+---
+
+## Statistika po direktoriyam
+
+"""
+    
+    # Статистика по группам
+    for group, files in sorted(file_groups.items()):
+        group_size = sum(f.stat().st_size for f in files)
+        content += f"- **{group}**: {len(files)} файлов ({group_size / 1024:.2f} KB)\n"
+    
+    content += f"\n---\n\n## Oglavlenie\n\n"
+    
+    # Оглавление
+    for group, files in sorted(file_groups.items()):
+        content += f"\n### {group}\n\n"
+        for file_path in files:
+            rel_path = file_path.relative_to(PROJECT_ROOT)
+            rel_path_str = str(rel_path).replace('\\', '/')
+            # Создаём якорь для ссылки (убираем спецсимволы)
+            anchor = rel_path_str.lower().replace('/', '-').replace('\\', '-').replace('.', '').replace('_', '-')
+            content += f"- [{rel_path_str}](#{anchor})\n"
+    
+    content += f"\n---\n\n## Ishodnyi kod\n"
+    
+    # Добавляем содержимое всех файлов
+    for i, file_path in enumerate(py_files, 1):
+        print(f"  [{i}/{len(py_files)}] {file_path.relative_to(PROJECT_ROOT)}")
+        
+        section = get_file_section(file_path, PROJECT_ROOT)
+        content += section
+        
+        total_size += file_path.stat().st_size
+        try:
+            file_content = file_path.read_text(encoding='utf-8')
+            total_lines += file_content.count('\n') + 1
+        except:
+            pass
+    
+    # Добавляем итоговую статистику в конец
+    content += f"\n\n---\n\n## Itogovaya statistika\n\n"
+    content += f"- **Vsego failov:** {len(py_files)}\n"
+    content += f"- **Vsego strok koda:** {total_lines:,}\n"
+    content += f"- **Obshiy razmer:** {total_size / 1024 / 1024:.2f} MB\n"
+    content += f"- **Sredniy razmer faila:** {total_size / len(py_files) / 1024:.2f} KB\n"
+    content += f"- **Srednee strok v faile:** {total_lines // len(py_files)}\n"
+    
+    # Записываем в файл
+    OUTPUT_FILE.write_text(content, encoding='utf-8')
+    
+    print()
+    print("=" * 70)
+    print(f"OK Sborka zavershena uspeshno!")
+    print()
+    print(f"Itogovaya statistika:")
+    print(f"   Failov sobrano: {len(py_files)}")
+    print(f"   Vsego strok: {total_lines:,}")
+    print(f"   Obshiy razmer: {total_size / 1024 / 1024:.2f} MB")
+    print(f"   Razmer markdown: {OUTPUT_FILE.stat().st_size / 1024 / 1024:.2f} MB")
+    print()
+    print(f"Rezultat: {OUTPUT_FILE}")
+    print("=" * 70)
+
+if __name__ == "__main__":
+    try:
+        collect_python_files()
+    except KeyboardInterrupt:
+        print("\nPrervano polzovatelem")
+    except Exception as e:
+        print(f"\nOshibka: {e}")
+        import traceback
+        traceback.print_exc()
+
 ```
 
-## \ProjectF\check_backups.py
-```python
-import paramiko
-import os
-from dotenv import load_dotenv
+---
 
-load_dotenv('C:/ProjectF/field-service/control-bot/.env')
+## `collect_structure.py`
 
-SERVER_HOST = os.getenv("SERVER_HOST", "195.230.131.10")
-SERVER_USER = os.getenv("SERVER_USER", "root")
-SERVER_PASSWORD = os.getenv("SERVER_PASSWORD")
+**Strok:** 73  
+**Razmer:** 2.87 KB
 
-print(f"Connecting to {SERVER_HOST}...")
-
-try:
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(SERVER_HOST, username=SERVER_USER, password=SERVER_PASSWORD, timeout=10)
-    
-    # Проверяем директории бэкапов
-    commands = [
-        "ls -lah /opt/backups/ 2>&1",
-        "ls -lah /opt/backups/daily/ 2>&1 | head -20",
-        "ls -lah /backups/ 2>&1",
-        "crontab -l | grep field-service",
-        "cat /var/log/field-service-backup.log 2>&1 | tail -30"
-    ]
-    
-    for cmd in commands:
-        print(f"\n{'='*60}")
-        print(f"Command: {cmd}")
-        print('='*60)
-        stdin, stdout, stderr = ssh.exec_command(cmd, timeout=10)
-        output = stdout.read().decode('utf-8', errors='ignore')
-        error = stderr.read().decode('utf-8', errors='ignore')
-        print(output + error)
-    
-    ssh.close()
-    print("\n✅ Check completed!")
-    
-except Exception as e:
-    print(f"❌ Error: {e}")
-```
-
-## \ProjectF\collect_structure.py
 ```python
 """
 Скрипт для сбора структуры проекта в один файл.
@@ -133,416 +599,23 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 ```
 
-## \ProjectF\export_code_snapshot.py
-```python
-#!/usr/bin/env python3
-"""
-Экспорт кодовой базы Field Service проекта
-Создаёт снапшот в папке code_snapshot с сохранением структуры
-Оптимизирован для быстрой работы (тихий режим)
-"""
+---
 
-import shutil
-from pathlib import Path
-from datetime import datetime
+### `control-bot/control_bot.py`
 
-# Конфигурация
-PROJECT_ROOT = Path(__file__).parent
-SNAPSHOT_DIR = PROJECT_ROOT / "code_snapshot"
+**Strok:** 827  
+**Razmer:** 33.84 KB
 
-# Расширения файлов для экспорта
-INCLUDE_EXTENSIONS = {
-    # Код
-    '.py', '.pyi',
-    # Конфигурация
-    '.json', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf',
-    # Документация
-    '.md', '.txt', '.rst',
-    # SQL и скрипты
-    '.sql', '.sh', '.ps1', '.bat',
-    # Docker и CI/CD
-    '.dockerignore', '.editorconfig', '.gitattributes',
-    # Другие важные
-    '.env.example', '.gitignore', '.pre-commit-config.yaml'
-}
-
-# Файлы БЕЗ расширения для включения
-INCLUDE_NO_EXTENSION = {
-    'Dockerfile', 'Makefile', 'Procfile', 'requirements.txt',
-    'LICENSE', 'README', 'CHANGELOG', 'CONTRIBUTING'
-}
-
-# Директории для исключения
-EXCLUDE_DIRS = {
-    # Python
-    '__pycache__', '.pytest_cache', '.ruff_cache', '.mypy_cache',
-    '.tox', '.nox', 'htmlcov', '.coverage',
-    # Git
-    '.git', '.github',
-    # Виртуальные окружения
-    'venv', 'env', '.env', '.venv', 'virtualenv',
-    # Node.js (если есть фронтенд)
-    'node_modules',
-    # IDE
-    '.vscode', '.idea', '.vs',
-    # Временные и build
-    '.local', 'dist', 'build', 'egg-info', '*.egg-info',
-    # Снапшоты
-    'code_snapshot',
-    # Backup директории
-    'backup', '.backup'
-}
-
-# Файлы для исключения
-EXCLUDE_FILES = {
-    '.DS_Store', 'Thumbs.db', 
-    '*.pyc', '*.pyo', '*.pyd',
-    '.coverage', 'coverage.xml', 
-    '*.log', '*.swp', '*.swo',
-    '*~'  # Vim backup files
-}
-
-# Паттерны для исключения (deprecated, backup и т.д.)
-EXCLUDE_PATTERNS = {
-    '.deprecated', '.backup', '.old', '.bak'
-}
-
-def should_include_file(file_path: Path) -> bool:
-    """Проверяет, нужно ли включать файл в снапшот"""
-    
-    # Проверка на deprecated/backup в имени файла
-    for pattern in EXCLUDE_PATTERNS:
-        if pattern in file_path.name.lower():
-            return False
-    
-    # Проверка имени файла
-    if file_path.name in EXCLUDE_FILES:
-        return False
-    
-    # Проверка по частям пути (директории)
-    for part in file_path.parts:
-        if part in EXCLUDE_DIRS:
-            return False
-        # Проверка на .backup директории
-        for pattern in EXCLUDE_PATTERNS:
-            if pattern in part.lower():
-                return False
-    
-    # Файлы без расширения - проверяем список
-    if not file_path.suffix:
-        return file_path.name in INCLUDE_NO_EXTENSION
-    
-    # Проверка расширения
-    return file_path.suffix in INCLUDE_EXTENSIONS
-
-def export_code_snapshot():
-    """Создаёт снапшот кодовой базы"""
-    
-    print(f"🚀 Экспорт кодовой базы Field Service проекта")
-    print(f"📂 Корень: {PROJECT_ROOT}")
-    print(f"📁 Снапшот: {SNAPSHOT_DIR}")
-    print()
-    
-    # Очистка и создание директории снапшота
-    if SNAPSHOT_DIR.exists():
-        print("🗑️  Очистка старого снапшота...")
-        shutil.rmtree(SNAPSHOT_DIR)
-    
-    SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
-    
-    # Счётчики
-    files_exported = 0
-    total_size = 0
-    errors = []
-    
-    # Проход по всем файлам проекта (ТИХИЙ РЕЖИМ)
-    print("📦 Сканирование и копирование файлов...")
-    
-    for file_path in PROJECT_ROOT.rglob('*'):
-        if not file_path.is_file():
-            continue
-        
-        if not should_include_file(file_path):
-            continue
-        
-        # Относительный путь от корня проекта
-        rel_path = file_path.relative_to(PROJECT_ROOT)
-        
-        # Целевой путь в снапшоте (с .txt расширением для кода)
-        if file_path.suffix in INCLUDE_EXTENSIONS or file_path.name in INCLUDE_NO_EXTENSION:
-            target_path = SNAPSHOT_DIR / f"{rel_path}.txt"
-        else:
-            target_path = SNAPSHOT_DIR / rel_path
-        
-        # Создание директорий
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Копирование файла
-        try:
-            shutil.copy2(file_path, target_path)
-            files_exported += 1
-            total_size += file_path.stat().st_size
-        except Exception as e:
-            errors.append(f"{rel_path}: {e}")
-    
-    # Создание README в снапшоте
-    readme_content = f"""# Field Service Code Snapshot
-
-**Создан:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  
-**Файлов:** {files_exported}  
-**Размер:** {total_size / 1024 / 1024:.2f} MB
-
-## 📋 О снапшоте
-
-Все файлы проекта сохранены с исходной структурой директорий.
-Файлы кода имеют расширение `.txt` для удобного чтения в любом редакторе.
-
-## 📦 Включённые типы файлов
-
-### Код
-- Python: `.py`, `.pyi`
-
-### Конфигурация
-- Форматы: `.json`, `.yaml`, `.yml`, `.toml`, `.ini`, `.cfg`, `.conf`
-- Docker: `Dockerfile`, `.dockerignore`
-- Git: `.gitignore`, `.gitattributes`
-
-### Документация
-- Форматы: `.md`, `.txt`, `.rst`
-
-### Скрипты и SQL
-- Скрипты: `.sql`, `.sh`, `.ps1`, `.bat`
-- Зависимости: `requirements.txt`
-
-### Другие
-- `.env.example`, `.editorconfig`, `.pre-commit-config.yaml`
-
-## 🚫 Исключённые файлы
-
-### Директории
-{', '.join(sorted(EXCLUDE_DIRS))}
-
-### Паттерны
-- Файлы с `.deprecated`, `.backup`, `.old`, `.bak`
-- Backup директории (`admin_bot.backup` и т.д.)
-
-### Временные файлы
-- `*.pyc`, `*.pyo`, `*.pyd`
-- `*.log`, `.DS_Store`, `Thumbs.db`
-
-## 📊 Статистика
-
-- **Всего файлов:** {files_exported}
-- **Общий размер:** {total_size / 1024 / 1024:.2f} MB
-- **Средний размер файла:** {(total_size / files_exported / 1024):.2f} KB
-"""
-
-    if errors:
-        readme_content += f"\n## ⚠️ Ошибки при копировании ({len(errors)})\n\n"
-        for error in errors[:10]:  # Показываем первые 10 ошибок
-            readme_content += f"- {error}\n"
-        if len(errors) > 10:
-            readme_content += f"\n... и ещё {len(errors) - 10} ошибок\n"
-    
-    (SNAPSHOT_DIR / "README.md").write_text(readme_content, encoding='utf-8')
-    
-    # Создание файла-индекса структуры проекта
-    structure_content = "# Структура проекта Field Service\n\n"
-    structure_content += "```\n"
-    
-    # Рекурсивно строим дерево (только директории)
-    def build_tree(path: Path, prefix: str = "", is_last: bool = True):
-        lines = []
-        if path.is_dir():
-            # Название директории
-            connector = "└── " if is_last else "├── "
-            lines.append(f"{prefix}{connector}{path.name}/\n")
-            
-            # Получаем поддиректории
-            subdirs = [d for d in sorted(path.iterdir()) if d.is_dir() and d.name not in EXCLUDE_DIRS]
-            
-            # Рекурсивно обходим
-            for i, subdir in enumerate(subdirs):
-                extension = "    " if is_last else "│   "
-                is_last_subdir = (i == len(subdirs) - 1)
-                lines.extend(build_tree(subdir, prefix + extension, is_last_subdir))
-        
-        return lines
-    
-    # Строим дерево для field-service
-    field_service_path = PROJECT_ROOT / "field-service"
-    if field_service_path.exists():
-        structure_content += "field-service/\n"
-        structure_lines = build_tree(field_service_path / "field_service", "", True)
-        structure_content += "".join(structure_lines)
-    
-    structure_content += "```\n"
-    
-    (SNAPSHOT_DIR / "PROJECT_STRUCTURE.md").write_text(structure_content, encoding='utf-8')
-    
-    # Итоговая статистика
-    print()
-    print("=" * 70)
-    print(f"✅ Экспорт завершён успешно!")
-    print()
-    print(f"📊 Итоговая статистика:")
-    print(f"   • Файлов экспортировано: {files_exported}")
-    print(f"   • Общий размер: {total_size / 1024 / 1024:.2f} MB")
-    print(f"   • Средний размер файла: {(total_size / files_exported / 1024):.2f} KB")
-    if errors:
-        print(f"   ⚠️  Ошибок при копировании: {len(errors)}")
-    print()
-    print(f"📁 Результат: {SNAPSHOT_DIR}")
-    print("=" * 70)
-
-if __name__ == "__main__":
-    try:
-        export_code_snapshot()
-    except KeyboardInterrupt:
-        print("\n⚠️  Прервано пользователем")
-    except Exception as e:
-        print(f"\n❌ Ошибка: {e}")
-        raise
-```
-
-## \ProjectF\test_fixes_step_1.py
 ```python
 # -*- coding: utf-8 -*-
 """
-Тестовый скрипт для проверки исправлений Этапа 1.1-1.3
-Проверяет синтаксис и базовую корректность изменённых файлов
+Field Service Control Bot
+Управление ботами на продакшн сервере через Telegram
 """
 
-import ast
-import sys
-from pathlib import Path
-
-def check_syntax(filepath: str) -> bool:
-    """Проверка синтаксиса Python файла"""
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            code = f.read()
-        ast.parse(code)
-        print(f"[OK] {Path(filepath).name}: Syntax correct")
-        return True
-    except SyntaxError as e:
-        print(f"[ERROR] {Path(filepath).name}: Syntax error on line {e.lineno}")
-        print(f"   {e.msg}")
-        return False
-    except Exception as e:
-        print(f"[ERROR] {Path(filepath).name}: Read error: {e}")
-        return False
-
-
-def check_key_changes(filepath: str, expected_changes: list[str]) -> bool:
-    """Проверка наличия ключевых изменений"""
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        missing = []
-        for change in expected_changes:
-            if change not in content:
-                missing.append(change)
-        
-        if missing:
-            print(f"[WARN] {Path(filepath).name}: Missing expected changes:")
-            for m in missing:
-                print(f"   - {m}")
-            return False
-        
-        print(f"[OK] {Path(filepath).name}: All key changes present")
-        return True
-    except Exception as e:
-        print(f"[ERROR] {Path(filepath).name}: Check error: {e}")
-        return False
-
-
-def main():
-    print("=" * 60)
-    print("CHECKING FIXES: Stage 1.1-1.3")
-    print("=" * 60)
-    print()
-    
-    # Правильный путь к проекту
-    base_path = Path("C:/ProjectF/field-service/field_service")
-    
-    # Файл 1: master_bot/handlers/orders.py
-    print("=" * 60)
-    print("FILE 1: orders.py (Fix 1.1 + 1.2)")
-    print("=" * 60)
-    orders_file = base_path / "bots" / "master_bot" / "handlers" / "orders.py"
-    print(f"Path: {orders_file}")
-    
-    syntax_ok_1 = check_syntax(str(orders_file))
-    changes_ok_1 = check_key_changes(
-        str(orders_file),
-        [
-            # Fix 1.1: Race Condition
-            "with_for_update(skip_locked=True)",
-            "already locked by another master",
-            # Fix 1.2: DEFERRED orders
-            "m.OrderStatus.DEFERRED",
-        ]
-    )
-    
-    print()
-    
-    # Файл 2: services/distribution_scheduler.py
-    print("=" * 60)
-    print("FILE 2: distribution_scheduler.py (Fix 1.2 + 1.3)")
-    print("=" * 60)
-    scheduler_file = base_path / "services" / "distribution_scheduler.py"
-    print(f"Path: {scheduler_file}")
-    
-    syntax_ok_2 = check_syntax(str(scheduler_file))
-    changes_ok_2 = check_key_changes(
-        str(scheduler_file),
-        [
-            # Fix 1.2: DEFERRED in SQL
-            "o.status = 'DEFERRED'",
-            "state IN ('SENT', 'VIEWED')",
-            # Fix 1.3: Preferred master diagnostics
-            "_check_preferred_master_availability",
-            "preferred_master=%s UNAVAILABLE",  # Corrected text
-            "searching all masters",
-        ]
-    )
-    
-    print()
-    print("=" * 60)
-    
-    all_ok = syntax_ok_1 and syntax_ok_2 and changes_ok_1 and changes_ok_2
-    
-    if all_ok:
-        print("[SUCCESS] ALL CHECKS PASSED!")
-        print()
-        print("Summary:")
-        print("  Fix 1.1: Race Condition - OK")
-        print("  Fix 1.2: DEFERRED orders - OK")
-        print("  Fix 1.3: Guarantee orders - OK")
-        print()
-        print("Next steps:")
-        print("  1. Start project: docker-compose up -d")
-        print("  2. Check logs: docker-compose logs -f distribution_scheduler")
-        print("  3. Test offer acceptance (2 masters simultaneously)")
-        print("  4. Test DEFERRED order acceptance")
-        print("  5. Test guarantee order with unavailable preferred master")
-        return 0
-    else:
-        print("[FAIL] ISSUES DETECTED!")
-        print("  Check files for errors before running")
-        return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-```
-.
-## \ProjectF\control-bot\control_bot.py
-```python
 import os
 import asyncio
 import logging
@@ -1226,7 +1299,7 @@ async def deploy_execute(callback: CallbackQuery, **kwargs):
     deploy_steps = [
         ("Создание бэкапа", "/usr/local/bin/field-service-backup.sh daily"),
         ("Проверка статуса", f"cd {PROJECT_PATH} && docker compose ps"),
-        ("Сборка образов", f"cd {PROJECT_PATH} && docker compose build"),
+        ("Сборка образов", f"cd {PROJECT_PATH} && docker compose build --no-cache"),
         ("Применение миграций", f"cd {PROJECT_PATH} && docker compose run --rm admin-bot alembic upgrade head"),
         ("Перезапуск", f"cd {PROJECT_PATH} && docker compose up -d --no-deps admin-bot master-bot"),
     ]
@@ -1297,7 +1370,7 @@ async def git_deploy_execute(callback: CallbackQuery, **kwargs):
         ("Восстановление .env", f"cp /tmp/field-service.env.backup {PROJECT_PATH}/.env"),
         ("Создание бэкапа", "/usr/local/bin/field-service-backup.sh daily"),
         ("Проверка статуса", f"cd {PROJECT_PATH} && docker compose ps"),
-        ("Сборка образов", f"cd {PROJECT_PATH} && docker compose build"),
+        ("Сборка образов", f"cd {PROJECT_PATH} && docker compose build --no-cache"),
         ("Применение миграций", f"cd {PROJECT_PATH} && docker compose run --rm admin-bot alembic upgrade head"),
         ("Перезапуск", f"cd {PROJECT_PATH} && docker compose up -d --no-deps admin-bot master-bot"),
     ]
@@ -1363,9 +1436,478 @@ if __name__ == "__main__":
         logger.info("Bot stopped by user")
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
+
 ```
-.
-## \ProjectF\field-service\add_cities_script.py
+
+---
+
+## `export_code_snapshot.py`
+
+**Strok:** 269  
+**Razmer:** 9.50 KB
+
+```python
+#!/usr/bin/env python3
+"""
+Экспорт кодовой базы Field Service проекта
+Создаёт снапшот в папке code_snapshot с сохранением структуры
+Оптимизирован для быстрой работы (тихий режим)
+"""
+
+import shutil
+from pathlib import Path
+from datetime import datetime
+
+# Конфигурация
+PROJECT_ROOT = Path(__file__).parent
+SNAPSHOT_DIR = PROJECT_ROOT / "code_snapshot"
+
+# Расширения файлов для экспорта
+INCLUDE_EXTENSIONS = {
+    # Код
+    '.py', '.pyi',
+    # Конфигурация
+    '.json', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf',
+    # Документация
+    '.md', '.txt', '.rst',
+    # SQL и скрипты
+    '.sql', '.sh', '.ps1', '.bat',
+    # Docker и CI/CD
+    '.dockerignore', '.editorconfig', '.gitattributes',
+    # Другие важные
+    '.env.example', '.gitignore', '.pre-commit-config.yaml'
+}
+
+# Файлы БЕЗ расширения для включения
+INCLUDE_NO_EXTENSION = {
+    'Dockerfile', 'Makefile', 'Procfile', 'requirements.txt',
+    'LICENSE', 'README', 'CHANGELOG', 'CONTRIBUTING'
+}
+
+# Директории для исключения
+EXCLUDE_DIRS = {
+    # Python
+    '__pycache__', '.pytest_cache', '.ruff_cache', '.mypy_cache',
+    '.tox', '.nox', 'htmlcov', '.coverage',
+    # Git
+    '.git', '.github',
+    # Виртуальные окружения
+    'venv', 'env', '.env', '.venv', 'virtualenv',
+    # Node.js (если есть фронтенд)
+    'node_modules',
+    # IDE
+    '.vscode', '.idea', '.vs',
+    # Временные и build
+    '.local', 'dist', 'build', 'egg-info', '*.egg-info',
+    # Снапшоты
+    'code_snapshot',
+    # Backup директории
+    'backup', '.backup'
+}
+
+# Файлы для исключения
+EXCLUDE_FILES = {
+    '.DS_Store', 'Thumbs.db', 
+    '*.pyc', '*.pyo', '*.pyd',
+    '.coverage', 'coverage.xml', 
+    '*.log', '*.swp', '*.swo',
+    '*~'  # Vim backup files
+}
+
+# Паттерны для исключения (deprecated, backup и т.д.)
+EXCLUDE_PATTERNS = {
+    '.deprecated', '.backup', '.old', '.bak'
+}
+
+def should_include_file(file_path: Path) -> bool:
+    """Проверяет, нужно ли включать файл в снапшот"""
+    
+    # Проверка на deprecated/backup в имени файла
+    for pattern in EXCLUDE_PATTERNS:
+        if pattern in file_path.name.lower():
+            return False
+    
+    # Проверка имени файла
+    if file_path.name in EXCLUDE_FILES:
+        return False
+    
+    # Проверка по частям пути (директории)
+    for part in file_path.parts:
+        if part in EXCLUDE_DIRS:
+            return False
+        # Проверка на .backup директории
+        for pattern in EXCLUDE_PATTERNS:
+            if pattern in part.lower():
+                return False
+    
+    # Файлы без расширения - проверяем список
+    if not file_path.suffix:
+        return file_path.name in INCLUDE_NO_EXTENSION
+    
+    # Проверка расширения
+    return file_path.suffix in INCLUDE_EXTENSIONS
+
+def export_code_snapshot():
+    """Создаёт снапшот кодовой базы"""
+    
+    print(f"🚀 Экспорт кодовой базы Field Service проекта")
+    print(f"📂 Корень: {PROJECT_ROOT}")
+    print(f"📁 Снапшот: {SNAPSHOT_DIR}")
+    print()
+    
+    # Очистка и создание директории снапшота
+    if SNAPSHOT_DIR.exists():
+        print("🗑️  Очистка старого снапшота...")
+        shutil.rmtree(SNAPSHOT_DIR)
+    
+    SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Счётчики
+    files_exported = 0
+    total_size = 0
+    errors = []
+    
+    # Проход по всем файлам проекта (ТИХИЙ РЕЖИМ)
+    print("📦 Сканирование и копирование файлов...")
+    
+    for file_path in PROJECT_ROOT.rglob('*'):
+        if not file_path.is_file():
+            continue
+        
+        if not should_include_file(file_path):
+            continue
+        
+        # Относительный путь от корня проекта
+        rel_path = file_path.relative_to(PROJECT_ROOT)
+        
+        # Целевой путь в снапшоте (с .txt расширением для кода)
+        if file_path.suffix in INCLUDE_EXTENSIONS or file_path.name in INCLUDE_NO_EXTENSION:
+            target_path = SNAPSHOT_DIR / f"{rel_path}.txt"
+        else:
+            target_path = SNAPSHOT_DIR / rel_path
+        
+        # Создание директорий
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Копирование файла
+        try:
+            shutil.copy2(file_path, target_path)
+            files_exported += 1
+            total_size += file_path.stat().st_size
+        except Exception as e:
+            errors.append(f"{rel_path}: {e}")
+    
+    # Создание README в снапшоте
+    readme_content = f"""# Field Service Code Snapshot
+
+**Создан:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  
+**Файлов:** {files_exported}  
+**Размер:** {total_size / 1024 / 1024:.2f} MB
+
+## 📋 О снапшоте
+
+Все файлы проекта сохранены с исходной структурой директорий.
+Файлы кода имеют расширение `.txt` для удобного чтения в любом редакторе.
+
+## 📦 Включённые типы файлов
+
+### Код
+- Python: `.py`, `.pyi`
+
+### Конфигурация
+- Форматы: `.json`, `.yaml`, `.yml`, `.toml`, `.ini`, `.cfg`, `.conf`
+- Docker: `Dockerfile`, `.dockerignore`
+- Git: `.gitignore`, `.gitattributes`
+
+### Документация
+- Форматы: `.md`, `.txt`, `.rst`
+
+### Скрипты и SQL
+- Скрипты: `.sql`, `.sh`, `.ps1`, `.bat`
+- Зависимости: `requirements.txt`
+
+### Другие
+- `.env.example`, `.editorconfig`, `.pre-commit-config.yaml`
+
+## 🚫 Исключённые файлы
+
+### Директории
+{', '.join(sorted(EXCLUDE_DIRS))}
+
+### Паттерны
+- Файлы с `.deprecated`, `.backup`, `.old`, `.bak`
+- Backup директории (`admin_bot.backup` и т.д.)
+
+### Временные файлы
+- `*.pyc`, `*.pyo`, `*.pyd`
+- `*.log`, `.DS_Store`, `Thumbs.db`
+
+## 📊 Статистика
+
+- **Всего файлов:** {files_exported}
+- **Общий размер:** {total_size / 1024 / 1024:.2f} MB
+- **Средний размер файла:** {(total_size / files_exported / 1024):.2f} KB
+"""
+
+    if errors:
+        readme_content += f"\n## ⚠️ Ошибки при копировании ({len(errors)})\n\n"
+        for error in errors[:10]:  # Показываем первые 10 ошибок
+            readme_content += f"- {error}\n"
+        if len(errors) > 10:
+            readme_content += f"\n... и ещё {len(errors) - 10} ошибок\n"
+    
+    (SNAPSHOT_DIR / "README.md").write_text(readme_content, encoding='utf-8')
+    
+    # Создание файла-индекса структуры проекта
+    structure_content = "# Структура проекта Field Service\n\n"
+    structure_content += "```\n"
+    
+    # Рекурсивно строим дерево (только директории)
+    def build_tree(path: Path, prefix: str = "", is_last: bool = True):
+        lines = []
+        if path.is_dir():
+            # Название директории
+            connector = "└── " if is_last else "├── "
+            lines.append(f"{prefix}{connector}{path.name}/\n")
+            
+            # Получаем поддиректории
+            subdirs = [d for d in sorted(path.iterdir()) if d.is_dir() and d.name not in EXCLUDE_DIRS]
+            
+            # Рекурсивно обходим
+            for i, subdir in enumerate(subdirs):
+                extension = "    " if is_last else "│   "
+                is_last_subdir = (i == len(subdirs) - 1)
+                lines.extend(build_tree(subdir, prefix + extension, is_last_subdir))
+        
+        return lines
+    
+    # Строим дерево для field-service
+    field_service_path = PROJECT_ROOT / "field-service"
+    if field_service_path.exists():
+        structure_content += "field-service/\n"
+        structure_lines = build_tree(field_service_path / "field_service", "", True)
+        structure_content += "".join(structure_lines)
+    
+    structure_content += "```\n"
+    
+    (SNAPSHOT_DIR / "PROJECT_STRUCTURE.md").write_text(structure_content, encoding='utf-8')
+    
+    # Итоговая статистика
+    print()
+    print("=" * 70)
+    print(f"✅ Экспорт завершён успешно!")
+    print()
+    print(f"📊 Итоговая статистика:")
+    print(f"   • Файлов экспортировано: {files_exported}")
+    print(f"   • Общий размер: {total_size / 1024 / 1024:.2f} MB")
+    print(f"   • Средний размер файла: {(total_size / files_exported / 1024):.2f} KB")
+    if errors:
+        print(f"   ⚠️  Ошибок при копировании: {len(errors)}")
+    print()
+    print(f"📁 Результат: {SNAPSHOT_DIR}")
+    print("=" * 70)
+
+if __name__ == "__main__":
+    try:
+        export_code_snapshot()
+    except KeyboardInterrupt:
+        print("\n⚠️  Прервано пользователем")
+    except Exception as e:
+        print(f"\n❌ Ошибка: {e}")
+        raise
+
+```
+
+---
+
+### `field-service/add_all_districts.py`
+
+**Strok:** 173  
+**Razmer:** 13.50 KB
+
+```python
+#!/usr/bin/env python3
+"""
+Add districts for all 79 cities to Field Service database.
+Run inside the container: docker exec -it field-service-admin-bot-1 python add_all_districts.py
+"""
+import asyncio
+from sqlalchemy import select, delete
+from field_service.db.session import SessionLocal
+from field_service.db import models as m
+
+# Mapping: city_name -> list of district names
+CITY_DISTRICTS = {
+    "Москва": ["ЦАО", "САО", "СВАО", "ВАО", "ЮВАО", "ЮАО", "ЮЗАО", "ЗАО", "СЗАО", "ЗелАО", "НАО", "ТАО"],
+    "Санкт-Петербург": ["Адмиралтейский", "Василеостровский", "Выборгский", "Калининский", "Кировский", 
+                        "Колпинский", "Красногвардейский", "Красносельский", "Кронштадтский", "Курортный", 
+                        "Московский", "Невский", "Петроградский", "Петродворцовый", "Приморский", "Пушкинский", 
+                        "Фрунзенский", "Центральный"],
+    "Новосибирск": ["Центральный", "Железнодорожный", "Заельцовский", "Дзержинский", "Калининский", 
+                    "Кировский", "Ленинский", "Октябрьский", "Первомайский", "Советский"],
+    "Екатеринбург": ["Верх-Исетский", "Железнодорожный", "Кировский", "Ленинский", "Октябрьский", 
+                     "Орджоникидзевский", "Чкаловский"],
+    "Казань": ["Авиастроительный", "Вахитовский", "Кировский", "Московский", "Ново-Савиновский", 
+               "Приволжский", "Советский"],
+    "Нижний Новгород": ["Автозаводский", "Канавинский", "Ленинский", "Московский", "Нижегородский", 
+                        "Приокский", "Советский", "Сормовский"],
+    "Челябинск": ["Калининский", "Курчатовский", "Ленинский", "Металлургический", "Советский", 
+                  "Тракторозаводский", "Центральный"],
+    "Красноярск": ["Железнодорожный", "Кировский", "Ленинский", "Октябрьский", "Свердловский", 
+                   "Советский", "Центральный"],
+    "Самара": ["Железнодорожный", "Кировский", "Красноглинский", "Куйбышевский", "Ленинский", 
+               "Октябрьский", "Промышленный", "Самарский", "Советский"],
+    "Уфа": ["Демский", "Калининский", "Кировский", "Ленинский", "Октябрьский", "Орджоникидзевский", "Советский"],
+    "Ростов на Дону": ["Ворошиловский", "Железнодорожный", "Кировский", "Ленинский", "Октябрьский", 
+                       "Первомайский", "Пролетарский", "Советский"],
+    "Краснодар": ["Западный округ", "Карасунский округ", "Прикубанский округ", "Центральный округ"],
+    "Омск": ["Центральный", "Советский", "Кировский", "Ленинский", "Октябрьский"],
+    "Воронеж": ["Железнодорожный", "Коминтерновский", "Левобережный", "Ленинский", "Советский", "Центральный"],
+    "Пермь": ["Дзержинский", "Индустриальный", "Кировский", "Ленинский", "Мотовилихинский", 
+              "Орджоникидзевский", "Свердловский"],
+    "Волгоград": ["Тракторозаводский", "Краснооктябрьский", "Дзержинский", "Центральный", "Ворошиловский", 
+                  "Советский", "Кировский", "Красноармейский"],
+    "Саратов": ["Волжский", "Заводской", "Кировский", "Ленинский", "Октябрьский", "Фрунзенский"],
+    "Тюмень": ["Калининский", "Ленинский", "Центральный", "Восточный"],
+    "Тольятти": ["Автозаводский", "Комсомольский", "Центральный"],
+    "Ижевск": ["Индустриальный", "Ленинский", "Октябрьский", "Первомайский", "Устиновский"],
+    "Барнаул": ["Железнодорожный", "Индустриальный", "Ленинский", "Октябрьский", "Центральный"],
+    "Ульяновск": ["Засвияжский", "Заволжский", "Железнодорожный", "Ленинский"],
+    "Иркутск": ["Куйбышевский", "Ленинский", "Октябрьский", "Свердловский"],
+    "Хабаровск": ["Железнодорожный", "Индустриальный", "Кировский", "Центральный"],
+    "Владивосток": ["Ленинский", "Первомайский", "Первореченский", "Советский", "Фрунзенский"],
+    "Ярославль": ["Дзержинский", "Заволжский", "Кировский", "Красноперекопский", "Ленинский", "Фрунзенский"],
+    "Махачкала": ["Кировский", "Ленинский", "Советский"],
+    "Томск": ["Кировский", "Ленинский", "Октябрьский", "Советский"],
+    "Оренбург": ["Дзержинский", "Ленинский", "Промышленный", "Центральный"],
+    "Кемерово": ["Заводский", "Кировский", "Ленинский", "Рудничный", "Центральный"],
+    "Новокузнецк": ["Заводский", "Куйбышевский", "Центральный"],
+    "Рязань": ["Железнодорожный", "Московский", "Октябрьский", "Советский"],
+    "Набережные Челны": ["Автозаводский", "Комсомольский", "Центральный"],
+    "Астрахань": ["Кировский", "Ленинский", "Советский", "Трусовский"],
+    "Пенза": ["Железнодорожный", "Ленинский", "Октябрьский", "Первомайский"],
+    "Киров": ["Ленинский", "Нововятский", "Октябрьский", "Первомайский"],
+    "Липецк": ["Левобережный", "Октябрьский", "Правобережный", "Советский"],
+    "Чебоксары": ["Калининский", "Ленинский", "Московский"],
+    "Калининград": ["Ленинградский", "Московский", "Центральный"],
+    "Тула": ["Зареченский", "Привокзальный", "Пролетарский", "Советский", "Центральный"],
+    "Курск": ["Железнодорожный", "Сеймский", "Центральный"],
+    "Сочи": ["Адлерский", "Лазаревский", "Хостинский", "Центральный"],
+    "Ставрополь": ["Ленинский", "Октябрьский", "Промышленный"],
+    "Балашиха (МО)": ["Город целиком"],
+    "Севастополь": ["Балаклавский", "Гагаринский", "Ленинский", "Нахимовский"],
+    "Брянск": ["Бежицкий", "Володарский", "Советский", "Фокинский"],
+    "Белгород": ["Восточный", "Западный"],
+    "Магнитогорск": ["Ленинский", "Орджоникидзевский", "Правобережный"],
+    "Великий Новгород": ["Город целиком"],
+    "Калуга": ["Ленинский", "Московский", "Октябрьский"],
+    "Сургут": ["Восточный", "Западный", "Северный жилой", "Северный промышленный", "Центральный"],
+    "Владикавказ": ["Затеречный", "Иристонский", "Промышленный", "Северо-Западный"],
+    "Чита": ["Железнодорожный", "Ингодинский", "Центральный", "Черновский"],
+    "Симферополь": ["Железнодорожный", "Киевский", "Центральный"],
+    "Волжский": ["Город целиком"],
+    "Смоленск": ["Заднепровский", "Ленинский", "Промышленный"],
+    "Саранск": ["Город целиком"],
+    "Курган": ["Город целиком"],
+    "Орёл": ["Город целиком"],
+    "Подольск (МО)": ["Город целиком"],
+    "Архангельск": ["Варавино-Фактория", "Исакогорский", "Ломоносовский", "Майская горка", 
+                    "Маймаксанский", "Октябрьский", "Северный", "Соломбальский", "Цигломенский"],
+    "Грозный": ["Ахматовский", "Байсангуровский", "Висаитовский", "Шейх-Мансуровский"],
+    "Якутск": ["Автодорожный", "Гагаринский", "Губинский", "Октябрьский", "Промышленный", 
+               "Сайсарский", "Строительный", "Центральный"],
+    "Тверь": ["Заволжский", "Московский", "Пролетарский", "Центральный"],
+    "Старый Оскол": ["Город целиком"],
+    "Улан Удэ": ["Железнодорожный", "Октябрьский", "Советский"],
+    "Нижний Тагил": ["Дзержинский", "Ленинский", "Тагилстроевский"],
+    "Нижневартовск": ["Город целиком"],
+    "Псков": ["Город целиком"],
+    "Йошкар Ола": ["Город целиком"],
+    "Кострома": ["Город целиком"],
+    "Новороссийск": ["Город целиком"],
+    "Дзержинск": ["Город целиком"],
+    "Таганрог": ["Город целиком"],
+    "Химки (МО)": ["Город целиком"],
+    "Березники": ["Город целиком"],
+    "Энгельс": ["Город целиком"],
+    "Шахты": ["Город целиком"],
+}
+
+async def add_all_districts():
+    """Add districts for all cities."""
+    async with SessionLocal() as session:
+        async with session.begin():
+            # Get all cities from DB
+            result = await session.execute(select(m.cities))
+            cities = {row.name: row.id for row in result.scalars().all()}
+            
+            added = 0
+            skipped = 0
+            
+            for city_name, districts in CITY_DISTRICTS.items():
+                if city_name not in cities:
+                    print(f"⚠️  Город не найден в БД: {city_name}")
+                    skipped += 1
+                    continue
+                
+                city_id = cities[city_name]
+                
+                # Delete existing districts for this city
+                await session.execute(
+                    delete(m.districts).where(m.districts.city_id == city_id)
+                )
+                
+                # Add new districts
+                for district_name in districts:
+                    district = m.districts(
+                        city_id=city_id,
+                        name=district_name
+                    )
+                    session.add(district)
+                    added += 1
+                
+                print(f"✅ {city_name}: добавлено {len(districts)} районов")
+            
+            await session.commit()
+            
+            print(f"\n{'='*50}")
+            print(f"Готово!")
+            print(f"  Всего районов добавлено: {added}")
+            print(f"  Городов пропущено: {skipped}")
+            print(f"{'='*50}\n")
+            
+            # Verification
+            result = await session.execute(
+                select(m.cities.name, m.cities.id)
+                .outerjoin(m.districts, m.cities.id == m.districts.city_id)
+            )
+            print("\nПроверка:")
+            from sqlalchemy import func
+            result = await session.execute(
+                select(
+                    m.cities.id,
+                    m.cities.name,
+                    func.count(m.districts.id).label('district_count')
+                )
+                .outerjoin(m.districts, m.cities.id == m.districts.city_id)
+                .group_by(m.cities.id, m.cities.name)
+                .order_by(m.cities.id)
+            )
+            for row in result.all():
+                print(f"  {row.id:3d}. {row.name:30s} - {row.district_count} районов")
+
+if __name__ == "__main__":
+    asyncio.run(add_all_districts())
+
+```
+
+---
+
+### `field-service/add_cities_script.py`
+
+**Strok:** 58  
+**Razmer:** 2.22 KB
+
 ```python
 #!/usr/bin/env python3
 """
@@ -1424,134 +1966,16 @@ async def add_all_cities():
 
 if __name__ == "__main__":
     asyncio.run(add_all_cities())
+
 ```
-.
-## \ProjectF\field-service\fix_indents_v2.py
-```python
-"""
-Скрипт для исправления отступов ТОЛЬКО внутри for order in orders:
-"""
 
-file_path = r"C:\ProjectF\field-service\field_service\services\distribution_scheduler.py"
+---
 
-with open(file_path, 'r', encoding='utf-8') as f:
-    content = f.read()
-    lines = content.splitlines(keepends=True)
+#### `field-service/alembic/env.py`
 
-fixed_lines = []
-inside_for_loop = False
-for_loop_line_num = 0
+**Strok:** 102  
+**Razmer:** 2.57 KB
 
-for i, line in enumerate(lines):
-    line_num = i + 1
-    
-    # Находим строку "for order in orders:"
-    if "for order in orders:" in line and not inside_for_loop:
-        inside_for_loop = True
-        for_loop_line_num = line_num
-        fixed_lines.append(line)
-        print(f"[{line_num}] Found 'for order in orders:'")
-        continue
-    
-    # Находим строку "await session.commit()" на уровне функции (_tick_once_impl)
-    if inside_for_loop and "await session.commit()" in line:
-        # Проверяем отступ - должен быть 4 пробела (уровень функции)
-        indent = len(line) - len(line.lstrip())
-        if indent == 4:
-            inside_for_loop = False
-            fixed_lines.append(line)
-            print(f"[{line_num}] Found end of for loop at 'await session.commit()'")
-            continue
-    
-    # Внутри for loop - убираем 4 пробела если отступ > 8
-    if inside_for_loop:
-        if line.strip() and line[0] == ' ':
-            indent = len(line) - len(line.lstrip())
-            # Убираем 4 пробела только если отступ >= 12 (лишний отступ)
-            if indent >= 12:
-                fixed_line = line[4:]
-                fixed_lines.append(fixed_line)
-            else:
-                fixed_lines.append(line)
-        else:
-            fixed_lines.append(line)
-    else:
-        fixed_lines.append(line)
-
-# Записываем
-with open(file_path, 'w', encoding='utf-8') as f:
-    f.writelines(fixed_lines)
-
-print(f"Fixed! Total lines: {len(lines)}")
-```
-.
-## \ProjectF\field-service\temp_fix_indents.py
-```python
-"""
-Временный скрипт для исправления отступов в distribution_scheduler.py
-"""
-
-file_path = r"C:\ProjectF\field-service\field_service\services\distribution_scheduler.py"
-
-# Читаем файл
-with open(file_path, 'r', encoding='utf-8') as f:
-    lines = f.readlines()
-
-# Находим строку "for order in orders:" (примерно строка 771)
-# И до "await session.commit()" (примерно строка 1022)
-# Убираем 4 лишних пробела с каждой строки в этом диапазоне
-
-fixed_lines = []
-inside_for_loop = False
-for_loop_indent = 0
-
-for i, line in enumerate(lines):
-    line_num = i + 1
-    
-    # Начало блока
-    if "for order in orders:" in line and line_num >= 770:
-        inside_for_loop = True
-        for_loop_indent = len(line) - len(line.lstrip())
-        fixed_lines.append(line)
-        print(f"[{line_num}] Начало for loop, базовый отступ: {for_loop_indent}")
-        continue
-    
-    # Конец блока - найдена строка "await session.commit()" на уровне for loop
-    if inside_for_loop and "await session.commit()" in line:
-        # Проверяем что это на правильном уровне (8 пробелов = уровень функции _tick_once_impl)
-        current_indent = len(line) - len(line.lstrip())
-        if current_indent <= for_loop_indent:
-            inside_for_loop = False
-            fixed_lines.append(line)
-            print(f"[{line_num}] Конец for loop")
-            continue
-    
-    # Внутри блока - убираем 4 лишних пробела
-    if inside_for_loop:
-        # Если строка не пустая и начинается с пробелов
-        if line.strip() and line[0] == ' ':
-            current_indent = len(line) - len(line.lstrip())
-            # Убираем 4 пробела только если отступ больше базового
-            if current_indent > for_loop_indent:
-                fixed_line = line[4:]  # Убираем 4 пробела
-                fixed_lines.append(fixed_line)
-                if line_num <= 780 or line_num >= 1015:  # Логируем начало и конец
-                    print(f"[{line_num}] Исправлен отступ: {current_indent} -> {current_indent-4}")
-            else:
-                fixed_lines.append(line)
-        else:
-            fixed_lines.append(line)
-    else:
-        fixed_lines.append(line)
-
-# Записываем исправленный файл
-with open(file_path, 'w', encoding='utf-8') as f:
-    f.writelines(fixed_lines)
-
-print(f"\n✅ Исправлено! Всего строк: {len(lines)}")
-```
-.
-## \ProjectF\field-service\alembic\env.py
 ```python
 from __future__ import annotations
 
@@ -1654,9 +2078,16 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\0010_order_autoclose.py
+
+---
+
+##### `field-service/alembic/versions/0010_order_autoclose.py`
+
+**Strok:** 39  
+**Razmer:** 1.36 KB
+
 ```python
 """
 Alembic migration: Auto-close orders after 24 hours in CLOSED status
@@ -1696,9 +2127,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index('ix_order_autoclose_queue__pending', table_name='order_autoclose_queue')
     op.drop_table('order_autoclose_queue')
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_17_0001_init_schema.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_17_0001_init_schema.py`
+
+**Strok:** 591  
+**Razmer:** 20.76 KB
+
 ```python
 """init_schema: Field Service v1.2 core tables
 
@@ -2290,9 +2728,16 @@ def downgrade() -> None:
         "order_status",
     ):
         postgresql.ENUM(name=enum_name).drop(op.get_bind(), checkfirst=True)
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_17_0002_master_fsm.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_17_0002_master_fsm.py`
+
+**Strok:** 159  
+**Razmer:** 4.63 KB
+
 ```python
 """master_fsm: .  , , ,  MASTER
 Revision ID: 2025_09_17_0002
@@ -2452,9 +2897,16 @@ def downgrade():
     for enum_name in ("payout_method", "shift_status", "moderation_status"):
         postgresql.ENUM(name=enum_name).drop(op.get_bind(), checkfirst=True)
     # attachment_entity: enum  MASTER    ()
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_17_0003_seed_cities.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_17_0003_seed_cities.py`
+
+**Strok:** 33  
+**Razmer:** 0.69 KB
+
 ```python
 """Seed canonical city list for Field Service v1.2."""
 
@@ -2488,9 +2940,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     # No-op: we keep seeded cities.
     pass
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_17_0003_seed_demo_data.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_17_0003_seed_demo_data.py`
+
+**Strok:** 75  
+**Razmer:** 1.86 KB
+
 ```python
 """seed_demo_data:  // (dev)
 Revision ID: 2025_09_17_0003
@@ -2566,9 +3025,16 @@ def downgrade():
     op.execute(
         "DELETE FROM settings WHERE key IN ('max_active_orders','commission_percent_default')"
     )
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_17_0004_update_skills.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_17_0004_update_skills.py`
+
+**Strok:** 51  
+**Razmer:** 1.53 KB
+
 ```python
 """update_skills: refresh active categories to requested set
 Revision ID: 2025_09_17_0004
@@ -2620,9 +3086,16 @@ def downgrade():
         UPDATE skills SET is_active = true WHERE code IN ('ELEC','PLUMB','APPLI','FURN');
         """
     )
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_17_0005_admin_settings.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_17_0005_admin_settings.py`
+
+**Strok:** 59  
+**Razmer:** 1.71 KB
+
 ```python
 """admin_settings: dynamic working hours, admin requisites, seed keys
 Revision ID: 2025_09_17_0005
@@ -2682,9 +3155,16 @@ def downgrade() -> None:
     op.drop_column("staff_users", "commission_requisites")
     op.drop_constraint("ck_orders__slot_interval_valid", "orders", type_="check")
     #   CHECK ,   
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_18_0005_admin_enhancements.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_18_0005_admin_enhancements.py`
+
+**Strok:** 74  
+**Razmer:** 2.48 KB
+
 ```python
 """admin_enhancements: per-admin requisites, access codes, per-master limit
 Revision ID: 2025_09_18_0005
@@ -2759,9 +3239,16 @@ def downgrade():
     op.drop_table("staff_access_codes")
     op.drop_column("masters", "max_active_orders_override")
     op.drop_index("ix_staff_users__tg_user_id", table_name="staff_users")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_18_0006_staff_access_codes.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_18_0006_staff_access_codes.py`
+
+**Strok:** 72  
+**Razmer:** 2.43 KB
+
 ```python
 """staff_access_codes: invite codes for staff (merged after 0005)
 Revision ID: 2025_09_18_0006
@@ -2834,9 +3321,16 @@ def upgrade():
 def downgrade():
     # Best-effort: drop only the extra state index to avoid clobbering table from 0005
     op.drop_index("ix_staff_codes__state", table_name="staff_access_codes")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_18_0007_master_active_limit.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_18_0007_master_active_limit.py`
+
+**Strok:** 37  
+**Razmer:** 1.08 KB
+
 ```python
 """masters: per-master active orders limit override (merged)
 Revision ID: 2025_09_18_0007
@@ -2874,9 +3368,16 @@ def upgrade():
 def downgrade():
     op.drop_constraint("ck_masters__limit_nonneg", "masters", type_="check")
     op.drop_column("masters", "max_active_orders_override")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_19_0008_distribution_indexes.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_19_0008_distribution_indexes.py`
+
+**Strok:** 39  
+**Razmer:** 0.96 KB
+
 ```python
 from alembic import op
 import sqlalchemy as sa
@@ -2916,9 +3417,16 @@ def downgrade():
     op.drop_index("ix_master_skills__skill", table_name="master_skills")
     op.drop_index("ix_master_districts__district", table_name="master_districts")
     # settings   ()
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_19_0009_commission_rework.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_19_0009_commission_rework.py`
+
+**Strok:** 60  
+**Razmer:** 1.98 KB
+
 ```python
 """commission_rework: WAIT_PAY/REPORTED/APPROVED/OVERDUE + snapshot"""
 
@@ -2979,9 +3487,16 @@ def downgrade() -> None:
     op.drop_column("commissions", "paid_reported_at")
     op.drop_column("commissions", "rate")
     #  ENUM   (),  ;   
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_19_0010_owner_pay_settings.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_19_0010_owner_pay_settings.py`
+
+**Strok:** 32  
+**Razmer:** 0.87 KB
+
 ```python
 """owner pay settings (snapshot for commissions)"""
 
@@ -3014,9 +3529,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     #    
     pass
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_19_0011_guarantee_cycle.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_19_0011_guarantee_cycle.py`
+
+**Strok:** 39  
+**Razmer:** 0.99 KB
+
 ```python
 """guarantee_cycle: link to source order + company_payment"""
 
@@ -3056,9 +3578,16 @@ def downgrade() -> None:
     op.drop_index("ix_orders__guarantee_source", table_name="orders")
     op.drop_column("orders", "guarantee_source_order_id")
     op.drop_column("orders", "company_payment")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_19_0011_master_invite_codes.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_19_0011_master_invite_codes.py`
+
+**Strok:** 43  
+**Razmer:** 1.93 KB
+
 ```python
 """master_invite_codes table (onboarding invite for masters)"""
 
@@ -3102,9 +3631,16 @@ def downgrade() -> None:
     op.drop_index("ix_master_invite_codes__available", table_name=None)  # raw SQL 
     op.drop_index("ix_master_invite_codes__code", table_name="master_invite_codes")
     op.drop_table("master_invite_codes")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_19_0012_spec_indexes.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_19_0012_spec_indexes.py`
+
+**Strok:** 113  
+**Razmer:** 3.02 KB
+
 ```python
 """apply_spec_indexes: align indexes with TZ requirements"""
 
@@ -3218,9 +3754,16 @@ def downgrade() -> None:
     op.drop_index("ix_masters__onshift_verified", table_name="masters")
     op.drop_column("masters", "verified")
     op.drop_column("masters", "is_on_shift")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_19_0013_order_status_v12.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_19_0013_order_status_v12.py`
+
+**Strok:** 79  
+**Razmer:** 2.49 KB
+
 ```python
 """Align order statuses with TZ v1.2 and enforce working window"""
 
@@ -3300,9 +3843,16 @@ def downgrade() -> None:
         )
         op.execute(f"UPDATE orders SET status = '{legacy}' WHERE status = '{current}'")
     # New enum values remain present; Postgres does not support removing them safely.
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_19_0014_admin_bot_core.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_19_0014_admin_bot_core.py`
+
+**Strok:** 127  
+**Razmer:** 3.66 KB
+
 ```python
 ﻿"""admin bot core schema upgrades"""
 
@@ -3430,9 +3980,16 @@ def downgrade() -> None:
     order_type.drop(op.get_bind(), checkfirst=True)
 
     # Note: reverting enum value CITY_ADMIN is not supported (no action)
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_20_0015_distribution_escalations.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_20_0015_distribution_escalations.py`
+
+**Strok:** 27  
+**Razmer:** 0.61 KB
+
 ```python
 """add distribution escalation timestamps"""
 
@@ -3460,9 +4017,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("orders", "dist_escalated_admin_at")
     op.drop_column("orders", "dist_escalated_logist_at")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_20_0016_referral_rewards_update.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_20_0016_referral_rewards_update.py`
+
+**Strok:** 51  
+**Razmer:** 1.32 KB
+
 ```python
 ﻿"""adjust referral reward constraints"""
 
@@ -3514,9 +4078,16 @@ def downgrade() -> None:
             "uq_referral_rewards__once_per_level",
             ["referrer_id", "commission_id", "level"],
         )
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_22_0001_staff_visibility_indexes.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_22_0001_staff_visibility_indexes.py`
+
+**Strok:** 42  
+**Razmer:** 0.99 KB
+
 ```python
 ﻿"""staff visibility indexes
 
@@ -3559,9 +4130,16 @@ def downgrade() -> None:
     for name, _ in INDEXES:
         if name in existing:
             op.drop_index(name, table_name="staff_cities")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_22_0002_orders_v12_compat.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_22_0002_orders_v12_compat.py`
+
+**Strok:** 215  
+**Razmer:** 7.76 KB
+
 ```python
 ﻿"""orders_v12_compat: add v1.2 order columns and backfill"""
 
@@ -3777,9 +4355,16 @@ def downgrade() -> None:
     ):
         if _has_column(inspector, "orders", col_name):
             op.drop_column("orders", col_name)
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_23_0003_staff_access_rework.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_23_0003_staff_access_rework.py`
+
+**Strok:** 66  
+**Razmer:** 1.63 KB
+
 ```python
 ﻿"""Add revoked_at to staff_access_codes and rename issued_by column"""
 
@@ -3846,9 +4431,16 @@ def downgrade() -> None:
     op.drop_column(TABLE, "revoked_at")
     op.alter_column(TABLE, "created_by_staff_id", new_column_name="issued_by_staff_id")
 
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_27_0002_orders_add_v12_fields.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_27_0002_orders_add_v12_fields.py`
+
+**Strok:** 174  
+**Razmer:** 5.96 KB
+
 ```python
 ﻿"""Add v1.2 order fields"""
 
@@ -4023,9 +4615,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     raise NotImplementedError("orders v1.2 fields cannot be rolled back")
 
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_27_0003_orders_drop_legacy_fields.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_27_0003_orders_drop_legacy_fields.py`
+
+**Strok:** 127  
+**Razmer:** 3.66 KB
+
 ```python
 """Drop legacy order fields and finalize v1.2 schema"""
 
@@ -4153,9 +4752,16 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     raise NotImplementedError("legacy schema cleanup is irreversible")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_27_0004_orders_add_category_enum_v12.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_27_0004_orders_add_category_enum_v12.py`
+
+**Strok:** 72  
+**Razmer:** 1.73 KB
+
 ```python
 """orders add category enum v1.2
 
@@ -4228,9 +4834,16 @@ def downgrade() -> None:
         op.drop_column("orders", "category")
 
     order_category.drop(bind, checkfirst=True)
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_09_rename_admin_to_global_admin.py
+
+---
+
+##### `field-service/alembic/versions/2025_09_rename_admin_to_global_admin.py`
+
+**Strok:** 24  
+**Razmer:** 0.65 KB
+
 ```python
 """Rename ADMIN staff role to GLOBAL_ADMIN"""
 
@@ -4255,9 +4868,16 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("UPDATE staff_users SET role='ADMIN' WHERE role='GLOBAL_ADMIN'")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_10_01_0001_admin_master_moderation.py
+
+---
+
+##### `field-service/alembic/versions/2025_10_01_0001_admin_master_moderation.py`
+
+**Strok:** 165  
+**Razmer:** 4.65 KB
+
 ```python
 """Admin masters moderation flows foundation
 
@@ -4423,9 +5043,16 @@ def downgrade() -> None:
     op.drop_column("masters", "verified_at")
     op.drop_column("masters", "moderation_reason")
     op.drop_column("masters", "is_deleted")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_10_01_0002_cities_timezone.py
+
+---
+
+##### `field-service/alembic/versions/2025_10_01_0002_cities_timezone.py`
+
+**Strok:** 34  
+**Razmer:** 0.80 KB
+
 ```python
 """Add timezone column to cities and populate canonical IANA zones."""
 
@@ -4460,9 +5087,16 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_column("cities", "timezone")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_10_02_0003_geo_enhancements.py
+
+---
+
+##### `field-service/alembic/versions/2025_10_02_0003_geo_enhancements.py`
+
+**Strok:** 81  
+**Razmer:** 3.20 KB
+
 ```python
 """Add geo centroids and geocache cache table"""
 
@@ -4544,9 +5178,16 @@ def downgrade() -> None:
         if _has_column(inspector, table, column):
             op.drop_column(table, column)
 
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_10_05_0004_add_centroids.py
+
+---
+
+##### `field-service/alembic/versions/2025_10_05_0004_add_centroids.py`
+
+**Strok:** 40  
+**Razmer:** 1.21 KB
+
 ```python
 ﻿"""Add centroid coordinates to geo tables"""
 
@@ -4587,9 +5228,16 @@ def downgrade() -> None:
             op.drop_column(table, "centroid_lat")
         if _has_column(inspector, table, "centroid_lon"):
             op.drop_column(table, "centroid_lon")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_10_05_0005_escalation_notifications.py
+
+---
+
+##### `field-service/alembic/versions/2025_10_05_0005_escalation_notifications.py`
+
+**Strok:** 33  
+**Razmer:** 0.77 KB
+
 ```python
 """add escalation notification timestamps
 
@@ -4623,9 +5271,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("orders", "escalation_admin_notified_at")
     op.drop_column("orders", "escalation_logist_notified_at")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_10_06_0001_distribution_metrics.py
+
+---
+
+##### `field-service/alembic/versions/2025_10_06_0001_distribution_metrics.py`
+
+**Strok:** 70  
+**Razmer:** 4.03 KB
+
 ```python
 """Add distribution_metrics table for analytics
 
@@ -4696,9 +5351,16 @@ def downgrade() -> None:
     
     # Удаление таблицы
     op.drop_table('distribution_metrics')
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2025_10_09_0001_order_history_details.py
+
+---
+
+##### `field-service/alembic/versions/2025_10_09_0001_order_history_details.py`
+
+**Strok:** 70  
+**Razmer:** 2.33 KB
+
 ```python
 """Add detailed history tracking to order_status_history
 
@@ -4769,9 +5431,16 @@ def downgrade() -> None:
     
     # Удаление ENUM типа
     op.execute("DROP TYPE actor_type")
+
 ```
-.
-## \ProjectF\field-service\alembic\versions\2cad62ab4b40_merge_heads_unify_branches.py
+
+---
+
+##### `field-service/alembic/versions/2cad62ab4b40_merge_heads_unify_branches.py`
+
+**Strok:** 26  
+**Razmer:** 0.47 KB
+
 ```python
 """merge heads: unify branches
 
@@ -4798,9 +5467,16 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     pass
+
 ```
-.
-## \ProjectF\field-service\docs\P0-2_onboarding_changes.py
+
+---
+
+#### `field-service/docs/P0-2_onboarding_changes.py`
+
+**Strok:** 578  
+**Razmer:** 23.38 KB
+
 ```python
 # ===== ЧАСТЬ 1: Новая версия _show_summary с кнопками редактирования =====
 
@@ -5379,9 +6055,16 @@ TESTING CHECKLIST:
 ✅ Возврат к summary после каждого редактирования
 ✅ Отправка анкеты после редактирования
 """
+
 ```
-.
-## \ProjectF\field-service\docs\P1-10_PATCH.py
+
+---
+
+#### `field-service/docs/P1-10_PATCH.py`
+
+**Strok:** 128  
+**Razmer:** 5.29 KB
+
 ```python
 """
 P1-10: Push-уведомления о новых офферах
@@ -5510,344 +6193,53 @@ async def _get_order_notification_data(
 # 3. Добавлен вызов notify_master после создания оффера (13 строк)
 #
 # Всего: ~65 строк нового кода
+
 ```
-.
-## \ProjectF\field-service\field_service\config.py
+
+---
+
+#### `field-service/field_service/__init__.py`
+
+**Strok:** 1  
+**Razmer:** 0.00 KB
+
 ```python
-﻿from __future__ import annotations
 
-import json
-import os
-from dataclasses import dataclass
-from typing import Optional
-
-from dotenv import load_dotenv
-
-
-load_dotenv()
-
-
-def _parse_int_or_none(value: str | None) -> int | None:
-    if value is None:
-        return None
-    value = value.strip()
-    if not value:
-        return None
-    try:
-        return int(value)
-    except ValueError:
-        return None
-
-
-def _parse_json_int_list(value: str) -> tuple[int, ...]:
-    try:
-        parsed = json.loads(value or "[]")
-    except (TypeError, json.JSONDecodeError):
-        return ()
-    if not isinstance(parsed, (list, tuple)):
-        return ()
-    result: list[int] = []
-    for item in parsed:
-        try:
-            number = int(item)
-        except (TypeError, ValueError):
-            continue
-        result.append(number)
-    unique: list[int] = []
-    seen: set[int] = set()
-    for number in result:
-        if number in seen:
-            continue
-        seen.add(number)
-        unique.append(number)
-    return tuple(unique)
-
-
-@dataclass(frozen=True)
-class Settings:
-    database_url: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://fs_user:fs_password@127.0.0.1:5439/field_service",
-    )
-    master_bot_token: str = os.getenv(
-        "MASTER_BOT_TOKEN", "8423680284:AAHXBq-Lmtn5cVwUoxMwhJPOAoCMVGz4688"
-    )
-    admin_bot_token: str = os.getenv(
-        "ADMIN_BOT_TOKEN", "7531617746:AAGvHQ0RySGtSSMAYenNdwyenZFkTZA6xbQ"
-    )
-    timezone: str = os.getenv("TIMEZONE", "Europe/Moscow")
-    logs_channel_id: Optional[int] = _parse_int_or_none(os.getenv("LOGS_CHANNEL_ID"))
-    alerts_channel_id: Optional[int] = _parse_int_or_none(os.getenv("ALERTS_CHANNEL_ID"))
-    reports_channel_id: Optional[int] = _parse_int_or_none(os.getenv("REPORTS_CHANNEL_ID"))
-    heartbeat_seconds: int = int(os.getenv("HEARTBEAT_SECONDS", "60"))
-
-    distribution_sla_seconds: int = int(os.getenv("DISTRIBUTION_SLA_SECONDS", "120"))
-    distribution_rounds: int = int(os.getenv("DISTRIBUTION_ROUNDS", "2"))
-    commission_deadline_hours: int = int(os.getenv("COMMISSION_DEADLINE_HOURS", "3"))
-    guarantee_company_payment: float = float(
-        os.getenv("GUARANTEE_COMPANY_PAYMENT", "2500")
-    )
-    workday_start: str = os.getenv("WORKDAY_START") or os.getenv("WORKING_HOURS_START", "10:00")
-    workday_end: str = os.getenv("WORKDAY_END") or os.getenv("WORKING_HOURS_END", "20:00")
-    asap_late_threshold: str = os.getenv("ASAP_LATE_THRESHOLD", "19:30")
-    admin_bot_superusers: tuple[int, ...] = tuple(
-        int(item.strip())
-        for item in os.getenv("ADMIN_BOT_SUPERUSERS", "").replace(";", ",").split(",")
-        if item.strip().isdigit()
-    )
-    global_admins_tg_ids: tuple[int, ...] = _parse_json_int_list(
-        os.getenv("GLOBAL_ADMINS_TG_IDS", "[]")
-    )
-    access_code_ttl_hours: int = int(os.getenv("ACCESS_CODE_TTL_HOURS", "24"))
-    overdue_watchdog_min: int = int(os.getenv("OVERDUE_WATCHDOG_MIN", "10"))
-
-    @property
-    def working_hours_start(self) -> str:
-        return self.workday_start
-
-    @property
-    def working_hours_end(self) -> str:
-        return self.workday_end
-
-
-
-settings = Settings()
 ```
-.
-## \ProjectF\field-service\field_service\__init__.py
-```python
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\main.py
-```python
-# field_service/bots/admin_bot/main.py
-from __future__ import annotations
 
-import asyncio
-import logging
-import os
-from contextlib import suppress
+---
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiogram.types import Update
+###### `field-service/field_service/bots/admin_bot/__init__.py`
 
-from field_service.config import settings
-from field_service.bots.common.error_middleware import setup_error_middleware
-from field_service.bots.common.polling import poll_with_single_instance_guard
-from field_service.bots.common.retry_handler import retry_router
-from field_service.bots.common.retry_middleware import setup_retry_middleware
-from field_service.infra.notify import send_alert, send_log
-from field_service.services.distribution_scheduler import run_scheduler
-from field_service.services.heartbeat import run_heartbeat
-from field_service.services.watchdogs import (
-    watchdog_commissions_overdue,
-    watchdog_commission_deadline_reminders,  # P1-21
-    watchdog_expired_offers,  # Watchdog для истёкших офферов
-)
-from field_service.services.autoclose_scheduler import autoclose_scheduler  # P1-01
-from field_service.services.unassigned_monitor import monitor_unassigned_orders
+**Strok:** 5  
+**Razmer:** 0.07 KB
 
-from .handlers import create_combined_router
-from .handlers.finance.main import router as finance_router  # CR-2025-10-03-007: Финансы
-from .handlers.masters.main import router as admin_masters_router
-from .handlers.masters.moderation import router as admin_moderation_router
-from .core.middlewares import StaffAccessMiddleware
-from .infrastructure.registry import register_services
-from .services import (
-    DBDistributionService,
-    DBFinanceService,
-    DBMastersService,
-    DBOrdersService,
-    DBSettingsService,
-    DBStaffService,
-)
-
-
-logger = logging.getLogger(__name__)
-
-
-async def log_all_callbacks_middleware(handler, event, data):
-    """Глобальное логирование всех callback перед обработкой."""
-    if isinstance(event, Update) and event.callback_query:
-        cq = event.callback_query
-        logger.info(f"[GLOBAL] Callback received: {cq.data} from user {cq.from_user.id}")
-    return await handler(event, data)
-
-
-async def main() -> int:
-    # Setup logging
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    if not logging.getLogger().handlers:
-        logging.basicConfig(
-            level=getattr(logging, log_level, logging.INFO),
-            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        )
-    logging.getLogger("aiogram").setLevel(getattr(logging, log_level, logging.INFO))
-    
-    bot = Bot(
-        settings.admin_bot_token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
-    dp = Dispatcher()
-    
-    # Глобальное логирование всех callback (для отладки)
-    dp.update.outer_middleware(log_all_callbacks_middleware)
-    
-    # P2-08: Используем только модульные роутеры из handlers/
-    dp.include_router(create_combined_router())
-    
-    # CR-2025-10-03-007: Финансы
-    dp.include_router(finance_router)
-    
-    # Модерация и управление мастерами (moderation ПЕРЕД masters, т.к. masters имеет catch-all)
-    dp.include_router(admin_moderation_router)
-    dp.include_router(admin_masters_router)
-    
-    # P1-13: Retry функциональность для повтора действий при ошибках
-    dp.include_router(retry_router)
-
-    services = {
-        "staff_service": DBStaffService(),
-        "orders_service": DBOrdersService(),
-        "distribution_service": DBDistributionService(),
-        "finance_service": DBFinanceService(),
-        "settings_service": DBSettingsService(),
-        "masters_service": DBMastersService(),
-    }
-    bot._services = services  # type: ignore[attr-defined]
-    register_services(services)
-
-    staff_service: DBStaffService = services["staff_service"]
-    seeded = await staff_service.seed_global_admins(settings.global_admins_tg_ids)
-    if seeded:
-        logger.info("Seeded %d GLOBAL_ADMIN from GLOBAL_ADMINS_TG_IDS", seeded)
-
-    superuser_ids = set(settings.admin_bot_superusers) | set(settings.global_admins_tg_ids)
-    dp.update.middleware(StaffAccessMiddleware(staff_service, superuser_ids))
-
-    channel_settings = await services["settings_service"].get_channel_settings()
-    alerts_chat_id = channel_settings.get("alerts_channel_id") or settings.alerts_channel_id
-    logs_chat_id = channel_settings.get("logs_channel_id") or settings.logs_channel_id
-
-    setup_error_middleware(
-        dp,
-        bot=bot,
-        bot_label="admin_bot",
-        logs_chat_id=logs_chat_id,
-        alerts_chat_id=alerts_chat_id,
-    )
-    
-    # P1-13: Подключаем retry middleware для автоматического предложения повтора при ошибках
-    setup_retry_middleware(dp, enabled=True)
-
-    heartbeat_task = asyncio.create_task(
-        run_heartbeat(bot, name="admin", chat_id=logs_chat_id),
-        name="admin_heartbeat",
-    )
-
-    scheduler_task = asyncio.create_task(
-        run_scheduler(bot, alerts_chat_id=alerts_chat_id),
-        name="admin_scheduler",
-    )
-
-    watchdog_interval = max(60, settings.overdue_watchdog_min * 60)
-    watchdog_task = asyncio.create_task(
-        watchdog_commissions_overdue(
-            bot,
-            alerts_chat_id,
-            interval_seconds=watchdog_interval,
-        ),
-        name="commissions_watchdog",
-    )
-
-    unassigned_task: asyncio.Task | None = None
-    if alerts_chat_id:
-        unassigned_task = asyncio.create_task(
-            monitor_unassigned_orders(
-                bot,
-                alerts_chat_id,
-                interval_seconds=600,
-            ),
-            name="unassigned_monitor",
-        )
-
-    # P1-01: Автозакрытие заказов через 24ч
-    autoclose_task = asyncio.create_task(
-        autoclose_scheduler(
-            interval_seconds=3600,  # Проверка каждый час
-        ),
-        name="autoclose_scheduler",
-    )
-
-    # P1-21: Напоминания о дедлайне комиссии (24ч, 6ч, 1ч)
-    # Передаём master_bot_token чтобы уведомления шли мастерам в их бот!
-    deadline_reminders_task = asyncio.create_task(
-        watchdog_commission_deadline_reminders(
-            master_bot_token=settings.master_bot_token,  # ← master_bot для мастеров!
-            interval_seconds=1800,  # Проверка каждые 30 минут
-        ),
-        name="commission_deadline_reminders",
-    )
-
-    # Watchdog для истёкших офферов
-    expired_offers_task = asyncio.create_task(
-        watchdog_expired_offers(
-            interval_seconds=60,  # Проверка каждую минуту
-        ),
-        name="expired_offers_watchdog",
-    )
-
-    exit_code = 0
-    try:
-        await poll_with_single_instance_guard(
-            dp,
-            bot,
-            logs_chat_id=logs_chat_id,
-        )
-    except SystemExit as conflict_exit:
-        exit_code = int(conflict_exit.code or 0)
-    except (KeyboardInterrupt, asyncio.CancelledError):
-        pass
-    except Exception as exc:
-        logger.exception("Admin bot polling failed: %s", exc)
-        message = f"❗ Ошибка admin_bot polling: {type(exc).__name__}: {exc}"
-        await send_alert(bot, message, chat_id=alerts_chat_id, exc=exc)
-        await send_log(bot, message, chat_id=logs_chat_id)
-        exit_code = 1
-    finally:
-        for task in (
-            heartbeat_task,
-            scheduler_task,
-            watchdog_task,
-            autoclose_task,
-            deadline_reminders_task,  # P1-21
-            expired_offers_task,  # Watchdog истёкших офферов
-            unassigned_task,
-        ):
-            if task:
-                task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await task
-        await bot.session.close()
-
-    return exit_code
-
-
-if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\__init__.py
 ```python
 """Admin bot package."""
 from . import services
 
 __all__ = ["services"]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\core\access.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/core/__init__.py`
+
+**Strok:** 1  
+**Razmer:** 0.00 KB
+
+```python
+
+```
+
+---
+
+###### `field-service/field_service/bots/admin_bot/core/access.py`
+
+**Strok:** 17  
+**Razmer:** 0.37 KB
+
 ```python
 from __future__ import annotations
 
@@ -5865,9 +6257,16 @@ def visible_city_ids_for(staff: StaffUser) -> Optional[list[int]]:
 
 
 __all__ = ["visible_city_ids_for"]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\core\dto.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/core/dto.py`
+
+**Strok:** 368  
+**Razmer:** 8.21 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -6236,9 +6635,16 @@ __all__ = [
     'TimeslotOption',
     'WaitPayRecipient',
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\core\filters.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/core/filters.py`
+
+**Strok:** 71  
+**Razmer:** 2.46 KB
+
 ```python
 from __future__ import annotations
 
@@ -6310,9 +6716,16 @@ class StaffRoleFilter(BaseFilter):
 
 
 __all__ = ["StaffRoleFilter"]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\core\middlewares.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/core/middlewares.py`
+
+**Strok:** 114  
+**Razmer:** 4.47 KB
+
 ```python
 from __future__ import annotations
 
@@ -6427,9 +6840,16 @@ class StaffAccessMiddleware(BaseMiddleware):
         # Всегда устанавливаем свежезагруженные данные staff
         data["staff"] = staff
         return await handler(event, data)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\core\rbac.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/core/rbac.py`
+
+**Strok:** 17  
+**Razmer:** 0.38 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -6447,9 +6867,16 @@ def visible_city_ids_for(staff: StaffUser) -> Optional[list[int]]:
 
 
 __all__ = ["visible_city_ids_for"]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\core\states.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/core/states.py`
+
+**Strok:** 136  
+**Razmer:** 3.48 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -6586,9 +7013,16 @@ __all__ = [
     "StaffAddFSM",
     "StaffEditFSM",
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\core\utils.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/core/utils.py`
+
+**Strok:** 18  
+**Razmer:** 0.49 KB
+
 ```python
 from __future__ import annotations
 
@@ -6607,13 +7041,16 @@ def get_service(bot: Any, key: str, *, required: bool = True) -> Any:
     if not svc and required:
         raise RuntimeError(f"Service '{key}' is not configured on bot instance")
     return svc
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\core\__init__.py
-```python
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\__init__.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/__init__.py`
+
+**Strok:** 45  
+**Razmer:** 2.00 KB
+
 ```python
 # field_service/bots/admin_bot/handlers/__init__.py
 """
@@ -6659,9 +7096,27 @@ __all__ = [
     # "staff_access_router",  # DEPRECATED: Коды доступа больше не используются
     "staff_management_router",  # CR-2025-10-04
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\common\helpers.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/common/__init__.py`
+
+**Strok:** 1  
+**Razmer:** 0.00 KB
+
+```python
+
+```
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/common/helpers.py`
+
+**Strok:** 214  
+**Razmer:** 6.58 KB
+
 ```python
 # field_service/bots/admin_bot/handlers/helpers.py
 """Общие хелперы для handlers."""
@@ -6876,9 +7331,16 @@ __all__ = [
     "_resolve_city_timezone",
     "_format_log_entries",
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\common\menu.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/common/menu.py`
+
+**Strok:** 118  
+**Razmer:** 4.50 KB
+
 ```python
 # field_service/bots/admin_bot/handlers/menu.py
 """Обработчики главного меню и базовой навигации."""
@@ -6997,13 +7459,27 @@ __all__ = [
     "router",
     "STAFF_ROLE_LABELS",
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\common\__init__.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/finance/__init__.py`
+
+**Strok:** 1  
+**Razmer:** 0.00 KB
+
 ```python
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\finance\main.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/finance/main.py`
+
+**Strok:** 1496  
+**Razmer:** 54.47 KB
+
 ```python
 from __future__ import annotations
 
@@ -7040,6 +7516,27 @@ from ...utils.helpers import get_service
 
 router = Router(name="admin_finance")
 _log = logging.getLogger("admin_bot.finance")
+
+
+# BUGFIX 2025-10-10: Helper для получения staff в FSM Message handlers
+async def _get_staff_from_message(msg: Message) -> StaffUser | None:
+    """
+    Получаем staff напрямую из сервиса, т.к. глобальный middleware
+    не всегда применяется к FSM Message handlers.
+    """
+    if not msg.from_user:
+        return None
+    
+    from ...infrastructure.registry import get_service
+    staff_service = get_service("staff_service")
+    if not staff_service:
+        return None
+    
+    return await staff_service.get_by_tg_id_or_username(
+        tg_id=msg.from_user.id,
+        username=msg.from_user.username,
+        update_tg_id=False,
+    )
 
 
 # CR-2025-10-03-012: Safe callback answer wrapper
@@ -7342,7 +7839,7 @@ async def on_owner_requisites_edit_menu(
         return
     settings_service = _settings_service(cq.message.bot)
     snapshot = await settings_service.get_owner_pay_snapshot()
-    lines = ["<b> </b>", "   :"]
+    lines = ["<b>Редактирование реквизитов</b>", "", "Текущие значения:"]
     for field, label in _OWNER_FIELDS.items():
         current = snapshot.get(field)
         if field == "methods":
@@ -7351,7 +7848,7 @@ async def on_owner_requisites_edit_menu(
             rendered = current or ""
         else:
             rendered = ""
-        lines.append(f" {label}: {html.escape(rendered)}")
+        lines.append(f"• {label}: {html.escape(rendered) if rendered else '—'}")
     try:
         await cq.message.edit_text("\n".join(lines), reply_markup=owner_pay_edit_keyboard())
     except TelegramBadRequest as exc:
@@ -7373,9 +7870,10 @@ async def on_owner_requisites_field_select(
     if not cq.message or not cq.data:
         await _safe_answer(cq)
         return
-    field = cq.data.split(":", maxsplit=3)[-1]
+    # Извлекаем имя поля из callback_data: "adm:f:set:field:methods" -> "methods"
+    field = cq.data.split(":")[-1]
     if field not in _OWNER_FIELDS:
-        await _safe_answer(cq, " ", show_alert=True)
+        await _safe_answer(cq, "Неизвестное поле", show_alert=True)
         return
     settings_service = _settings_service(cq.message.bot)
     snapshot = await settings_service.get_owner_pay_snapshot()
@@ -7383,37 +7881,89 @@ async def on_owner_requisites_field_select(
     if field == "methods":
         rendered = _format_methods(current or [])
         prompt = (
-            "     (card, sbp, cash).\n"
-            "   ,  ."
+            "Введите способы оплаты (card, sbp, cash).\n"
+            "Можно указать несколько через запятую."
         )
     elif field == "sbp_qr_file_id":
-        rendered = "" if current else " "
-        prompt = " /  QR-   file_id.    ."
+        rendered = "QR-код загружен" if current else "QR-код не загружен"
+        prompt = "Отправьте изображение или документ QR-кода для СБП. Либо отправьте file_id. Для удаления отправьте: -"
     else:
         rendered = current or ""
-        prompt = "  .    ."
+        prompt = "Введите новое значение. Для удаления отправьте: -"
     await state.set_state(OwnerPayEditFSM.value)
     await state.update_data(
         owner_pay_field=field,
         owner_pay_origin=(cq.message.chat.id, cq.message.message_id),
     )
+    
+    # Добавляем кнопку отмены
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    kb = InlineKeyboardBuilder()
+    kb.button(text="❌ Отмена", callback_data="adm:f:set:edit:cancel")
+    
     await cq.message.answer(
-        f"<b>{_OWNER_FIELDS[field]}</b>\n : {html.escape(str(rendered))}\n\n{prompt}"
+        f"<b>{_OWNER_FIELDS[field]}</b>\nТекущее значение: {html.escape(str(rendered))}\n\n{prompt}",
+        reply_markup=kb.as_markup()
     )
+    await _safe_answer(cq)
+
+
+@router.callback_query(
+    F.data == "adm:f:set:edit:cancel",
+    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
+)
+async def on_owner_requisites_edit_cancel_button(
+    cq: CallbackQuery,
+    staff: StaffUser,
+    state: FSMContext,
+) -> None:
+    """Обработчик кнопки отмены редактирования поля."""
+    if not cq.message:
+        await _safe_answer(cq)
+        return
+    data = await state.get_data()
+    origin = _get_origin(data)
+    await state.set_state(None)
+    await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
+    await cq.message.answer("❌ Редактирование отменено.")
+    await _rerender_origin(cq.message.bot, staff, origin)
     await _safe_answer(cq)
 
 
 @router.message(StateFilter(OwnerPayEditFSM.value), F.text == "/cancel")
 async def on_owner_requisites_edit_cancel(
     msg: Message,
-    staff: StaffUser,
     state: FSMContext,
+    staff: StaffUser | None = None,
 ) -> None:
+    # BUGFIX 2025-10-10: Получаем staff напрямую, если middleware не передал
+    if not staff:
+        staff = await _get_staff_from_message(msg)
+    if not staff:
+        await state.clear()
+        await msg.answer("❌ Ошибка доступа. Попробуйте начать редактирование заново через меню.")
+        return
+    
+    # SECURITY: Проверяем роль - только GLOBAL_ADMIN может редактировать реквизиты владельца
+    if staff.role != StaffRole.GLOBAL_ADMIN:
+        await state.clear()
+        await msg.answer("❌ Доступ запрещён. Редактировать реквизиты владельца может только глобальный администратор.")
+        return
+    
     data = await state.get_data()
     origin = _get_origin(data)
     await state.set_state(None)
     await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer(" .")
+    
+    # Показываем кнопки возврата
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📋 Реквизиты владельца", callback_data="adm:f:set")
+    kb.button(text="✏️ Редактировать", callback_data="adm:f:set:edit")
+    kb.button(text="💰 К финансам", callback_data="adm:f")
+    kb.adjust(1)
+    
+    await msg.answer("❌ Редактирование отменено.", reply_markup=kb.as_markup())
     await _rerender_origin(msg.bot, staff, origin)
 
 
@@ -7608,14 +8158,28 @@ async def on_finance_bulk_approve_execute(
 @router.message(StateFilter(OwnerPayEditFSM.value))
 async def on_owner_requisites_edit_value(
     msg: Message,
-    staff: StaffUser,
     state: FSMContext,
+    staff: StaffUser | None = None,
 ) -> None:
+    # BUGFIX 2025-10-10: Получаем staff напрямую, если middleware не передал
+    if not staff:
+        staff = await _get_staff_from_message(msg)
+    if not staff:
+        await state.clear()
+        await msg.answer("❌ Ошибка доступа. Попробуйте начать редактирование заново через меню.")
+        return
+    
+    # SECURITY: Проверяем роль - только GLOBAL_ADMIN может редактировать реквизиты владельца
+    if staff.role != StaffRole.GLOBAL_ADMIN:
+        await state.clear()
+        await msg.answer("❌ Доступ запрещён. Редактировать реквизиты владельца может только глобальный администратор.")
+        return
+    
     data = await state.get_data()
     field = data.get("owner_pay_field")
     if not field or field not in _OWNER_FIELDS:
         await state.set_state(None)
-        await msg.answer("  ,     .")
+        await msg.answer("Ошибка: поле для редактирования не найдено, начните редактирование заново.")
         return
     origin = _get_origin(data)
     try:
@@ -7626,7 +8190,19 @@ async def on_owner_requisites_edit_value(
     snapshot = await _update_owner_snapshot(msg.bot, field, value)
     await state.set_state(None)
     await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer(" .")
+    
+    # Показываем подтверждение с кнопкой возврата
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📋 Реквизиты владельца", callback_data="adm:f:set")
+    kb.button(text="✏️ Продолжить редактирование", callback_data="adm:f:set:edit")
+    kb.button(text="💰 К финансам", callback_data="adm:f")
+    kb.adjust(1)
+    
+    await msg.answer(
+        f"✅ Значение сохранено.\n\n<b>{_OWNER_FIELDS[field]}</b> обновлено.",
+        reply_markup=kb.as_markup()
+    )
     live_log.push("finance", f"owner_pay:{field} updated by staff {staff.id}")
     await _rerender_origin(msg.bot, staff, origin)
 
@@ -7640,27 +8216,11 @@ async def on_owner_requisites_broadcast(
     staff: StaffUser,
     state: FSMContext,
 ) -> None:
+    """Removed: broadcast function is no longer used. Requisites are shown in master's commission details."""
     if not cq.message:
         await _safe_answer(cq)
         return
-    finance_service = _finance_service(cq.message.bot)
-    settings_service = _settings_service(cq.message.bot)
-    snapshot = await settings_service.get_owner_pay_snapshot()
-    recipients = await finance_service.list_wait_pay_recipients()
-    if not recipients:
-        await _safe_answer(cq, "    ", show_alert=True)
-        return
-    sent, failed = await _broadcast_owner_requisites(cq.message.bot, recipients, snapshot)
-    live_log.push(
-        "finance",
-        f"owner_pay broadcast by staff {staff.id}: sent={sent} failed={failed}",
-    )
-    await _safe_answer(cq, " ")
-    summary = f"  {sent} ."
-    if failed:
-        summary += f"   : {failed}."
-    await cq.message.answer(summary, reply_markup=finance_menu(staff))
-    await _rerender_origin(cq.message.bot, staff, (cq.message.chat.id, cq.message.message_id))
+    await _safe_answer(cq, "Эта функция больше не используется. Реквизиты автоматически показываются мастерам в разделе комиссий.", show_alert=True)
 
 
 # ============================================
@@ -8268,7 +8828,19 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
 
 
 @router.message(StateFilter(FinanceActionFSM.reject_reason))
-async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+async def finance_reject_reason(
+    msg: Message,
+    state: FSMContext,
+    staff: StaffUser | None = None,
+) -> None:
+    # BUGFIX 2025-10-10: Получаем staff напрямую, если middleware не передал
+    if not staff:
+        staff = await _get_staff_from_message(msg)
+    if not staff:
+        await state.clear()
+        await msg.answer("❌ Ошибка доступа. Попробуйте начать операцию заново через меню.")
+        return
+    
     reason = (msg.text or "").strip()
     
     # Обработка отмены
@@ -8330,10 +8902,16 @@ async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContex
 
 
 @router.message(StateFilter(FinanceActionFSM.approve_amount))
-async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMContext) -> None:
+async def finance_approve_amount(
+    msg: Message,
+    state: FSMContext,
+    staff: StaffUser | None = None,
+) -> None:
     from decimal import Decimal
     
-    # CR-2025-10-03-FIX: Validate staff.id before database operations
+    # BUGFIX 2025-10-10: Получаем staff напрямую, если middleware не передал
+    if not staff:
+        staff = await _get_staff_from_message(msg)
     if not staff or staff.id is None or staff.id <= 0:
         await state.clear()
         await msg.answer("❌ Ошибка: некорректный ID персонала")
@@ -8398,13 +8976,27 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
         )
     else:
         await msg.answer("❌ Ошибка при одобрении комиссии.")
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\finance\__init__.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/masters/__init__.py`
+
+**Strok:** 1  
+**Razmer:** 0.00 KB
+
 ```python
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\masters\main.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/masters/main.py`
+
+**Strok:** 1192  
+**Razmer:** 40.55 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -9364,10 +9956,6 @@ async def change_limit(message: Message, state: FSMContext, staff: StaffUser) ->
     await state.clear()
 
 
-@router.callback_query(
-    F.data.startswith("adm:m:docs"),
-    StaffRoleFilter(VIEW_ROLES),
-)
 async def _relay_document(current_bot, *, chat_id: int, file_id: str, file_type: str, caption: str = "", filename: str | None = None) -> bool:
     token = getattr(env_settings, 'master_bot_token', None)
     if not token:
@@ -9415,13 +10003,21 @@ async def _clear_document_messages(bot: Bot, state: FSMContext, chat_id: int) ->
     await state.update_data(document_msg_ids=[])
 
 
+@router.callback_query(
+    F.data.startswith("adm:m:docs") | F.data.startswith("adm:mod:docs"),
+    StaffRoleFilter(VIEW_ROLES),
+)
 async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
+    logger.info(f"[DOCS] Handler called for {cq.data}")
     try:
         action = parse_master_action(cq.data)
     except ValueError:
+        logger.error(f"[DOCS] Failed to parse action from {cq.data}")
         await cq.answer("Некорректный идентификатор", show_alert=True)
         return
     master_id = action.master_id
+    logger.info(f"[DOCS] Master ID: {master_id}")
+    
     try:
         await cq.answer()
     except Exception:
@@ -9433,37 +10029,51 @@ async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext)
     
     service = _masters_service(cq.bot)
     detail = await service.get_master_detail(master_id)
+    logger.info(f"[DOCS] Master detail fetched. Has detail: {detail is not None}")
+    
     if not detail or not detail.documents:
+        logger.info(f"[DOCS] No documents found. detail={detail is not None}, documents={len(detail.documents) if detail else 0}")
         if cq.message:
             await cq.message.answer("Документы отсутствуют")
         return
     
+    logger.info(f"[DOCS] Found {len(detail.documents)} documents")
     chat_id = cq.message.chat.id if cq.message else None
     sent_msg_ids = []
     
-    for document in detail.documents:
+    for idx, document in enumerate(detail.documents):
         caption = document.caption or document.document_type or ''
         file_type = (document.file_type or '').upper()
+        logger.info(f"[DOCS] Document {idx+1}: type={file_type}, file_id={document.file_id[:20]}...")
         sent_msg = None
         try:
             if file_type == 'PHOTO':
+                logger.info(f"[DOCS] Sending photo {idx+1}")
                 sent_msg = await cq.message.answer_photo(document.file_id, caption=caption)
             elif file_type == 'DOCUMENT':
+                logger.info(f"[DOCS] Sending document {idx+1}")
                 sent_msg = await cq.message.answer_document(document.file_id, caption=caption)
             else:
+                logger.warning(f"[DOCS] Unknown file type: {document.file_type}")
                 sent_msg = await cq.message.answer(f"Неизвестный тип файла: {document.file_type}")
             
             # Сохраняем message_id отправленного документа
             if sent_msg:
                 sent_msg_ids.append(sent_msg.message_id)
-        except Exception:
+                logger.info(f"[DOCS] Document {idx+1} sent successfully")
+        except Exception as e:
+            logger.error(f"[DOCS] Failed to send document {idx+1} directly: {e}", exc_info=True)
             if chat_id is not None:
+                logger.info(f"[DOCS] Trying relay for document {idx+1}")
                 ok = await _relay_document(cq.bot, chat_id=chat_id, file_id=document.file_id, file_type=file_type, caption=caption, filename=(document.file_name or None))
                 if not ok:
-                    logger.warning('Failed to send document', exc_info=True)
+                    logger.warning(f'[DOCS] Relay failed for document {idx+1}', exc_info=True)
+                else:
+                    logger.info(f"[DOCS] Document {idx+1} sent via relay")
             else:
-                logger.warning('Failed to send document', exc_info=True)
+                logger.warning('[DOCS] No chat_id for relay', exc_info=True)
     
+    logger.info(f"[DOCS] Completed. Sent {len(sent_msg_ids)} documents")
     # Сохраняем message_id документов в state
     await state.update_data(document_msg_ids=sent_msg_ids)
 @router.callback_query(
@@ -9579,9 +10189,16 @@ __all__ = [
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\masters\moderation.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/masters/moderation.py`
+
+**Strok:** 545  
+**Razmer:** 17.94 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -10127,13 +10744,41 @@ async def bulk_reject_process(message: Message, staff: StaffUser, state: FSMCont
 
 __all__ = ["router"]
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\masters\__init__.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/orders/__init__.py`
+
+**Strok:** 15  
+**Razmer:** 0.60 KB
+
 ```python
+from aiogram import Router
+
+from .create import router as create_router
+from .quick_create import router as quick_create_router  # P0-5: Быстрое создание
+from .queue import queue_router
+from .copy_data import copy_router  # P1-19: Быстрое копирование данных
+
+router = Router(name="admin_orders")
+router.include_router(create_router)
+router.include_router(quick_create_router)  # P0-5: Быстрое создание
+router.include_router(queue_router)
+router.include_router(copy_router)  # P1-19: Быстрое копирование данных
+
+__all__ = ["router"]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\orders\copy_data.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/orders/copy_data.py`
+
+**Strok:** 126  
+**Razmer:** 4.36 KB
+
 ```python
 """
 Handler для быстрого копирования данных заказа (P1-19).
@@ -10260,9 +10905,16 @@ async def copy_data_handler(
         order_id,
         data_type,
     )
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\orders\create.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/orders/create.py`
+
+**Strok:** 991  
+**Razmer:** 41.07 KB
+
 ```python
 # field_service/bots/admin_bot/handlers/orders.py
 """Обработчики создания заказов (NewOrderFSM)."""
@@ -11254,9 +11906,16 @@ async def cb_new_order_force_confirm(cq: CallbackQuery, state: FSMContext, staff
 
 
 __all__ = ["router"]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\orders\queue.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/orders/queue.py`
+
+**Strok:** 2504  
+**Razmer:** 92.19 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -13761,9 +14420,16 @@ async def cb_queue_search_master_selected(cq: CallbackQuery, staff: StaffUser, s
         parse_mode="HTML"
     )
     await _safe_answer(cq)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\orders\quick_create.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/orders/quick_create.py`
+
+**Strok:** 671  
+**Razmer:** 27.70 KB
+
 ```python
 # field_service/bots/admin_bot/handlers/orders/quick_create.py
 """Обработчики быстрого создания заказов (QuickOrderFSM) - P0-5."""
@@ -14435,27 +15101,27 @@ async def cb_quick_order_force_confirm(cq: CallbackQuery, state: FSMContext, sta
 
 
 __all__ = ["router"]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\orders\__init__.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/staff/__init__.py`
+
+**Strok:** 1  
+**Razmer:** 0.00 KB
+
 ```python
-from aiogram import Router
 
-from .create import router as create_router
-from .quick_create import router as quick_create_router  # P0-5: Быстрое создание
-from .queue import queue_router
-from .copy_data import copy_router  # P1-19: Быстрое копирование данных
-
-router = Router(name="admin_orders")
-router.include_router(create_router)
-router.include_router(quick_create_router)  # P0-5: Быстрое создание
-router.include_router(queue_router)
-router.include_router(copy_router)  # P1-19: Быстрое копирование данных
-
-__all__ = ["router"]
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\staff\access_codes.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/staff/access_codes.py`
+
+**Strok:** 534  
+**Razmer:** 17.61 KB
+
 ```python
 from __future__ import annotations
 
@@ -14990,9 +15656,16 @@ async def staff_edit_cities(cq: CallbackQuery, state: FSMContext) -> None:
     )
     await cq.answer()
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\staff\management.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/staff/management.py`
+
+**Strok:** 763  
+**Razmer:** 25.55 KB
+
 ```python
 """
 Модуль управления персоналом админ-бота.
@@ -15756,13 +16429,27 @@ async def staff_activate(cq: CallbackQuery, staff: StaffUser) -> None:
 
 
 __all__ = ["router"]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\staff\__init__.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/system/__init__.py`
+
+**Strok:** 1  
+**Razmer:** 0.00 KB
+
 ```python
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\system\logs.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/system/logs.py`
+
+**Strok:** 73  
+**Razmer:** 2.25 KB
+
 ```python
 # field_service/bots/admin_bot/handlers/logs.py
 """Обработчики для просмотра и управления логами."""
@@ -15836,9 +16523,16 @@ async def cb_logs_clear(cq: CallbackQuery, staff: StaffUser) -> None:
 
 
 __all__ = ["router"]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\system\reports.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/system/reports.py`
+
+**Strok:** 451  
+**Razmer:** 15.01 KB
+
 ```python
 # field_service/bots/admin_bot/handlers/reports.py
 """Обработчики экспорта отчётов (ReportsExportFSM)."""
@@ -16290,9 +16984,16 @@ __all__ = [
     "router",
     "REPORT_DEFINITIONS",
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\system\settings.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/handlers/system/settings.py`
+
+**Strok:** 571  
+**Razmer:** 19.86 KB
+
 ```python
 # field_service/bots/admin_bot/handlers/settings.py
 """Обработчики настроек системы (SettingsEditFSM)."""
@@ -16864,13 +17565,27 @@ __all__ = [
     "SettingFieldDef",
     "SettingGroupDef",
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\handlers\system\__init__.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/infrastructure/__init__.py`
+
+**Strok:** 1  
+**Razmer:** 0.00 KB
+
 ```python
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\infrastructure\queue_state.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/infrastructure/queue_state.py`
+
+**Strok:** 209  
+**Razmer:** 7.00 KB
+
 ```python
 """
 P2.2: Typed state management for admin queue filters and actions.
@@ -17080,9 +17795,16 @@ async def clear_cancel_state(state: FSMContext) -> None:
     if _QUEUE_CANCEL_KEY in data:
         data.pop(_QUEUE_CANCEL_KEY)
         await state.set_data(data)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\infrastructure\registry.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/infrastructure/registry.py`
+
+**Strok:** 18  
+**Razmer:** 0.33 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -17101,13 +17823,745 @@ def register_services(mapping: dict[str, Any]) -> None:
 
 def get_service(key: str) -> Any | None:
     return _SERVICES.get(key)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\infrastructure\__init__.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/main.py`
+
+**Strok:** 230  
+**Razmer:** 8.73 KB
+
 ```python
+# field_service/bots/admin_bot/main.py
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
+from contextlib import suppress
+
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.types import Update
+
+from field_service.config import settings
+from field_service.bots.common.error_middleware import setup_error_middleware
+from field_service.bots.common.polling import poll_with_single_instance_guard
+from field_service.bots.common.retry_handler import retry_router
+from field_service.bots.common.retry_middleware import setup_retry_middleware
+from field_service.infra.notify import send_alert, send_log
+from field_service.services.distribution_scheduler import run_scheduler
+from field_service.services.heartbeat import run_heartbeat
+from field_service.services.watchdogs import (
+    watchdog_commissions_overdue,
+    watchdog_commission_deadline_reminders,  # P1-21
+    watchdog_expired_offers,  # Watchdog для истёкших офферов
+    watchdog_expired_breaks,  # BUGFIX 2025-10-10: Авто-завершение перерывов
+)
+from field_service.services.autoclose_scheduler import autoclose_scheduler  # P1-01
+from field_service.services.unassigned_monitor import monitor_unassigned_orders
+
+from .handlers import create_combined_router
+from .handlers.finance.main import router as finance_router  # CR-2025-10-03-007: Финансы
+from .handlers.masters.main import router as admin_masters_router
+from .handlers.masters.moderation import router as admin_moderation_router
+from .core.middlewares import StaffAccessMiddleware
+from .infrastructure.registry import register_services
+from .services import (
+    DBDistributionService,
+    DBFinanceService,
+    DBMastersService,
+    DBOrdersService,
+    DBSettingsService,
+    DBStaffService,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+async def log_all_callbacks_middleware(handler, event, data):
+    """Глобальное логирование всех callback перед обработкой."""
+    if isinstance(event, Update) and event.callback_query:
+        cq = event.callback_query
+        logger.info(f"[GLOBAL] Callback received: {cq.data} from user {cq.from_user.id}")
+    return await handler(event, data)
+
+
+async def main() -> int:
+    # Setup logging
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=getattr(logging, log_level, logging.INFO),
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
+    logging.getLogger("aiogram").setLevel(getattr(logging, log_level, logging.INFO))
+    
+    bot = Bot(
+        settings.admin_bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
+    dp = Dispatcher()
+    
+    # Глобальное логирование всех callback (для отладки)
+    dp.update.outer_middleware(log_all_callbacks_middleware)
+    
+    # CRITICAL: Сначала создаём сервисы и регистрируем middleware
+    services = {
+        "staff_service": DBStaffService(),
+        "orders_service": DBOrdersService(),
+        "distribution_service": DBDistributionService(),
+        "finance_service": DBFinanceService(),
+        "settings_service": DBSettingsService(),
+        "masters_service": DBMastersService(),
+    }
+    bot._services = services  # type: ignore[attr-defined]
+    register_services(services)
+
+    staff_service: DBStaffService = services["staff_service"]
+    seeded = await staff_service.seed_global_admins(settings.global_admins_tg_ids)
+    if seeded:
+        logger.info("Seeded %d GLOBAL_ADMIN from GLOBAL_ADMINS_TG_IDS", seeded)
+
+    # CRITICAL: Middleware ДОЛЖЕН быть зарегистрирован ДО include_router()
+    superuser_ids = set(settings.admin_bot_superusers) | set(settings.global_admins_tg_ids)
+    dp.update.middleware(StaffAccessMiddleware(staff_service, superuser_ids))
+    
+    # P2-08: Используем только модульные роутеры из handlers/
+    dp.include_router(create_combined_router())
+    
+    # CR-2025-10-03-007: Финансы
+    dp.include_router(finance_router)
+    
+    # Модерация и управление мастерами (moderation ПЕРЕД masters, т.к. masters имеет catch-all)
+    dp.include_router(admin_moderation_router)
+    dp.include_router(admin_masters_router)
+    
+    # P1-13: Retry функциональность для повтора действий при ошибках
+    dp.include_router(retry_router)
+
+    channel_settings = await services["settings_service"].get_channel_settings()
+    alerts_chat_id = channel_settings.get("alerts_channel_id") or settings.alerts_channel_id
+    logs_chat_id = channel_settings.get("logs_channel_id") or settings.logs_channel_id
+
+    setup_error_middleware(
+        dp,
+        bot=bot,
+        bot_label="admin_bot",
+        logs_chat_id=logs_chat_id,
+        alerts_chat_id=alerts_chat_id,
+    )
+    
+    # P1-13: Подключаем retry middleware для автоматического предложения повтора при ошибках
+    setup_retry_middleware(dp, enabled=True)
+
+    heartbeat_task = asyncio.create_task(
+        run_heartbeat(bot, name="admin", chat_id=logs_chat_id),
+        name="admin_heartbeat",
+    )
+
+    scheduler_task = asyncio.create_task(
+        run_scheduler(bot, alerts_chat_id=alerts_chat_id),
+        name="admin_scheduler",
+    )
+
+    watchdog_interval = max(60, settings.overdue_watchdog_min * 60)
+    watchdog_task = asyncio.create_task(
+        watchdog_commissions_overdue(
+            bot,
+            alerts_chat_id,
+            interval_seconds=watchdog_interval,
+        ),
+        name="commissions_watchdog",
+    )
+
+    unassigned_task: asyncio.Task | None = None
+    if alerts_chat_id:
+        unassigned_task = asyncio.create_task(
+            monitor_unassigned_orders(
+                bot,
+                alerts_chat_id,
+                interval_seconds=600,
+            ),
+            name="unassigned_monitor",
+        )
+
+    # P1-01: Автозакрытие заказов через 24ч
+    autoclose_task = asyncio.create_task(
+        autoclose_scheduler(
+            interval_seconds=3600,  # Проверка каждый час
+        ),
+        name="autoclose_scheduler",
+    )
+
+    # P1-21: Напоминания о дедлайне комиссии (24ч, 6ч, 1ч)
+    # Передаём master_bot_token чтобы уведомления шли мастерам в их бот!
+    deadline_reminders_task = asyncio.create_task(
+        watchdog_commission_deadline_reminders(
+            master_bot_token=settings.master_bot_token,  # ← master_bot для мастеров!
+            interval_seconds=1800,  # Проверка каждые 30 минут
+        ),
+        name="commission_deadline_reminders",
+    )
+
+    # Watchdog для истёкших офферов
+    expired_offers_task = asyncio.create_task(
+        watchdog_expired_offers(
+            interval_seconds=60,  # Проверка каждую минуту
+        ),
+        name="expired_offers_watchdog",
+    )
+
+    # BUGFIX 2025-10-10: Watchdog для автоматического завершения просроченных перерывов
+    expired_breaks_task = asyncio.create_task(
+        watchdog_expired_breaks(
+            interval_seconds=60,  # Проверка каждую минуту
+        ),
+        name="expired_breaks_watchdog",
+    )
+
+    exit_code = 0
+    try:
+        await poll_with_single_instance_guard(
+            dp,
+            bot,
+            logs_chat_id=logs_chat_id,
+        )
+    except SystemExit as conflict_exit:
+        exit_code = int(conflict_exit.code or 0)
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        pass
+    except Exception as exc:
+        logger.exception("Admin bot polling failed: %s", exc)
+        message = f"❗ Ошибка admin_bot polling: {type(exc).__name__}: {exc}"
+        await send_alert(bot, message, chat_id=alerts_chat_id, exc=exc)
+        await send_log(bot, message, chat_id=logs_chat_id)
+        exit_code = 1
+    finally:
+        for task in (
+            heartbeat_task,
+            scheduler_task,
+            watchdog_task,
+            autoclose_task,
+            deadline_reminders_task,  # P1-21
+            expired_offers_task,  # Watchdog истёкших офферов
+            expired_breaks_task,  # BUGFIX 2025-10-10: Watchdog просроченных перерывов
+            unassigned_task,
+        ):
+            if task:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
+        await bot.session.close()
+
+    return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(asyncio.run(main()))
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\services\distribution.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/services/__init__.py`
+
+**Strok:** 20  
+**Razmer:** 0.53 KB
+
+```python
+"""Admin bot services."""
+from .staff import DBStaffService, AccessCodeError, _StaffAccess, _load_staff_access
+from .orders import DBOrdersService
+from .distribution import DBDistributionService
+from .finance import DBFinanceService
+from .masters import DBMastersService
+from .settings import DBSettingsService
+
+__all__ = [
+    'DBStaffService',
+    'DBOrdersService',
+    'DBDistributionService',
+    'DBFinanceService',
+    'DBMastersService',
+    'DBSettingsService',
+    'AccessCodeError',
+    '_StaffAccess',
+    '_load_staff_access',
+]
+
+```
+
+---
+
+###### `field-service/field_service/bots/admin_bot/services/_common.py`
+
+**Strok:** 449  
+**Razmer:** 12.44 KB
+
+```python
+"""Common imports and utility functions for admin services."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date, datetime, time, timezone, timedelta
+from zoneinfo import ZoneInfo
+from decimal import Decimal, InvalidOperation
+import json
+import re
+import logging
+import secrets
+import string
+from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
+from types import SimpleNamespace
+
+from sqlalchemy import and_, delete, func, insert, select, text, update, inspect
+from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from rapidfuzz import fuzz, process
+from field_service.config import settings
+
+from field_service.db import models as m
+from field_service.db.session import SessionLocal
+from field_service.services import distribution_scheduler as dw
+from field_service.services.candidates import select_candidates
+from field_service.services import live_log
+from field_service.services import time_service
+from field_service.services import settings_service as settings_store
+from field_service.services import owner_requisites_service as owner_reqs
+from field_service.services import guarantee_service
+from field_service.services.guarantee_service import GuaranteeError
+from field_service.services.referral_service import apply_rewards_for_commission
+from field_service.data import cities as city_catalog
+
+from ..core.dto import (
+    CityRef,
+    CommissionAttachment,
+    CommissionDetail,
+    CommissionListItem,
+    DistrictRef,
+    MasterBrief,
+    MasterListItem,
+    MasterDocument,
+    MasterDetail,
+    NewOrderAttachment,
+    NewOrderData,
+    OrderAttachment,
+    OrderDetail,
+    OrderStatusHistoryItem,
+    OrderListItem,
+    OrderCategory,
+    OrderStatus,
+    OrderType,
+    StaffAccessCode,
+    StaffMember,
+    StaffRole,
+    StaffUser,
+    StreetRef,
+    TimeslotOption,
+    WaitPayRecipient,
+)
+from ..utils.normalizers import normalize_category, normalize_status
+
+UTC = timezone.utc
+logger = logging.getLogger(__name__)
+
+PAYMENT_METHOD_LABELS = {
+    "card": "💳 Карта",
+    "sbp": "СБП",
+    "cash": "Наличные",
+}
+
+OWNER_PAY_SETTING_FIELDS: dict[str, tuple[str, str]] = {
+    'methods': ('owner_pay_methods_enabled', 'JSON'),
+    'card_number': ('owner_pay_card_number', 'STR'),
+    'card_holder': ('owner_pay_card_holder', 'STR'),
+    'card_bank': ('owner_pay_card_bank', 'STR'),
+    'sbp_phone': ('owner_pay_sbp_phone', 'STR'),
+    'sbp_bank': ('owner_pay_sbp_bank', 'STR'),
+    'sbp_qr_file_id': ('owner_pay_sbp_qr_file_id', 'STR'),
+    'other_text': ('owner_pay_other_text', 'STR'),
+    'comment_template': ('owner_pay_comment_template', 'STR'),
+}
+
+LOCAL_TZ = settings_store.get_timezone()
+
+HAS_STREET_CENTROIDS: bool | None = None
+HAS_DISTRICT_CENTROIDS: bool | None = None
+HAS_CITY_CENTROIDS: bool | None = None
+
+STREET_DUPLICATE_THRESHOLD = 93
+STREET_MIN_SCORE = 60
+
+WORKDAY_START_DEFAULT = time_service.parse_time_string(settings.workday_start, default=time(10, 0))
+WORKDAY_END_DEFAULT = time_service.parse_time_string(settings.workday_end, default=time(20, 0))
+LATE_ASAP_THRESHOLD = time_service.parse_time_string(settings.asap_late_threshold, default=time(19, 30))
+
+QUEUE_STATUSES = {
+    m.OrderStatus.SEARCHING,
+    m.OrderStatus.ASSIGNED,
+    m.OrderStatus.EN_ROUTE,
+    m.OrderStatus.WORKING,
+    m.OrderStatus.PAYMENT,
+    m.OrderStatus.GUARANTEE,
+    m.OrderStatus.DEFERRED,
+}
+
+ACTIVE_ORDER_STATUSES = (
+    m.OrderStatus.ASSIGNED,
+    m.OrderStatus.EN_ROUTE,
+    m.OrderStatus.WORKING,
+    m.OrderStatus.PAYMENT,
+)
+
+AVG_CHECK_STATUSES = (
+    m.OrderStatus.WORKING,
+    m.OrderStatus.PAYMENT,
+    m.OrderStatus.CLOSED,
+)
+
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+
+def _is_column_missing_error(exc: Exception) -> bool:
+    original = getattr(exc, "orig", None)
+    if original is None:
+        return False
+    message = str(original).lower()
+    return (
+        original.__class__.__name__ == "UndefinedColumnError"
+        or "undefined column" in message
+        or "does not exist" in message
+    )
+
+STREET_DUPLICATE_THRESHOLD = 93
+STREET_MIN_SCORE = 60
+
+
+
+
+def _normalize_street_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def _format_datetime_local(value: Optional[datetime]) -> Optional[str]:
+    if not value:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(LOCAL_TZ).strftime('%d.%m %H:%M')
+
+
+
+
+def _parse_env_time(value: str, fallback: time) -> time:
+    try:
+        hh, mm = map(int, value.split(":"))
+        return time(hour=hh, minute=mm)
+    except Exception:
+        return fallback
+
+
+WORKDAY_START_DEFAULT = time_service.parse_time_string(settings.workday_start, default=time(10, 0))
+WORKDAY_END_DEFAULT = time_service.parse_time_string(settings.workday_end, default=time(20, 0))
+LATE_ASAP_THRESHOLD = time_service.parse_time_string(settings.asap_late_threshold, default=time(19, 30))
+
+
+def _zone_storage_value(tz: ZoneInfo) -> str:
+    return getattr(tz, 'key', str(tz))
+
+
+async def _workday_window() -> tuple[time, time]:
+    try:
+        return await settings_store.get_working_window()
+    except Exception:
+        return WORKDAY_START_DEFAULT, WORKDAY_END_DEFAULT
+
+
+QUEUE_STATUSES = {
+    m.OrderStatus.SEARCHING,
+    m.OrderStatus.ASSIGNED,
+    m.OrderStatus.EN_ROUTE,
+    m.OrderStatus.WORKING,
+    m.OrderStatus.PAYMENT,
+    m.OrderStatus.GUARANTEE,
+    m.OrderStatus.DEFERRED,
+}
+
+ACTIVE_ORDER_STATUSES = (
+    m.OrderStatus.ASSIGNED,
+    m.OrderStatus.EN_ROUTE,
+    m.OrderStatus.WORKING,
+    m.OrderStatus.PAYMENT,
+)
+
+AVG_CHECK_STATUSES = (
+    m.OrderStatus.WORKING,
+    m.OrderStatus.PAYMENT,
+    m.OrderStatus.CLOSED,
+)
+
+
+@dataclass(slots=True)
+class _StaffAccess:
+    id: int
+    role: m.StaffRole
+    is_active: bool
+    city_ids: frozenset[int]
+    full_name: Optional[str] = None
+
+
+async def _load_staff_access(
+    session: AsyncSession, staff_id: Optional[int]
+) -> Optional[_StaffAccess]:
+    if not staff_id:
+        return None
+    row = await session.execute(
+        select(m.staff_users).where(m.staff_users.id == staff_id)
+    )
+    staff = row.scalar_one_or_none()
+    if not staff or not staff.is_active:
+        return None
+    cities_q = await session.execute(
+        select(m.staff_cities.city_id).where(m.staff_cities.staff_user_id == staff.id)
+    )
+    city_ids = frozenset(int(c[0]) for c in cities_q)
+    return _StaffAccess(
+        id=staff.id,
+        role=staff.role,
+        is_active=staff.is_active,
+        city_ids=city_ids,
+        full_name=staff.full_name,
+    )
+
+
+
+def _visible_city_ids_for_staff(staff: Optional[_StaffAccess]) -> Optional[frozenset[int]]:
+    if staff is None:
+        return None
+    if staff.role == m.StaffRole.ADMIN:
+        return None
+    return staff.city_ids
+
+
+
+def _staff_can_access_city(
+    staff: Optional[_StaffAccess], city_id: Optional[int]
+) -> bool:
+    if city_id is None:
+        return False
+    visible = _visible_city_ids_for_staff(staff)
+    if visible is None:
+        return True
+    return city_id in visible
+
+
+def _prepare_setting_value(value: object, value_type: str) -> str:
+    vt = value_type.upper()
+    if vt == "JSON":
+        return json.dumps(value, ensure_ascii=False)
+    if vt == "BOOL":
+        if isinstance(value, str):
+            return "true" if value.strip().lower() in {"1", "true", "yes", "on"} else "false"
+        return "true" if bool(value) else "false"
+    if vt == "TIME" and isinstance(value, time):
+        return value.strftime("%H:%M")
+    return "" if value is None else str(value)
+
+
+
+def _format_created_at(dt: Optional[datetime]) -> str:
+    if not dt:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(LOCAL_TZ).strftime("%d.%m %H:%M")
+
+
+
+def _raw_order_type(entity: Any) -> Any:
+    value = getattr(entity, "type", None)
+    if value is None:
+        value = getattr(entity, "order_type", None)
+    return value
+
+
+
+def _map_staff_role(db_role: m.StaffRole) -> StaffRole:
+    if db_role == m.StaffRole.ADMIN:
+        return StaffRole.GLOBAL_ADMIN
+    if hasattr(m.StaffRole, "CITY_ADMIN") and db_role == getattr(
+        m.StaffRole, "CITY_ADMIN"
+    ):
+        return StaffRole.CITY_ADMIN
+    return StaffRole.LOGIST
+
+
+
+def _map_staff_role_to_db(role: StaffRole) -> m.StaffRole:
+    if role is StaffRole.CITY_ADMIN and hasattr(m.StaffRole, "CITY_ADMIN"):
+        return getattr(m.StaffRole, "CITY_ADMIN")
+    if role is StaffRole.LOGIST:
+        return m.StaffRole.LOGIST
+    return m.StaffRole.ADMIN
+
+
+
+def _sorted_city_tuple(city_ids: Optional[Iterable[int]]) -> tuple[int, ...]:
+    if not city_ids:
+        return tuple()
+    return tuple(sorted({int(cid) for cid in city_ids}))
+
+
+async def _load_staff_city_map(
+    session: AsyncSession, staff_rows: Sequence[m.staff_users]
+) -> dict[int, list[int]]:
+    ids = [row.id for row in staff_rows]
+    city_map: dict[int, list[int]] = {sid: [] for sid in ids}
+    if not ids:
+        return city_map
+    rows = await session.execute(
+        select(m.staff_cities.staff_user_id, m.staff_cities.city_id).where(
+            m.staff_cities.staff_user_id.in_(ids)
+        )
+    )
+    for staff_id, city_id in rows:
+        city_map[int(staff_id)].append(int(city_id))
+    return city_map
+
+
+async def _collect_code_cities(
+    session: AsyncSession, code_ids: Sequence[int]
+) -> dict[int, list[int]]:
+    links: dict[int, list[int]] = {cid: [] for cid in code_ids}
+    if not code_ids:
+        return links
+    rows = await session.execute(
+        select(
+            m.staff_access_code_cities.access_code_id,
+            m.staff_access_code_cities.city_id,
+        ).where(m.staff_access_code_cities.access_code_id.in_(code_ids))
+    )
+    for code_id, city_id in rows:
+        links[int(code_id)].append(int(city_id))
+    return links
+
+
+
+def _order_type_from_db(value: Any) -> OrderType:
+    if value is None:
+        return OrderType.NORMAL
+    if isinstance(value, OrderType):
+        return value
+    if isinstance(value, m.OrderType):
+        return OrderType(value.value)
+    if isinstance(value, str):
+        candidate = value.upper().strip()
+        try:
+            return OrderType(candidate)
+        except ValueError:
+            return OrderType.NORMAL
+    return OrderType.NORMAL
+
+
+
+def _map_order_type_to_db(order_type: OrderType) -> m.OrderType:
+    if order_type is OrderType.GUARANTEE:
+        return m.OrderType.GUARANTEE
+    return m.OrderType.NORMAL
+
+
+
+def _attachment_type_from_string(value: Optional[str]) -> m.AttachmentFileType:
+    if not value:
+        return m.AttachmentFileType.OTHER
+    normalized = value.lower()
+    if normalized == "photo":
+        return m.AttachmentFileType.PHOTO
+    if normalized == "document":
+        return m.AttachmentFileType.DOCUMENT
+    return m.AttachmentFileType.OTHER
+
+
+
+def _generate_staff_code() -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+
+def _push_dist_log(message: str, *, level: str = "INFO") -> None:
+    try:
+        live_log.push("dist", message, level=level)
+    except Exception:
+        pass
+    print(message)
+
+
+
+def _coerce_order_status(value: Any) -> m.OrderStatus:
+    if isinstance(value, m.OrderStatus):
+        return value
+    if value is None:
+        return m.OrderStatus.SEARCHING
+    try:
+        return m.OrderStatus(str(value))
+    except ValueError:
+        return m.OrderStatus.SEARCHING
+
+
+
+
+
+async def _ensure_centroid_flag(session: AsyncSession, scope: str) -> bool:
+    """Check if centroid columns exist for given scope (street/district/city)."""
+    global HAS_STREET_CENTROIDS, HAS_DISTRICT_CENTROIDS, HAS_CITY_CENTROIDS
+
+    flags = {
+        'street': 'HAS_STREET_CENTROIDS',
+        'district': 'HAS_DISTRICT_CENTROIDS',
+        'city': 'HAS_CITY_CENTROIDS',
+    }
+    column_sets = {
+        'street': (m.streets.centroid_lat, m.streets.centroid_lon),
+        'district': (m.districts.centroid_lat, m.districts.centroid_lon),
+        'city': (m.cities.centroid_lat, m.cities.centroid_lon),
+    }
+
+    flag_name = flags[scope]
+    current = globals()[flag_name]
+    if current is not None:
+        return current
+
+    selectors = column_sets[scope]
+    try:
+        await session.execute(select(*selectors).limit(1))
+    except ProgrammingError as exc:
+        if _is_column_missing_error(exc):
+            globals()[flag_name] = False
+            await session.rollback()
+            return False
+        raise
+    else:
+        globals()[flag_name] = True
+        return True
+
+```
+
+---
+
+###### `field-service/field_service/bots/admin_bot/services/distribution.py`
+
+**Strok:** 508  
+**Razmer:** 20.32 KB
+
 ```python
 """Distribution service: auto-assignment of orders to masters."""
 from __future__ import annotations
@@ -17616,9 +19070,16 @@ class DBDistributionService:
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\services\finance.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/services/finance.py`
+
+**Strok:** 543  
+**Razmer:** 21.26 KB
+
 ```python
 """Finance service: commission management and payments."""
 from __future__ import annotations
@@ -18162,9 +19623,16 @@ class DBFinanceService:
         return True
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\services\masters.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/services/masters.py`
+
+**Strok:** 904  
+**Razmer:** 34.29 KB
+
 ```python
 """Masters service: master management, profiles, documents."""
 from __future__ import annotations
@@ -19069,9 +20537,16 @@ class DBMastersService:
                     return True, False
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\services\orders.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/services/orders.py`
+
+**Strok:** 1736  
+**Razmer:** 75.87 KB
+
 ```python
 """Orders service: order management, creation, status changes."""
 from __future__ import annotations
@@ -20808,9 +22283,16 @@ class DBOrdersService:
             page=page,
             page_size=page_size,
         )
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\services\settings.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/services/settings.py`
+
+**Strok:** 183  
+**Razmer:** 7.04 KB
+
 ```python
 """Settings service: system configuration management."""
 from __future__ import annotations
@@ -20994,9 +22476,16 @@ class DBSettingsService:
                 await owner_reqs.update_for_staff(session, staff_id, payload)
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\services\staff.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/services/staff.py`
+
+**Strok:** 1258  
+**Razmer:** 46.90 KB
+
 ```python
 """Staff management service: users, access codes, permissions."""
 from __future__ import annotations
@@ -22255,484 +23744,110 @@ class DBStaffService:
         raise RuntimeError("Unable to generate unique access code after 50 attempts")
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\services\_common.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/keyboards/__init__.py`
+
+**Strok:** 84  
+**Razmer:** 2.35 KB
+
 ```python
-"""Common imports and utility functions for admin services."""
-from __future__ import annotations
-
-from dataclasses import dataclass
-from datetime import date, datetime, time, timezone, timedelta
-from zoneinfo import ZoneInfo
-from decimal import Decimal, InvalidOperation
-import json
-import re
-import logging
-import secrets
-import string
-from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
-from types import SimpleNamespace
-
-from sqlalchemy import and_, delete, func, insert, select, text, update, inspect
-from sqlalchemy.exc import OperationalError, ProgrammingError
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from rapidfuzz import fuzz, process
-from field_service.config import settings
-
-from field_service.db import models as m
-from field_service.db.session import SessionLocal
-from field_service.services import distribution_scheduler as dw
-from field_service.services.candidates import select_candidates
-from field_service.services import live_log
-from field_service.services import time_service
-from field_service.services import settings_service as settings_store
-from field_service.services import owner_requisites_service as owner_reqs
-from field_service.services import guarantee_service
-from field_service.services.guarantee_service import GuaranteeError
-from field_service.services.referral_service import apply_rewards_for_commission
-from field_service.data import cities as city_catalog
-
-from ..core.dto import (
-    CityRef,
-    CommissionAttachment,
-    CommissionDetail,
-    CommissionListItem,
-    DistrictRef,
-    MasterBrief,
-    MasterListItem,
-    MasterDocument,
-    MasterDetail,
-    NewOrderAttachment,
-    NewOrderData,
-    OrderAttachment,
-    OrderDetail,
-    OrderStatusHistoryItem,
-    OrderListItem,
-    OrderCategory,
-    OrderStatus,
-    OrderType,
-    StaffAccessCode,
-    StaffMember,
-    StaffRole,
-    StaffUser,
-    StreetRef,
-    TimeslotOption,
-    WaitPayRecipient,
+"""Admin bot keyboards."""
+from .common import main_menu, orders_menu, back_to_menu
+from .orders import (
+    create_order_mode_keyboard,  # P0-5: Выбор режима создания
+    queue_list_keyboard,
+    order_card_keyboard,
+    queue_cancel_keyboard,
+    queue_return_confirm_keyboard,
+    assign_menu_keyboard,
+    manual_candidates_keyboard,
+    manual_confirm_keyboard,
+    new_order_city_keyboard,
+    new_order_district_keyboard,
+    new_order_street_mode_keyboard,
+    new_order_street_keyboard,
+    new_order_street_manual_keyboard,
+    new_order_street_search_keyboard,
+    new_order_attachments_keyboard,
+    new_order_slot_keyboard,
+    new_order_asap_late_keyboard,
+    new_order_confirm_keyboard,
 )
-from ..utils.normalizers import normalize_category, normalize_status
-
-UTC = timezone.utc
-logger = logging.getLogger(__name__)
-
-PAYMENT_METHOD_LABELS = {
-    "card": "💳 Карта",
-    "sbp": "СБП",
-    "cash": "Наличные",
-}
-
-OWNER_PAY_SETTING_FIELDS: dict[str, tuple[str, str]] = {
-    'methods': ('owner_pay_methods_enabled', 'JSON'),
-    'card_number': ('owner_pay_card_number', 'STR'),
-    'card_holder': ('owner_pay_card_holder', 'STR'),
-    'card_bank': ('owner_pay_card_bank', 'STR'),
-    'sbp_phone': ('owner_pay_sbp_phone', 'STR'),
-    'sbp_bank': ('owner_pay_sbp_bank', 'STR'),
-    'sbp_qr_file_id': ('owner_pay_sbp_qr_file_id', 'STR'),
-    'other_text': ('owner_pay_other_text', 'STR'),
-    'comment_template': ('owner_pay_comment_template', 'STR'),
-}
-
-LOCAL_TZ = settings_store.get_timezone()
-
-HAS_STREET_CENTROIDS: bool | None = None
-HAS_DISTRICT_CENTROIDS: bool | None = None
-HAS_CITY_CENTROIDS: bool | None = None
-
-STREET_DUPLICATE_THRESHOLD = 93
-STREET_MIN_SCORE = 60
-
-WORKDAY_START_DEFAULT = time_service.parse_time_string(settings.workday_start, default=time(10, 0))
-WORKDAY_END_DEFAULT = time_service.parse_time_string(settings.workday_end, default=time(20, 0))
-LATE_ASAP_THRESHOLD = time_service.parse_time_string(settings.asap_late_threshold, default=time(19, 30))
-
-QUEUE_STATUSES = {
-    m.OrderStatus.SEARCHING,
-    m.OrderStatus.ASSIGNED,
-    m.OrderStatus.EN_ROUTE,
-    m.OrderStatus.WORKING,
-    m.OrderStatus.PAYMENT,
-    m.OrderStatus.GUARANTEE,
-    m.OrderStatus.DEFERRED,
-}
-
-ACTIVE_ORDER_STATUSES = (
-    m.OrderStatus.ASSIGNED,
-    m.OrderStatus.EN_ROUTE,
-    m.OrderStatus.WORKING,
-    m.OrderStatus.PAYMENT,
+from .finance import (
+    finance_menu,
+    finance_segment_keyboard,
+    finance_card_actions,
+    finance_reject_cancel_keyboard,
+    owner_pay_actions_keyboard,
+    owner_pay_edit_keyboard,
+    finance_grouped_keyboard,  # P1-15
+    finance_group_period_keyboard,  # P1-15
 )
-
-AVG_CHECK_STATUSES = (
-    m.OrderStatus.WORKING,
-    m.OrderStatus.PAYMENT,
-    m.OrderStatus.CLOSED,
+from .reports import (
+    reports_menu_keyboard,
+    reports_periods_keyboard,
 )
-
-
-# =============================================================================
-# UTILITY FUNCTIONS
-# =============================================================================
-
-def _is_column_missing_error(exc: Exception) -> bool:
-    original = getattr(exc, "orig", None)
-    if original is None:
-        return False
-    message = str(original).lower()
-    return (
-        original.__class__.__name__ == "UndefinedColumnError"
-        or "undefined column" in message
-        or "does not exist" in message
-    )
-
-STREET_DUPLICATE_THRESHOLD = 93
-STREET_MIN_SCORE = 60
-
-
-
-
-def _normalize_street_name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", value.lower())
-
-
-def _format_datetime_local(value: Optional[datetime]) -> Optional[str]:
-    if not value:
-        return None
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=UTC)
-    return value.astimezone(LOCAL_TZ).strftime('%d.%m %H:%M')
-
-
-
-
-def _parse_env_time(value: str, fallback: time) -> time:
-    try:
-        hh, mm = map(int, value.split(":"))
-        return time(hour=hh, minute=mm)
-    except Exception:
-        return fallback
-
-
-WORKDAY_START_DEFAULT = time_service.parse_time_string(settings.workday_start, default=time(10, 0))
-WORKDAY_END_DEFAULT = time_service.parse_time_string(settings.workday_end, default=time(20, 0))
-LATE_ASAP_THRESHOLD = time_service.parse_time_string(settings.asap_late_threshold, default=time(19, 30))
-
-
-def _zone_storage_value(tz: ZoneInfo) -> str:
-    return getattr(tz, 'key', str(tz))
-
-
-async def _workday_window() -> tuple[time, time]:
-    try:
-        return await settings_store.get_working_window()
-    except Exception:
-        return WORKDAY_START_DEFAULT, WORKDAY_END_DEFAULT
-
-
-QUEUE_STATUSES = {
-    m.OrderStatus.SEARCHING,
-    m.OrderStatus.ASSIGNED,
-    m.OrderStatus.EN_ROUTE,
-    m.OrderStatus.WORKING,
-    m.OrderStatus.PAYMENT,
-    m.OrderStatus.GUARANTEE,
-    m.OrderStatus.DEFERRED,
-}
-
-ACTIVE_ORDER_STATUSES = (
-    m.OrderStatus.ASSIGNED,
-    m.OrderStatus.EN_ROUTE,
-    m.OrderStatus.WORKING,
-    m.OrderStatus.PAYMENT,
+from .settings import (
+    settings_menu_keyboard,
+    settings_group_keyboard,
+    logs_menu_keyboard,
 )
-
-AVG_CHECK_STATUSES = (
-    m.OrderStatus.WORKING,
-    m.OrderStatus.PAYMENT,
-    m.OrderStatus.CLOSED,
-)
-
-
-@dataclass(slots=True)
-class _StaffAccess:
-    id: int
-    role: m.StaffRole
-    is_active: bool
-    city_ids: frozenset[int]
-    full_name: Optional[str] = None
-
-
-async def _load_staff_access(
-    session: AsyncSession, staff_id: Optional[int]
-) -> Optional[_StaffAccess]:
-    if not staff_id:
-        return None
-    row = await session.execute(
-        select(m.staff_users).where(m.staff_users.id == staff_id)
-    )
-    staff = row.scalar_one_or_none()
-    if not staff or not staff.is_active:
-        return None
-    cities_q = await session.execute(
-        select(m.staff_cities.city_id).where(m.staff_cities.staff_user_id == staff.id)
-    )
-    city_ids = frozenset(int(c[0]) for c in cities_q)
-    return _StaffAccess(
-        id=staff.id,
-        role=staff.role,
-        is_active=staff.is_active,
-        city_ids=city_ids,
-        full_name=staff.full_name,
-    )
-
-
-
-def _visible_city_ids_for_staff(staff: Optional[_StaffAccess]) -> Optional[frozenset[int]]:
-    if staff is None:
-        return None
-    if staff.role == m.StaffRole.ADMIN:
-        return None
-    return staff.city_ids
-
-
-
-def _staff_can_access_city(
-    staff: Optional[_StaffAccess], city_id: Optional[int]
-) -> bool:
-    if city_id is None:
-        return False
-    visible = _visible_city_ids_for_staff(staff)
-    if visible is None:
-        return True
-    return city_id in visible
-
-
-def _prepare_setting_value(value: object, value_type: str) -> str:
-    vt = value_type.upper()
-    if vt == "JSON":
-        return json.dumps(value, ensure_ascii=False)
-    if vt == "BOOL":
-        if isinstance(value, str):
-            return "true" if value.strip().lower() in {"1", "true", "yes", "on"} else "false"
-        return "true" if bool(value) else "false"
-    if vt == "TIME" and isinstance(value, time):
-        return value.strftime("%H:%M")
-    return "" if value is None else str(value)
-
-
-
-def _format_created_at(dt: Optional[datetime]) -> str:
-    if not dt:
-        return ""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    return dt.astimezone(LOCAL_TZ).strftime("%d.%m %H:%M")
-
-
-
-def _raw_order_type(entity: Any) -> Any:
-    value = getattr(entity, "type", None)
-    if value is None:
-        value = getattr(entity, "order_type", None)
-    return value
-
-
-
-def _map_staff_role(db_role: m.StaffRole) -> StaffRole:
-    if db_role == m.StaffRole.ADMIN:
-        return StaffRole.GLOBAL_ADMIN
-    if hasattr(m.StaffRole, "CITY_ADMIN") and db_role == getattr(
-        m.StaffRole, "CITY_ADMIN"
-    ):
-        return StaffRole.CITY_ADMIN
-    return StaffRole.LOGIST
-
-
-
-def _map_staff_role_to_db(role: StaffRole) -> m.StaffRole:
-    if role is StaffRole.CITY_ADMIN and hasattr(m.StaffRole, "CITY_ADMIN"):
-        return getattr(m.StaffRole, "CITY_ADMIN")
-    if role is StaffRole.LOGIST:
-        return m.StaffRole.LOGIST
-    return m.StaffRole.ADMIN
-
-
-
-def _sorted_city_tuple(city_ids: Optional[Iterable[int]]) -> tuple[int, ...]:
-    if not city_ids:
-        return tuple()
-    return tuple(sorted({int(cid) for cid in city_ids}))
-
-
-async def _load_staff_city_map(
-    session: AsyncSession, staff_rows: Sequence[m.staff_users]
-) -> dict[int, list[int]]:
-    ids = [row.id for row in staff_rows]
-    city_map: dict[int, list[int]] = {sid: [] for sid in ids}
-    if not ids:
-        return city_map
-    rows = await session.execute(
-        select(m.staff_cities.staff_user_id, m.staff_cities.city_id).where(
-            m.staff_cities.staff_user_id.in_(ids)
-        )
-    )
-    for staff_id, city_id in rows:
-        city_map[int(staff_id)].append(int(city_id))
-    return city_map
-
-
-async def _collect_code_cities(
-    session: AsyncSession, code_ids: Sequence[int]
-) -> dict[int, list[int]]:
-    links: dict[int, list[int]] = {cid: [] for cid in code_ids}
-    if not code_ids:
-        return links
-    rows = await session.execute(
-        select(
-            m.staff_access_code_cities.access_code_id,
-            m.staff_access_code_cities.city_id,
-        ).where(m.staff_access_code_cities.access_code_id.in_(code_ids))
-    )
-    for code_id, city_id in rows:
-        links[int(code_id)].append(int(city_id))
-    return links
-
-
-
-def _order_type_from_db(value: Any) -> OrderType:
-    if value is None:
-        return OrderType.NORMAL
-    if isinstance(value, OrderType):
-        return value
-    if isinstance(value, m.OrderType):
-        return OrderType(value.value)
-    if isinstance(value, str):
-        candidate = value.upper().strip()
-        try:
-            return OrderType(candidate)
-        except ValueError:
-            return OrderType.NORMAL
-    return OrderType.NORMAL
-
-
-
-def _map_order_type_to_db(order_type: OrderType) -> m.OrderType:
-    if order_type is OrderType.GUARANTEE:
-        return m.OrderType.GUARANTEE
-    return m.OrderType.NORMAL
-
-
-
-def _attachment_type_from_string(value: Optional[str]) -> m.AttachmentFileType:
-    if not value:
-        return m.AttachmentFileType.OTHER
-    normalized = value.lower()
-    if normalized == "photo":
-        return m.AttachmentFileType.PHOTO
-    if normalized == "document":
-        return m.AttachmentFileType.DOCUMENT
-    return m.AttachmentFileType.OTHER
-
-
-
-def _generate_staff_code() -> str:
-    alphabet = string.ascii_uppercase + string.digits
-    return "".join(secrets.choice(alphabet) for _ in range(8))
-
-
-
-def _push_dist_log(message: str, *, level: str = "INFO") -> None:
-    try:
-        live_log.push("dist", message, level=level)
-    except Exception:
-        pass
-    print(message)
-
-
-
-def _coerce_order_status(value: Any) -> m.OrderStatus:
-    if isinstance(value, m.OrderStatus):
-        return value
-    if value is None:
-        return m.OrderStatus.SEARCHING
-    try:
-        return m.OrderStatus(str(value))
-    except ValueError:
-        return m.OrderStatus.SEARCHING
-
-
-
-
-
-async def _ensure_centroid_flag(session: AsyncSession, scope: str) -> bool:
-    """Check if centroid columns exist for given scope (street/district/city)."""
-    global HAS_STREET_CENTROIDS, HAS_DISTRICT_CENTROIDS, HAS_CITY_CENTROIDS
-
-    flags = {
-        'street': 'HAS_STREET_CENTROIDS',
-        'district': 'HAS_DISTRICT_CENTROIDS',
-        'city': 'HAS_CITY_CENTROIDS',
-    }
-    column_sets = {
-        'street': (m.streets.centroid_lat, m.streets.centroid_lon),
-        'district': (m.districts.centroid_lat, m.districts.centroid_lon),
-        'city': (m.cities.centroid_lat, m.cities.centroid_lon),
-    }
-
-    flag_name = flags[scope]
-    current = globals()[flag_name]
-    if current is not None:
-        return current
-
-    selectors = column_sets[scope]
-    try:
-        await session.execute(select(*selectors).limit(1))
-    except ProgrammingError as exc:
-        if _is_column_missing_error(exc):
-            globals()[flag_name] = False
-            await session.rollback()
-            return False
-        raise
-    else:
-        globals()[flag_name] = True
-        return True
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\services\__init__.py
-```python
-"""Admin bot services."""
-from .staff import DBStaffService, AccessCodeError, _StaffAccess, _load_staff_access
-from .orders import DBOrdersService
-from .distribution import DBDistributionService
-from .finance import DBFinanceService
-from .masters import DBMastersService
-from .settings import DBSettingsService
 
 __all__ = [
-    'DBStaffService',
-    'DBOrdersService',
-    'DBDistributionService',
-    'DBFinanceService',
-    'DBMastersService',
-    'DBSettingsService',
-    'AccessCodeError',
-    '_StaffAccess',
-    '_load_staff_access',
+    # Common
+    'main_menu',
+    'orders_menu',
+    'back_to_menu',
+    # Orders
+    'create_order_mode_keyboard',  # P0-5: Выбор режима создания
+    'queue_list_keyboard',
+    'order_card_keyboard',
+    'queue_cancel_keyboard',
+    'queue_return_confirm_keyboard',
+    'assign_menu_keyboard',
+    'manual_candidates_keyboard',
+    'manual_confirm_keyboard',
+    'new_order_city_keyboard',
+    'new_order_district_keyboard',
+    'new_order_street_mode_keyboard',
+    'new_order_street_keyboard',
+    'new_order_street_manual_keyboard',
+    'new_order_street_search_keyboard',
+    'new_order_attachments_keyboard',
+    'new_order_slot_keyboard',
+    'new_order_asap_late_keyboard',
+    'new_order_confirm_keyboard',
+    # Finance
+    'finance_menu',
+    'finance_segment_keyboard',
+    'finance_card_actions',
+    'finance_reject_cancel_keyboard',
+    'owner_pay_actions_keyboard',
+    'owner_pay_edit_keyboard',
+    'finance_grouped_keyboard',  # P1-15
+    'finance_group_period_keyboard',  # P1-15
+    # Reports
+    'reports_menu_keyboard',
+    'reports_periods_keyboard',
+    # Settings
+    'settings_menu_keyboard',
+    'settings_group_keyboard',
+    'logs_menu_keyboard',
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\keyboards\common.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/keyboards/common.py`
+
+**Strok:** 98  
+**Razmer:** 3.55 KB
+
 ```python
 """Admin bot keyboards."""
 from __future__ import annotations
@@ -22831,9 +23946,16 @@ def back_to_menu() -> InlineKeyboardMarkup:
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\keyboards\finance.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/keyboards/finance.py`
+
+**Strok:** 172  
+**Razmer:** 6.62 KB
+
 ```python
 """Admin bot keyboards."""
 from __future__ import annotations
@@ -22976,10 +24098,9 @@ def finance_reject_cancel_keyboard(commission_id: int) -> InlineKeyboardMarkup:
 
 def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text=" ", callback_data="adm:f:set:edit")
-    kb.button(text="  ", callback_data="adm:f:set:bc")
-    kb.button(text=" ", callback_data="adm:f")
-    kb.adjust(2, 1)
+    kb.button(text="✏️ Редактировать", callback_data="adm:f:set:edit")
+    kb.button(text="⬅️ Назад", callback_data="adm:f")
+    kb.adjust(1)
     return kb.as_markup()
 
 
@@ -22988,28 +24109,35 @@ def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
 def owner_pay_edit_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     field_labels = [
-        ("methods", " "),
-        ("card_number", " "),
-        ("card_holder", " "),
-        ("card_bank", " "),
-        ("sbp_phone", " "),
-        ("sbp_bank", " "),
-        ("sbp_qr_file_id", "QR-"),
-        ("other_text", ""),
-        ("comment_template", " "),
+        ("methods", "💳 Способы оплаты"),
+        ("card_number", "🔢 Номер карты"),
+        ("card_holder", "👤 Держатель карты"),
+        ("card_bank", "🏦 Банк карты"),
+        ("sbp_phone", "📱 Телефон СБП"),
+        ("sbp_bank", "🏦 Банк СБП"),
+        ("sbp_qr_file_id", "🔲 QR-код СБП"),
+        ("other_text", "📝 Дополнительно"),
+        ("comment_template", "💬 Шаблон комментария"),
     ]
     for field, label in field_labels:
         kb.button(text=label, callback_data=f"adm:f:set:field:{field}")
     kb.adjust(2)
-    kb.button(text=" ", callback_data="adm:f:set")
+    kb.button(text="⬅️ Назад", callback_data="adm:f:set")
     return kb.as_markup()
 
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\keyboards\orders.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/keyboards/orders.py`
+
+**Strok:** 326  
+**Razmer:** 11.48 KB
+
 ```python
 """Admin bot keyboards."""
 from __future__ import annotations
@@ -23336,9 +24464,16 @@ def new_order_confirm_keyboard(prefix: str = "new") -> InlineKeyboardMarkup:  # 
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\keyboards\reports.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/keyboards/reports.py`
+
+**Strok:** 39  
+**Razmer:** 1.44 KB
+
 ```python
 """Admin bot keyboards."""
 from __future__ import annotations
@@ -23378,9 +24513,16 @@ def reports_periods_keyboard() -> InlineKeyboardMarkup:
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\keyboards\settings.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/keyboards/settings.py`
+
+**Strok:** 83  
+**Razmer:** 2.53 KB
+
 ```python
 """Admin bot keyboards."""
 from __future__ import annotations
@@ -23464,96 +24606,42 @@ __all__ = [
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\keyboards\__init__.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/texts/__init__.py`
+
+**Strok:** 16  
+**Razmer:** 0.46 KB
+
 ```python
-"""Admin bot keyboards."""
-from .common import main_menu, orders_menu, back_to_menu
-from .orders import (
-    create_order_mode_keyboard,  # P0-5: Выбор режима создания
-    queue_list_keyboard,
-    order_card_keyboard,
-    queue_cancel_keyboard,
-    queue_return_confirm_keyboard,
-    assign_menu_keyboard,
-    manual_candidates_keyboard,
-    manual_confirm_keyboard,
-    new_order_city_keyboard,
-    new_order_district_keyboard,
-    new_order_street_mode_keyboard,
-    new_order_street_keyboard,
-    new_order_street_manual_keyboard,
-    new_order_street_search_keyboard,
-    new_order_attachments_keyboard,
-    new_order_slot_keyboard,
-    new_order_asap_late_keyboard,
-    new_order_confirm_keyboard,
-)
-from .finance import (
-    finance_menu,
-    finance_segment_keyboard,
-    finance_card_actions,
-    finance_reject_cancel_keyboard,
-    owner_pay_actions_keyboard,
-    owner_pay_edit_keyboard,
-    finance_grouped_keyboard,  # P1-15
-    finance_group_period_keyboard,  # P1-15
-)
-from .reports import (
-    reports_menu_keyboard,
-    reports_periods_keyboard,
-)
-from .settings import (
-    settings_menu_keyboard,
-    settings_group_keyboard,
-    logs_menu_keyboard,
-)
+"""Admin bot text formatting."""
+from .common import FSM_TIMEOUT_MESSAGE, COMMISSION_STATUS_LABELS, _category_value
+from .orders import order_teaser, order_card, master_brief_line, new_order_summary
+from .finance import finance_list_line, commission_detail
 
 __all__ = [
-    # Common
-    'main_menu',
-    'orders_menu',
-    'back_to_menu',
-    # Orders
-    'create_order_mode_keyboard',  # P0-5: Выбор режима создания
-    'queue_list_keyboard',
-    'order_card_keyboard',
-    'queue_cancel_keyboard',
-    'queue_return_confirm_keyboard',
-    'assign_menu_keyboard',
-    'manual_candidates_keyboard',
-    'manual_confirm_keyboard',
-    'new_order_city_keyboard',
-    'new_order_district_keyboard',
-    'new_order_street_mode_keyboard',
-    'new_order_street_keyboard',
-    'new_order_street_manual_keyboard',
-    'new_order_street_search_keyboard',
-    'new_order_attachments_keyboard',
-    'new_order_slot_keyboard',
-    'new_order_asap_late_keyboard',
-    'new_order_confirm_keyboard',
-    # Finance
-    'finance_menu',
-    'finance_segment_keyboard',
-    'finance_card_actions',
-    'finance_reject_cancel_keyboard',
-    'owner_pay_actions_keyboard',
-    'owner_pay_edit_keyboard',
-    'finance_grouped_keyboard',  # P1-15
-    'finance_group_period_keyboard',  # P1-15
-    # Reports
-    'reports_menu_keyboard',
-    'reports_periods_keyboard',
-    # Settings
-    'settings_menu_keyboard',
-    'settings_group_keyboard',
-    'logs_menu_keyboard',
+    'FSM_TIMEOUT_MESSAGE',
+    'COMMISSION_STATUS_LABELS',
+    'order_teaser',
+    'order_card',
+    'master_brief_line',
+    'finance_list_line',
+    'commission_detail',
+    'new_order_summary',
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\texts\common.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/texts/common.py`
+
+**Strok:** 32  
+**Razmer:** 0.66 KB
+
 ```python
 """Admin bot text formatting."""
 from __future__ import annotations
@@ -23586,9 +24674,16 @@ def _category_value(category: object) -> str:
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\texts\finance.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/texts/finance.py`
+
+**Strok:** 99  
+**Razmer:** 3.46 KB
+
 ```python
 """Admin bot text formatting."""
 from __future__ import annotations
@@ -23688,9 +24783,16 @@ def commission_detail(detail: CommissionDetail) -> str:
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\texts\orders.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/ui/texts/orders.py`
+
+**Strok:** 212  
+**Razmer:** 8.25 KB
+
 ```python
 """Admin bot text formatting."""
 from __future__ import annotations
@@ -23903,28 +25005,30 @@ __all__ = [
 ]
 
 
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\ui\texts\__init__.py
-```python
-"""Admin bot text formatting."""
-from .common import FSM_TIMEOUT_MESSAGE, COMMISSION_STATUS_LABELS, _category_value
-from .orders import order_teaser, order_card, master_brief_line, new_order_summary
-from .finance import finance_list_line, commission_detail
 
-__all__ = [
-    'FSM_TIMEOUT_MESSAGE',
-    'COMMISSION_STATUS_LABELS',
-    'order_teaser',
-    'order_card',
-    'master_brief_line',
-    'finance_list_line',
-    'commission_detail',
-    'new_order_summary',
-]
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\utils\helpers.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/utils/__init__.py`
+
+**Strok:** 4  
+**Razmer:** 0.06 KB
+
+```python
+from .helpers import get_service
+
+__all__ = ["get_service"]
+
+```
+
+---
+
+###### `field-service/field_service/bots/admin_bot/utils/helpers.py`
+
+**Strok:** 18  
+**Razmer:** 0.50 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -23943,9 +25047,16 @@ def get_service(bot: Any, key: str, *, required: bool = True) -> Any:
     if not svc and required:
         raise RuntimeError(f"Service '{key}' is not configured on bot instance")
     return svc
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\utils\normalizers.py
+
+---
+
+###### `field-service/field_service/bots/admin_bot/utils/normalizers.py`
+
+**Strok:** 126  
+**Razmer:** 3.80 KB
+
 ```python
 from __future__ import annotations
 
@@ -24072,14251 +25183,72 @@ def normalize_status(
         return OrderStatus(raw)
     except ValueError:
         return default
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot\utils\__init__.py
-```python
-from .helpers import get_service
 
-__all__ = ["get_service"]
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\access.py
-```python
-﻿from __future__ import annotations
+---
 
-from typing import Optional
+###### `field-service/field_service/bots/common/__init__.py`
 
-from .dto import StaffRole, StaffUser
+**Strok:** 46  
+**Razmer:** 1.05 KB
 
-
-def visible_city_ids_for(staff: StaffUser) -> Optional[list[int]]:
-    if staff.role is StaffRole.GLOBAL_ADMIN:
-        return None
-    if not staff.city_ids:
-        return []
-    return sorted(int(city_id) for city_id in staff.city_ids)
-
-
-__all__ = ["visible_city_ids_for"]
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\dto.py
-```python
-﻿from __future__ import annotations
-
-from dataclasses import dataclass
-from datetime import date, datetime, time
-from decimal import Decimal
-from typing import FrozenSet, Mapping, Optional, Sequence, Tuple
-
-from field_service.db import OrderCategory
-from field_service.db.models import OrderStatus, OrderType, StaffRole
-
-
-@dataclass(frozen=True)
-class StaffUser:
-    """Minimal staff context injected into handlers."""
-
-    id: int
-    tg_id: int
-    role: StaffRole
-    is_active: bool
-    city_ids: FrozenSet[int]
-    full_name: str = ""
-    phone: str = ""
-
-
-@dataclass(frozen=True)
-class StaffMember:
-    """Detailed staff row for listing/edit screens."""
-
-    id: int
-    tg_id: Optional[int]
-    username: Optional[str]
-    full_name: str
-    phone: Optional[str]
-    role: StaffRole
-    is_active: bool
-    city_ids: Tuple[int, ...]
-    created_at: datetime
-    updated_at: datetime
-
-
-@dataclass(frozen=True)
-class StaffAccessCode:
-    id: int
-    code: str
-    role: StaffRole
-    city_ids: Tuple[int, ...]
-    issued_by_staff_id: Optional[int]
-    used_by_staff_id: Optional[int]
-    expires_at: Optional[datetime]
-    used_at: Optional[datetime]
-    revoked_at: Optional[datetime]
-    is_revoked: bool
-    comment: Optional[str]
-    created_at: datetime
-
-
-
-@dataclass(frozen=True)
-class WaitPayRecipient:
-    master_id: int
-    tg_user_id: Optional[int]
-    full_name: str
-
-
-@dataclass(frozen=True)
-class CityRef:
-    id: int
-    name: str
-
-
-@dataclass(frozen=True)
-class DistrictRef:
-    id: int
-    city_id: int
-    name: str
-
-
-@dataclass(frozen=True)
-class StreetRef:
-    id: int
-    city_id: int
-    district_id: Optional[int]
-    name: str
-    score: Optional[float] = None
-
-
-@dataclass(frozen=True)
-class TimeslotOption:
-    key: str
-    label: str
-    start_utc: Optional[datetime]
-    end_utc: Optional[datetime]
-    is_asap: bool = False
-
-
-@dataclass(frozen=True)
-class OrderAttachment:
-    id: int
-    file_type: str
-    file_id: str
-    file_name: Optional[str]
-    caption: Optional[str]
-
-
-@dataclass(frozen=True)
-class OrderListItem:
-    id: int
-    city_id: int
-    city_name: str
-    district_id: Optional[int]
-    district_name: Optional[str]
-    street_name: Optional[str]
-    house: Optional[str]
-    status: str
-    order_type: OrderType
-    category: OrderCategory
-    created_at_local: str
-    timeslot_local: Optional[str]
-    master_id: Optional[int]
-    master_name: Optional[str]
-    master_phone: Optional[str]
-    has_attachments: bool
-
-    @property
-    def type(self) -> str:
-        return self.order_type.value
-
-
-@dataclass(frozen=True)
-class OrderDetail(OrderListItem):
-    client_name: Optional[str]
-    client_phone: Optional[str]
-    apartment: Optional[str]
-    address_comment: Optional[str]
-    description: Optional[str]
-    lat: Optional[float]
-    lon: Optional[float]
-    company_payment: Optional[Decimal]
-    total_sum: Decimal
-    attachments: Tuple[OrderAttachment, ...]
-
-
-@dataclass(frozen=True)
-class OrderStatusHistoryItem:
-    id: int
-    from_status: Optional[str]
-    to_status: str
-    reason: Optional[str]
-    changed_by_staff_id: Optional[int]
-    changed_by_master_id: Optional[int]
-    changed_at_local: str
-
-OrderCard = OrderDetail
-
-
-@dataclass(frozen=True)
-class MasterBrief:
-    id: int
-    full_name: str
-    city_id: int
-    has_car: bool
-    avg_week_check: float
-    rating_avg: float
-    is_on_shift: bool
-    is_active: bool
-    verified: bool
-    in_district: bool
-    active_orders: int
-    max_active_orders: int
-    on_break: bool
-
-
-@dataclass(frozen=True)
-class MasterListItem:
-    id: int
-    full_name: str
-    city_name: Optional[str]
-    skills: Tuple[str, ...]
-    rating: float
-    has_vehicle: bool
-    is_on_shift: bool
-    shift_status: str
-    on_break: bool
-    verified: bool
-    is_active: bool
-    is_deleted: bool
-    active_orders: int
-    max_active_orders: Optional[int]
-    avg_check: Optional[Decimal]
-
-
-@dataclass(frozen=True)
-class MasterDocument:
-    id: int
-    file_type: str
-    file_id: str
-    file_name: Optional[str]
-    caption: Optional[str]
-    document_type: Optional[str]
-
-
-@dataclass(frozen=True)
-class MasterDetail:
-    id: int
-    full_name: str
-    phone: Optional[str]
-    city_id: Optional[int]
-    city_name: Optional[str]
-    rating: float
-    has_vehicle: bool
-    is_active: bool
-    is_blocked: bool
-    is_deleted: bool
-    blocked_reason: Optional[str]
-    blocked_at_local: Optional[str]
-    moderation_status: str
-    moderation_reason: Optional[str]
-    verified: bool
-    verified_at_local: Optional[str]
-    verified_by: Optional[int]
-    is_on_shift: bool
-    shift_status: str
-    payout_method: Optional[str]
-    payout_data: Mapping[str, Optional[str]]
-    referral_code: Optional[str]
-    referred_by_master_id: Optional[int]
-    current_limit: Optional[int]
-    active_orders: int
-    avg_check: Optional[Decimal]
-    moderation_history: Optional[str]
-    has_orders: bool
-    has_commissions: bool
-    created_at_local: str
-    updated_at_local: str
-    district_names: Tuple[str, ...]
-    skill_names: Tuple[str, ...]
-    documents: Tuple[MasterDocument, ...]
-
-
-@dataclass(frozen=True)
-class CommissionListItem:
-    id: int
-    order_id: int
-    master_id: Optional[int]
-    master_name: Optional[str]
-    status: str
-    amount: Decimal
-    deadline_at_local: Optional[str]
-
-
-@dataclass(frozen=True)
-class CommissionAttachment:
-    id: int
-    file_type: str
-    file_id: str
-    file_name: Optional[str]
-    caption: Optional[str]
-
-
-@dataclass(frozen=True)
-class CommissionDetail:
-    id: int
-    order_id: int
-    master_id: Optional[int]
-    master_name: Optional[str]
-    master_phone: Optional[str]
-    status: str
-    amount: Decimal
-    rate: Decimal
-    deadline_at_local: Optional[str]
-    created_at_local: str
-    paid_reported_at_local: Optional[str]
-    paid_approved_at_local: Optional[str]
-    paid_amount: Optional[Decimal]
-    has_checks: bool
-    snapshot_methods: Tuple[str, ...]
-    snapshot_data: Mapping[str, Optional[str]]
-    attachments: Tuple[CommissionAttachment, ...]
-
-
-@dataclass(frozen=True)
-class NewOrderAttachment:
-    file_id: str
-    file_unique_id: Optional[str]
-    file_type: str
-    file_name: Optional[str]
-    mime_type: Optional[str]
-    caption: Optional[str]
-
-
-@dataclass(frozen=True)
-class NewOrderData:
-    city_id: int
-    district_id: Optional[int]
-    street_id: Optional[int]
-    house: Optional[str]
-    apartment: Optional[str]
-    address_comment: Optional[str]
-    client_name: str
-    client_phone: str
-    category: OrderCategory
-    description: str
-    order_type: OrderType
-    timeslot_start_utc: Optional[datetime]
-    timeslot_end_utc: Optional[datetime]
-    timeslot_display: Optional[str]
-    lat: Optional[float]
-    lon: Optional[float]
-    no_district: bool
-    company_payment: Optional[Decimal]
-    total_sum: Decimal
-    created_by_staff_id: Optional[int]
-    preferred_master_id: Optional[int] = None
-    guarantee_source_order_id: Optional[int] = None
-    initial_status: Optional[OrderStatus] = None
-    attachments: Sequence[NewOrderAttachment] = ()
-
-
-__all__ = [
-    'CityRef',
-    'CommissionAttachment',
-    'CommissionDetail',
-    'CommissionListItem',
-    'DistrictRef',
-    'MasterBrief',
-    'MasterListItem',
-    'MasterDocument',
-    'MasterDetail',
-    'NewOrderAttachment',
-    'NewOrderData',
-    'OrderAttachment',
-    'OrderDetail',
-    'OrderCard',
-    'OrderListItem',
-    'OrderCategory',
-    'OrderType',
-    'OrderStatus',
-    'StaffAccessCode',
-    'StaffMember',
-    'StaffRole',
-    'StaffUser',
-    'StreetRef',
-    'TimeslotOption',
-    'WaitPayRecipient',
-]
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\filters.py
 ```python
 from __future__ import annotations
 
-from typing import Iterable, Optional
-
-from aiogram.filters import BaseFilter
-from aiogram.types import CallbackQuery, Message, TelegramObject
-
-from field_service.config import settings
-
-SUPERUSER_IDS = frozenset(set(settings.admin_bot_superusers) | set(settings.global_admins_tg_ids))
-
-from .dto import StaffRole, StaffUser
-from .utils import get_service
-
-
-def _extract_user_id(event: TelegramObject) -> Optional[int]:
-    if isinstance(event, Message):
-        if event.from_user:
-            return event.from_user.id
-        return None
-    if isinstance(event, CallbackQuery):
-        if event.from_user:
-            return event.from_user.id
-        return None
-    return getattr(getattr(event, "from_user", None), "id", None)
-
-
-class StaffRoleFilter(BaseFilter):
-    """Attach StaffUser to handler if role matches."""
-
-    def __init__(self, roles: Iterable[StaffRole] | None = None):
-        self._roles = set(roles) if roles else None
-
-    async def __call__(self, event: TelegramObject, bot, **kwargs):
-        preloaded = kwargs.get("staff")
-        if isinstance(preloaded, StaffUser):
-            if not preloaded.is_active:
-                return False
-            if self._roles and preloaded.role not in self._roles:
-                return False
-            return {"staff": preloaded}
-
-        tg_id = _extract_user_id(event)
-        if tg_id is None:
-            return False
-
-        # CR-2025-10-03-FIX: ALWAYS load staff from DB, even for superusers
-        # Never create virtual StaffUser with id=0 - it breaks FK constraints
-        staff_service = get_service(bot, "staff_service", required=False)
-        if staff_service is None:
-            return False
-        
-        staff = await staff_service.get_by_tg_id(tg_id)
-
-        if not staff or not staff.is_active:
-            return False
-        if self._roles and staff.role not in self._roles:
-            return False
-        return {"staff": staff}
-
-
-__all__ = ["StaffRoleFilter"]
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\handlers.py
-```python
-from __future__ import annotations
-
-import html
-import json
-import re
-from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone
-from decimal import Decimal
-from pathlib import Path
-from tempfile import TemporaryDirectory
-from typing import Any, Optional, Sequence
-from zoneinfo import ZoneInfo
-
-from aiogram import F, Router, Bot
-from field_service.bots.common import (
-    FSMTimeoutConfig,
-    FSMTimeoutMiddleware,
+from .breadcrumbs import (
+    AdminPaths,
+    MasterPaths,
+    add_breadcrumbs_to_text,
+    build_breadcrumbs,
+    format_breadcrumb_header,
+)
+from .fsm_timeout import FSMTimeoutConfig, FSMTimeoutMiddleware
+from .retry_context import (
+    RetryContext,
+    clear_retry_context,
+    load_retry_context,
+    save_retry_context,
+)
+from .retry_handler import retry_router
+from .retry_middleware import RetryMiddleware, setup_retry_middleware
+from .telegram_safe import (
+    safe_answer_callback,
+    safe_delete_and_send,
+    safe_edit_or_send,
     safe_send_message,
 )
-from aiogram.exceptions import TelegramBadRequest
-from .utils import get_service
-from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardMarkup, Message
-
-# Local router instance for handlers in this module
-router = Router()
-
-async def _fsm_timeout_notice(state: FSMContext) -> None:
-    chat_id = state.key.chat_id
-    if chat_id is None:
-        return
-    try:
-        await safe_send_message(state.bot, chat_id, FSM_TIMEOUT_MESSAGE)
-    except Exception:
-        pass
-
-
-_TIMEOUT_MIDDLEWARE = FSMTimeoutMiddleware(
-    FSMTimeoutConfig(timeout=timedelta(minutes=10), callback=_fsm_timeout_notice)
-)
-
-router.message.middleware(_TIMEOUT_MIDDLEWARE)
-router.callback_query.middleware(_TIMEOUT_MIDDLEWARE)
-
-
-from field_service.config import settings as env_settings
-
-
-from field_service.services import export_service, live_log, time_service
-WORKDAY_START_DEFAULT = time_service.parse_time_string(env_settings.workday_start, default=time(10, 0))
-WORKDAY_END_DEFAULT = time_service.parse_time_string(env_settings.workday_end, default=time(20, 0))
-LATE_ASAP_THRESHOLD = time_service.parse_time_string(env_settings.asap_late_threshold, default=time(19, 30))
-SLOT_BUCKETS: tuple[tuple[str, time, time], ...] = tuple(
-    (bucket, span[0], span[1]) for bucket, span in time_service._SLOT_BUCKETS.items()
-)
-
-from field_service.services import settings_service
-from field_service.db.models import OrderType, StaffRole, OrderStatus
-from field_service.services.onboarding_service import normalize_phone
-from .access import visible_city_ids_for
-from .dto import NewOrderAttachment, NewOrderData, StaffUser
-from .normalizers import normalize_category, normalize_status
-from .filters import StaffRoleFilter
-from .keyboards import (
-    main_menu,
-    order_card_keyboard,
-    finance_menu,
-    logs_menu_keyboard,
-    settings_menu_keyboard,
-    reports_menu_keyboard,
-    reports_periods_keyboard,
-    new_order_city_keyboard,
-    new_order_district_keyboard,
-    new_order_street_mode_keyboard,
-    new_order_street_keyboard,
-    new_order_street_manual_keyboard,
-    new_order_attachments_keyboard,
-    new_order_slot_keyboard,
-    assign_menu_keyboard,
-    new_order_confirm_keyboard,
-    new_order_asap_late_keyboard,
-)
-from .queue import CATEGORY_CHOICES, CATEGORY_LABELS, CATEGORY_LABELS_BY_VALUE
-
-from .states import (
-    NewOrderFSM,
-    ReportsExportFSM,
-    SettingsEditFSM,
-    StaffAccessFSM,
-)
-from field_service.bots.admin_bot.services_db import AccessCodeError
-from .texts import FSM_TIMEOUT_MESSAGE, new_order_summary, order_card
-
-def _maybe_fix_mojibake(s: Any) -> Any:
-    return s
-
-# ---------- Читаемые русские константы (override) ----------
-# Эти присваивания гарантируют, что пользователь увидит нормальные строки,
-# даже если где-то в файле остались кракозябры из старых литералов.
-
-STAFF_CODE_PROMPT = "Введите код доступа, который выдал администратор."
-STAFF_CODE_ERROR = "Код не найден / истёк / уже использован / вам недоступен."
-STAFF_PDN_TEXT = (
-    "Согласие на обработку персональных данных.",
-    "Согласие включает обработку ФИО, телефона и данных о заказах для допуска к работе и обеспечения безопасности сервиса. ",
-    "Отправьте \"Согласен\" для продолжения или \"Не согласен\" для отмены."
-)
-REPORT_DEFINITIONS: dict[str, tuple[str, Any, str]] = {
-    "orders": ("Заказы", export_service.export_orders, "Orders"),
-    "commissions": ("Комиссии", export_service.export_commissions, "Commissions"),
-    "ref_rewards": ("Реферальные начисления", export_service.export_referral_rewards, "Referral rewards"),
-}
-
-DATE_INPUT_FORMATS = ("%Y-%m-%d", "%d.%m.%Y")
-
-# Timezone for local time conversions
-LOCAL_TZ = ZoneInfo(env_settings.timezone or "UTC")
-
-# Staff role labels
-STAFF_ROLE_LABELS = {
-    StaffRole.GLOBAL_ADMIN: "Глобальный администратор",
-    StaffRole.CITY_ADMIN: "Администратор города",
-    StaffRole.LOGIST: "Логист",
-}
-
-# Access code error messages
-ACCESS_CODE_ERROR_MESSAGES = {
-    "expired": "Код истёк. Запросите новый у администратора.",
-    "used": "Код уже использован.",
-    "not_found": "Код не найден.",
-    "role_mismatch": "Код вам недоступен (несоответствие ролей).",
-}
-
-# Aliases for text formatting functions
-format_order_card = order_card
-
-
-def _parse_period_input(text: str) -> tuple[date, date] | None:
-    """
-    Парсит ввод пользователя в формате 'YYYY-MM-DD YYYY-MM-DD'
-    или 'DD.MM.YYYY DD.MM.YYYY' и возвращает кортеж из двух дат.
-    
-    Returns:
-        tuple[date, date] | None: Кортеж (start_date, end_date) или None при ошибке
-    """
-    text = text.strip()
-    if not text:
-        return None
-    
-    parts = text.split()
-    if len(parts) != 2:
-        return None
-    
-    start_str, end_str = parts
-    
-    # Пробуем разные форматы
-    for fmt in DATE_INPUT_FORMATS:
-        try:
-            start_dt = datetime.strptime(start_str, fmt).date()
-            end_dt = datetime.strptime(end_str, fmt).date()
-            if start_dt <= end_dt:
-                return start_dt, end_dt
-        except ValueError:
-            continue
-    
-    return None
-
-
-def _format_period_label(start_dt: date, end_dt: date) -> str:
-    """
-    Форматирует две даты в читаемую строку для отображения в отчете.
-    
-    Args:
-        start_dt: Начальная дата
-        end_dt: Конечная дата
-    
-    Returns:
-        str: Отформатированная строка типа "01.01.2024 - 31.01.2024"
-    """
-    if start_dt == end_dt:
-        return start_dt.strftime("%d.%m.%Y")
-    return f"{start_dt.strftime('%d.%m.%Y')} - {end_dt.strftime('%d.%m.%Y')}"
-
-
-async def show_admin_main_menu(
-    message: Message,
-    staff: StaffUser,
-    *,
-    edit: bool = False,
-    notice: str | None = None,
-) -> None:
-    """Показывает главное меню админ-бота"""
-    text = notice or "Выберите раздел:"
-    markup = main_menu(staff)
-    
-    if edit:
-        try:
-            await message.edit_text(text, reply_markup=markup)
-        except Exception:
-            await message.answer(text, reply_markup=markup)
-    else:
-        await message.answer(text, reply_markup=markup)
-
-
-@dataclass(frozen=True)
-class SettingFieldDef:
-    key: str
-    label: str
-    schema: str
-    value_type: str = "STR"
-    choices: tuple[tuple[str, str], ...] | None = None
-    help_text: str = ""
-    default: object | None = None
-
-
-@dataclass(frozen=True)
-class SettingGroupDef:
-    key: str
-    title: str
-    fields: tuple[SettingFieldDef, ...]
-    description: str = ""
-
-
-"""
-SETTING_GROUPS: dict[str, SettingGroupDef] = {
-    "workday": SettingGroupDef(
-        key="workday",
-        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
-        fields=(
-            SettingFieldDef(
-                key="working_hours_start",
-                label="Начало рабочего дня",
-                schema="time",
-                value_type="TIME",
-                default=env_settings.working_hours_start,
-                help_text="Формат ЧЧ:ММ, по умолчанию 10:00.",
-            ),
-            SettingFieldDef(
-                key="working_hours_end",
-                label="Конец рабочего дня",
-                schema="time",
-                value_type="TIME",
-                default=env_settings.working_hours_end,
-                help_text="Формат ЧЧ:ММ, по умолчанию 20:00.",
-            ),
-        ),
-    ),
-    "distribution": SettingGroupDef(
-        key="distribution",
-        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
-        fields=(
-            SettingFieldDef(
-                key="distribution_tick_seconds",
-                label="   ()",
-                schema="int",
-                value_type="INT",
-                default=30,
-            ),
-            SettingFieldDef(
-                key="distribution_sla_seconds",
-                label="SLA  ()",
-                schema="int",
-                value_type="INT",
-                default=env_settings.distribution_sla_seconds,
-            ),
-            SettingFieldDef(
-                key="distribution_rounds",
-                label=" ",
-                schema="int",
-                value_type="INT",
-                default=env_settings.distribution_rounds,
-            ),
-            SettingFieldDef(
-                key="escalate_to_admin_after_min",
-                label="  ()",
-                schema="int_non_negative",
-                value_type="INT",
-                default=10,
-            ),
-            SettingFieldDef(
-                key="distribution_log_topn",
-                label=" topN   ",
-                schema="int",
-                value_type="INT",
-                default=10,
-            ),
-        ),
-    ),
-    "limits": SettingGroupDef(
-        key="limits",
-        title="",
-        fields=(
-            SettingFieldDef(
-                key="max_active_orders",
-                label=".    ",
-                schema="int",
-                value_type="INT",
-                default=1,
-            ),
-        ),
-    ),
-    "support": SettingGroupDef(
-        key="support",
-        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
-        fields=(
-            SettingFieldDef(
-                key="support_contact",
-                label=" ",
-                schema="string",
-                value_type="STR",
-                help_text=" @username,    .",
-            ),
-            SettingFieldDef(
-                key="support_faq_url",
-                label="  FAQ",
-                schema="string_optional",
-                value_type="STR",
-                help_text=" URL  '-'  .",
-            ),
-        ),
-    ),
-    "geo": SettingGroupDef(
-        key="geo",
-        title="",
-        fields=(
-            SettingFieldDef(
-                key="geo_mode",
-                label="",
-                schema="choice",
-                value_type="STR",
-                choices=(
-                    ("local_centroids", " "),
-                    ("yandex", ""),
-                ),
-                default="local_centroids",
-                help_text="1  , 2   API.",
-            ),
-            SettingFieldDef(
-                key="yandex_geocoder_key",
-                label="API  ",
-                schema="string_optional",
-                value_type="STR",
-                help_text="   '-'  .",
-            ),
-            SettingFieldDef(
-                key="yandex_throttle_rps",
-                label="RPS ",
-                schema="int_non_negative",
-                value_type="INT",
-                default=1,
-            ),
-            SettingFieldDef(
-                key="yandex_daily_limit",
-                label="  ",
-                schema="int_non_negative",
-                value_type="INT",
-                default=1000,
-            ),
-        ),
-    ),
-    "channels": SettingGroupDef(
-        key="channels",
-        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
-        fields=(
-            SettingFieldDef(
-                key="alerts_channel_id",
-                label="Alerts / ",
-                schema="int_optional",
-                value_type="STR",
-                help_text="ID   '-'  .",
-            ),
-            SettingFieldDef(
-                key="logs_channel_id",
-                label=" ",
-                schema="int_optional",
-                value_type="STR",
-                help_text="ID   '-'  .",
-            ),
-            SettingFieldDef(
-                key="reports_channel_id",
-                label=" ",
-                schema="int_optional",
-                value_type="STR",
-                help_text="ID   '-'  .",
-            ),
-        ),
-    ),
-}
-SETTINGS_GROUPS = SETTING_GROUPS
-"""
-
-# Cleaned settings groups (mojibake-free)
-SETTING_GROUPS: dict[str, SettingGroupDef] = {
-    "workday": SettingGroupDef(
-        key="workday",
-        title="Рабочий день",
-        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
-        fields=(
-            SettingFieldDef(
-                key="working_hours_start",
-                label="Начало рабочего дня",
-                schema="time",
-                value_type="TIME",
-                default=env_settings.working_hours_start,
-                help_text="Формат ЧЧ:ММ, по умолчанию 10:00.",
-            ),
-            SettingFieldDef(
-                key="working_hours_end",
-                label="Конец рабочего дня",
-                schema="time",
-                value_type="TIME",
-                default=env_settings.working_hours_end,
-                help_text="Формат ЧЧ:ММ, по умолчанию 20:00.",
-            ),
-        ),
-    ),
-    "distribution": SettingGroupDef(
-        key="distribution",
-        title="Распределение",
-        description="Настройки автораспределения заявок (частота, SLA, раунды).",
-        fields=(
-            SettingFieldDef(
-                key="distribution_tick_seconds",
-                label="Шаг цикла (сек.)",
-                schema="int",
-                value_type="INT",
-                default=30,
-            ),
-            SettingFieldDef(
-                key="distribution_sla_seconds",
-                label="SLA ответа мастера (сек.)",
-                schema="int",
-                value_type="INT",
-                default=env_settings.distribution_sla_seconds,
-            ),
-            SettingFieldDef(
-                key="distribution_rounds",
-                label="Количество раундов",
-                schema="int",
-                value_type="INT",
-                default=env_settings.distribution_rounds,
-            ),
-            SettingFieldDef(
-                key="escalate_to_admin_after_min",
-                label="Эскалация к админу через (мин.)",
-                schema="int_non_negative",
-                value_type="INT",
-                default=10,
-            ),
-            SettingFieldDef(
-                key="distribution_log_topn",
-                label="Логировать topN кандидатов",
-                schema="int",
-                value_type="INT",
-                default=10,
-            ),
-        ),
-    ),
-    "limits": SettingGroupDef(
-        key="limits",
-        title="Лимиты",
-        description="Ограничения сервиса для мастеров и процессов.",
-        fields=(
-            SettingFieldDef(
-                key="max_active_orders",
-                label="Макс. активных заказов на мастера",
-                schema="int",
-                value_type="INT",
-                default=1,
-            ),
-        ),
-    ),
-    "support": SettingGroupDef(
-        key="support",
-        title="Поддержка",
-        description="Контакты поддержки и материалы.",
-        fields=(
-            SettingFieldDef(
-                key="support_contact",
-                label="Контакт поддержки",
-                schema="string",
-                value_type="STR",
-                help_text="Например, @username, если доступно.",
-            ),
-            SettingFieldDef(
-                key="support_faq_url",
-                label="Ссылка на FAQ",
-                schema="string_optional",
-                value_type="STR",
-                help_text="Укажите URL или '-' чтобы очистить.",
-            ),
-        ),
-    ),
-    "geo": SettingGroupDef(
-        key="geo",
-        title="Гео",
-        description="Режим и лимиты геокодера.",
-        fields=(
-            SettingFieldDef(
-                key="geo_mode",
-                label="Режим геокодера",
-                schema="choice",
-                value_type="STR",
-                choices=(
-                    ("local_centroids", "Локальные центроиды"),
-                    ("yandex", "Яндекс"),
-                ),
-                default="local_centroids",
-                help_text="1 — локально, 2 — через API.",
-            ),
-            SettingFieldDef(
-                key="yandex_geocoder_key",
-                label="API‑ключ Яндекс",
-                schema="string_optional",
-                value_type="STR",
-                help_text="Оставьте '-' чтобы очистить.",
-            ),
-            SettingFieldDef(
-                key="yandex_throttle_rps",
-                label="RPS ограничение",
-                schema="int_non_negative",
-                value_type="INT",
-                default=1,
-            ),
-            SettingFieldDef(
-                key="yandex_daily_limit",
-                label="Суточный лимит запросов",
-                schema="int_non_negative",
-                value_type="INT",
-                default=1000,
-            ),
-        ),
-    ),
-    "channels": SettingGroupDef(
-        key="channels",
-        title="Каналы",
-        description="ID каналов Telegram для уведомлений и отчётов.",
-        fields=(
-            SettingFieldDef(
-                key="alerts_channel_id",
-                label="Канал алертов (ID)",
-                schema="int_optional",
-                value_type="STR",
-                help_text="ID или '-' чтобы очистить.",
-            ),
-            SettingFieldDef(
-                key="logs_channel_id",
-                label="Канал логов (ID)",
-                schema="int_optional",
-                value_type="STR",
-                help_text="ID или '-' чтобы очистить.",
-            ),
-            SettingFieldDef(
-                key="reports_channel_id",
-                label="Канал отчётов (ID)",
-                schema="int_optional",
-                value_type="STR",
-                help_text="ID или '-' чтобы очистить.",
-            ),
-        ),
-    ),
-}
-SETTINGS_GROUPS = SETTING_GROUPS
-
-
-
-SETTING_FIELD_BY_KEY: dict[str, SettingFieldDef] = {
-    field.key: field
-    for group in SETTINGS_GROUPS.values()
-    for field in group.fields
-}
-
-SETTING_FIELD_GROUP: dict[str, str] = {
-    field.key: group.key
-    for group in SETTINGS_GROUPS.values()
-    for field in group.fields
-}
-
-
-EMPTY_PLACEHOLDER = ""
-SCHEMA_DEFAULT_HELP = {
-    "time": " :,  10:00.",
-    "int": "    0.",
-    "int_non_negative": "     0.",
-    "string": " .",
-    "string_optional": "   '-'  .",
-    "int_optional": " ID  '-'  .",
-    "choice": "   .",
-}
-LOG_ENTRIES_LIMIT = 20
-
-
-def _get_setting_group(group_key: str) -> SettingGroupDef:
-    group = SETTING_GROUPS.get(group_key)
-    if group is None:
-        raise KeyError(f"Unknown settings group: {group_key}")
-    return group
-
-
-def _get_setting_field(field_key: str) -> SettingFieldDef:
-    field = SETTING_FIELD_BY_KEY.get(field_key)
-    if field is None:
-        raise KeyError(f"Unknown setting field: {field_key}")
-    return field
-
-
-def _format_setting_value(field: SettingFieldDef, raw_value: Optional[str]) -> tuple[str, bool]:
-    value = raw_value
-    from_default = False
-    if value in (None, ""):
-        value = field.default
-        from_default = raw_value in (None, "") and value not in (None, "")
-    if value in (None, ""):
-        return EMPTY_PLACEHOLDER, False
-    if field.schema == "choice" and field.choices:
-        text_value = str(value)
-        for idx, (code, label) in enumerate(field.choices, 1):
-            if text_value == code:
-                return f"{label} ({code})", from_default
-    return str(value), from_default
-
-
-def _choice_help(field: SettingFieldDef) -> str:
-    if not field.choices:
-        return ""
-    lines = []
-    for idx, (code, label) in enumerate(field.choices, 1):
-        lines.append(f"{idx}. {label} ({code})")
-    return "".join(lines)
-
-
-def _build_setting_prompt(field: SettingFieldDef, current_display: str) -> str:
-    lines = [f"<b>{field.label}</b>"]
-    if current_display and current_display != EMPTY_PLACEHOLDER:
-        lines.append(f" : <code>{html.escape(current_display, quote=False)}</code>")
-    base_help = SCHEMA_DEFAULT_HELP.get(field.schema, " .")
-    if field.schema == "choice":
-        options = _choice_help(field)
-        if options:
-            lines.append(base_help)
-            lines.append(options)
-        else:
-            lines.append(base_help)
-    else:
-        lines.append(field.help_text or base_help)
-    lines.append(" /cancel  .")
-    return "".join(lines)
-
-
-def _parse_setting_input(field: SettingFieldDef, user_input: str) -> tuple[str, str]:
-    text = (user_input or "").strip()
-    if field.schema in {"string_optional", "int_optional"} and text in {"", "-"}:
-        return "", field.value_type
-    if field.schema == "time":
-        if not re.fullmatch(r"^\d{1,2}:\d{2}$", text):
-            raise ValueError("  .  :.")
-        hh, mm = map(int, text.split(":"))
-        if not (0 <= hh < 24 and 0 <= mm < 60):
-            raise ValueError(" 023   059.")
-        return text, field.value_type
-    if field.schema == "int":
-        try:
-            value = int(text)
-        except ValueError:
-            raise ValueError("  .")
-        if value <= 0:
-            raise ValueError("    0.")
-        return str(value), field.value_type
-    if field.schema == "int_non_negative":
-        try:
-            value = int(text)
-        except ValueError:
-            raise ValueError("  .")
-        if value < 0:
-            raise ValueError("     0.")
-        return str(value), field.value_type
-    if field.schema == "int_optional":
-        try:
-            value = int(text)
-        except ValueError:
-            raise ValueError("    '-'  .")
-        return str(value), field.value_type
-    if field.schema == "choice":
-        normalized = text.lower()
-        if field.choices:
-            for idx, (code, label) in enumerate(field.choices, 1):
-                if normalized in {code.lower(), label.lower(), str(idx)}:
-                    return code, field.value_type
-        raise ValueError("   .")
-    if field.schema == "string_optional":
-        return text, field.value_type
-    if field.schema == "string":
-        if not text:
-            raise ValueError("    .")
-        return text, field.value_type
-    raise ValueError("  .")
-
-
-"""
-async def _build_settings_view(bot, group_key: str) -> tuple[str, InlineKeyboardMarkup]:
-    group = _get_setting_group(group_key)
-    service = _settings_service(bot)
-    raw_map = await service.get_values([field.key for field in group.fields])
-    title = _RU_GROUP_TITLES.get(group.key, getattr(group, "title", group.key))
-    desc = _RU_GROUP_DESCRIPTIONS.get(group.key, getattr(group, "description", ""))
-    lines: list[str] = [f"<b>{title}</b>"]
-    if desc:\n        lines.append(desc)
-    for field in group.fields:
-        raw_value = raw_map.get(field.key, (None, None))[0]
-        display, from_default = _format_setting_value(field, raw_value)\n        label = _RU_FIELD_LABELS.get(field.key, _RU_FIELD_LABELS.get(field.key, field.label))
-        if display == EMPTY_PLACEHOLDER:\n            value_line = f"{label}: {EMPTY_PLACEHOLDER}"
-        else:
-            value_line = f"{label}: <code>{html.escape(display, quote=False)}</code>"
-        if from_default and field.default not in (None, ""):
-            value_line += " <i>( )</i>"
-        lines.append(value_line)\n    lines.append("Выберите поле ниже, чтобы отредактировать значение.")
-    keyboard = settings_group_keyboard(
-        group_key,
-        [(field.key, _RU_FIELD_LABELS.get(field.key, field.label)) for field in group.fields],
-    )
-    return "".join(lines), keyboard
-"""
-
-async def _build_settings_view(bot, group_key: str) -> tuple[str, InlineKeyboardMarkup]:
-    group = _get_setting_group(group_key)
-    service = _settings_service(bot)
-    raw_map = await service.get_values([field.key for field in group.fields])
-    title = _RU_GROUP_TITLES.get(group.key, getattr(group, "title", group.key))
-    desc = _RU_GROUP_DESCRIPTIONS.get(group.key, getattr(group, "description", ""))
-    lines: list[str] = [f"<b>{title}</b>"]
-    if desc:
-        lines.append(desc)
-    for field in group.fields:
-        raw_value = raw_map.get(field.key, (None, None))[0]
-        display, from_default = _format_setting_value(field, raw_value)
-        label = _RU_FIELD_LABELS.get(field.key, _RU_FIELD_LABELS.get(field.key, field.label))
-        if display == EMPTY_PLACEHOLDER:
-            value_line = f"{label}: {EMPTY_PLACEHOLDER}"
-        else:
-            value_line = f"{label}: <code>{html.escape(display, quote=False)}</code>"
-        if from_default and field.default not in (None, ""):
-            value_line += " <i>(по умолчанию)</i>"
-        lines.append(value_line)
-    lines.append("Выберите поле ниже, чтобы отредактировать значение.")
-    keyboard = settings_group_keyboard(
-        group_key,
-        [(field.key, _RU_FIELD_LABELS.get(field.key, field.label)) for field in group.fields],
-    )
-    return "".join(lines), keyboard
-
-def _format_log_entries(entries: Sequence[live_log.LiveLogEntry]) -> str:
-    if not entries:
-        return '<b> </b>'
-
-    lines = ['<b> </b>']
-    for entry in entries:
-        local_time = entry.timestamp.astimezone(LOCAL_TZ)
-        body = html.escape(entry.message, quote=False).replace('\n', '<br>')
-        lines.append(f'[{local_time:%H:%M:%S}] <i>{entry.source}</i>  {body}')
-    return '\n'.join(lines)
-
-def _staff_service(bot):
-    return get_service(bot, "staff_service")
-
-
-def _orders_service(bot):
-    return get_service(bot, "orders_service")
-
-
-async def _resolve_city_names(bot, city_ids: Sequence[int]) -> list[str]:
-    if not city_ids:
-        return []
-    orders = _orders_service(bot)
-    names: list[str] = []
-    for city_id in city_ids:
-        city = await orders.get_city(city_id)
-        names.append(city.name if city else str(city_id))
-    return names
-
-
-def _masters_service(bot):
-    return get_service(bot, "masters_service")
-
-
-def _distribution_service(bot):
-    return get_service(bot, "distribution_service")
-
-
-def _finance_service(bot):
-    return get_service(bot, "finance_service")
-
-
-def _settings_service(bot):
-    return get_service(bot, "settings_service")
-
-
-
-
-PHONE_RE = re.compile(r"^\+7\d{10}$")
-NAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё\- ]{1,99}$")
-ATTACHMENTS_LIMIT = 10
-
-def _normalize_phone(value: str) -> str:
-    digits = re.sub(r"[^0-9]", "", value)
-    if digits.startswith("8") and len(digits) == 11:
-        digits = "7" + digits[1:]
-    if digits.startswith("7") and len(digits) == 11:
-        return "+" + digits
-    if digits.startswith("+7") and len(digits) == 12:
-        return digits
-    return value.strip()
-
-
-def _validate_phone(value: str) -> bool:
-    return bool(PHONE_RE.fullmatch(value))
-
-
-def _validate_name(value: str) -> bool:
-    return bool(NAME_RE.fullmatch(value))
-
-
-def _attachments_from_state(data: dict) -> list[dict[str, Any]]:
-    attachments = data.get("attachments")
-    if attachments is None:
-        attachments = []
-        data["attachments"] = attachments
-    return attachments
-
-
-def _build_new_order_data(data: dict, staff: StaffUser) -> NewOrderData:
-    attachments = [
-        NewOrderAttachment(
-            file_id=item["file_id"],
-            file_unique_id=item.get("file_unique_id"),
-            file_type=item["file_type"],
-            file_name=item.get("file_name"),
-            mime_type=item.get("mime_type"),
-            caption=item.get("caption"),
-        )
-        for item in data.get("attachments", [])
-    ]
-    address_comment = data.get("address_comment") or None
-    manual_street = data.get("street_manual")
-    if manual_street:
-        extra = f"( : {manual_street})"
-        address_comment = f"{address_comment} {extra}".strip() if address_comment else extra
-    initial_status_value = data.get("initial_status")
-    initial_status = normalize_status(initial_status_value)
-    total_sum_value = data.get("total_sum")
-    if total_sum_value is None:
-        total_sum_value = 0
-    lat_value = data.get("lat")
-    if lat_value is not None:
-        try:
-            lat_value = float(lat_value)
-        except (TypeError, ValueError):
-            lat_value = None
-    lon_value = data.get("lon")
-    if lon_value is not None:
-        try:
-            lon_value = float(lon_value)
-        except (TypeError, ValueError):
-            lon_value = None
-    category_value = data.get("category")
-    category_enum = normalize_category(category_value)
-    if category_enum is None:
-        raise ValueError("Category is required")
-
-    return NewOrderData(
-        city_id=int(data["city_id"]),
-        district_id=data.get("district_id"),
-        street_id=data.get("street_id"),
-        house=str(data.get("house", "")) or None,
-        apartment=data.get("apartment"),
-        address_comment=address_comment,
-        client_name=str(data.get("client_name")),
-        client_phone=str(data.get("client_phone")),
-        category=category_enum,
-        description=str(data.get("description", "")),
-        order_type=OrderType(data.get("order_type", OrderType.NORMAL.value)),
-        timeslot_start_utc=data.get("timeslot_start_utc"),
-        timeslot_end_utc=data.get("timeslot_end_utc"),
-        timeslot_display=data.get("timeslot_display"),
-        lat=lat_value,
-        lon=lon_value,
-        no_district=data.get("district_id") is None,
-        company_payment=Decimal(data.get("company_payment", 0)),
-        total_sum=Decimal(total_sum_value or 0),
-        created_by_staff_id=staff.id,
-        initial_status=initial_status,
-        attachments=attachments,
-    )
-
-
-
-def _slot_options(
-    now_local: datetime,
-    *,
-    workday_start: time,
-    workday_end: time,
-) -> list[tuple[str, str]]:
-    current = now_local.timetz()
-    if current.tzinfo is not None:
-        current = current.replace(tzinfo=None)
-    options: list[tuple[str, str]] = []
-    if current < workday_end:
-        options.append(("ASAP", "ASAP"))
-        for bucket_key, start, end in SLOT_BUCKETS:
-            if current < start:
-                options.append((f"TODAY:{bucket_key}", f" {start:%H:%M}-{end:%H:%M}"))
-    for bucket_key, start, end in SLOT_BUCKETS:
-        options.append((f"TOM:{bucket_key}", f" {start:%H:%M}-{end:%H:%M}"))
-    return options
-
-
-def _format_slot_display(
-    choice: str,
-    computation: time_service.SlotComputation,
-    *,
-    tz: ZoneInfo,
-) -> str:
-    if choice == "ASAP":
-        return "ASAP"
-    formatted = time_service.format_timeslot_local(
-        computation.start_utc,
-        computation.end_utc,
-        tz=tz,
-    )
-    return formatted or ""
-
-
-
-def _zone_storage_value(tz: ZoneInfo) -> str:
-    return getattr(tz, 'key', str(tz))
-
-
-async def _resolve_city_timezone(bot: Bot, city_id: Optional[int]) -> ZoneInfo:
-    if not city_id:
-        return time_service.resolve_timezone()
-    orders = _orders_service(bot)
-    try:
-        tz_value = await orders.get_city_timezone(int(city_id))
-    except Exception:
-        tz_value = None
-    return time_service.resolve_timezone(tz_value)
-
-
-async def _resolve_workday_window() -> tuple[time, time]:
-    try:
-        return await settings_service.get_working_window()
-    except Exception:
-        return WORKDAY_START_DEFAULT, WORKDAY_END_DEFAULT
-
-
-
-async def _finalize_slot_selection(
-    message: Message,
-    state: FSMContext,
-    *,
-    slot_choice: str,
-    tz: ZoneInfo,
-    workday_start: time,
-    workday_end: time,
-    initial_status_override: Optional[OrderStatus] = None,
-) -> None:
-    computation = time_service.compute_slot(
-        city_tz=tz,
-        choice=slot_choice,
-        workday_start=workday_start,
-        workday_end=workday_end,
-    )
-    slot_display = _format_slot_display(slot_choice, computation, tz=tz)
-
-    await state.update_data(
-        timeslot_display=slot_display,
-        timeslot_start_utc=computation.start_utc,
-        timeslot_end_utc=computation.end_utc,
-        initial_status=initial_status_override,
-        pending_asap=False,
-    )
-    summary = new_order_summary(await state.get_data())
-    await state.set_state(NewOrderFSM.confirm)
-    await message.edit_text(
-        summary,
-        reply_markup=new_order_confirm_keyboard(),
-        disable_web_page_preview=True,
-    )
-
-
-async def _send_export_documents(
-    bot: Bot,
-    bundle: export_service.ExportBundle,
-    caption: str,
-    *,
-    chat_id: int,
-) -> None:
-    documents = [
-        (bundle.csv_bytes, bundle.csv_filename, f"{caption} - CSV"),
-        (bundle.xlsx_bytes, bundle.xlsx_filename, f"{caption} - XLSX"),
-    ]
-    with TemporaryDirectory() as tmpdir:
-        base_path = Path(tmpdir)
-        for payload, filename, note in documents:
-            file_path = base_path / filename
-            file_path.write_bytes(payload)
-            await bot.send_document(
-                chat_id=chat_id,
-                document=FSInputFile(file_path),
-                caption=note,
-            )
-
-
-async def _render_created_order_card(message: Message, order_id: int, staff: StaffUser) -> None:
-    orders_service = _orders_service(message.bot)
-    detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
-    if not detail:
-        await message.answer(f" #{order_id} .")
-        return
-    text = format_order_card(detail)
-    markup = order_card_keyboard(
-        detail.id,
-        attachments=detail.attachments,
-        allow_return=(detail.status.upper() not in {"CANCELED", "CLOSED"}),
-        allow_cancel=(detail.status.upper() not in {"CANCELED", "CLOSED"}),
-        show_guarantee=False,
-    )
-    try:
-        await message.edit_text(text, reply_markup=markup)
-    except Exception:
-        await message.answer(text, reply_markup=markup)
-
-@router.message(CommandStart(), StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}))
-async def admin_start(message: Message, staff: StaffUser) -> None:
-    #  ,    
-    await message.answer("Добро пожаловать в Field Service. Выберите раздел:", reply_markup=main_menu(staff))
-    return
-
-
-@router.message(CommandStart())
-async def not_allowed_start(message: Message, state: FSMContext) -> None:
-    staff_service = _staff_service(message.bot)
-    user_id = message.from_user.id if message.from_user else None
-    staff = await staff_service.get_by_tg_id(user_id) if user_id else None
-    if staff:
-        await state.clear()
-        await message.answer("  .", reply_markup=main_menu(staff))
-        return
-    await state.clear()
-    await state.set_state(StaffAccessFSM.code)
-    await message.answer(STAFF_CODE_PROMPT)
-
-
-@router.message(StateFilter(StaffAccessFSM.code))
-async def staff_access_enter_code(message: Message, state: FSMContext) -> None:
-    code_value = (message.text or "").strip()
-    if not code_value:
-        await message.answer("  .")
-        return
-    staff_service = _staff_service(message.bot)
-    record = await staff_service.validate_access_code_value(code_value)
-    if not record:
-        await message.answer(STAFF_CODE_ERROR)
-        return
-    role_label = STAFF_ROLE_LABELS.get(record.role, record.role.value)
-    city_names = await _resolve_city_names(message.bot, record.city_ids)
-    await state.update_data(
-        access_code=record.code,
-        access_code_id=record.id,
-        access_role=record.role.value,
-        access_city_ids=list(record.city_ids),
-    )
-    summary_lines = [
-        f": {role_label}",
-        f": {', '.join(city_names) if city_names else '-'}",
-    ]
-    await message.answer("\n".join(summary_lines))
-    await state.set_state(StaffAccessFSM.pdn)
-    await message.answer(STAFF_PDN_TEXT)
-
-
-@router.message(StateFilter(StaffAccessFSM.pdn))
-async def staff_access_pdn(message: Message, state: FSMContext) -> None:
-    text_value = (message.text or "").strip().lower()
-    if text_value in {" ", "", "no"}:
-        await state.clear()
-        await message.answer("   .  /start,  .")
-        return
-    if text_value not in {"", "", "ok", ""}:
-        await message.answer(' ""  " ".')
-        return
-    await state.set_state(StaffAccessFSM.full_name)
-    await message.answer("   (,   ).")
-
-
-@router.message(StateFilter(StaffAccessFSM.full_name))
-async def staff_access_full_name(message: Message, state: FSMContext) -> None:
-    full_name = (message.text or "").strip()
-    if len(full_name) < 5:
-        await message.answer("  .")
-        return
-    await state.update_data(full_name=full_name)
-    await state.set_state(StaffAccessFSM.phone)
-    await message.answer("    +7XXXXXXXXXX  8XXXXXXXXXX.")
-
-
-@router.message(StateFilter(StaffAccessFSM.phone))
-async def staff_access_phone(message: Message, state: FSMContext) -> None:
-    raw_phone = (message.text or "").strip()
-    try:
-        normalized = normalize_phone(raw_phone)
-    except ValueError:
-        await message.answer("  . : +7XXXXXXXXXX  8XXXXXXXXXX")
-        return
-    data = await state.get_data()
-    code_value = data.get("access_code")
-    full_name = data.get("full_name")
-    role_token = data.get("access_role")
-    if not code_value or not full_name or not role_token:
-        await state.clear()
-        await message.answer(" .  /start   .")
-        return
-    user = message.from_user
-    if not user:
-        await message.answer("    .")
-        return
-    staff_service = _staff_service(message.bot)
-    try:
-        staff_user = await staff_service.register_staff_user_from_code(
-            code_value=code_value,
-            tg_user_id=user.id,
-            username=user.username,
-            full_name=full_name,
-            phone=normalized,
-        )
-    except AccessCodeError as exc:
-        error_text = ACCESS_CODE_ERROR_MESSAGES.get(
-            exc.reason,
-            "   .    .",
-        )
-        await message.answer(error_text)
-        await state.set_state(StaffAccessFSM.code)
-        await message.answer(STAFF_CODE_PROMPT)
-        return
-    await state.clear()
-    role_label = STAFF_ROLE_LABELS.get(staff_user.role, staff_user.role.value)
-    city_names = await _resolve_city_names(message.bot, staff_user.city_ids)
-    lines = [
-        f"   {role_label}.",
-        f": {', '.join(city_names) if city_names else '-'}",
-    ]
-    await message.answer("\n".join(lines))
-    await message.answer(".  :", reply_markup=main_menu(staff_user))
-
-
-@router.callback_query(
-    F.data == "adm:menu",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
-)
-async def cb_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.message.edit_text(" :", reply_markup=main_menu(staff))
-    await cq.answer()
-
-@router.callback_query(
-    F.data == "adm:staff:menu",
-    StaffRoleFilter({StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
-)
-async def cb_staff_menu_denied(cq: CallbackQuery, staff: StaffUser) -> None:
-    if cq.message is not None:
-        await cq.message.edit_text(
-            " .  :",
-            reply_markup=main_menu(staff),
-        )
-    await cq.answer(" ", show_alert=True)
-
-
-# ==============================================================================
-# ФИНАНСЫ
-# ==============================================================================
-# ВАЖНО: Все обработчики финансов (кроме входной точки cb_finance_root)
-# находятся в handlers_finance.py для избежания дублирования и коллизий.
-# См. CR-2025-10-03-012
-@router.callback_query(
-    F.data == "adm:f",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_finance_root(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await state.clear()
-    await cq.message.edit_text(" :", reply_markup=finance_menu(staff))
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data == "adm:r",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_reports(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await state.clear()
-    await cq.message.edit_text(":", reply_markup=reports_menu_keyboard())
-    await cq.answer()
-
-
-async def _prompt_report_period(cq: CallbackQuery, state: FSMContext, report_kind: str) -> None:
-    await state.clear()
-    label, _, _ = REPORT_DEFINITIONS[report_kind]
-    await state.set_state(ReportsExportFSM.awaiting_period)
-    await state.update_data(report_kind=report_kind)
-    await cq.message.answer(
-        f"Выберите период для отчёта ({label}) или укажите вручную:",
-        reply_markup=reports_periods_keyboard(),
-    )
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data == "adm:r:o",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_reports_orders(cq: CallbackQuery, state: FSMContext) -> None:
-    await _prompt_report_period(cq, state, "orders")
-
-
-@router.callback_query(
-    F.data == "adm:r:c",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_reports_commissions(cq: CallbackQuery, state: FSMContext) -> None:
-    await _prompt_report_period(cq, state, "commissions")
-
-
-@router.callback_query(
-    F.data == "adm:r:rr",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_reports_referrals(cq: CallbackQuery, state: FSMContext) -> None:
-    await _prompt_report_period(cq, state, "ref_rewards")
-
-
-@router.message(StateFilter(ReportsExportFSM.awaiting_period), F.text == "/cancel")
-async def reports_cancel(msg: Message, state: FSMContext) -> None:
-    await state.clear()
-    await msg.answer("Редактирование отменено.")
-
-
-@router.message(StateFilter(ReportsExportFSM.awaiting_period))
-async def reports_period_submit(
-    msg: Message,
-    staff: StaffUser | None,  # may be None if access middleware did not resolve
-    state: FSMContext,
-) -> None:
-    period = _parse_period_input(msg.text or "")
-    if not period:
-        await msg.answer(
-            "Неверный формат. Введите даты как 'YYYY-MM-DD YYYY-MM-DD' или воспользуйтесь кнопками.",
-            reply_markup=reports_periods_keyboard(),
-        )
-        return
-
-    start_dt, end_dt = period
-    data = await state.get_data()
-    report_kind = data.get("report_kind")
-    definition = REPORT_DEFINITIONS.get(report_kind or "")
-    if not definition:
-        await state.clear()
-        await msg.answer(
-            "   .    :",
-            reply_markup=reports_menu_keyboard(),
-        )
-        return
-
-    label, exporter, caption_prefix = definition
-    # Staff may be None if middleware could not resolve; in that case do not filter by city
-    city_ids = visible_city_ids_for(staff) if isinstance(staff, StaffUser) else None
-
-    try:
-        bundle = await exporter(date_from=start_dt, date_to=end_dt, city_ids=city_ids)
-    except Exception:
-        await state.clear()
-        await msg.answer(
-            "   .  .",
-            reply_markup=reports_menu_keyboard(),
-        )
-        return
-
-    period_label = _format_period_label(start_dt, end_dt)
-    operator_chat_id = None
-    if msg.chat:
-        operator_chat_id = msg.chat.id
-    elif msg.from_user:
-        operator_chat_id = msg.from_user.id
-    configured_chat_id: Optional[int] = None
-    try:
-        raw_channel_id = await settings_service.get_value("reports_channel_id")
-    except Exception:
-        raw_channel_id = None
-    if raw_channel_id:
-        candidate = raw_channel_id.strip()
-        if candidate and candidate != "-":
-            try:
-                configured_chat_id = int(candidate)
-            except ValueError:
-                configured_chat_id = None
-    target_chat_id = configured_chat_id or env_settings.reports_channel_id or operator_chat_id
-    if target_chat_id is None:
-        await state.clear()
-        await msg.answer(
-            "Report channel is not configured.",
-            reply_markup=reports_menu_keyboard(),
-        )
-        return
-
-    try:
-        await _send_export_documents(
-            msg.bot,
-            bundle,
-            f"{caption_prefix} {period_label}",
-            chat_id=target_chat_id,
-        )
-    except TelegramBadRequest:
-        if operator_chat_id is not None and target_chat_id != operator_chat_id:
-            await _send_export_documents(
-                msg.bot,
-                bundle,
-                f"{caption_prefix} {period_label}",
-                chat_id=operator_chat_id,
-            )
-            await msg.answer("Report sent to your chat because the reports channel is unavailable.")
-        else:
-            await state.clear()
-            await msg.answer("Failed to deliver report.")
-            return
-    else:
-        await msg.answer("Report sent.")
-    await state.clear()
-
-
-def _compute_quick_period(key: str, *, tz: str) -> tuple[date, date] | None:
-    now = time_service.now_in_city(tz)
-    today = now.date()
-    if key == "today":
-        return today, today
-    if key == "yesterday":
-        y = today - timedelta(days=1)
-        return y, y
-    if key == "last7":
-        return today - timedelta(days=6), today
-    if key == "this_month":
-        start = today.replace(day=1)
-        return start, today
-    if key == "prev_month":
-        first_this = today.replace(day=1)
-        prev_last = first_this - timedelta(days=1)
-        start = prev_last.replace(day=1)
-        end = prev_last
-        return start, end
-    return None
-
-
-@router.callback_query(F.data.regexp(r"^adm:r:pd:(today|yesterday|last7|this_month|prev_month|custom)$"))
-async def reports_quick_period_choice(
-    cq: CallbackQuery,
-    state: FSMContext,
-    staff: StaffUser | None = None,
-) -> None:
-    key = (cq.data or "").rsplit(":", 1)[-1]
-    data = await state.get_data()
-    report_kind = data.get("report_kind")
-    definition = REPORT_DEFINITIONS.get(report_kind or "")
-    if not definition:
-        await state.clear()
-        if cq.message:
-            await cq.message.edit_text("Выберите отчёт:", reply_markup=reports_menu_keyboard())
-        await cq.answer()
-        return
-    if key == "custom":
-        if cq.message:
-            await cq.message.answer(
-                "Введите период в формате: YYYY-MM-DD YYYY-MM-DD\nИли нажмите /cancel для отмены."
-            )
-        await cq.answer()
-        return
-    period = _compute_quick_period(key, tz=env_settings.timezone)
-    if not period:
-        await cq.answer("Неверный период", show_alert=True)
-        return
-    start_dt, end_dt = period
-    label, exporter, caption_prefix = definition
-    city_ids = visible_city_ids_for(staff) if isinstance(staff, StaffUser) else None
-    try:
-        bundle = await exporter(date_from=start_dt, date_to=end_dt, city_ids=city_ids)
-    except Exception:
-        if cq.message:
-            await cq.message.answer("Не удалось сформировать отчёт.", reply_markup=reports_menu_keyboard())
-        await cq.answer()
-        return
-    period_label = _format_period_label(start_dt, end_dt)
-    target_chat_id = env_settings.reports_channel_id or (cq.message.chat.id if cq.message else None)
-    if target_chat_id is None and cq.from_user:
-        target_chat_id = cq.from_user.id
-    if target_chat_id is None:
-        if cq.message:
-            await cq.message.answer("Канал для отчётов не настроен.", reply_markup=reports_menu_keyboard())
-        await cq.answer()
-        return
-    try:
-        await _send_export_documents(cq.bot, bundle, f"{caption_prefix} {period_label}", chat_id=target_chat_id)
-    except TelegramBadRequest:
-        if cq.from_user:
-            await _send_export_documents(cq.bot, bundle, f"{caption_prefix} {period_label}", chat_id=cq.from_user.id)
-            if cq.message:
-                await cq.message.answer("Отчёт отправлен вам в чат (канал недоступен).")
-        else:
-            if cq.message:
-                await cq.message.answer("Не удалось доставить отчёт.")
-            await cq.answer()
-            return
-    else:
-        if cq.message:
-            await cq.message.answer("Отчёт отправлен.")
-    await state.clear()
-    await cq.answer()
-
-async def _start_new_order(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await state.clear()
-    await state.update_data(staff_id=staff.id, attachments=[], order_type=OrderType.NORMAL.value)
-    await state.set_state(NewOrderFSM.city)
-    await _render_city_step(cq.message, state, page=1)
-    await cq.answer()
-
-
-async def _render_city_step(message: Message, state: FSMContext, page: int, query: Optional[str] = None) -> None:
-    orders_service = _orders_service(message.bot)
-    limit = 80
-    if query:
-        cities = await orders_service.list_cities(query=query, limit=limit)
-    else:
-        cities = await orders_service.list_cities(limit=limit)
-    if not cities:
-        try:
-            await message.edit_text("Города не найдены. Нажмите /cancel, чтобы отменить.")
-        except TelegramBadRequest:
-            await message.answer("Города не найдены. Нажмите /cancel, чтобы отменить.")
-        return
-    per_page = 10
-    total_pages = max(1, (len(cities) + per_page - 1) // per_page)
-    page = max(1, min(page, total_pages))
-    start = (page - 1) * per_page
-    chunk = cities[start : start + per_page]
-    keyboard = new_order_city_keyboard([(c.id, c.name) for c in chunk], page=page, total_pages=total_pages)
-    prompt = "Выберите город:"
-    try:
-        await message.edit_text(prompt, reply_markup=keyboard)
-    except TelegramBadRequest:
-        await message.answer(prompt, reply_markup=keyboard)
-    except Exception:
-        await message.answer(prompt, reply_markup=keyboard)
-    await state.update_data(city_query=query, city_page=page)
-
-
-@router.callback_query(
-    F.data == "adm:new",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
-)
-async def cb_new_order_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await _start_new_order(cq, staff, state)
-
-
-@router.message(
-    Command("cancel"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
-)
-async def admin_cancel_command(message: Message, staff: StaffUser, state: FSMContext) -> None:
-    await state.clear()
-    await show_admin_main_menu(
-        message,
-        staff,
-        notice="Создание заявки отменено.",
-    )
-
-
-@router.callback_query(F.data == "adm:new:cancel")
-async def cb_new_order_cancel(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await state.clear()
-    if cq.message:
-        await show_admin_main_menu(
-            cq.message,
-            staff,
-            edit=True,
-            notice="Создание заявки отменено",
-        )
-    await cq.answer("Отмена")
-
-
-@router.callback_query(F.data.startswith("adm:new:city_page:"), StateFilter(NewOrderFSM.city))
-async def cb_new_order_city_page(cq: CallbackQuery, state: FSMContext) -> None:
-    page = int(cq.data.split(":")[3])
-    data = await state.get_data()
-    query = data.get("city_query")
-    await state.set_state(NewOrderFSM.city)
-    await _render_city_step(cq.message, state, page=page, query=query)
-    await cq.answer()
-
-
-@router.callback_query(F.data == "adm:new:city_search", StateFilter(NewOrderFSM.city))
-async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(NewOrderFSM.city)
-    prompt = "Введите название города (минимум 2 символа). Команда /cancel вернёт в меню."
-    try:
-        await cq.message.edit_text(prompt)
-    except TelegramBadRequest:
-        await cq.message.answer(prompt)
-    except Exception:
-        await cq.message.answer(prompt)
-    await cq.answer()
-
-
-@router.message(StateFilter(NewOrderFSM.city))
-async def new_order_city_input(msg: Message, state: FSMContext) -> None:
-    query = (msg.text or "").strip()
-    if len(query) < 2:
-        await msg.answer("Минимум 2 символа. Попробуйте снова.")
-        return
-    await _render_city_step(msg, state, page=1, query=query)
-
-
-@router.callback_query(F.data.startswith("adm:new:city:"), StateFilter(NewOrderFSM.city))
-async def cb_new_order_city_pick(cq: CallbackQuery, state: FSMContext) -> None:
-    city_id = int(cq.data.split(":")[3])
-    orders_service = _orders_service(cq.message.bot)
-    city = await orders_service.get_city(city_id)
-    if not city:
-        await cq.answer("Город не найден", show_alert=True)
-        return
-    await state.update_data(city_id=city.id, city_name=city.name)
-    await state.set_state(NewOrderFSM.district)
-    await _render_district_step(cq.message, state, page=1)
-    await cq.answer()
-
-
-async def _render_district_step(message: Message, state: FSMContext, page: int) -> None:
-    data = await state.get_data()
-    city_id = data.get("city_id")
-    orders_service = _orders_service(message.bot)
-    districts, has_next = await orders_service.list_districts(city_id, page=page, page_size=5)
-    buttons = [(d.id, d.name) for d in districts]
-    keyboard = new_order_district_keyboard(buttons, page=page, has_next=has_next)
-    prompt = "Выберите район:"
-    try:
-        await message.edit_text(prompt, reply_markup=keyboard)
-    except TelegramBadRequest:
-        await message.answer(prompt, reply_markup=keyboard)
-    except Exception:
-        await message.answer(prompt, reply_markup=keyboard)
-    await state.update_data(district_page=page)
-
-
-@router.callback_query(F.data.startswith("adm:new:district_page:"), StateFilter(NewOrderFSM.district))
-async def cb_new_order_district_page(cq: CallbackQuery, state: FSMContext) -> None:
-    page = int(cq.data.split(":")[3])
-    await state.set_state(NewOrderFSM.district)
-    await _render_district_step(cq.message, state, page=page)
-    await cq.answer()
-
-
-@router.callback_query(F.data == "adm:new:city_back", StateFilter(NewOrderFSM.district))
-async def cb_new_order_city_back(cq: CallbackQuery, state: FSMContext) -> None:
-    data = await state.get_data()
-    await state.set_state(NewOrderFSM.city)
-    await _render_city_step(
-        cq.message,
-        state,
-        page=data.get("city_page", 1),
-        query=data.get("city_query"),
-    )
-    await cq.answer()
-
-
-@router.callback_query(F.data == "adm:new:district:none", StateFilter(NewOrderFSM.district))
-async def cb_new_order_district_none(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(district_id=None, district_name="")
-    await state.set_state(NewOrderFSM.street_mode)
-    await cq.message.edit_text(
-        "Выберите способ указать улицу:",
-        reply_markup=new_order_street_mode_keyboard(),
-    )
-    await cq.answer()
-
-
-@router.callback_query(F.data.startswith("adm:new:district:"), StateFilter(NewOrderFSM.district))
-async def cb_new_order_district_pick(cq: CallbackQuery, state: FSMContext) -> None:
-    district_id = int(cq.data.split(":")[3])
-    orders_service = _orders_service(cq.message.bot)
-    district = await orders_service.get_district(district_id)
-    if not district:
-        await cq.answer("Район не найден", show_alert=True)
-        return
-    await state.update_data(district_id=district.id, district_name=district.name)
-    await state.set_state(NewOrderFSM.street_mode)
-    await cq.message.edit_text(
-        "Выберите способ указать улицу:",
-        reply_markup=new_order_street_mode_keyboard(),
-    )
-    await cq.answer()
-
-
-@router.callback_query(F.data == "adm:new:street:search", StateFilter(NewOrderFSM.street_mode))
-async def cb_new_order_street_search(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(NewOrderFSM.street_search)
-    await cq.message.edit_text("Введите минимум 2 символа названия улицы для поиска.")
-    await cq.answer()
-
-
-@router.callback_query(F.data == "adm:new:street:manual", StateFilter(NewOrderFSM.street_mode))
-async def cb_new_order_street_manual(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(NewOrderFSM.street_manual)
-    await cq.message.edit_text(
-        "Введите название улицы (до 250 символов).",
-        reply_markup=new_order_street_manual_keyboard(),
-    )
-    await cq.answer()
-
-
-@router.callback_query(F.data == "adm:new:street:none", StateFilter(NewOrderFSM.street_mode))
-async def cb_new_order_street_none(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(street_id=None, street_name="", street_manual=None)
-    await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("Укажите номер дома (до 10 символов, '-' если нет).")
-    await cq.answer()
-
-
-@router.callback_query(F.data == "adm:new:district_back", StateFilter(NewOrderFSM.street_mode))
-async def cb_new_order_street_back(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(NewOrderFSM.district)
-    page = (await state.get_data()).get("district_page", 1)
-    await _render_district_step(cq.message, state, page=page)
-    await cq.answer()
-
-
-@router.message(StateFilter(NewOrderFSM.street_manual))
-async def new_order_street_manual_input(msg: Message, state: FSMContext) -> None:
-    value = (msg.text or "").strip()
-    if not (2 <= len(value) <= 250):
-        await msg.answer("Название улицы должно быть от 2 до 250 символов.")
-        return
-    await state.update_data(street_id=None, street_name=value, street_manual=value)
-    await state.set_state(NewOrderFSM.house)
-    await msg.answer("Укажите номер дома (до 10 символов, '-' если нет).")
-
-
-@router.message(StateFilter(NewOrderFSM.street_search))
-async def new_order_street_search_input(msg: Message, state: FSMContext) -> None:
-    query = (msg.text or "").strip()
-    if len(query) < 2:
-        await msg.answer("Введите минимум 2 символа для поиска улицы.")
-        return
-    data = await state.get_data()
-    city_id = data.get("city_id")
-    orders_service = _orders_service(msg.bot)
-    streets = await orders_service.search_streets(city_id, query)
-    if not streets:
-        await msg.answer("Не удалось найти улицу. Попробуйте другой запрос или введите её вручную.")
-        await state.set_state(NewOrderFSM.street_mode)
-        await msg.answer(
-            "Выберите способ указать улицу:",
-            reply_markup=new_order_street_mode_keyboard(),
-        )
-        return
-    buttons = [
-        (s.id, s.name if s.score is None else f"{s.name} ({int(s.score)}%)")
-        for s in streets
-    ]
-    await msg.answer(
-        "Выберите улицу:",
-        reply_markup=new_order_street_keyboard(buttons),
-    )
-    await state.set_state(NewOrderFSM.street_mode)
-    await state.update_data(street_search_results=buttons)
-
-
-@router.callback_query(F.data.startswith("adm:new:street:"), StateFilter(NewOrderFSM.street_mode))
-async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None:
-    tail = cq.data.split(":")[3]
-    if tail == "search_again":
-        await state.set_state(NewOrderFSM.street_search)
-        await cq.message.edit_text("Введите минимум 2 символа названия улицы для поиска.")
-        await cq.answer()
-        return
-    if tail == "manual_back":
-        await state.set_state(NewOrderFSM.street_mode)
-        await cq.message.edit_text(
-            "Выберите способ указать улицу:",
-            reply_markup=new_order_street_mode_keyboard(),
-        )
-        await cq.answer()
-        return
-    if tail == "back":
-        await state.set_state(NewOrderFSM.street_mode)
-        await cq.message.edit_text(
-            "Выберите способ указать улицу:",
-            reply_markup=new_order_street_mode_keyboard(),
-        )
-        await cq.answer()
-        return
-    street_id = int(tail)
-    orders_service = _orders_service(cq.message.bot)
-    street = await orders_service.get_street(street_id)
-    if not street:
-        await cq.answer("Улица не найдена", show_alert=True)
-        return
-    await state.update_data(street_id=street.id, street_name=street.name, street_manual=None)
-    await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("Укажите номер дома (до 10 символов, '-' если нет).")
-    await cq.answer()
-
-
-@router.message(StateFilter(NewOrderFSM.house))
-async def new_order_house(msg: Message, state: FSMContext) -> None:
-    value = (msg.text or "").strip()
-    if not (1 <= len(value) <= 10):
-        await msg.answer("Номер дома должен быть от 1 до 10 символов.")
-        return
-    await state.update_data(house=value)
-    await state.set_state(NewOrderFSM.apartment)
-    await msg.answer("Введите квартиру/офис (до 10 символов, '-' если нет).")
-
-
-@router.message(StateFilter(NewOrderFSM.apartment))
-async def new_order_apartment(msg: Message, state: FSMContext) -> None:
-    value = (msg.text or "").strip()
-    if value == "-":
-        value = ""
-    if len(value) > 10:
-        await msg.answer("Максимальная длина квартиры/офиса 10 символов.")
-        return
-    await state.update_data(apartment=value or None)
-    await state.set_state(NewOrderFSM.address_comment)
-    await msg.answer("Добавьте комментарий к адресу (до 250 символов, '-' если пропустить).")
-
-
-@router.message(StateFilter(NewOrderFSM.address_comment))
-async def new_order_address_comment(msg: Message, state: FSMContext) -> None:
-    value = (msg.text or "").strip()
-    if value == "-":
-        value = ""
-    await state.update_data(address_comment=value or None)
-    await state.set_state(NewOrderFSM.client_name)
-    await msg.answer("Введите имя клиента (ФИО).")
-
-
-@router.message(StateFilter(NewOrderFSM.client_name))
-async def new_order_client_name(msg: Message, state: FSMContext) -> None:
-    value = (msg.text or "").strip()
-    if not _validate_name(value):
-        await msg.answer("Имя должно содержать только буквы и пробелы.")
-        return
-    await state.update_data(client_name=value)
-    await state.set_state(NewOrderFSM.client_phone)
-    await msg.answer("Укажите телефон клиента в формате +7XXXXXXXXXX.")
-
-
-@router.message(StateFilter(NewOrderFSM.client_phone))
-async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
-    raw = _normalize_phone(msg.text)
-    if not _validate_phone(raw):
-        await msg.answer("Телефон должен быть в формате +7XXXXXXXXXX.")
-        return
-    await state.update_data(client_phone=raw)
-    await state.set_state(NewOrderFSM.category)
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-    kb = InlineKeyboardBuilder()
-    for category, label in CATEGORY_CHOICES:
-        kb.button(text=label, callback_data=f"adm:new:cat:{category.value}")
-    kb.adjust(2)
-    await msg.answer("Выберите категорию заявки:", reply_markup=kb.as_markup())
-
-
-@router.callback_query(F.data.startswith("adm:new:cat:"), StateFilter(NewOrderFSM.category))
-async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
-    raw = cq.data.split(":")[3]
-    category = normalize_category(raw)
-    if category is None:
-        await cq.answer("Неизвестная категория.", show_alert=True)
-        return
-    await state.update_data(
-        category=category,
-        category_label=CATEGORY_LABELS.get(category, CATEGORY_LABELS_BY_VALUE.get(raw, raw)),
-    )
-    await state.set_state(NewOrderFSM.description)
-    await cq.message.edit_text("Опишите проблему (10-500 символов).")
-    await cq.answer()
-
-
-@router.message(StateFilter(NewOrderFSM.description))
-async def new_order_description(msg: Message, state: FSMContext) -> None:
-    text_value = (msg.text or "").strip()
-    if not (10 <= len(text_value) <= 500):
-        await msg.answer("Описание должно содержать от 10 до 500 символов.")
-        return
-    await state.update_data(description=text_value)
-    await state.set_state(NewOrderFSM.attachments)
-    await msg.answer(
-        'Пришлите файлы или нажмите "Готово", чтобы продолжить.',
-        reply_markup=new_order_attachments_keyboard(False),
-    )
-
-
-@router.callback_query(F.data == "adm:new:att:add", StateFilter(NewOrderFSM.attachments))
-async def cb_new_order_att_add(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(NewOrderFSM.attachments)
-    await cq.answer("Пришлите фото или документ одним сообщением.")
-
-
-@router.callback_query(F.data == "adm:new:att:clear", StateFilter(NewOrderFSM.attachments))
-async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
-    data = await state.get_data()
-    data["attachments"] = []
-    await state.update_data(**data)
-    await state.set_state(NewOrderFSM.attachments)
-    await cq.message.edit_text(
-        'Вложения удалены. Пришлите новые или нажмите "Готово".',
-        reply_markup=new_order_attachments_keyboard(False),
-    )
-    await cq.answer()
-
-
-@router.message(StateFilter(NewOrderFSM.attachments), F.photo)
-async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
-    attachments = _attachments_from_state(await state.get_data())
-    if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("Достигнут лимит вложений.")
-        return
-    photo = msg.photo[-1]
-    attachments.append(
-        {
-            "file_id": photo.file_id,
-            "file_unique_id": photo.file_unique_id,
-            "file_type": "photo",
-            "file_name": None,
-            "mime_type": None,
-            "caption": msg.caption,
-        }
-    )
-    await state.update_data(attachments=attachments)
-    await msg.answer(
-        f'Вложений добавлено: {len(attachments)}. Пришлите ещё или нажмите "Готово".',
-        reply_markup=new_order_attachments_keyboard(True),
-    )
-
-
-@router.message(StateFilter(NewOrderFSM.attachments), F.document)
-async def new_order_attach_doc(msg: Message, state: FSMContext) -> None:
-    attachments = _attachments_from_state(await state.get_data())
-    if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("Достигнут лимит вложений.")
-        return
-    doc = msg.document
-    attachments.append(
-        {
-            "file_id": doc.file_id,
-            "file_unique_id": doc.file_unique_id,
-            "file_type": "document",
-            "file_name": doc.file_name,
-            "mime_type": doc.mime_type,
-            "caption": msg.caption,
-        }
-    )
-    await state.update_data(attachments=attachments)
-    await msg.answer(
-        f'Вложений добавлено: {len(attachments)}. Пришлите ещё или нажмите "Готово".',
-        reply_markup=new_order_attachments_keyboard(True),
-    )
-@router.callback_query(F.data == "adm:new:att:done", StateFilter(NewOrderFSM.attachments))
-async def cb_new_order_att_done(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.set_state(NewOrderFSM.order_type)
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-    kb = InlineKeyboardBuilder()
-    kb.button(text="Стандартная", callback_data="adm:new:type:NORMAL")
-    kb.button(text="Гарантия", callback_data="adm:new:type:GUARANTEE")
-    kb.adjust(2)
-    await cq.message.edit_text("Выберите тип заявки:", reply_markup=kb.as_markup())
-    await cq.answer()
-
-
-@router.callback_query(F.data.startswith("adm:new:type:"), StateFilter(NewOrderFSM.order_type))
-async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
-    code = cq.data.split(":")[3]
-    await state.update_data(
-        order_type=code,
-        company_payment=2500 if code == "GUARANTEE" else 0,
-        initial_status=None,
-    )
-    await state.set_state(NewOrderFSM.slot)
-    data = await state.get_data()
-    city_id = data.get("city_id")
-    if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
-        return
-    tz = await _resolve_city_timezone(cq.message.bot, city_id)
-    workday_start, workday_end = await _resolve_workday_window()
-    now_local = time_service.now_in_city(tz)
-    options = _slot_options(now_local, workday_start=workday_start, workday_end=workday_end)
-    options = [(k, _maybe_fix_mojibake(lbl)) for (k, lbl) in options]
-    await state.update_data(
-        slot_options=options,
-        city_timezone=_zone_storage_value(tz),
-        pending_asap=False,
-    )
-    keyboard = new_order_slot_keyboard(options)
-    await cq.message.edit_text("Выберите доступное время:", reply_markup=keyboard)
-    await cq.answer()
-
-
-@router.callback_query(F.data.startswith("adm:new:slot:"), StateFilter(NewOrderFSM.slot))
-async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
-    key = ":".join(cq.data.split(":")[3:])
-    data = await state.get_data()
-    city_id = data.get("city_id")
-    if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
-        return
-    await state.set_state(NewOrderFSM.slot)
-    options = data.get("slot_options") or []
-    valid_keys = {item[0] for item in options}
-    if key not in valid_keys:
-        await cq.answer("Слот недоступен.", show_alert=True)
-        return
-    tz_value = data.get("city_timezone")
-    if tz_value:
-        tz = time_service.resolve_timezone(tz_value)
-    else:
-        tz = await _resolve_city_timezone(cq.message.bot, city_id)
-        await state.update_data(city_timezone=_zone_storage_value(tz))
-    workday_start, workday_end = await _resolve_workday_window()
-    now_local = time_service.now_in_city(tz)
-    if key == "ASAP":
-        normalized = time_service.normalize_asap_choice(
-            now_local=now_local,
-            workday_start=workday_start,
-            workday_end=workday_end,
-            late_threshold=LATE_ASAP_THRESHOLD,
-        )
-        if normalized == "DEFERRED_TOM_10_13":
-            await state.update_data(pending_asap=True)
-            await state.set_state(NewOrderFSM.slot)
-            await cq.message.edit_text(
-                "Мастер может выехать только завтра с 10:00 до 13:00. Подтвердить перенос?",
-                reply_markup=new_order_asap_late_keyboard(),
-            )
-            await cq.answer()
-            return
-        slot_choice = "ASAP"
-        initial_status = None
-    else:
-        slot_choice = key
-        initial_status = None
-    try:
-        await _finalize_slot_selection(
-            message=cq.message,
-            state=state,
-            slot_choice=slot_choice,
-            tz=tz,
-            workday_start=workday_start,
-            workday_end=workday_end,
-            initial_status_override=initial_status,
-        )
-    except ValueError:
-        refreshed_options = _slot_options(
-            time_service.now_in_city(tz),
-            workday_start=workday_start,
-            workday_end=workday_end,
-        )
-        refreshed_options = [(k, _maybe_fix_mojibake(lbl)) for (k, lbl) in refreshed_options]
-        await state.update_data(slot_options=refreshed_options, pending_asap=False, initial_status=None)
-        await state.set_state(NewOrderFSM.slot)
-        await cq.message.edit_text(
-            "Слот недоступен. Выберите другое время:",
-            reply_markup=new_order_slot_keyboard(refreshed_options),
-        )
-        await cq.answer("Расписание обновлено, попробуйте снова.", show_alert=True)
-        return
-    await cq.answer()
-
-
-@router.callback_query(F.data == "adm:new:slot:lateok", StateFilter(NewOrderFSM.slot))
-async def cb_new_order_slot_lateok(cq: CallbackQuery, state: FSMContext) -> None:
-    data = await state.get_data()
-    city_id = data.get("city_id")
-    if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
-        return
-    tz_value = data.get("city_timezone")
-    if tz_value:
-        tz = time_service.resolve_timezone(tz_value)
-    else:
-        tz = await _resolve_city_timezone(cq.message.bot, city_id)
-        await state.update_data(city_timezone=_zone_storage_value(tz))
-    workday_start, workday_end = await _resolve_workday_window()
-    await _finalize_slot_selection(
-        message=cq.message,
-        state=state,
-        slot_choice="TOM:10-13",
-        tz=tz,
-        workday_start=workday_start,
-        workday_end=workday_end,
-        initial_status_override=OrderStatus.DEFERRED,
-    )
-    await cq.answer()
-
-
-@router.callback_query(F.data == "adm:new:slot:reslot", StateFilter(NewOrderFSM.slot))
-async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None:
-    data = await state.get_data()
-    city_id = data.get("city_id")
-    if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
-        return
-    await state.set_state(NewOrderFSM.slot)
-    tz_value = data.get("city_timezone")
-    if tz_value:
-        tz = time_service.resolve_timezone(tz_value)
-    else:
-        tz = await _resolve_city_timezone(cq.message.bot, city_id)
-        await state.update_data(city_timezone=_zone_storage_value(tz))
-    workday_start, workday_end = await _resolve_workday_window()
-    options = _slot_options(
-        time_service.now_in_city(tz),
-        workday_start=workday_start,
-        workday_end=workday_end,
-    )
-    options = [(k, _maybe_fix_mojibake(lbl)) for (k, lbl) in options]
-    await state.update_data(slot_options=options, pending_asap=False, initial_status=None)
-    await cq.message.edit_text("Выберите доступное время:", reply_markup=new_order_slot_keyboard(options))
-    await cq.answer()
-@router.callback_query(F.data == "adm:new:confirm", StateFilter(NewOrderFSM.confirm))
-async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: StaffUser | None = None) -> None:
-    # Be robust if middleware didn't inject staff for some reason
-    if staff is None:
-        staff_service = _staff_service(cq.message.bot)
-        staff = await staff_service.get_by_tg_id(cq.from_user.id if cq.from_user else 0)
-        if staff is None:
-            await cq.answer(" ", show_alert=True)
-            return
-    data = await state.get_data()
-    summary_text = new_order_summary(data)
-    try:
-        new_order = _build_new_order_data(data, staff)
-    except KeyError:
-        await state.clear()
-        await cq.answer("Не удалось собрать данные заявки. Попробуйте заново.", show_alert=True)
-        return
-    orders_service = _orders_service(cq.message.bot)
-    order_id = await orders_service.create_order(new_order)
-    detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
-    await state.clear()
-    await cq.answer("Заявка создана")
-    if detail:
-        allow_auto = detail.district_id is not None
-        prompt_parts = [f"Заявка #{detail.id} создана.", summary_text]
-        if not allow_auto:
-            prompt_parts.append("Автораспределение недоступно: не выбран район.")
-        prompt_parts.append("Выберите способ распределения:")
-        prompt = "\n\n".join(prompt_parts)
-        markup = assign_menu_keyboard(detail.id, allow_auto=allow_auto)
-        try:
-            await cq.message.edit_text(prompt, reply_markup=markup, disable_web_page_preview=True)
-        except Exception:
-            await cq.message.answer(prompt, reply_markup=markup, disable_web_page_preview=True)
-        return
-    await _render_created_order_card(cq.message, order_id, staff)
-
-
-
-
-
-@router.callback_query(
-    F.data == "adm:s",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def cb_settings_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.message.edit_text(
-        "<b></b>\n    .",
-        reply_markup=settings_menu_keyboard(),
-    )
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:s:group:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def cb_settings_group(cq: CallbackQuery, staff: StaffUser) -> None:
-    group_key = cq.data.split(":")[3]
-    try:
-        view_text, keyboard = await _build_settings_view(cq.message.bot, group_key)
-    except KeyError:
-        await cq.answer("  ", show_alert=True)
-        return
-    await cq.message.edit_text(
-        view_text,
-        reply_markup=keyboard,
-        disable_web_page_preview=True,
-    )
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:s:edit:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def cb_settings_edit_start(
-    cq: CallbackQuery, staff: StaffUser, state: FSMContext
-) -> None:
-    parts = cq.data.split(":")
-    if len(parts) != 5:
-        await cq.answer(" ", show_alert=True)
-        return
-    _, _, _, group_key, field_key = parts
-    try:
-        field = _get_setting_field(field_key)
-    except KeyError:
-        await cq.answer("  ", show_alert=True)
-        return
-
-    service = _settings_service(cq.message.bot)
-    raw_map = await service.get_values([field.key])
-    current_raw = raw_map.get(field.key, (None, None))[0]
-    display, _ = _format_setting_value(field, current_raw)
-    prompt = _build_setting_prompt(field, display)
-
-    await state.set_state(SettingsEditFSM.awaiting_value)
-    await state.update_data(
-        edit_key=field.key,
-        group_key=group_key,
-        source_chat_id=cq.message.chat.id,
-        source_message_id=cq.message.message_id,
-    )
-    await cq.message.answer(prompt, disable_web_page_preview=True)
-    await cq.answer()
-
-
-@router.message(
-    StateFilter(SettingsEditFSM.awaiting_value),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-    F.text == "/cancel",
-)
-
-@router.message(
-    StateFilter(SettingsEditFSM.awaiting_value),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def settings_edit_cancel(msg: Message, state: FSMContext) -> None:
-    await state.clear()
-    await msg.answer("Редактирование отменено.")
-
-async def settings_edit_value(
-    msg: Message, staff: StaffUser, state: FSMContext
-) -> None:
-    data = await state.get_data()
-    field_key = data.get("edit_key")
-    group_key = data.get("group_key")
-    source_chat_id = data.get("source_chat_id")
-    source_message_id = data.get("source_message_id")
-
-    if not field_key or not group_key or source_chat_id is None or source_message_id is None:
-        await state.clear()
-        await msg.answer("Редактирование отменено.")
-        return
-
-    try:
-        field = _get_setting_field(field_key)
-    except KeyError:
-        await state.clear()
-        await msg.answer("Редактирование отменено.")
-        return
-
-    if not msg.text:
-        await msg.answer("Редактирование отменено.")
-        return
-
-    try:
-        value, value_type = _parse_setting_input(field, msg.text)
-    except ValueError as exc:
-        await msg.answer(str(exc))
-        return
-
-    service = _settings_service(msg.bot)
-    await service.set_value(field.key, value, value_type=value_type)
-    await state.clear()
-    await msg.answer("Редактирование отменено.")
-
-    try:
-        view_text, keyboard = await _build_settings_view(msg.bot, group_key)
-        await msg.bot.edit_message_text(
-            view_text,
-            chat_id=source_chat_id,
-            message_id=source_message_id,
-            reply_markup=keyboard,
-            disable_web_page_preview=True,
-        )
-    except Exception:
-        pass
-
-
-@router.callback_query(
-    F.data == "adm:l",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
-)
-async def cb_logs_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    entries = live_log.snapshot(LOG_ENTRIES_LIMIT)
-    text = _format_log_entries(entries)
-    keyboard = logs_menu_keyboard(can_clear=staff.role is StaffRole.GLOBAL_ADMIN)
-    await cq.message.edit_text(
-        text,
-        reply_markup=keyboard,
-        disable_web_page_preview=True,
-    )
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data == "adm:l:refresh",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
-)
-async def cb_logs_refresh(cq: CallbackQuery, staff: StaffUser) -> None:
-    entries = live_log.snapshot(LOG_ENTRIES_LIMIT)
-    text = _format_log_entries(entries)
-    keyboard = logs_menu_keyboard(can_clear=staff.role is StaffRole.GLOBAL_ADMIN)
-    await cq.message.edit_text(
-        text,
-        reply_markup=keyboard,
-        disable_web_page_preview=True,
-    )
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data == "adm:l:clear",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def cb_logs_clear(cq: CallbackQuery, staff: StaffUser) -> None:
-    live_log.clear()
-    entries = live_log.snapshot(LOG_ENTRIES_LIMIT)
-    text = _format_log_entries(entries)
-    keyboard = logs_menu_keyboard(can_clear=True)
-    await cq.message.edit_text(
-        text,
-        reply_markup=keyboard,
-        disable_web_page_preview=True,
-    )
-    await cq.answer("")
-
-# -------- Final overrides to fix mojibake in constants --------
-# These assignments ensure readable Russian texts regardless of earlier literals.
-STAFF_CODE_PROMPT = "Введите код доступа, который выдал администратор."
-STAFF_CODE_ERROR = "Код не найден / истёк / уже использован / вам недоступен."
-STAFF_PDN_TEXT = (
-    "Согласие на обработку персональных данных.\n"
-    "Согласие включает обработку ФИО, телефона и данных о заказах для допуска к работе и обеспечения безопасности сервиса. "
-    "Отправьте \"Согласен\" для продолжения или \"Не согласен\" для отмены."
-)
-
-REPORT_DEFINITIONS: dict[str, tuple[str, Any, str]] = {
-    "orders": ("Заказы", export_service.export_orders, "Orders"),
-    "commissions": ("Комиссии", export_service.export_commissions, "Commissions"),
-    "ref_rewards": ("Реферальные начисления", export_service.export_referral_rewards, "Referral rewards"),
-}
-
-_RU_GROUP_TITLES = {
-    "workday": "Рабочий день",
-    "distribution": "Распределение",
-    "limits": "Лимиты",
-    "support": "Поддержка",
-    "geo": "Гео",
-    "channels": "Каналы",
-}
-_RU_GROUP_DESCRIPTIONS = {
-    "workday": "Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
-    "distribution": "Настройки автораспределения заявок (частота, SLA, раунды).",
-    "limits": "Ограничения сервиса для мастеров и процессов.",
-    "support": "Контакты поддержки и материалы.",
-    "geo": "Режим и лимиты геокодера.",
-    "channels": "ID каналов Telegram для уведомлений и отчётов.",
-}
-_RU_FIELD_LABELS = {
-    "working_hours_start": "Начало рабочего дня",
-    "working_hours_end": "Конец рабочего дня",
-    "distribution_tick_seconds": "Шаг цикла (сек.)",
-    "distribution_sla_seconds": "SLA ответа мастера (сек.)",
-    "distribution_rounds": "Количество раундов",
-    "escalate_to_admin_after_min": "Эскалация к админу через (мин.)",
-    "distribution_log_topn": "Логировать topN кандидатов",
-    "max_active_orders": "Макс. активных заказов на мастера",
-    "support_contact": "Контакт поддержки",
-    "support_faq_url": "Ссылка на FAQ",
-    "geo_mode": "Режим геокодера",
-    "yandex_geocoder_key": "API‑ключ Яндекс",
-    "yandex_throttle_rps": "RPS ограничение",
-    "yandex_daily_limit": "Суточный лимит запросов",
-    "alerts_channel_id": "Канал алертов (ID)",
-    "logs_channel_id": "Канал логов (ID)",
-    "reports_channel_id": "Канал отчётов (ID)",
-}
-
-SCHEMA_DEFAULT_HELP = {
-    "time": "Формат ЧЧ:ММ, по умолчанию 10:00.",
-    "int": "Введите положительное целое число.",
-    "int_non_negative": "Введите целое число 0 или больше.",
-    "string": "Введите текстовое значение.",
-    "string_optional": "Введите текст или '-' чтобы очистить значение.",
-    "int_optional": "Введите число или '-' чтобы очистить значение.",
-    "choice": "Выберите один из предложенных вариантов.",
-}
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\handlers_finance.py
-```python
-from __future__ import annotations
-
-import html
-import re
-from typing import Any, Iterable, Optional
-
-from aiogram import F, Router
-from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
-from aiogram.filters import StateFilter
-from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from field_service.services import live_log, owner_requisites_service
-
-from .dto import StaffRole, StaffUser, WaitPayRecipient, CommissionListItem, CommissionDetail
-from .filters import StaffRoleFilter
-from .keyboards import finance_menu, owner_pay_actions_keyboard, owner_pay_edit_keyboard, finance_segment_keyboard, finance_card_actions, finance_reject_cancel_keyboard
-from .states import OwnerPayEditFSM, FinanceActionFSM
-from .utils import get_service
-
-
-router = Router(name="admin_finance")
-
-
-# CR-2025-10-03-012: Safe callback answer wrapper
-async def _safe_answer(cq: CallbackQuery, text: str = "", show_alert: bool = False) -> None:
-    """Safely answer callback query, ignoring 'query is too old' errors."""
-    try:
-        await cq.answer(text, show_alert=show_alert)
-    except TelegramBadRequest as exc:
-        if "query is too old" not in str(exc).lower():
-            raise
-
-PAYMENT_METHOD_LABELS = {
-    "card": "💳 Карта",
-    "sbp": "СБП",
-    "cash": "Наличные",
-}
-
-_METHOD_ALIASES = {
-    # Карта
-    "card": "card",
-    "карта": "card",
-    "банковская карта": "card",
-    "банк карта": "card",
-    "visa": "card",
-    "mastercard": "card",
-    "мир": "card",
-    # СБП
-    "sbp": "sbp",
-    "сбп": "sbp",
-    "система быстрых платежей": "sbp",
-    "qr": "sbp",
-    "кьюар": "sbp",
-    "кью-ар": "sbp",
-    # Наличные
-    "cash": "cash",
-    "наличные": "cash",
-    "нал": "cash",
-    "наличными": "cash",
-}
-
-_OWNER_FIELDS = {
-    "methods": "Способы оплаты",
-    "card_number": "Номер карты",
-    "card_holder": "Держатель карты",
-    "card_bank": "Банк карты",
-    "sbp_phone": "Телефон для СБП",
-    "sbp_bank": "Банк для СБП",
-    "sbp_qr_file_id": "QR-код СБП",
-    "other_text": "Дополнительная информация",
-    "comment_template": "Шаблон комментария",
-}
-
-
-def _settings_service(bot: Any):
-    return get_service(bot, "settings_service")
-
-
-def _finance_service(bot: Any):
-    return get_service(bot, "finance_service")
-
-
-async def _render_owner_snapshot(
-    bot_message: Message,
-    staff: StaffUser,
-    *,
-    notify_empty: bool = False,
-) -> Optional[tuple[int, int]]:
-    if bot_message is None:
-        return None
-    settings_service = _settings_service(bot_message.bot)
-    snapshot = await settings_service.get_owner_pay_snapshot()
-    text = _format_snapshot_text(snapshot, for_staff=True)
-    markup = owner_pay_actions_keyboard()
-    try:
-        await bot_message.edit_text(text, reply_markup=markup)
-    except TelegramBadRequest as exc:
-        if "message is not modified" not in str(exc).lower():
-            await bot_message.answer(text, reply_markup=markup)
-    if notify_empty:
-        await bot_message.answer("Заполните реквизиты для приема платежей.")
-    return (bot_message.chat.id, bot_message.message_id)
-
-
-def _format_snapshot_text(snapshot: dict[str, Any], *, for_staff: bool) -> str:
-    data = owner_requisites_service.ensure_schema(snapshot)
-    methods = _format_methods(data.get("methods") or [])
-    lines: list[str] = []
-    if for_staff:
-        lines.append("<b>Реквизиты владельца</b>")
-    else:
-        lines.append("<b>Оплата комиссии</b>")
-    lines.append(f"Способы оплаты: {methods}")
-
-    card_block = _format_card_block(data)
-    sbp_block = _format_sbp_block(data, include_qr=for_staff)
-    other_text = data.get("other_text") or ""
-    comment_template = data.get("comment_template") or ""
-
-    if card_block:
-        lines.append("")
-        lines.extend(card_block)
-    if sbp_block:
-        lines.append("")
-        lines.extend(sbp_block)
-    if other_text:
-        lines.append("")
-        lines.append("<b>Дополнительно</b>")
-        lines.append(html.escape(other_text))
-    if comment_template:
-        lines.append("")
-        lines.append("<b>Шаблон комментария</b>")
-        lines.append(html.escape(comment_template))
-
-    if not for_staff:
-        lines.append("")
-        lines.append(
-            "Оплата по реквизитам выше. При прикреплении чека укажите комментарий к оплате."
-        )
-
-    return "\n".join(lines)
-
-
-def _format_methods(methods: Iterable[str]) -> str:
-    items: list[str] = []
-    for raw in methods:
-        key = str(raw).strip().lower()
-        if not key:
-            continue
-        label = PAYMENT_METHOD_LABELS.get(key, key.upper())
-        items.append(label)
-    return ", ".join(items) if items else ""
-
-
-def _format_card_block(data: dict[str, Any]) -> list[str]:
-    card_number = data.get("card_number") or ""
-    card_holder = data.get("card_holder") or ""
-    card_bank = data.get("card_bank") or ""
-    block: list[str] = []
-    if card_number or card_holder or card_bank:
-        block.append("<b>Банковская карта</b>")
-        if card_number:
-            block.append(f"Номер: {html.escape(card_number)}")
-        if card_holder:
-            block.append(f"Держатель: {html.escape(card_holder)}")
-        if card_bank:
-            block.append(f"Банк: {html.escape(card_bank)}")
-    return block
-
-
-def _format_sbp_block(data: dict[str, Any], *, include_qr: bool) -> list[str]:
-    phone = data.get("sbp_phone") or ""
-    bank = data.get("sbp_bank") or ""
-    qr = data.get("sbp_qr_file_id") or ""
-    block: list[str] = []
-    if phone or bank or (include_qr and qr):
-        block.append("<b>СБП</b>")
-        if phone:
-            block.append(f"Телефон: {html.escape(phone)}")
-        if bank:
-            block.append(f"Банк: {html.escape(bank)}")
-        if include_qr:
-            block.append("QR-код: " + ("прикреплён" if qr else "отсутствует"))
-    return block
-
-
-def _parse_methods_payload(text: str) -> list[str]:
-    cleaned = text.strip()
-    if not cleaned or cleaned in {"-", "", "none", "нет"}:
-        return []
-    result: list[str] = []
-    pieces = re.split(r"[\n;,]+", cleaned)
-    for piece in pieces:
-        piece = piece.strip().lower()
-        if not piece:
-            continue
-        alias = _METHOD_ALIASES.get(piece)
-        if not alias and " " in piece:
-            for token in piece.split():
-                alias = _METHOD_ALIASES.get(token)
-                if alias:
-                    break
-        if not alias:
-            raise ValueError(f"Неизвестный способ оплаты: {piece}")
-        if alias not in owner_requisites_service.ALLOWED_METHODS:
-            raise ValueError(f"Недопустимый способ оплаты: {piece}")
-        if alias not in result:
-            result.append(alias)
-    return result
-
-
-def _extract_field_value(field: str, message: Message) -> Any:
-    if field == "methods":
-        if not message.text:
-            raise ValueError("Нужно прислать список способов оплаты.")
-        return _parse_methods_payload(message.text)
-
-    if field == "sbp_qr_file_id":
-        if message.photo:
-            return message.photo[-1].file_id
-        if message.document:
-            return message.document.file_id
-        text = (message.caption or message.text or "").strip()
-        if not text or text == "-":
-            return ""
-        return text
-
-    text = (message.text or message.caption or "").strip()
-    if not text or text == "-":
-        return ""
-    return text
-
-
-async def _update_owner_snapshot(bot, field: str, value: Any) -> dict[str, Any]:
-    settings_service = _settings_service(bot)
-    snapshot = await settings_service.get_owner_pay_snapshot()
-    snapshot[field] = value
-    await settings_service.update_owner_pay_snapshot(**snapshot)
-    return snapshot
-
-
-def _get_origin(data: dict[str, Any]) -> Optional[tuple[int, int]]:
-    origin = data.get("owner_pay_origin")
-    if isinstance(origin, (list, tuple)) and len(origin) == 2:
-        try:
-            return int(origin[0]), int(origin[1])
-        except (TypeError, ValueError):
-            return None
-    return None
-
-
-async def _rerender_origin(bot, staff: StaffUser, origin: Optional[tuple[int, int]]) -> None:
-    if not origin:
-        return
-    chat_id, message_id = origin
-    settings_service = _settings_service(bot)
-    snapshot = await settings_service.get_owner_pay_snapshot()
-    text = _format_snapshot_text(snapshot, for_staff=True)
-    markup = owner_pay_actions_keyboard()
-    try:
-        await bot.edit_message_text(text, chat_id=chat_id, message_id=message_id, reply_markup=markup)
-    except TelegramBadRequest:
-        await bot.send_message(chat_id, text, reply_markup=markup)
-
-
-async def _broadcast_owner_requisites(
-    bot,
-    recipients: Iterable[WaitPayRecipient],
-    snapshot: dict[str, Any],
-) -> tuple[int, int]:
-    sent = 0
-    failed = 0
-    text = _format_snapshot_text(snapshot, for_staff=False)
-    qr = (snapshot.get("sbp_qr_file_id") or "").strip()
-    for recipient in recipients:
-        if recipient.tg_user_id is None:
-            continue
-        try:
-            if qr:
-                await bot.send_photo(recipient.tg_user_id, qr, caption=text)
-            else:
-                await bot.send_message(recipient.tg_user_id, text)
-        except (TelegramForbiddenError, TelegramNotFound):
-            failed += 1
-        except TelegramBadRequest:
-            failed += 1
-        else:
-            sent += 1
-    return sent, failed
-
-
-@router.callback_query(
-    F.data == "adm:f:set",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def on_owner_requisites_show(
-    cq: CallbackQuery,
-    staff: StaffUser,
-    state: FSMContext,
-) -> None:
-    if not cq.message:
-        await _safe_answer(cq)
-        return
-    origin = await _render_owner_snapshot(cq.message, staff)
-    if origin:
-        await state.update_data(owner_pay_origin=origin)
-    await _safe_answer(cq)
-
-
-@router.callback_query(
-    F.data == "adm:f:set:edit",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def on_owner_requisites_edit_menu(
-    cq: CallbackQuery,
-    staff: StaffUser,
-    state: FSMContext,
-) -> None:
-    if not cq.message:
-        await _safe_answer(cq)
-        return
-    settings_service = _settings_service(cq.message.bot)
-    snapshot = await settings_service.get_owner_pay_snapshot()
-    lines = ["<b> </b>", "   :"]
-    for field, label in _OWNER_FIELDS.items():
-        current = snapshot.get(field)
-        if field == "methods":
-            rendered = _format_methods(current or [])
-        elif isinstance(current, str):
-            rendered = current or ""
-        else:
-            rendered = ""
-        lines.append(f" {label}: {html.escape(rendered)}")
-    try:
-        await cq.message.edit_text("\n".join(lines), reply_markup=owner_pay_edit_keyboard())
-    except TelegramBadRequest as exc:
-        if "message is not modified" not in str(exc).lower():
-            await cq.message.answer("\n".join(lines), reply_markup=owner_pay_edit_keyboard())
-    await state.update_data(owner_pay_origin=(cq.message.chat.id, cq.message.message_id))
-    await _safe_answer(cq)
-
-
-@router.callback_query(
-    F.data.startswith("adm:f:set:field:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def on_owner_requisites_field_select(
-    cq: CallbackQuery,
-    staff: StaffUser,
-    state: FSMContext,
-) -> None:
-    if not cq.message or not cq.data:
-        await _safe_answer(cq)
-        return
-    field = cq.data.split(":", maxsplit=3)[-1]
-    if field not in _OWNER_FIELDS:
-        await _safe_answer(cq, " ", show_alert=True)
-        return
-    settings_service = _settings_service(cq.message.bot)
-    snapshot = await settings_service.get_owner_pay_snapshot()
-    current = snapshot.get(field)
-    if field == "methods":
-        rendered = _format_methods(current or [])
-        prompt = (
-            "     (card, sbp, cash).\n"
-            "   ,  ."
-        )
-    elif field == "sbp_qr_file_id":
-        rendered = "" if current else " "
-        prompt = " /  QR-   file_id.    ."
-    else:
-        rendered = current or ""
-        prompt = "  .    ."
-    await state.set_state(OwnerPayEditFSM.value)
-    await state.update_data(
-        owner_pay_field=field,
-        owner_pay_origin=(cq.message.chat.id, cq.message.message_id),
-    )
-    await cq.message.answer(
-        f"<b>{_OWNER_FIELDS[field]}</b>\n : {html.escape(str(rendered))}\n\n{prompt}"
-    )
-    await _safe_answer(cq)
-
-
-@router.message(StateFilter(OwnerPayEditFSM.value), F.text == "/cancel")
-async def on_owner_requisites_edit_cancel(
-    msg: Message,
-    staff: StaffUser,
-    state: FSMContext,
-) -> None:
-    data = await state.get_data()
-    origin = _get_origin(data)
-    await state.set_state(None)
-    await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer(" .")
-    await _rerender_origin(msg.bot, staff, origin)
-
-
-# ============================================
-# P2-11: МАССОВОЕ ОДОБРЕНИЕ КОМИССИЙ
-# ============================================
-
-@router.callback_query(
-    F.data == "adm:f:bulk",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def on_finance_bulk_approve_start(
-    cq: CallbackQuery,
-    staff: StaffUser,
-    state: FSMContext,
-) -> None:
-    """Начать массовое одобрение комиссий."""
-    if not cq.message:
-        await _safe_answer(cq)
-        return
-    
-    builder = InlineKeyboardBuilder()
-    builder.button(text="📅 За сегодня", callback_data="adm:f:bulk:1")
-    builder.button(text="📅 За 3 дня", callback_data="adm:f:bulk:3")
-    builder.button(text="📅 За неделю", callback_data="adm:f:bulk:7")
-    builder.button(text="❌ Отмена", callback_data="adm:f")
-    builder.adjust(1)
-    
-    try:
-        await cq.message.edit_text(
-            "<b>⚡ Массовое одобрение комиссий</b>\n\n"
-            "Выберите период для одобрения всех комиссий в статусе WAIT_PAY:",
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML",
-        )
-    except TelegramBadRequest as exc:
-        if "message is not modified" not in str(exc).lower():
-            await cq.message.answer(
-                "<b>⚡ Массовое одобрение комиссий</b>\n\n"
-                "Выберите период:",
-                reply_markup=builder.as_markup(),
-                parse_mode="HTML",
-            )
-    await _safe_answer(cq)
-
-
-@router.callback_query(
-    F.data.regexp(r"^adm:f:bulk:(\d+)$"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def on_finance_bulk_approve_confirm(
-    cq: CallbackQuery,
-    staff: StaffUser,
-    state: FSMContext,
-) -> None:
-    """Подтверждение массового одобрения."""
-    if not cq.message or not cq.data:
-        await _safe_answer(cq)
-        return
-    
-    parts = cq.data.split(":")
-    try:
-        days = int(parts[-1])
-    except (ValueError, IndexError):
-        await _safe_answer(cq, "Некорректный период", show_alert=True)
-        return
-    
-    # Сохранить период в состояние
-    await state.update_data(bulk_days=days, bulk_chat_id=cq.message.chat.id)
-    
-    # Показать подтверждение
-    builder = InlineKeyboardBuilder()
-    builder.button(text="✅ Подтвердить", callback_data=f"adm:f:bulk:exec:{days}")
-    builder.button(text="❌ Отмена", callback_data="adm:f")
-    builder.adjust(1)
-    
-    period_label = {
-        1: "сегодня",
-        3: "последние 3 дня",
-        7: "последнюю неделю",
-    }.get(days, f"последние {days} дней")
-    
-    try:
-        await cq.message.edit_text(
-            f"<b>⚠️ Подтвердите массовое одобрение</b>\n\n"
-            f"Будут одобрены ВСЕ комиссии за {period_label} в статусе WAIT_PAY.\n\n"
-            f"Вы уверены?",
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML",
-        )
-    except TelegramBadRequest:
-        await cq.message.answer(
-            f"<b>⚠️ Подтвердите массовое одобрение</b>\n\n"
-            f"Будут одобрены ВСЕ комиссии за {period_label}.\n\nВы уверены?",
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML",
-        )
-    await _safe_answer(cq)
-
-
-@router.callback_query(
-    F.data.regexp(r"^adm:f:bulk:exec:(\d+)$"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def on_finance_bulk_approve_execute(
-    cq: CallbackQuery,
-    staff: StaffUser,
-    state: FSMContext,
-) -> None:
-    """Выполнить массовое одобрение."""
-    if not cq.message or not cq.data:
-        await _safe_answer(cq)
-        return
-    
-    parts = cq.data.split(":")
-    try:
-        days = int(parts[-1])
-    except (ValueError, IndexError):
-        await _safe_answer(cq, "Некорректный период", show_alert=True)
-        return
-    
-    await _safe_answer(cq, "Обработка... Пожалуйста, подождите.")
-    
-    # Выполнить массовое одобрение
-    finance_service = _finance_service(cq.message.bot)
-    
-    try:
-        # Получить city_ids для RBAC
-        city_ids = None
-        if staff.role != StaffRole.GLOBAL_ADMIN:
-            city_ids = staff.city_ids
-        
-        # Вычисляем start_date и end_date
-        from datetime import date, timedelta
-        end_date = date.today()
-        start_date = end_date - timedelta(days=days - 1)
-        
-        approved_count, errors = await finance_service.bulk_approve_commissions(
-            start_date=start_date,
-            end_date=end_date,
-            city_ids=city_ids,
-            by_staff_id=staff.id,
-        )
-        
-        approved = approved_count
-        failed = len(errors)
-        
-        period_label = {
-            1: "сегодня",
-            3: "последние 3 дня",
-            7: "последнюю неделю",
-        }.get(days, f"последние {days} дней")
-        
-        builder = InlineKeyboardBuilder()
-        builder.button(text="🔙 К финансам", callback_data="adm:f")
-        builder.adjust(1)
-        
-        result_text = (
-            f"<b>✅ Массовое одобрение завершено</b>\n\n"
-            f"📅 Период: {period_label}\n"
-            f"✅ Одобрено: {approved}\n"
-        )
-        
-        if failed > 0:
-            result_text += f"⚠️ Ошибок: {failed}\n"
-        
-        await cq.message.edit_text(
-            result_text,
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML",
-        )
-        
-    except Exception as exc:
-        from field_service.services import live_log as log_service
-        log_service.push("finance", f"bulk_approve error: {exc}", level="ERROR")
-        
-        try:
-            await cq.message.edit_text(
-                f"<b>❌ Ошибка при массовом одобрении</b>\n\n"
-                f"{html.escape(str(exc))}",
-                parse_mode="HTML",
-            )
-        except TelegramBadRequest:
-            await cq.message.answer(
-                f"<b>❌ Ошибка</b>\n\n{html.escape(str(exc))}",
-                parse_mode="HTML",
-            )
-    
-    await state.clear()
-
-
-@router.message(StateFilter(OwnerPayEditFSM.value))
-async def on_owner_requisites_edit_value(
-    msg: Message,
-    staff: StaffUser,
-    state: FSMContext,
-) -> None:
-    data = await state.get_data()
-    field = data.get("owner_pay_field")
-    if not field or field not in _OWNER_FIELDS:
-        await state.set_state(None)
-        await msg.answer("  ,     .")
-        return
-    origin = _get_origin(data)
-    try:
-        value = _extract_field_value(field, msg)
-    except ValueError as exc:
-        await msg.answer(str(exc))
-        return
-    snapshot = await _update_owner_snapshot(msg.bot, field, value)
-    await state.set_state(None)
-    await state.update_data(owner_pay_field=None, owner_pay_origin=origin)
-    await msg.answer(" .")
-    live_log.push("finance", f"owner_pay:{field} updated by staff {staff.id}")
-    await _rerender_origin(msg.bot, staff, origin)
-
-
-@router.callback_query(
-    F.data == "adm:f:set:bc",
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def on_owner_requisites_broadcast(
-    cq: CallbackQuery,
-    staff: StaffUser,
-    state: FSMContext,
-) -> None:
-    if not cq.message:
-        await _safe_answer(cq)
-        return
-    finance_service = _finance_service(cq.message.bot)
-    settings_service = _settings_service(cq.message.bot)
-    snapshot = await settings_service.get_owner_pay_snapshot()
-    recipients = await finance_service.list_wait_pay_recipients()
-    if not recipients:
-        await _safe_answer(cq, "    ", show_alert=True)
-        return
-    sent, failed = await _broadcast_owner_requisites(cq.message.bot, recipients, snapshot)
-    live_log.push(
-        "finance",
-        f"owner_pay broadcast by staff {staff.id}: sent={sent} failed={failed}",
-    )
-    await _safe_answer(cq, " ")
-    summary = f"  {sent} ."
-    if failed:
-        summary += f"   : {failed}."
-    await cq.message.answer(summary, reply_markup=finance_menu(staff))
-    await _rerender_origin(cq.message.bot, staff, (cq.message.chat.id, cq.message.message_id))
-
-
-# ============================================
-# P2-07: ОБРАБОТЧИКИ СПИСКОВ КОМИССИЙ
-# ============================================
-
-FINANCE_SEGMENT_TITLES = {
-    "aw": "Ожидают оплаты",
-    "pd": "Оплаченные",
-    "ov": "Просроченные",
-}
-
-from .access import visible_city_ids_for
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
-
-def finance_list_line(item: CommissionListItem) -> str:
-    """Format commission list item."""
-    return f"#{item.id} | {item.amount:.0f} ₽ | {item.master_name or 'N/A'}"
-
-
-def format_commission_detail(detail: CommissionDetail) -> str:
-    """Format commission detail card."""
-    lines = [
-        f"<b>Комиссия #{detail.id}</b>",
-        f"Заказ: #{detail.order_id}",
-        f"Мастер: {html.escape(detail.master_name or 'N/A')}",
-        f"Сумма: {detail.amount:.2f} ₽",
-        f"Статус: {detail.status}",
-    ]
-    if detail.deadline_at_local:
-        lines.append(f"Дедлайн: {detail.deadline_at_local}")
-    if detail.paid_amount:
-        lines.append(f"Оплачено: {detail.paid_amount:.2f} ₽")
-    return "\n".join(lines)
-
-
-class _MessageEditProxy:
-    """Proxy to make callback message editable like a regular message."""
-    def __init__(self, bot, chat_id: int, message_id: int):
-        self.bot = bot
-        self.chat = type('obj', (object,), {'id': chat_id})()
-        self.message_id = message_id
-
-    async def edit_text(self, text: str, reply_markup=None, **kwargs):
-        await self.bot.edit_message_text(
-            text,
-            chat_id=self.chat.id,
-            message_id=self.message_id,
-            reply_markup=reply_markup,
-            **kwargs
-        )
-
-
-async def _render_finance_segment(
-    message,
-    staff: StaffUser,
-    segment: str,
-    page: int,
-    state: FSMContext,
-) -> None:
-    finance_service = _finance_service(message.bot)
-    rows, has_next = await finance_service.list_commissions(
-        segment,
-        page=page,
-        page_size=10,
-        city_ids=visible_city_ids_for(staff),
-    )
-
-    await state.update_data(fin_segment=segment, fin_page=page)
-
-    title = FINANCE_SEGMENT_TITLES.get(segment, segment.upper())
-    if not rows:
-        text = f"<b>{title}</b>\n  ."
-    else:
-        lines = [f"<b>{title}</b>", ""]
-        for row in rows:
-            if isinstance(row, CommissionListItem):
-                lines.append(f" {html.escape(finance_list_line(row))}")
-            else:
-                lines.append(f" {html.escape(str(row))}")
-        text = "\n".join(lines)
-
-    button_rows: list[list[InlineKeyboardButton]] = []
-    for row in rows:
-        if isinstance(row, CommissionListItem):
-            label = f"#{row.id}  {row.amount:.0f} "
-            button_rows.append([
-                InlineKeyboardButton(
-                    text=label,
-                    callback_data=f"adm:f:cm:card:{row.id}",
-                )
-            ])
-
-    nav_markup = finance_segment_keyboard(segment, page=page, has_next=has_next)
-    button_rows.extend(nav_markup.inline_keyboard)
-    markup = InlineKeyboardMarkup(inline_keyboard=button_rows)
-
-    await message.edit_text(text, reply_markup=markup)
-
-
-@router.callback_query(
-    F.data.startswith("adm:f:aw:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_finance_aw(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    parts = cq.data.split(":")
-    page = 1
-    if len(parts) > 3:
-        try:
-            page = max(1, int(parts[3]))
-        except ValueError:
-            page = 1
-    if cq.message is None:
-        await _safe_answer(cq)
-        return
-    await _render_finance_segment(cq.message, staff, "aw", page, state)
-    await _safe_answer(cq)
-
-
-@router.callback_query(
-    F.data.startswith("adm:f:pd:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_finance_pd(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    parts = cq.data.split(":")
-    page = 1
-    if len(parts) > 3:
-        try:
-            page = max(1, int(parts[3]))
-        except ValueError:
-            page = 1
-    if cq.message is None:
-        await _safe_answer(cq)
-        return
-    await _render_finance_segment(cq.message, staff, "pd", page, state)
-    await _safe_answer(cq)
-
-
-@router.callback_query(
-    F.data.startswith("adm:f:ov:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_finance_ov(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    parts = cq.data.split(":")
-    page = 1
-    if len(parts) > 3:
-        try:
-            page = max(1, int(parts[3]))
-        except ValueError:
-            page = 1
-    if cq.message is None:
-        await _safe_answer(cq)
-        return
-    await _render_finance_segment(cq.message, staff, "ov", page, state)
-    await _safe_answer(cq)
-
-
-# CR-2025-10-03-013: СПЕЦИФИЧНЫЕ обработчики ВЫШЕ общего!
-# CR-2025-10-03-011: Обработчик быстрого одобрения
-@router.callback_query(
-    F.data.startswith("adm:f:cm:approve:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_finance_approve_instant(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Fast-track approval with default amount."""
-    from decimal import Decimal
-    
-    parts = cq.data.split(":")
-    commission_id = int(parts[4])
-    
-    # CR-2025-10-03-FIX: Validate staff.id before database operations
-    if not staff or staff.id is None or staff.id <= 0:
-        await _safe_answer(cq, "❌ Ошибка: некорректный ID персонала", show_alert=True)
-        return
-    
-    data = await state.get_data()
-    default_amount = Decimal(data.get("default_amount", "0"))
-    segment = data.get("segment", "aw")
-    page = int(data.get("page", 1))
-    source_chat_id = data.get("source_chat_id")
-    source_message_id = data.get("source_message_id")
-    
-    finance_service = _finance_service(cq.message.bot)
-    ok = await finance_service.approve(commission_id, paid_amount=default_amount, by_staff_id=staff.id)
-    await state.clear()
-    
-    if ok:
-        live_log.push("finance", f"commission#{commission_id} approved by staff {staff.id} amount={default_amount}")
-        
-        # CR-2025-10-03-014: Красивое сообщение об успехе
-        builder = InlineKeyboardBuilder()
-        builder.button(text="📋 К списку ожидающих", callback_data="adm:f:aw:1")
-        builder.button(text="💰 Все финансы", callback_data="adm:f")
-        builder.adjust(1)
-        
-        success_text = (
-            "✅ <b>Комиссия одобрена!</b>\n\n"
-            f"🆔 Комиссия #{commission_id}\n"
-            f"💵 Сумма: {default_amount} ₽\n"
-            f"👤 Одобрил: {staff.full_name or 'Администратор'}\n\n"
-            "Что дальше?"
-        )
-        
-        await cq.message.edit_text(
-            success_text,
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML",
-        )
-        await _safe_answer(cq, "✅ Готово!")
-    else:
-        await _safe_answer(cq, "❌ Ошибка при одобрении", show_alert=True)
-
-
-# CR-2025-10-03-011: Переход к ручному вводу суммы
-@router.callback_query(
-    F.data.startswith("adm:f:cm:editamt:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_finance_edit_amount(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Enter custom amount for approval."""
-    parts = cq.data.split(":")
-    commission_id = int(parts[4])
-    
-    data = await state.get_data()
-    default_amount = data.get("default_amount", "0")
-    
-    await state.set_state(FinanceActionFSM.approve_amount)
-    
-    kb = InlineKeyboardBuilder()
-    kb.button(text="❌ Отмена", callback_data=f"adm:f:cm:card:{commission_id}")
-    
-    await cq.message.edit_text(
-        f"<b>Введите сумму оплаты:</b>\n"
-        f"По умолчанию: {default_amount} ₽\n\n"
-        f"Например: <code>3000</code> или <code>3250.50</code>",
-        reply_markup=kb.as_markup(),
-    )
-    await _safe_answer(cq)
-
-
-@router.callback_query(
-    F.data.startswith("adm:f:cm"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
-)
-async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    from decimal import Decimal
-    parts = cq.data.split(":")
-    # parts = ['adm', 'f', 'cm', 'card', '14'] для adm:f:cm:card:14
-    if len(parts) < 5:
-        await _safe_answer(cq, "Некорректный callback", show_alert=True)
-        return
-    action = parts[3]  # 'card', 'open', 'ok', 'rej', 'blk'
-    commission_id = int(parts[4])  # ID комиссии
-    finance_service = _finance_service(cq.message.bot)
-    detail = await finance_service.get_commission_detail(commission_id)
-    if not detail:
-        await _safe_answer(cq, "  .", show_alert=True)
-        return
-
-    data = await state.get_data()
-    segment = data.get("fin_segment", "aw")
-    page = int(data.get("fin_page", 1))
-
-    text_body = format_commission_detail(detail)
-
-    if action == "card":
-        await state.set_state(None)
-        markup = finance_card_actions(detail, segment, page)
-        await cq.message.edit_text(
-            text_body,
-            reply_markup=markup,
-            disable_web_page_preview=True,
-        )
-        await _safe_answer(cq)
-        return
-
-    if action == "open":
-        if not detail.attachments:
-            await _safe_answer(cq, " .", show_alert=True)
-            return
-        for attachment in detail.attachments:
-            try:
-                file_type = (attachment.file_type or "").upper()
-                if file_type == "PHOTO":
-                    await cq.message.answer_photo(attachment.file_id, caption=attachment.caption)
-                else:
-                    await cq.message.answer_document(attachment.file_id, caption=attachment.caption)
-            except TelegramBadRequest:
-                await cq.message.answer("    .")
-        await _safe_answer(cq)
-        return
-
-    if action == "ok":
-        # CR-2025-10-03-011: Красивый UI для подтверждения оплаты
-        await state.update_data(
-            commission_id=commission_id,
-            segment=segment,
-            page=page,
-            default_amount=f"{detail.amount:.2f}",
-            source_chat_id=cq.message.chat.id,
-            source_message_id=cq.message.message_id,
-        )
-        
-        # Показываем кнопки для быстрого одобрения
-        from aiogram.utils.keyboard import InlineKeyboardBuilder
-        kb = InlineKeyboardBuilder()
-        kb.button(text=f"✅ Подтвердить {detail.amount:.2f} ₽", callback_data=f"adm:f:cm:approve:{commission_id}")
-        kb.button(text="📝 Изменить сумму", callback_data=f"adm:f:cm:editamt:{commission_id}")
-        kb.button(text="❌ Отмена", callback_data=f"adm:f:cm:card:{commission_id}")
-        kb.adjust(1)
-        
-        await cq.message.edit_text(
-            f"{text_body}\n\n<b>Подтвердить оплату?</b>",
-            reply_markup=kb.as_markup(),
-            disable_web_page_preview=True,
-        )
-        await _safe_answer(cq)
-        return
-
-    if action == "blk":
-        ok = await finance_service.block_master_for_overdue(
-            detail.master_id or 0,
-            by_staff_id=staff.id,
-        )
-        await _safe_answer(
-            cq,
-            " ." if ok else "   .",
-            show_alert=not ok,
-        )
-        proxy = _MessageEditProxy(cq.message.bot, cq.message.chat.id, cq.message.message_id)
-        await _render_finance_segment(proxy, staff, "ov", page=1, state=state)
-        if ok:
-            live_log.push("finance", f"commission#{commission_id} blocked by staff {staff.id}")
-        return
-
-    if action == "rej":
-        await state.set_state(FinanceActionFSM.reject_reason)
-        await state.update_data(
-            commission_id=commission_id,
-            segment=segment,
-            page=page,
-            source_chat_id=cq.message.chat.id,
-            source_message_id=cq.message.message_id,
-        )
-        
-        # CR-2025-10-03-011: Красивый UI для отклонения
-        kb = InlineKeyboardBuilder()
-        kb.button(text="❌ Отмена", callback_data=f"adm:f:cm:card:{commission_id}")
-        
-        await cq.message.edit_text(
-            f"{text_body}\n\n"
-            f"<b>❌ Отклонить комиссию</b>\n\n"
-            f"Укажите причину отклонения (минимум 3 символа):",
-            reply_markup=kb.as_markup(),
-        )
-        await _safe_answer(cq)
-        return
-
-    await _safe_answer(cq)
-
-
-@router.message(StateFilter(FinanceActionFSM.reject_reason))
-async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    reason = (msg.text or "").strip()
-    
-    # Обработка отмены
-    if reason.lower() == "/cancel":
-        await state.clear()
-        await msg.answer("❌ Отменено.")
-        return
-    
-    # CR-2025-10-03-FIX: Validate staff.id before database operations
-    if not staff or staff.id is None or staff.id <= 0:
-        await state.clear()
-        await msg.answer("❌ Ошибка: некорректный ID персонала")
-        return
-    
-    if len(reason) < 3:
-        await msg.answer("❌ Причина слишком короткая (минимум 3 символа).")
-        return
-
-    data = await state.get_data()
-    commission_id = data.get("commission_id")
-    segment = data.get("segment", "aw")
-    page = int(data.get("page", 1))
-    source_chat_id = data.get("source_chat_id")
-    source_message_id = data.get("source_message_id")
-
-    if not commission_id:
-        await state.clear()
-        await msg.answer("❌ Ошибка: комиссия не найдена.")
-        return
-
-    finance_service = _finance_service(msg.bot)
-    ok = await finance_service.reject(int(commission_id), reason=reason, by_staff_id=staff.id)
-    await state.clear()
-    
-    if ok:
-        live_log.push("finance", f"commission#{commission_id} rejected by staff {staff.id}")
-        
-        # CR-2025-10-03-014: Красивое сообщение об отклонении
-        builder = InlineKeyboardBuilder()
-        builder.button(text="📋 К списку ожидающих", callback_data="adm:f:aw:1")
-        builder.button(text="💰 Все финансы", callback_data="adm:f")
-        builder.adjust(1)
-        
-        reject_text = (
-            "❌ <b>Комиссия отклонена</b>\n\n"
-            f"🆔 Комиссия #{commission_id}\n"
-            f"📝 Причина: {html.escape(reason)}\n"
-            f"👤 Отклонил: {staff.full_name or 'Администратор'}\n\n"
-            "Что дальше?"
-        )
-        
-        await msg.answer(
-            reject_text,
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML",
-        )
-    else:
-        await msg.answer("❌ Ошибка при отклонении комиссии.")
-
-
-@router.message(StateFilter(FinanceActionFSM.approve_amount))
-async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    from decimal import Decimal
-    
-    # CR-2025-10-03-FIX: Validate staff.id before database operations
-    if not staff or staff.id is None or staff.id <= 0:
-        await state.clear()
-        await msg.answer("❌ Ошибка: некорректный ID персонала")
-        return
-    
-    data = await state.get_data()
-    commission_id = data.get("commission_id")
-    if not commission_id:
-        await state.clear()
-        await msg.answer("❌ Ошибка: комиссия не найдена.")
-        return
-
-    segment = data.get("segment", "aw")
-    page = int(data.get("page", 1))
-    source_chat_id = data.get("source_chat_id")
-    source_message_id = data.get("source_message_id")
-
-    text_value = (msg.text or "").strip()
-    if text_value.lower() == "/cancel":
-        await state.clear()
-        if source_chat_id and source_message_id:
-            proxy = _MessageEditProxy(msg.bot, source_chat_id, source_message_id)
-            await _render_finance_segment(proxy, staff, segment, page, state)
-        await msg.answer("❌ Отменено.")
-        return
-
-    # Парсим сумму
-    normalized = text_value.replace(",", ".").replace("₽", "").replace(" ", "").strip()
-    if not re.fullmatch(r"^\d{1,7}(?:\.\d{1,2})?$", normalized):
-        await msg.answer(
-            "❌ Неверный формат суммы.\n"
-            "Пример: <code>3000</code> или <code>3250.50</code>"
-        )
-        return
-    amount = Decimal(normalized)
-
-    finance_service = _finance_service(msg.bot)
-    ok = await finance_service.approve(int(commission_id), paid_amount=amount, by_staff_id=staff.id)
-    await state.clear()
-    
-    if ok:
-        live_log.push("finance", f"commission#{commission_id} approved by staff {staff.id} amount={amount}")
-        
-        # CR-2025-10-03-014: Красивое сообщение об успехе
-        builder = InlineKeyboardBuilder()
-        builder.button(text="📋 К списку ожидающих", callback_data="adm:f:aw:1")
-        builder.button(text="💰 Все финансы", callback_data="adm:f")
-        builder.adjust(1)
-        
-        success_text = (
-            "✅ <b>Комиссия одобрена!</b>\n\n"
-            f"🆔 Комиссия #{commission_id}\n"
-            f"💵 Сумма: {amount} ₽\n"
-            f"👤 Одобрил: {staff.full_name or 'Администратор'}\n\n"
-            "Что дальше?"
-        )
-        
-        await msg.answer(
-            success_text,
-            reply_markup=builder.as_markup(),
-            parse_mode="HTML",
-        )
-    else:
-        await msg.answer("❌ Ошибка при одобрении комиссии.")
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\handlers_staff.py
-```python
-from __future__ import annotations
-
-from datetime import timedelta
-from typing import Any, Iterable, Optional, Sequence
-
-from aiogram import F, Router
-from aiogram.filters import StateFilter
-from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from field_service.bots.common import FSMTimeoutConfig, FSMTimeoutMiddleware
-
-from .dto import CityRef, StaffAccessCode, StaffMember, StaffRole, StaffUser
-from .filters import StaffRoleFilter
-from .states import AccessCodeNewFSM, StaffCityEditFSM
-from .utils import get_service
-
-router = Router(name="admin_staff_handlers")
-CITY_PAGE_SIZE = 12
-
-
-async def _fsm_timeout_notice(state: FSMContext) -> None:
-    chat_id = state.key.chat_id
-    if chat_id is None:
-        return
-    try:
-        await state.bot.send_message(
-            chat_id,
-            "Session timed out. Use /start to return to the menu.",
-        )
-    except Exception:
-        pass
-
-
-_STAFF_TIMEOUT = FSMTimeoutMiddleware(
-    FSMTimeoutConfig(timeout=timedelta(minutes=10), callback=_fsm_timeout_notice)
-)
-
-router.message.middleware(_STAFF_TIMEOUT)
-router.callback_query.middleware(_STAFF_TIMEOUT)
-
-
-
-ROLE_LABELS = {
-    StaffRole.GLOBAL_ADMIN: "Global admin",
-    StaffRole.CITY_ADMIN: "City admin",
-    StaffRole.LOGIST: "Logist",
-}
-
-
-def _staff_service(bot) -> Any:
-    return get_service(bot, "staff_service")
-
-
-def _orders_service(bot) -> Any:
-    return get_service(bot, "orders_service")
-
-
-def _role_label(role: StaffRole) -> str:
-    return ROLE_LABELS.get(role, role.value)
-
-
-async def _resolve_city_names(bot, city_ids: Sequence[int]) -> list[str]:
-    if not city_ids:
-        return []
-    orders = _orders_service(bot)
-    names: list[str] = []
-    for city_id in city_ids:
-        city = await orders.get_city(city_id)
-        names.append(city.name if city else str(city_id))
-    return names
-
-
-def _format_city_line(names: Sequence[str]) -> str:
-    return ", ".join(names) if names else "-"
-
-
-def _build_staff_menu() -> InlineKeyboardBuilder:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="Generate code (global)", callback_data="adm:staff:new:GLOBAL_ADMIN")
-    kb.button(text="Generate code (city)", callback_data="adm:staff:new:CITY_ADMIN")
-    kb.button(text="Generate code (logist)", callback_data="adm:staff:new:LOGIST")
-    kb.button(text="Global admins", callback_data="adm:staff:list:GLOBAL_ADMIN:1")
-    kb.button(text="City admins", callback_data="adm:staff:list:CITY_ADMIN:1")
-    kb.button(text="Logists", callback_data="adm:staff:list:LOGIST:1")
-    kb.button(text="Back", callback_data="adm:menu")
-    kb.adjust(1)
-    return kb
-
-
-async def _send_staff_menu(cq: CallbackQuery) -> None:
-    kb = _build_staff_menu()
-    await cq.message.edit_text(
-        "Staff & Access",
-        reply_markup=kb.as_markup(),
-    )
-
-
-
-async def _load_cities(bot) -> list[CityRef]:
-    orders = _orders_service(bot)
-    return await orders.list_cities(limit=200)
-
-
-def _serialize_cities(cities: Sequence[CityRef]) -> list[dict[str, int | str]]:
-    return [{"id": city.id, "name": city.name} for city in cities]
-
-
-def _deserialize_cities(payload: Sequence[dict[str, int | str]]) -> list[CityRef]:
-    return [CityRef(id=int(item["id"]), name=str(item["name"])) for item in payload]
-
-
-def _build_city_keyboard(
-    cities: Sequence[CityRef],
-    selected: set[int],
-    page: int,
-    *,
-    prefix: str,
-    show_done: bool = True,
-    allow_empty: bool = True,
-) -> InlineKeyboardBuilder:
-    kb = InlineKeyboardBuilder()
-    total = len(cities)
-    start = max(page - 1, 0) * CITY_PAGE_SIZE
-    chunk = cities[start : start + CITY_PAGE_SIZE]
-    for city in chunk:
-        marker = "[x]" if city.id in selected else "[ ]"
-        kb.button(text=f"{marker} {city.name}", callback_data=f"{prefix}:pick:{city.id}")
-    if chunk:
-        kb.adjust(1)
-    nav_buttons: list[tuple[str, str]] = []
-    if start > 0:
-        nav_buttons.append(("◀️ Назад", f"{prefix}:page:{page - 1}"))
-    if start + CITY_PAGE_SIZE < total:
-        nav_buttons.append(("▶️ Далее", f"{prefix}:page:{page + 1}"))
-    if nav_buttons:
-        nav = InlineKeyboardBuilder()
-        for text_label, callback_data in nav_buttons:
-            nav.button(text=text_label, callback_data=callback_data)
-        nav.adjust(len(nav_buttons))
-        kb.attach(nav)
-    control_buttons: list[tuple[str, str]] = []
-    if show_done:
-        control_buttons.append(("✅ Готово", f"{prefix}:done"))
-    if allow_empty:
-        control_buttons.append(("✖️ Отмена", f"{prefix}:cancel"))
-    if control_buttons:
-        controls = InlineKeyboardBuilder()
-        for text_label, callback_data in control_buttons:
-            controls.button(text=text_label, callback_data=callback_data)
-        controls.adjust(len(control_buttons))
-        kb.attach(controls)
-    return kb
-
-
-async def _render_city_selector(
-    cq: CallbackQuery,
-    *,
-    prefix: str,
-    cities: Sequence[CityRef],
-    selected: Iterable[int],
-    page: int,
-    title: str,
-    show_done: bool = True,
-    allow_empty: bool = True,
-) -> None:
-    keyboard = _build_city_keyboard(
-        cities,
-        set(selected),
-        page,
-        prefix=prefix,
-        show_done=show_done,
-        allow_empty=allow_empty,
-    )
-    if cq.message is not None:
-        await cq.message.edit_text(title, reply_markup=keyboard.as_markup())
-
-
-@router.callback_query(F.data == "adm:staff:menu", StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
-async def staff_menu(cq: CallbackQuery, state: FSMContext) -> None:
-    await state.clear()
-    await _send_staff_menu(cq)
-    await cq.answer()
-
-
-@router.callback_query(F.data.startswith("adm:staff:list:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
-async def staff_list(cq: CallbackQuery, state: FSMContext) -> None:
-    parts = cq.data.split(":")
-    try:
-        role = StaffRole(parts[3])
-    except (IndexError, ValueError):
-        await cq.answer("Unknown role", show_alert=True)
-        return
-    try:
-        page = max(1, int(parts[4]))
-    except (IndexError, ValueError):
-        page = 1
-
-    service = _staff_service(cq.message.bot)
-    members, has_next = await service.list_staff(role=role, page=page, page_size=10)
-    await state.update_data(staff_list_role=role.value, staff_list_page=page)
-
-    if not members:
-        kb = InlineKeyboardBuilder()
-        kb.button(text="Back", callback_data="adm:staff:menu")
-        await cq.message.edit_text("No staff found.", reply_markup=kb.as_markup())
-        await cq.answer()
-        return
-
-    city_map: dict[int, list[str]] = {}
-    for member in members:
-        if member.city_ids:
-            city_map[member.id] = await _resolve_city_names(cq.message.bot, member.city_ids)
-
-    lines = [f"<b>{_role_label(role)}</b>"]
-    kb = InlineKeyboardBuilder()
-    for member in members:
-        status = "active" if member.is_active else "inactive"
-        city_names = _format_city_line(city_map.get(member.id, []))
-        name = member.full_name or "-"
-        lines.append(f"#{member.id} {name}  {status} ({city_names})")
-        kb.button(text=str(member.id), callback_data=f"adm:staff:edit:{member.id}")
-    kb.adjust(3)
-
-    nav = InlineKeyboardBuilder()
-    if page > 1:
-        nav.button(text="Prev", callback_data=f"adm:staff:list:{role.value}:{page - 1}")
-    if has_next:
-        nav.button(text="Next", callback_data=f"adm:staff:list:{role.value}:{page + 1}")
-    nav.button(text="Menu", callback_data="adm:staff:menu")
-    if nav.buttons:
-        nav.adjust(len(nav.buttons))
-        kb.attach(nav)
-
-    await cq.message.edit_text(
-        "\n".join(lines),
-        reply_markup=kb.as_markup(),
-    )
-    await cq.answer()
-
-
-async def _render_staff_card(cq: CallbackQuery, member: StaffMember, city_names: Sequence[str], state: FSMContext) -> None:
-    status = "Active" if member.is_active else "Inactive"
-    lines = [
-        f"<b>#{member.id} {member.full_name or '-'} ({_role_label(member.role)})</b>",
-        f"Phone: {member.phone or '-'}",
-        f"Telegram ID: {member.tg_id or '-'}",
-        f"Cities: {_format_city_line(city_names)}",
-        f"Status: {status}",
-    ]
-    kb = InlineKeyboardBuilder()
-    kb.button(
-        text="Deactivate" if member.is_active else "Activate",
-        callback_data=f"adm:staff:deact:{member.id}",
-    )
-    if member.role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST):
-        kb.button(text="Edit cities", callback_data=f"adm:staff:edit:cities:{member.id}")
-    data = await state.get_data()
-    role_token = data.get("staff_list_role", member.role.value)
-    page = data.get("staff_list_page", 1)
-    kb.button(text="Back", callback_data=f"adm:staff:list:{role_token}:{page}")
-    kb.adjust(1)
-    await cq.message.edit_text(
-        "\n".join(lines),
-        reply_markup=kb.as_markup(),
-    )
-
-
-@router.callback_query(F.data.startswith("adm:staff:edit:"), StaffRoleFilter({StaffRole.GLOBAL_ADMIN}))
-async def staff_card(cq: CallbackQuery, state: FSMContext) -> None:
-    staff_id = int(cq.data.split(":")[3])
-    service = _staff_service(cq.message.bot)
-    member = await service.get_staff_member(staff_id)
-    if not member:
-        await cq.answer("Not found", show_alert=True)
-        return
-    city_names = await _resolve_city_names(cq.message.bot, member.city_ids)
-    await _render_staff_card(cq, member, city_names, state)
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:staff:deact:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def staff_toggle_active(cq: CallbackQuery, state: FSMContext) -> None:
-    staff_id = int(cq.data.split(":")[3])
-    service = _staff_service(cq.message.bot)
-    member = await service.get_staff_member(staff_id)
-    if not member:
-        await cq.answer("Not found", show_alert=True)
-        return
-    await service.set_staff_active(staff_id, is_active=not member.is_active)
-    refreshed = await service.get_staff_member(staff_id)
-    city_names = await _resolve_city_names(cq.message.bot, refreshed.city_ids if refreshed else [])
-    await _render_staff_card(cq, refreshed, city_names, state)
-    await cq.answer("Updated")
-
-
-# :       ,     .
-@router.callback_query(
-    F.data.in_(
-        {
-            "adm:staff:new:GLOBAL_ADMIN",
-            "adm:staff:new:CITY_ADMIN",
-            "adm:staff:new:LOGIST",
-        }
-    ),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def access_code_new_start(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
-    role_token = cq.data.split(":")[3]
-    #    
-    role = StaffRole(role_token)
-    await state.clear()
-    if role is StaffRole.GLOBAL_ADMIN:
-        service = _staff_service(cq.message.bot)
-        code = await service.create_access_code(
-            role=role,
-            city_ids=[],
-            created_by_staff_id=staff.id,
-            expires_at=None,
-            comment=None,
-        )
-        await _show_code_card(cq, code)
-        await cq.answer()
-        return
-    cities = await _load_cities(cq.message.bot)
-    await state.set_state(AccessCodeNewFSM.city_select)
-    await state.update_data(
-        role=role.value,
-        cities=_serialize_cities(cities),
-        selected=[],
-        page=1,
-    )
-    await _render_city_selector(
-        cq,
-        prefix="adm:staff:new:city",
-        cities=cities,
-        selected=[],
-        page=1,
-        title=f"Select cities for {_role_label(role)}",
-        show_done=True,
-        allow_empty=False,
-    )
-    await cq.answer()
-
-
-async def _show_code_card(cq: CallbackQuery, code: StaffAccessCode) -> None:
-    city_names = await _resolve_city_names(cq.message.bot, code.city_ids)
-    lines = [
-        "<b>Access code</b>",
-        f"Role: {_role_label(code.role)}",
-        f"Cities: {_format_city_line(city_names)}",
-        f"Code: <code>{code.code}</code>",
-    ]
-    if code.expires_at:
-        lines.append(code.expires_at.strftime("Valid until: %Y-%m-%d %H:%M"))
-    status = "used" if code.used_at else ("revoked" if bool(code.revoked_at) else "active")
-    lines.append(f"Status: {status}")
-    kb = InlineKeyboardBuilder()
-    if not code.used_at and not bool(code.revoked_at):
-        kb.button(text="Revoke", callback_data=f"adm:staff:revoke:{code.id}")
-    kb.button(text="Menu", callback_data="adm:staff:menu")
-    kb.adjust(1)
-    await cq.message.edit_text(
-        "\n".join(lines),
-        reply_markup=kb.as_markup(),
-    )
-
-
-@router.callback_query(
-    F.data.startswith("adm:staff:new:city:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-    StateFilter(AccessCodeNewFSM.city_select),
-)
-async def access_code_city_action(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
-    parts = cq.data.split(":")
-    action = parts[4]
-    data = await state.get_data()
-    cities = _deserialize_cities(data.get("cities", []))
-    selected = set(data.get("selected", []))
-    page = int(data.get("page", 1))
-    role = StaffRole(data.get("role", StaffRole.CITY_ADMIN.value))
-    if action == "pick":
-        city_id = int(parts[5])
-        if city_id in selected:
-            selected.remove(city_id)
-        else:
-            selected.add(city_id)
-        await state.update_data(selected=list(selected))
-        await _render_city_selector(
-            cq,
-            prefix="adm:staff:new:city",
-            cities=cities,
-            selected=selected,
-            page=page,
-            title=f"Select cities for {_role_label(role)}",
-            show_done=True,
-            allow_empty=False,
-        )
-        await cq.answer()
-        return
-    if action == "page":
-        page = max(1, int(parts[5]))
-        await state.update_data(page=page)
-        await _render_city_selector(
-            cq,
-            prefix="adm:staff:new:city",
-            cities=cities,
-            selected=selected,
-            page=page,
-            title=f"Select cities for {_role_label(role)}",
-            show_done=True,
-            allow_empty=False,
-        )
-        await cq.answer()
-        return
-    if action == "cancel":
-        await state.clear()
-        await _send_staff_menu(cq)
-        await cq.answer("Cancelled")
-        return
-    if action == "done":
-        if not selected:
-            await cq.answer("Select at least one city", show_alert=True)
-            return
-        service = _staff_service(cq.message.bot)
-        code = await service.create_access_code(
-            role=role,
-            city_ids=selected,
-            created_by_staff_id=staff.id,
-            expires_at=None,
-            comment=None,
-        )
-        await state.clear()
-        await _show_code_card(cq, code)
-        await cq.answer("Created")
-        return
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:staff:code:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def access_code_card(cq: CallbackQuery) -> None:
-    code_id = int(cq.data.split(":")[3])
-    service = _staff_service(cq.message.bot)
-    code = await service.get_access_code(code_id)
-    if not code:
-        await cq.answer("Code not found", show_alert=True)
-        return
-    await _show_code_card(cq, code)
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:staff:revoke:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def access_code_revoke(cq: CallbackQuery, staff: StaffUser) -> None:
-    code_id = int(cq.data.split(":")[3])
-    service = _staff_service(cq.message.bot)
-    ok = await service.revoke_access_code(code_id, by_staff_id=staff.id)
-    if not ok:
-        await cq.answer("Cannot revoke", show_alert=True)
-        return
-    code = await service.get_access_code(code_id)
-    if code:
-        await _show_code_card(cq, code)
-    await cq.answer("Revoked")
-
-
-@router.callback_query(
-    F.data.startswith("adm:staff:edit:cities:"),
-    StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
-)
-async def staff_edit_cities(cq: CallbackQuery, state: FSMContext) -> None:
-    parts = cq.data.split(":")
-    staff_id = int(parts[4])
-    action = parts[5] if len(parts) > 5 else "start"
-    service = _staff_service(cq.message.bot)
-    member = await service.get_staff_member(staff_id)
-    if not member:
-        await cq.answer("Not found", show_alert=True)
-        return
-    data = await state.get_data()
-    cities = _deserialize_cities(data.get("edit_cities", []))
-    if not cities:
-        cities = await _load_cities(cq.message.bot)
-    selected = set(data.get("edit_selected", member.city_ids))
-    page = int(data.get("edit_page", 1))
-    if action == "start":
-        await state.set_state(StaffCityEditFSM.action)
-        await state.update_data(edit_staff_id=staff_id, edit_cities=_serialize_cities(cities), edit_selected=list(selected), edit_page=page)
-    elif action == "pick":
-        city_id = int(parts[6])
-        if city_id in selected:
-            selected.remove(city_id)
-        else:
-            selected.add(city_id)
-        await state.update_data(edit_selected=list(selected))
-    elif action == "page":
-        page = max(1, int(parts[6]))
-        await state.update_data(edit_page=page)
-    elif action == "cancel":
-        await state.clear()
-        city_names = await _resolve_city_names(cq.message.bot, member.city_ids)
-        await _render_staff_card(cq, member, city_names, state)
-        await cq.answer("Cancelled")
-        return
-    elif action == "done":
-        await service.set_staff_cities(staff_id, selected)
-        await state.clear()
-        refreshed = await service.get_staff_member(staff_id)
-        city_names = await _resolve_city_names(cq.message.bot, refreshed.city_ids if refreshed else [])
-        await _render_staff_card(cq, refreshed, city_names, state)
-        await cq.answer("Saved")
-        return
-    await _render_city_selector(
-        cq,
-        prefix=f"adm:staff:edit:cities:{staff_id}",
-        cities=cities,
-        selected=selected,
-        page=page,
-        title=f"Edit cities for {_role_label(member.role)} #{member.id}",
-        show_done=True,
-        allow_empty=True,
-    )
-    await cq.answer()
-
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\keyboards.py
-```python
-from __future__ import annotations
-
-from typing import Mapping, Sequence
-
-from aiogram.types import InlineKeyboardMarkup
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from .dto import (
-    CommissionDetail,
-    CommissionListItem,
-    MasterBrief,
-    MasterDetail,
-    MasterListItem,
-    OrderAttachment,
-    OrderListItem,
-    StaffRole,
-    StaffUser,
-)
-from .texts import master_brief_line
-
-
-
-
-def main_menu(staff: StaffUser) -> InlineKeyboardMarkup:
-    """Главное меню с учётом ролей и доступов.
-    
-    GLOBAL_ADMIN: полный доступ ко всем функциям
-    CITY_ADMIN: управление заказами, мастерами, финансами в своих городах
-    LOGIST: только просмотр эскалированных заказов в очереди и логов
-    """
-    kb = InlineKeyboardBuilder()
-    
-    # Очередь доступна всем (с разными фильтрами по ролям)
-    kb.button(text="📦 Заявки", callback_data="adm:orders_menu")
-    
-    # Создание заказов: GLOBAL_ADMIN и CITY_ADMIN
-    if staff.role in {StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}:
-        kb.button(text="➕ Новый заказ", callback_data="adm:new")
-    
-    # Мастера и Модерация: GLOBAL_ADMIN и CITY_ADMIN
-    if staff.role in {StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}:
-        kb.button(text="👷 Мастера", callback_data="adm:m:grp:ok")
-        kb.button(text="🛠 Модерация", callback_data="adm:mod:list:1")
-    
-    # Финансы: GLOBAL_ADMIN и CITY_ADMIN
-    if staff.role in {StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}:
-        kb.button(text="💰 Финансы", callback_data="adm:f")
-    
-    # Отчёты: только GLOBAL_ADMIN
-    if staff.role is StaffRole.GLOBAL_ADMIN:
-        kb.button(text="📊 Отчёты", callback_data="adm:r")
-    
-    # Настройки: только GLOBAL_ADMIN
-    if staff.role is StaffRole.GLOBAL_ADMIN:
-        kb.button(text="⚙️ Настройки", callback_data="adm:s")
-    
-    # Персонал: только GLOBAL_ADMIN
-    if staff.role is StaffRole.GLOBAL_ADMIN:
-        kb.button(text="👤 Персонал и доступ", callback_data="adm:staff:menu")
-    
-    # Логи доступны всем
-    kb.button(text="🧾 Логи", callback_data="adm:l")
-    
-    # Адаптивная раскладка: по 2 кнопки в ряд
-    kb.adjust(2)
-    
-    return kb.as_markup()
-
-
-def orders_menu(staff: StaffUser, counts: Mapping[str, int]) -> InlineKeyboardMarkup:
-    """Меню раздела "Заявки" c счётчиками."""
-    kb = InlineKeyboardBuilder()
-
-    kb.button(text="🔍 Поиск по ID", callback_data="adm:q:search")
-    kb.button(text="🔧 Фильтры", callback_data="adm:q:flt")
-
-    queue_count = int(counts.get('queue', 0))
-    guarantee_count = int(counts.get('guarantee', 0))
-    closed_count = int(counts.get('closed', 0))
-
-    kb.button(
-        text=f"📋 Очередь ({queue_count})",
-        callback_data="adm:orders:queue:1",
-    )
-    kb.button(
-        text=f"🛡 На гарантии ({guarantee_count})",
-        callback_data="adm:orders:warranty:1",
-    )
-    kb.button(
-        text=f"✅ Закрытые ({closed_count})",
-        callback_data="adm:orders:closed:1",
-    )
-
-    kb.button(text="🏠 В меню", callback_data="adm:menu")
-    kb.adjust(2, 1, 1, 1, 1)
-    return kb.as_markup()
-
-
-def back_to_menu() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="⬅️ Назад в меню", callback_data="adm:menu")
-    return kb.as_markup()
-
-def queue_list_keyboard(
-    items: Sequence[OrderListItem], *, page: int, has_next: bool
-) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    for order in items:
-        kb.button(text=f"#{order.id}", callback_data=f"adm:q:card:{order.id}")
-    if items:
-        kb.adjust(1)
-    nav = InlineKeyboardBuilder()
-    nav_count = 0
-    if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:q:list:{page - 1}")
-        nav_count += 1
-    if has_next:
-        nav.button(text="▶️ Далее", callback_data=f"adm:q:list:{page + 1}")
-        nav_count += 1
-    if nav_count:
-        nav.adjust(nav_count)
-        kb.attach(nav)
-    controls = InlineKeyboardBuilder()
-    controls.button(text="🔎 Фильтры", callback_data="adm:q:flt")
-    controls.button(text="⬅️ В меню", callback_data="adm:menu")
-    controls.adjust(2)
-    kb.attach(controls)
-    return kb.as_markup()
-
-
-def order_card_keyboard(
-    order_id: int,
-    attachments: Sequence[OrderAttachment] = (),
-    *,
-    allow_return: bool = True,
-    allow_cancel: bool = True,
-    show_guarantee: bool = False,
-    is_deferred: bool = False,  # ⚠️ Новый параметр
-) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    for attachment in attachments:
-        title = attachment.file_name or f' #{attachment.id}'
-        kb.button(
-            text=f'📎 {title}',
-            callback_data=f'adm:q:att:{order_id}:{attachment.id}',
-        )
-    if attachments:
-        kb.adjust(1)
-    actions = InlineKeyboardBuilder()
-    
-    # ⚠️ Кнопка активации DEFERRED заказа
-    if is_deferred:
-        actions.button(text='! Перевести в поиск мастера', callback_data=f'adm:q:activate:{order_id}')
-    
-    if show_guarantee:
-        actions.button(text='🛡 Гарантия', callback_data=f'adm:q:gar:{order_id}')
-    actions.button(text='👥 Назначить', callback_data=f'adm:q:as:{order_id}')
-    if allow_return:
-        actions.button(text='⬅️ Назад', callback_data=f'adm:q:ret:{order_id}')
-    if allow_cancel:
-        actions.button(text='✖️ Отменить', callback_data=f'adm:q:cnl:{order_id}')
-    actions.button(text='📋 К списку', callback_data='adm:q:list:1')
-    actions.adjust(1)
-    kb.attach(actions)
-    return kb.as_markup()
-
-
-
-
-
-
-
-
-
-def queue_cancel_keyboard(order_id: int) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text='⬅️ Назад', callback_data=f'adm:q:cnl:bk:{order_id}')
-    return kb.as_markup()
-
-
-def assign_menu_keyboard(order_id: int, *, allow_auto: bool = True) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    if allow_auto:
-        kb.button(text='⚡️ Автораспределение', callback_data=f'adm:q:as:auto:{order_id}')
-    kb.button(text='👤 Выбрать мастера', callback_data=f'adm:q:as:man:{order_id}:1')
-    kb.button(text='⬅️ Назад', callback_data=f'adm:q:card:{order_id}')
-    kb.adjust(1)
-    return kb.as_markup()
-
-def manual_candidates_keyboard(
-    order_id: int,
-    masters: Sequence[MasterBrief],
-    *,
-    page: int,
-    has_next: bool,
-) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    for master in masters:
-        kb.button(
-            text=master_brief_line(master),
-            callback_data=f"adm:q:as:check:{order_id}:{page}:{master.id}"
-        )
-    kb.adjust(1)
-    nav = InlineKeyboardBuilder()
-    if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:q:as:man:{order_id}:{page - 1}")
-    if has_next:
-        nav.button(text="▶️ Далее", callback_data=f"adm:q:as:man:{order_id}:{page + 1}")
-    nav.button(text="⬅️ Назад", callback_data=f"adm:q:card:{order_id}")
-    kb.attach(nav)
-    return kb.as_markup()
-
-
-def manual_confirm_keyboard(order_id: int, master_id: int, page: int) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="✅ Назначить", callback_data=f"adm:q:as:pick:{order_id}:{page}:{master_id}")
-    kb.button(text="⬅️ Назад", callback_data=f"adm:q:as:man:{order_id}:{page}")
-    return kb.as_markup()
-
-
-def finance_menu(staff: StaffUser) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="⏳ Ожидают оплаты", callback_data="adm:f:aw:1")
-    kb.button(text="✅ Оплаченные", callback_data="adm:f:pd:1")
-    kb.button(text="⏰ Просроченные", callback_data="adm:f:ov:1")
-    if staff.role is StaffRole.GLOBAL_ADMIN:
-        kb.button(text="⚡ Одобрить все", callback_data="adm:f:bulk")  # P2-11: Массовое одобрение
-        kb.button(text="💼 Реквизиты владельца", callback_data="adm:f:set")
-    kb.button(text="⬅️ В меню", callback_data="adm:menu")
-    kb.adjust(2, 2) if staff.role != StaffRole.GLOBAL_ADMIN else kb.adjust(2, 2, 1, 1)
-    return kb.as_markup()
-
-
-def finance_segment_keyboard(seg: str, page: int, has_next: bool) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    if page > 1:
-        kb.button(text="◀️ Назад", callback_data=f"adm:f:{seg}:{page - 1}")
-    if has_next:
-        kb.button(text="▶️ Далее", callback_data=f"adm:f:{seg}:{page + 1}")
-    kb.button(text="⬅️ Назад", callback_data="adm:f")
-    kb.adjust(2)
-    return kb.as_markup()
-
-
-def finance_card_actions(detail: CommissionDetail, segment: str, page: int) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="🧾 Открыть чек", callback_data=f"adm:f:cm:open:{detail.id}")
-
-    status = (detail.status or "").upper()
-    if status in {"WAIT_PAY", "REPORTED", "OVERDUE"}:
-        kb.button(text="✅ Подтвердить", callback_data=f"adm:f:cm:ok:{detail.id}")
-    if status in {"WAIT_PAY", "REPORTED"}:
-        kb.button(text="❌ Отклонить", callback_data=f"adm:f:cm:rej:{detail.id}")
-    if detail.master_id is not None:
-        kb.button(text="🚫 Заблокировать", callback_data=f"adm:f:cm:blk:{detail.id}")
-    kb.button(text="⬅️ Назад", callback_data=f"adm:f:{segment}:{page}")
-    kb.adjust(1)
-    return kb.as_markup()
-
-
-def finance_reject_cancel_keyboard(commission_id: int) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="⬅️ Назад", callback_data=f"adm:f:cm:card:{commission_id}")
-    return kb.as_markup()
-
-
-def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text=" ", callback_data="adm:f:set:edit")
-    kb.button(text="  ", callback_data="adm:f:set:bc")
-    kb.button(text=" ", callback_data="adm:f")
-    kb.adjust(2, 1)
-    return kb.as_markup()
-
-
-def owner_pay_edit_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    field_labels = [
-        ("methods", " "),
-        ("card_number", " "),
-        ("card_holder", " "),
-        ("card_bank", " "),
-        ("sbp_phone", " "),
-        ("sbp_bank", " "),
-        ("sbp_qr_file_id", "QR-"),
-        ("other_text", ""),
-        ("comment_template", " "),
-    ]
-    for field, label in field_labels:
-        kb.button(text=label, callback_data=f"adm:f:set:field:{field}")
-    kb.adjust(2)
-    kb.button(text=" ", callback_data="adm:f:set")
-    return kb.as_markup()
-
-
-def new_order_city_keyboard(
-    city_buttons: Sequence[tuple[int, str]],
-    *,
-    page: int,
-    total_pages: int,
-) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    for city_id, name in city_buttons:
-        kb.button(text=name, callback_data=f"adm:new:city:{city_id}")
-    kb.adjust(2)
-    nav = InlineKeyboardBuilder()
-    if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:new:city_page:{page - 1}")
-    if page < total_pages:
-        nav.button(text="▶️ Далее", callback_data=f"adm:new:city_page:{page + 1}")
-    nav.button(text="🔍 Поиск", callback_data="adm:new:city_search")
-    nav.button(text="✖️ Отменить", callback_data="adm:new:cancel")
-    kb.attach(nav)
-    return kb.as_markup()
-
-
-def new_order_district_keyboard(
-    districts: Sequence[tuple[int, str]],
-    *,
-    page: int,
-    has_next: bool,
-) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    for district_id, name in districts:
-        kb.button(text=name, callback_data=f"adm:new:district:{district_id}")
-    if districts:
-        kb.adjust(1)
-    kb.button(text="🚫 Без района", callback_data="adm:new:district:none")
-    nav = InlineKeyboardBuilder()
-    if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:new:district_page:{page - 1}")
-    if has_next:
-        nav.button(text="▶️ Далее", callback_data=f"adm:new:district_page:{page + 1}")
-    nav.button(text="⬅️ Назад", callback_data="adm:new:city_back")
-    kb.attach(nav)
-    return kb.as_markup()
-
-
-def new_order_street_mode_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="🔍 Найти улицу", callback_data="adm:new:street:search")
-    kb.button(text="✏️ Ввести вручную", callback_data="adm:new:street:manual")
-    kb.button(text="🚫 Без улицы", callback_data="adm:new:street:none")
-    kb.button(text="⬅️ Назад", callback_data="adm:new:district_back")
-    kb.adjust(1)
-    return kb.as_markup()
-
-
-def new_order_street_keyboard(streets: Sequence[tuple[int, str]]) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    for street_id, label in streets:
-        kb.button(text=label, callback_data=f"adm:new:street:{street_id}")
-    kb.button(text="🔍 Искать снова", callback_data="adm:new:street:search_again")
-    kb.button(text="⬅️ Назад", callback_data="adm:new:street:back")
-    kb.adjust(1)
-    return kb.as_markup()
-
-
-def new_order_street_manual_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="⬅️ Назад", callback_data="adm:new:street:manual_back")
-    return kb.as_markup()
-
-
-def new_order_street_search_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="⬅️ Назад", callback_data="adm:new:street:search_back")
-    kb.button(text="✖️ Отменить", callback_data="adm:new:cancel")
-    kb.adjust(1)
-    return kb.as_markup()
-
-
-def new_order_attachments_keyboard(has_any: bool) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="📎 Добавить", callback_data="adm:new:att:add")
-    kb.button(text="✅ Готово", callback_data="adm:new:att:done")
-    if has_any:
-        kb.button(text="🧹 Очистить", callback_data="adm:new:att:clear")
-    kb.adjust(1)
-    return kb.as_markup()
-
-
-def new_order_slot_keyboard(options: Sequence[tuple[str, str]]) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    for key, label in options:
-        kb.button(text=label, callback_data=f"adm:new:slot:{key}")
-    kb.adjust(1)
-    kb.button(text="✖️ Отменить", callback_data="adm:new:cancel")
-    return kb.as_markup()
-
-
-def new_order_asap_late_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="✅ Ок", callback_data="adm:new:slot:lateok")
-    kb.button(text="🔁 Перезапланировать", callback_data="adm:new:slot:reslot")
-    kb.adjust(1)
-    return kb.as_markup()
-
-
-
-def new_order_confirm_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="✅ Подтвердить", callback_data="adm:new:confirm")
-    kb.button(text="⬅️ Назад", callback_data="adm:new:cancel")
-    return kb.as_markup()
-
-
-
-
-def reports_menu_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="📦 Заказы (CSV/XLSX)", callback_data="adm:r:o")
-    kb.button(text="💸 Комиссии (CSV/XLSX)", callback_data="adm:r:c")
-    kb.button(text="👥 Реферальные (CSV/XLSX)", callback_data="adm:r:rr")
-    kb.button(text="⬅️ В меню", callback_data="adm:menu")
-    kb.adjust(1)
-    return kb.as_markup()
-
-
-def reports_periods_keyboard() -> InlineKeyboardMarkup:
-    """Quick period choices for reports export."""
-    kb = InlineKeyboardBuilder()
-    kb.button(text="Сегодня", callback_data="adm:r:pd:today")
-    kb.button(text="Вчера", callback_data="adm:r:pd:yesterday")
-    kb.button(text="Последние 7 дней", callback_data="adm:r:pd:last7")
-    kb.button(text="Текущий месяц", callback_data="adm:r:pd:this_month")
-    kb.button(text="Прошлый месяц", callback_data="adm:r:pd:prev_month")
-    kb.button(text="Выбрать вручную", callback_data="adm:r:pd:custom")
-    kb.button(text="⬅️ Назад", callback_data="adm:r")
-    kb.adjust(2, 2, 2, 1, 1)
-    return kb.as_markup()
-
-def settings_menu_keyboard() -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="🕙 Рабочий день", callback_data="adm:s:group:workday")
-    kb.button(text="⚖️ Распределение", callback_data="adm:s:group:distribution")
-    kb.button(text="⛔️ Лимиты", callback_data="adm:s:group:limits")
-    kb.button(text="🆘 Поддержка", callback_data="adm:s:group:support")
-    kb.button(text="🗺 Гео", callback_data="adm:s:group:geo")
-    kb.button(text="📣 Каналы", callback_data="adm:s:group:channels")
-    kb.adjust(2, 2, 2)
-    kb.button(text="  ", callback_data="adm:menu")
-    return kb.as_markup()
-
-
-def settings_group_keyboard(
-    group_key: str, field_buttons: Sequence[tuple[str, str]]
-) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    for field_key, label in field_buttons:
-        kb.button(text=f"{label}", callback_data=f"adm:s:edit:{group_key}:{field_key}")
-    kb.adjust(1)
-    kb.button(text="⬅️ Назад", callback_data="adm:s")
-    return kb.as_markup()
-
-
-def logs_menu_keyboard(*, can_clear: bool) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="🔄 Обновить", callback_data="adm:l:refresh")
-    if can_clear:
-        kb.button(text="🧹 Очистить", callback_data="adm:l:clear")
-        kb.adjust(2)
-    else:
-        kb.adjust(1)
-    kb.button(text="⬅️ В меню", callback_data="adm:menu")
-    return kb.as_markup()
-
 
 __all__ = [
-    "back_to_menu",
-    "finance_card_actions",
-    "finance_menu",
-    "finance_reject_cancel_keyboard",
-    "finance_segment_keyboard",
-    "main_menu",
-    "orders_menu",
-    "reports_menu_keyboard",
-    "reports_periods_keyboard",
-    "manual_candidates_keyboard",
-    "manual_confirm_keyboard",
-    "new_order_attachments_keyboard",
-    "new_order_city_keyboard",
-    "new_order_confirm_keyboard",
-    "new_order_district_keyboard",
-    "new_order_slot_keyboard",
-    "new_order_street_keyboard",
-    "new_order_street_manual_keyboard",
-    "new_order_street_search_keyboard",
-    "new_order_street_mode_keyboard",
-    "order_card_keyboard",
-    "reports_menu_keyboard",
-    "queue_list_keyboard",
-    "settings_menu_keyboard",
-    "settings_group_keyboard",
-    "logs_menu_keyboard",
-]
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\main.py
-```python
-# field_service/bots/admin_bot/main.py
-from __future__ import annotations
-
-import asyncio
-import logging
-from contextlib import suppress
-
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-
-from field_service.config import settings
-from field_service.bots.common.error_middleware import setup_error_middleware
-from field_service.bots.common.polling import poll_with_single_instance_guard
-from field_service.infra.notify import send_alert, send_log
-from field_service.services.distribution_scheduler import run_scheduler
-from field_service.services.heartbeat import run_heartbeat
-from field_service.services.watchdogs import watchdog_commissions_overdue
-from field_service.services.autoclose_scheduler import autoclose_scheduler  # P1-01
-from field_service.services.unassigned_monitor import monitor_unassigned_orders
-
-from .handlers import create_combined_router
-from .handlers_finance import router as finance_router  # CR-2025-10-03-007: Финансы
-from .handlers_staff import router as admin_staff_router
-from .queue import queue_router
-from .routers.admin_masters import router as admin_masters_router
-from .routers.admin_moderation import router as admin_moderation_router
-from .middlewares import StaffAccessMiddleware
-from .service_registry import register_services
-from .services_db import (
-    DBDistributionService,
-    DBFinanceService,
-    DBMastersService,
-    DBOrdersService,
-    DBSettingsService,
-    DBStaffService,
-)
-
-
-logger = logging.getLogger(__name__)
-
-
-async def main() -> int:
-    bot = Bot(
-        settings.admin_bot_token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
-    dp = Dispatcher()
-    
-    # P2-08: Используем только модульные роутеры из handlers/
-    dp.include_router(create_combined_router())
-    
-    # CR-2025-10-03-007: Финансы
-    dp.include_router(finance_router)
-    
-    # ОТКЛЮЧЕНО: Старый handlers.py (код дублируется в новых модулях)
-    # dp.include_router(admin_router)
-    
-    dp.include_router(admin_staff_router)
-    dp.include_router(queue_router)
-    dp.include_router(admin_masters_router)
-    dp.include_router(admin_moderation_router)
-
-    services = {
-        "staff_service": DBStaffService(),
-        "orders_service": DBOrdersService(),
-        "distribution_service": DBDistributionService(),
-        "finance_service": DBFinanceService(),
-        "settings_service": DBSettingsService(),
-        "masters_service": DBMastersService(),
-    }
-    bot._services = services  # type: ignore[attr-defined]
-    register_services(services)
-
-    staff_service: DBStaffService = services["staff_service"]
-    seeded = await staff_service.seed_global_admins(settings.global_admins_tg_ids)
-    if seeded:
-        logger.info("Seeded %d GLOBAL_ADMIN from GLOBAL_ADMINS_TG_IDS", seeded)
-
-    superuser_ids = set(settings.admin_bot_superusers) | set(settings.global_admins_tg_ids)
-    dp.update.middleware(StaffAccessMiddleware(staff_service, superuser_ids))
-
-    channel_settings = await services["settings_service"].get_channel_settings()
-    alerts_chat_id = channel_settings.get("alerts_channel_id") or settings.alerts_channel_id
-    logs_chat_id = channel_settings.get("logs_channel_id") or settings.logs_channel_id
-
-    setup_error_middleware(
-        dp,
-        bot=bot,
-        bot_label="admin_bot",
-        logs_chat_id=logs_chat_id,
-        alerts_chat_id=alerts_chat_id,
-    )
-
-    heartbeat_task = asyncio.create_task(
-        run_heartbeat(bot, name="admin", chat_id=logs_chat_id),
-        name="admin_heartbeat",
-    )
-
-    scheduler_task = asyncio.create_task(
-        run_scheduler(bot, alerts_chat_id=alerts_chat_id),
-        name="admin_scheduler",
-    )
-
-    watchdog_interval = max(60, settings.overdue_watchdog_min * 60)
-    watchdog_task = asyncio.create_task(
-        watchdog_commissions_overdue(
-            bot,
-            alerts_chat_id,
-            interval_seconds=watchdog_interval,
-        ),
-        name="commissions_watchdog",
-    )
-
-    unassigned_task: asyncio.Task | None = None
-    if alerts_chat_id:
-        unassigned_task = asyncio.create_task(
-            monitor_unassigned_orders(
-                bot,
-                alerts_chat_id,
-                interval_seconds=600,
-            ),
-            name="unassigned_monitor",
-        )
-
-    # P1-01: Автозакрытие заказов через 24ч
-    autoclose_task = asyncio.create_task(
-        autoclose_scheduler(
-            interval_seconds=3600,  # Проверка каждый час
-        ),
-        name="autoclose_scheduler",
-    )
-
-    exit_code = 0
-    try:
-        await poll_with_single_instance_guard(
-            dp,
-            bot,
-            logs_chat_id=logs_chat_id,
-        )
-    except SystemExit as conflict_exit:
-        exit_code = int(conflict_exit.code or 0)
-    except (KeyboardInterrupt, asyncio.CancelledError):
-        pass
-    except Exception as exc:
-        logger.exception("Admin bot polling failed: %s", exc)
-        message = f"❗ Ошибка admin_bot polling: {type(exc).__name__}: {exc}"
-        await send_alert(bot, message, chat_id=alerts_chat_id, exc=exc)
-        await send_log(bot, message, chat_id=logs_chat_id)
-        exit_code = 1
-    finally:
-        for task in (heartbeat_task, scheduler_task, watchdog_task, autoclose_task, unassigned_task):
-            if task:
-                task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await task
-        await bot.session.close()
-
-    return exit_code
-
-
-if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\manual_candidates_patch.py
-```python
-from __future__ import annotations
-
-from typing import Iterable, Optional
-from types import SimpleNamespace
-
-from sqlalchemy import select
-
-from field_service.bots.admin_bot.services_db import DBOrdersService, MasterBrief
-from field_service.db import models as m
-from field_service.services.candidates import select_candidates
-
-
-def _normalize_city_filter(city_ids: Optional[Iterable[int]]) -> Optional[tuple[int, ...]]:
-    if city_ids is None:
-        return None
-    return tuple(sorted({int(value) for value in city_ids}))
-
-
-def apply_manual_candidates_patch(target: type[DBOrdersService]) -> None:
-    async def manual_candidates(
-        self: DBOrdersService,
-        order_id: int,
-        *,
-        page: int,
-        page_size: int,
-        city_ids: Optional[Iterable[int]] = None,
-    ) -> tuple[list[MasterBrief], bool]:
-        page = max(page, 1)
-        offset = (page - 1) * page_size
-        async with self._session_factory() as session:
-            city_filter = _normalize_city_filter(city_ids)
-            if city_filter is not None and not city_filter:
-                return [], False
-            allowed_cities = (
-                {int(value) for value in city_filter} if city_filter is not None else None
-            )
-            order_q = await session.execute(
-                select(
-                    m.orders.id,
-                    m.orders.city_id,
-                    m.orders.district_id,
-                    m.orders.category,
-                ).where(m.orders.id == order_id)
-            )
-            order_row = order_q.first()
-            if not order_row:
-                return [], False
-
-            raw_city = getattr(order_row, "city_id", None)
-            if raw_city is None:
-                return [], False
-            try:
-                order_city_id = int(raw_city)
-            except (TypeError, ValueError):
-                return [], False
-            if allowed_cities is not None and order_city_id not in allowed_cities:
-                return [], False
-
-            raw_district = getattr(order_row, "district_id", None)
-            if raw_district is None:
-                return [], False
-            try:
-                district_id = int(raw_district)
-            except (TypeError, ValueError):
-                return [], False
-
-            order_payload = SimpleNamespace(
-                id=order_id,
-                city_id=order_city_id,
-                district_id=district_id,
-                category=getattr(order_row, "category", None),
-            )
-
-            candidate_infos = await select_candidates(
-                order_payload,
-                "manual",
-                session=session,
-            )
-
-            slice_end = offset + page_size + 1
-            page_slice = candidate_infos[offset:slice_end]
-            has_next = len(page_slice) > page_size
-            page_candidates = page_slice[:page_size]
-
-            briefs: list[MasterBrief] = []
-            for candidate in page_candidates:
-                briefs.append(
-                    MasterBrief(
-                        id=candidate.master_id,
-                        full_name=candidate.full_name,
-                        city_id=candidate.city_id,
-                        has_car=candidate.has_car,
-                        avg_week_check=candidate.avg_week_check,
-                        rating_avg=candidate.rating_avg,
-                        is_on_shift=candidate.is_on_shift,
-                        is_active=candidate.is_active,
-                        verified=candidate.verified,
-                        in_district=candidate.in_district,
-                        active_orders=candidate.active_orders,
-                        max_active_orders=candidate.max_active_orders,
-                        on_break=candidate.on_break,
-                    )
-                )
-
-            return briefs, has_next
-
-    target.manual_candidates = manual_candidates
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\middlewares.py
-```python
-from __future__ import annotations
-
-from typing import Any, Iterable, Optional
-
-from aiogram import BaseMiddleware
-from aiogram.types import CallbackQuery, Message, TelegramObject
-
-from field_service.bots.admin_bot.dto import StaffRole, StaffUser
-from field_service.bots.admin_bot.services_db import DBStaffService
-
-ACCESS_PROMPT = "  ."
-INACTIVE_PROMPT = " ,   ."
-
-
-def _extract_user_id(event: TelegramObject) -> Optional[int]:
-    if isinstance(event, Message):
-        return event.from_user.id if event.from_user else None
-    if isinstance(event, CallbackQuery):
-        return event.from_user.id if event.from_user else None
-    user = getattr(event, "from_user", None)
-    return user.id if user else None
-
-
-def _extract_username(event: TelegramObject) -> Optional[str]:
-    """Извлечь username пользователя из события."""
-    if isinstance(event, Message):
-        return event.from_user.username if event.from_user else None
-    if isinstance(event, CallbackQuery):
-        return event.from_user.username if event.from_user else None
-    user = getattr(event, "from_user", None)
-    return user.username if user else None
-
-
-def _extract_full_name(event: TelegramObject) -> Optional[str]:
-    """Извлечь полное имя пользователя из события."""
-    if isinstance(event, Message) and event.from_user:
-        return event.from_user.full_name
-    if isinstance(event, CallbackQuery) and event.from_user:
-        return event.from_user.full_name
-    user = getattr(event, "from_user", None)
-    if user and hasattr(user, "full_name"):
-        return user.full_name
-    return None
-
-
-def _is_callback(event: TelegramObject) -> bool:
-    return isinstance(event, CallbackQuery) or (
-        hasattr(event, "message") and hasattr(event, "answer") and not isinstance(event, Message)
-    )
-
-
-async def _notify_access_required(event: TelegramObject, text: str) -> None:
-    if isinstance(event, CallbackQuery):
-        try:
-            await event.answer(text, show_alert=True)
-        except Exception:
-            pass
-        if event.message:
-            await event.message.answer(text)
-        return
-    if isinstance(event, Message):
-        await event.answer(text)
-        return
-    answer = getattr(event, "answer", None)
-    if callable(answer):
-        await answer(text)
-
-
-class StaffAccessMiddleware(BaseMiddleware):
-    def __init__(self, staff_service: DBStaffService, superusers: Iterable[int] = ()) -> None:
-        self._staff_service = staff_service
-        self._superusers = {int(tg) for tg in superusers if tg is not None}
-
-    async def __call__(self, handler, event: TelegramObject, data: dict[str, Any]) -> Any:
-        tg_id = _extract_user_id(event)
-        if tg_id is None:
-            return await handler(event, data)
-
-        # CR-2025-10-04: Универсальный поиск по tg_id ИЛИ username
-        username = _extract_username(event)
-        staff = await self._staff_service.get_by_tg_id_or_username(
-            tg_id=tg_id,
-            username=username,
-            update_tg_id=True  # Автоматически обновлять tg_id если нашли по username
-        )
-        
-        if not staff:
-            # Для суперюзеров не в БД - отказ
-            if tg_id in self._superusers:
-                await _notify_access_required(event, "⛔ Суперпользователь не зарегистрирован в системе. Обратитесь к администратору.")
-                return None
-            # Для обычных пользователей - пусть обработчик решает
-            if _is_callback(event):
-                await _notify_access_required(event, ACCESS_PROMPT)
-                return None
-            data["staff"] = None
-            return await handler(event, data)
-
-        if not staff.is_active:
-            await _notify_access_required(event, INACTIVE_PROMPT)
-            return None
-
-        # Всегда устанавливаем свежезагруженные данные staff
-        data["staff"] = staff
-        return await handler(event, data)
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\normalizers.py
-```python
-from __future__ import annotations
-
-import re
-from typing import Iterable, Mapping, MutableMapping
-
-from field_service.db import OrderCategory
-from field_service.db.models import OrderStatus
-
-__all__ = ["normalize_category", "normalize_status"]
-
-
-def _simplify_token(raw: str) -> str:
-    """Return an uppercase token without spaces/underscores/hyphens."""
-    normalized = raw.strip()
-    if not normalized:
-        return ""
-    normalized = normalized.replace("", "").replace("", "")
-    normalized = re.sub(r"[\s_\-]+", "", normalized)
-    return normalized.upper()
-
-
-def _build_category_map() -> Mapping[str, OrderCategory]:
-    aliases: MutableMapping[str, OrderCategory] = {}
-    alias_pairs: Iterable[tuple[str, OrderCategory]] = (
-        (OrderCategory.ELECTRICS.value, OrderCategory.ELECTRICS),
-        ("electrics", OrderCategory.ELECTRICS),
-        ("elec", OrderCategory.ELECTRICS),
-        ("", OrderCategory.ELECTRICS),
-        ("", OrderCategory.ELECTRICS),
-        (OrderCategory.PLUMBING.value, OrderCategory.PLUMBING),
-        ("plumbing", OrderCategory.PLUMBING),
-        ("plumb", OrderCategory.PLUMBING),
-        ("", OrderCategory.PLUMBING),
-        ("", OrderCategory.PLUMBING),
-        (OrderCategory.APPLIANCES.value, OrderCategory.APPLIANCES),
-        ("appliances", OrderCategory.APPLIANCES),
-        ("appli", OrderCategory.APPLIANCES),
-        (" ", OrderCategory.APPLIANCES),
-        ("", OrderCategory.APPLIANCES),
-        (OrderCategory.WINDOWS.value, OrderCategory.WINDOWS),
-        ("windows", OrderCategory.WINDOWS),
-        ("", OrderCategory.WINDOWS),
-        (OrderCategory.HANDYMAN.value, OrderCategory.HANDYMAN),
-        ("handyman", OrderCategory.HANDYMAN),
-        ("handy", OrderCategory.HANDYMAN),
-        ("", OrderCategory.HANDYMAN),
-        ("furn", OrderCategory.HANDYMAN),
-        ("furniture", OrderCategory.HANDYMAN),
-        (OrderCategory.ROADSIDE.value, OrderCategory.ROADSIDE),
-        ("roadside", OrderCategory.ROADSIDE),
-        ("autohelp", OrderCategory.ROADSIDE),
-        ("auto_help", OrderCategory.ROADSIDE),
-        ("", OrderCategory.ROADSIDE),
-    )
-    for alias, category in alias_pairs:
-        simplified = _simplify_token(alias)
-        if simplified:
-            aliases.setdefault(simplified, category)
-    for category in OrderCategory:
-        aliases.setdefault(_simplify_token(category.value), category)
-    return aliases
-
-
-_CATEGORY_MAP = _build_category_map()
-
-LEGACY_STATUS_ALIASES: Mapping[str, OrderStatus] = {
-    "DISTRIBUTION": OrderStatus.SEARCHING,
-    "SCHEDULED": OrderStatus.EN_ROUTE,
-    "INPROGRESS": OrderStatus.WORKING,
-    "IN_PROGRESS": OrderStatus.WORKING,
-    "DONE": OrderStatus.PAYMENT,
-}
-
-
-def normalize_category(
-    value: OrderCategory | str | None,
-    *,
-    default: OrderCategory | None = None,
-) -> OrderCategory | None:
-    if value is None:
-        return default
-    if isinstance(value, OrderCategory):
-        return value
-    raw = str(value).strip()
-    if not raw:
-        return default
-    try:
-        return OrderCategory(raw)
-    except ValueError:
-        pass
-    try:
-        return OrderCategory(raw.upper())
-    except ValueError:
-        pass
-    simplified = _simplify_token(raw)
-    category = _CATEGORY_MAP.get(simplified)
-    if category:
-        return category
-    return default
-
-
-def normalize_status(
-    value: OrderStatus | str | None,
-    *,
-    default: OrderStatus | None = None,
-) -> OrderStatus | None:
-    if value is None:
-        return default
-    if isinstance(value, OrderStatus):
-        return value
-    raw = str(value).strip()
-    if not raw:
-        return default
-    upper = raw.upper()
-    alias = LEGACY_STATUS_ALIASES.get(upper)
-    if alias:
-        return alias
-    try:
-        return OrderStatus(upper)
-    except ValueError:
-        pass
-    try:
-        return OrderStatus(raw)
-    except ValueError:
-        return default
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\queue.py
-```python
-﻿from __future__ import annotations
-
-import html
-from datetime import datetime, date
-from typing import Iterable, Optional, Sequence
-import inspect
-
-from aiogram import F, Router
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import StateFilter
-from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from field_service.db.models import OrderStatus
-from field_service.services.guarantee_service import GuaranteeError
-
-from .access import visible_city_ids_for
-from .dto import (
-    CityRef,
-    MasterBrief,
-    OrderAttachment,
-    OrderCard,
-    OrderCategory,
-    OrderDetail,
-    OrderListItem,
-    OrderStatusHistoryItem,
-    OrderType,
-    StaffRole,
-    StaffUser,
-)
-from .filters import StaffRoleFilter
-from .keyboards import (
-    assign_menu_keyboard,
-    manual_candidates_keyboard,
-    manual_confirm_keyboard,
-    main_menu,
-    orders_menu,
-    order_card_keyboard,
-    queue_cancel_keyboard,
-    queue_list_keyboard,
-)
-from .states import QueueActionFSM, QueueFiltersFSM
-from .texts import master_brief_line
-from .utils import get_service
-from .normalizers import normalize_category, normalize_status
-
-# P2.2: Typed state management imports
-from .queue_state import (
-    QueueFilters,
-    load_queue_filters,
-    save_queue_filters,
-    load_filters_message,
-    save_filters_message,
-    load_cancel_state,
-    save_cancel_state,
-    clear_cancel_state as typed_clear_cancel_state,
-)
-
-queue_router = Router(name="admin_queue")
-
-
-async def _safe_answer(cq: CallbackQuery, *args, **kwargs) -> None:
-    try:
-        await cq.answer(*args, **kwargs)
-    except TelegramBadRequest:
-        pass
-
-
-_ALLOWED_ROLES = {StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}
-
-QUEUE_PAGE_SIZE = 10
-MANUAL_PAGE_SIZE = 5
-ORDER_CARD_HISTORY_LIMIT = 5
-
-
-def _resolve_city_filter(staff: StaffUser, city_id: Optional[int]) -> Optional[list[int]]:
-    allowed = visible_city_ids_for(staff)
-    if allowed is None:
-        if city_id:
-            return [city_id]
-        return None
-    allowed_set = set(allowed)
-    if city_id:
-        return [city_id] if city_id in allowed_set else []
-    return list(allowed)
-
-
-async def _call_service(method, *args, city_ids=None, **kwargs):
-    try:
-        sig = inspect.signature(method)
-        params = sig.parameters
-        accepts_city = (
-            "city_ids" in params
-            or any(p.kind == p.VAR_KEYWORD for p in params.values())
-        )
-        if accepts_city and city_ids is not None:
-            kwargs = dict(kwargs)
-            kwargs["city_ids"] = city_ids
-        return await method(*args, **kwargs)
-    except TypeError:
-        # Fallback: retry without city filter if the method rejects it
-        return await method(*args, **kwargs)
-
-
-def _format_order_line(order: OrderListItem) -> str:
-    address_parts: list[str] = []
-    if order.city_name:
-        address_parts.append(order.city_name)
-    if order.district_name:
-        address_parts.append(order.district_name)
-    street_segments: list[str] = []
-    if order.street_name:
-        street_segments.append(order.street_name)
-    if order.house:
-        street_segments.append(str(order.house))
-    if street_segments:
-        street = ' '.join(street_segments)
-        address_parts.append(street)
-    address = ', '.join(address_parts) if address_parts else '-'
-
-    normalized_category = normalize_category(getattr(order, "category", None))
-    if normalized_category is not None:
-        category = CATEGORY_LABELS.get(normalized_category, normalized_category.value)
-    else:
-        raw_category = getattr(order, "category", "")
-        category = CATEGORY_LABELS_BY_VALUE.get(str(raw_category), str(raw_category)) if raw_category else '-'
-
-    status_value = getattr(order, "status", None)
-    status_text = getattr(status_value, "value", None) or str(status_value or '-')
-    if order.order_type is OrderType.GUARANTEE:
-        status_text = f"{status_text} (Guarantee)"
-
-    slot_text = order.timeslot_local or '-'
-
-    if order.master_name:
-        master_label = order.master_name
-    elif order.master_id:
-        master_label = f"Master #{order.master_id}"
-    else:
-        master_label = "No master"
-
-    columns = [
-        html.escape(address, quote=False),
-        html.escape(category or '-', quote=False),
-        html.escape(status_text or '-', quote=False),
-        html.escape(slot_text or '-', quote=False),
-        html.escape(master_label, quote=False),
-    ]
-    return f"#{order.id} - " + ' | '.join(columns)
-
-def _manual_candidates_text(order: OrderCard, masters: Sequence[MasterBrief], page: int) -> str:
-    address_parts: list[str] = []
-    if order.city_name:
-        address_parts.append(order.city_name)
-    if order.district_name:
-        address_parts.append(order.district_name)
-    address_label = ' / '.join(address_parts) if address_parts else '-'
-
-    lines = [
-        f"Order #{order.id}",
-        f"Address: {address_label}",
-        f"Page: {page}",
-        "Available masters:",
-    ]
-    if masters:
-        lines.extend(master_brief_line(master) for master in masters)
-    else:
-        lines.append("No available masters.")
-    return "\n".join(lines)
-
-CATEGORY_CHOICES: tuple[tuple[OrderCategory, str], ...] = (
-    (OrderCategory.ELECTRICS, "Электрика"),
-    (OrderCategory.PLUMBING, "Сантехника"),
-    (OrderCategory.APPLIANCES, "Бытовая техника"),
-    (OrderCategory.WINDOWS, "Окна и двери"),
-    (OrderCategory.HANDYMAN, "Универсал на час"),
-    (OrderCategory.ROADSIDE, "Автопомощь"),
-)
-CATEGORY_LABELS = {category: label for category, label in CATEGORY_CHOICES}
-CATEGORY_LABELS_BY_VALUE = {category.value: label for category, label in CATEGORY_CHOICES}
-CATEGORY_VALUE_MAP = {category.value: category for category, _ in CATEGORY_CHOICES}
-CATEGORY_CHOICE_ENTRIES: tuple[tuple[str, str], ...] = tuple(
-    (category.value, label) for category, label in CATEGORY_CHOICES
-)
-STATUS_CHOICES = tuple((status.value, status.value) for status in OrderStatus)
-_MAX_CITIES = 120
-CANCEL_REASON_MIN = 3
-CANCEL_REASON_MAX = 200
-
-
-def _format_order_card_text(
-    order: OrderDetail,
-    history: Sequence[OrderStatusHistoryItem],
-) -> str:
-    """Build a human friendly card for an order detail view."""
-    address_parts: list[str] = []
-    if order.city_name:
-        address_parts.append(order.city_name)
-    if order.district_name:
-        address_parts.append(order.district_name)
-    street_segments: list[str] = []
-    if order.street_name:
-        street_segments.append(order.street_name)
-    if order.house:
-        street_segments.append(str(order.house))
-    if street_segments:
-        address_parts.append(" ".join(street_segments))
-    address = ", ".join(address_parts) if address_parts else "-"
-
-    client_bits: list[str] = []
-    if order.client_name:
-        client_bits.append(html.escape(order.client_name))
-    if order.client_phone:
-        client_bits.append(html.escape(order.client_phone))
-    client_line = " / ".join(client_bits) if client_bits else "-"
-
-    master_bits: list[str] = []
-    if order.master_name:
-        master_bits.append(html.escape(order.master_name))
-    elif order.master_id:
-        master_bits.append(f"#{order.master_id}")
-    if order.master_phone:
-        master_bits.append(html.escape(order.master_phone))
-    master_line = " / ".join(master_bits).strip()
-
-    description = order.description.strip() if order.description else ""
-    description_line = html.escape(description) if description else "-"
-
-    is_guarantee = order.order_type is OrderType.GUARANTEE
-    type_label = order.type if not is_guarantee else f"{order.type} (гарантия)"
-    normalized_category = normalize_category(getattr(order, "category", None))
-    if normalized_category is not None:
-        category_label = CATEGORY_LABELS.get(normalized_category, normalized_category.value)
-    else:
-        raw_cat = getattr(order, "category", "")
-        category_label = str(raw_cat)
-
-    lines_out = [
-        f"<b>Заявка #{order.id}</b>",
-        f"Статус: {html.escape(order.status)}",
-        f"Тип: {html.escape(type_label)}",
-        f"Категория: {html.escape(category_label)}",
-        f"Слот: {html.escape(order.timeslot_local) if order.timeslot_local else '-'}",
-        f"Адрес: {html.escape(address)}",
-    ]
-    if is_guarantee:
-        lines_out.append("<b>Гарантия по предыдущему заказу</b>")
-
-    lines_out.append(f"Вложения: {len(order.attachments)}")
-    lines_out.append("")
-    lines_out.append("<b>Клиент</b>")
-    lines_out.append(f"Контакт: {client_line}")
-    master_display = master_line if master_line else "пока не назначен"
-    lines_out.append(f"Мастер: {master_display}")
-    lines_out.append("")
-    lines_out.append("<b>Описание</b>")
-    lines_out.append(description_line)
-    lines_out.append("")
-    lines_out.append("<b>История статусов</b>")
-    if history:
-        for item in history:
-            when = item.changed_at_local or "-"
-            transition = item.to_status
-            if item.from_status:
-                transition = f"{item.from_status} -> {item.to_status}"
-            actors: list[str] = []
-            if item.changed_by_staff_id:
-                actors.append(f"staff #{item.changed_by_staff_id}")
-            if item.changed_by_master_id:
-                actors.append(f"master #{item.changed_by_master_id}")
-            actor_part = f" ({', '.join(actors)})" if actors else ""
-            reason_part = f" - {item.reason}" if item.reason else ""
-            lines_out.append(f"- {when}: {transition}{actor_part}{reason_part}")
-    else:
-        lines_out.append("История пуста")
-
-    return "\n".join(lines_out)
-
-
-def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False) -> InlineKeyboardMarkup:
-    status = (order.status or '').upper()
-    allow_return = status not in {'CANCELED', 'CLOSED'}
-    allow_cancel = status not in {'CANCELED', 'CLOSED'}
-    is_deferred = status == 'DEFERRED'  # ⚠️ Новый параметр
-    return order_card_keyboard(
-        order.id,
-        attachments=order.attachments,
-        allow_return=allow_return,
-        allow_cancel=allow_cancel,
-        show_guarantee=show_guarantee,
-        is_deferred=is_deferred,
-    )
-
-
-async def _should_show_guarantee_button(
-    order: OrderDetail, orders_service, city_ids: Optional[Iterable[int]] = None
-) -> bool:
-    if (order.status or "").upper() != 'CLOSED':
-        return False
-    if order.order_type is OrderType.GUARANTEE:
-        return False
-    if not order.master_id:
-        return False
-    return not await _call_service(orders_service.has_active_guarantee, order.id, city_ids=city_ids)
-
-
-async def _render_order_card(
-    message: Message,
-    order: OrderDetail,
-    history: Sequence[OrderStatusHistoryItem],
-    *,
-    show_guarantee: bool = False,
-) -> None:
-    text = _format_order_card_text(order, history)
-    markup = _order_card_markup(order, show_guarantee=show_guarantee)
-    try:
-        await message.edit_text(text, reply_markup=markup)
-    except TelegramBadRequest as exc:
-        if exc.message == "Message is not modified":
-            return
-        await message.answer(text, reply_markup=markup)
-
-
-async def _clear_cancel_state(state: FSMContext) -> None:
-    """Wrapper around typed clear_cancel_state for compatibility."""
-    await typed_clear_cancel_state(state)
-
-
-def _parse_category_filter(value: Optional[OrderCategory]) -> Optional[OrderCategory]:
-    """Parse category filter (now already typed)."""
-    return value
-
-
-async def _available_cities(staff: StaffUser, orders_service) -> list[CityRef]:
-    if staff.role is StaffRole.GLOBAL_ADMIN or not staff.city_ids:
-        return await orders_service.list_cities(limit=_MAX_CITIES)
-    result: list[CityRef] = []
-    for city_id in sorted(staff.city_ids):
-        city = await orders_service.get_city(city_id)
-        if city:
-            result.append(city)
-    return result
-
-
-def _filters_menu_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text="", callback_data="adm:q:flt:city")
-    builder.button(text="", callback_data="adm:q:flt:cat")
-    builder.button(text="", callback_data="adm:q:flt:status")
-    builder.button(text="", callback_data="adm:q:flt:master")
-    builder.button(text="", callback_data="adm:q:flt:date")
-    builder.button(text="", callback_data="adm:q:flt:apply")
-    builder.button(text="", callback_data="adm:q:flt:reset")
-    builder.button(text="", callback_data="adm:q")
-    builder.adjust(2, 2, 2, 2)
-    return builder.as_markup()
-
-
-def _city_keyboard(cities: Iterable[CityRef], selected_id: Optional[int]) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    for city in cities:
-        title = city.name
-        if selected_id == city.id:
-            title = f" {title}"
-        builder.button(text=title, callback_data=f"adm:q:flt:c:{city.id}")
-    builder.button(text=" ", callback_data="adm:q:flt:c:0")
-    builder.button(text="", callback_data="adm:q:flt")
-    builder.adjust(1)
-    return builder.as_markup()
-
-
-def _choice_keyboard(
-    entries: Iterable[tuple[str, str]],
-    *,
-    prefix: str,
-    selected: Optional[str],
-    clear_suffix: str = "clr",
-) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    for value, label in entries:
-        text = label
-        if selected == value:
-            text = f" {label}"
-        builder.button(text=text, callback_data=f"{prefix}:{value}")
-    builder.button(text=" ", callback_data=f"{prefix}:{clear_suffix}")
-    builder.button(text="", callback_data="adm:q:flt")
-    builder.adjust(2)
-    return builder.as_markup()
-
-
-async def _format_filters_text(
-    staff: StaffUser,
-    filters: QueueFilters,
-    orders_service,
-    *,
-    include_header: bool = True,
-) -> str:
-    lines: list[str] = []
-    if include_header:
-        lines.append("<b>🔧 Фильтры очереди</b>")
-    
-    city_text = ""
-    if filters.city_id:
-        city = await orders_service.get_city(filters.city_id)
-        city_text = city.name if city else f"#{filters.city_id}"
-    
-    category_text = ""
-    if filters.category:
-        category_text = CATEGORY_LABELS.get(filters.category, filters.category.value)
-    
-    status_text = filters.status.value if filters.status else ""
-    master_text = f"#{filters.master_id}" if filters.master_id else ""
-    date_value = filters.date.isoformat() if filters.date else ""
-    
-    lines.extend([
-        f"🏙 Город: {city_text}",
-        f"📂 Категория: {category_text}",
-        f"📊 Статус: {status_text}",
-        f"👷 Мастер: {master_text}",
-        f"📅 Дата: {date_value}",
-    ])
-    return "\n".join(lines)
-
-
-async def _edit_or_reply(message: Message, text: str, markup: InlineKeyboardMarkup, state: FSMContext) -> None:
-    try:
-        await message.edit_text(text, reply_markup=markup, parse_mode="HTML")
-        await save_filters_message(state, message.chat.id, message.message_id)
-    except TelegramBadRequest as exc:
-        if exc.message == "Message is not modified":
-            return
-        sent = await message.answer(text, reply_markup=markup, parse_mode="HTML")
-        await save_filters_message(state, sent.chat.id, sent.message_id)
-
-
-async def _render_filters_menu(message: Message, staff: StaffUser, state: FSMContext) -> None:
-    orders_service = get_service(message.bot, "orders_service")
-    filters = await load_queue_filters(state)
-    text = await _format_filters_text(staff, filters, orders_service)
-    await _edit_or_reply(message, text, _filters_menu_keyboard(), state)
-
-
-async def _render_filters_by_ref(bot, staff: StaffUser, state: FSMContext) -> None:
-    msg_ref = await load_filters_message(state)
-    if not msg_ref:
-        return
-    
-    orders_service = get_service(bot, "orders_service")
-    filters = await load_queue_filters(state)
-    text = await _format_filters_text(staff, filters, orders_service)
-    markup = _filters_menu_keyboard()
-    
-    try:
-        await bot.edit_message_text(
-            chat_id=msg_ref.chat_id,
-            message_id=msg_ref.message_id,
-            text=text,
-            reply_markup=markup,
-            parse_mode="HTML",
-        )
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            sent = await bot.send_message(
-                msg_ref.chat_id,
-                text,
-                reply_markup=markup,
-                parse_mode="HTML",
-            )
-            await save_filters_message(state, sent.chat.id, sent.message_id)
-    else:
-        await save_filters_message(state, msg_ref.chat_id, msg_ref.message_id)
-
-
-async def _render_city_selection(message: Message, staff: StaffUser, state: FSMContext) -> None:
-    orders_service = get_service(message.bot, "orders_service")
-    cities = await _available_cities(staff, orders_service)
-    filters = await load_queue_filters(state)
-    await _edit_or_reply(
-        message,
-        "🏙 Выберите город:",
-        _city_keyboard(cities, filters.city_id),
-        state
-    )
-
-
-async def _render_choice(
-    message: Message,
-    *,
-    entries: Iterable[tuple[str, str]],
-    prefix: str,
-    selected: Optional[str],
-    state: FSMContext,
-    title: str,
-) -> None:
-    await _edit_or_reply(message, title, _choice_keyboard(entries, prefix=prefix, selected=selected), state)
-
-
-async def _render_queue_list(message: Message, staff: StaffUser, state: FSMContext, page: int) -> None:
-    """Render the main queue view for the admin bot."""
-    orders_service = get_service(message.bot, "orders_service")
-    filters = await load_queue_filters(state)
-    page = max(page, 1)
-
-    # Resolve city filter with RBAC
-    city_filter = _resolve_city_filter(staff, filters.city_id)
-
-    # Build query parameters
-    timeslot_date = filters.date
-
-    items: list[OrderListItem]
-    has_next = False
-    if city_filter == []:
-        items = []
-    else:
-        items, has_next = await orders_service.list_queue(
-            city_ids=city_filter,
-            page=page,
-            page_size=QUEUE_PAGE_SIZE,
-            status_filter=filters.status,
-            category=filters.category,
-            master_id=filters.master_id,
-            timeslot_date=timeslot_date,
-        )
-
-    filters_text = await _format_filters_text(
-        staff, filters, orders_service, include_header=False
-    )
-    lines = ["<b>📦 Очередь заявок</b>", filters_text]
-    if items:
-        lines.append("")
-        lines.extend(_format_order_line(item) for item in items)
-    else:
-        lines.append("")
-        lines.append("💭 Список пуст")
-    lines.append("")
-    lines.append(f"📄 Страница: {page}")
-    text = "\n".join(lines)
-
-    markup = queue_list_keyboard(items, page=page, has_next=has_next)
-    await _edit_or_reply(message, text, markup, state)
-
-
-
-
-
-# P1-9: Функция для меню очереди
-def _queue_menu_markup() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text="🔍 Поиск по ID", callback_data="adm:q:search")
-    builder.button(text="🔧 Фильтры", callback_data="adm:q:flt")
-    builder.button(text="📋 Открыть очередь", callback_data="adm:orders:queue:1")
-    builder.button(text="🏠 В меню", callback_data="adm:menu")
-    builder.adjust(1)
-    return builder.as_markup()
-
-
-@queue_router.callback_query(
-    F.data == "adm:orders_menu",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_orders_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Render main menu for orders sections."""
-    orders_service = get_service(cq.message.bot, "orders_service")
-    city_ids = visible_city_ids_for(staff)
-    counts = await orders_service.count_orders_by_sections(city_ids)
-
-    text = (
-        "\U0001f4e6 <b>\u0417\u0430\u044f\0432\043a\0438</b>\n\n"
-        "\u0412\u044b\u0431\0435\0440\0438\0442\0435 \u0440\u0430\0437\0434\0435\043b \u0434\043b\044f \u043f\0440\043e\0441\043c\043e\0442\0440\0430 \u0437\0430\044f\0432\043e\043a."
-    )
-
-    markup = orders_menu(staff, counts)
-    try:
-        await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await cq.message.answer(text, reply_markup=markup, parse_mode="HTML")
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:orders:queue:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_orders_queue_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Display queue list via the orders menu entry."""
-    try:
-        page = int(cq.data.split(":")[3])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверная страница", show_alert=True)
-        return
-
-    await _render_queue_list(cq.message, staff, state, page)
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:orders:warranty:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_orders_warranty_list(cq: CallbackQuery, staff: StaffUser) -> None:
-    """List orders that are within warranty period."""
-    try:
-        page = int(cq.data.split(":")[3])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверная страница", show_alert=True)
-        return
-
-    orders_service = get_service(cq.message.bot, "orders_service")
-    city_filter = visible_city_ids_for(staff)
-
-    items, has_next = await orders_service.list_warranty_orders(
-        city_ids=city_filter,
-        page=page,
-        page_size=QUEUE_PAGE_SIZE,
-    )
-
-    lines = ["<b>🛡 Заявки на гарантии</b>"]
-    if items:
-        lines.append("")
-        lines.extend(_format_order_line(item) for item in items)
-    else:
-        lines.append("")
-        lines.append("💭 Список пуст")
-    lines.append("")
-    lines.append(f"📄 Страница: {page}")
-
-    text = "\n".join(lines)
-
-    kb = InlineKeyboardBuilder()
-    for order in items:
-        kb.button(text=f"#{order.id}", callback_data=f"adm:q:card:{order.id}")
-    if items:
-        kb.adjust(1)
-
-    nav = InlineKeyboardBuilder()
-    nav_count = 0
-    if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:orders:warranty:{page - 1}")
-        nav_count += 1
-    if has_next:
-        nav.button(text="▶️ Далее", callback_data=f"adm:orders:warranty:{page + 1}")
-        nav_count += 1
-    if nav_count:
-        nav.adjust(nav_count)
-        kb.attach(nav)
-
-    kb.button(text="⬅️ Назад", callback_data="adm:orders_menu")
-    markup = kb.as_markup()
-
-    try:
-        await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await cq.message.answer(text, reply_markup=markup, parse_mode="HTML")
-
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:orders:closed:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_orders_closed_list(cq: CallbackQuery, staff: StaffUser) -> None:
-    """List orders whose warranty period has finished."""
-    try:
-        page = int(cq.data.split(":")[3])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверная страница", show_alert=True)
-        return
-
-    orders_service = get_service(cq.message.bot, "orders_service")
-    city_filter = visible_city_ids_for(staff)
-
-    items, has_next = await orders_service.list_closed_orders(
-        city_ids=city_filter,
-        page=page,
-        page_size=QUEUE_PAGE_SIZE,
-    )
-
-    lines = ["<b>✅ Закрытые заявки</b>"]
-    if items:
-        lines.append("")
-        lines.extend(_format_order_line(item) for item in items)
-    else:
-        lines.append("")
-        lines.append("💭 Список пуст")
-    lines.append("")
-    lines.append(f"📄 Страница: {page}")
-
-    text = "\n".join(lines)
-
-    kb = InlineKeyboardBuilder()
-    for order in items:
-        kb.button(text=f"#{order.id}", callback_data=f"adm:q:card:{order.id}")
-    if items:
-        kb.adjust(1)
-
-    nav = InlineKeyboardBuilder()
-    nav_count = 0
-    if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:orders:closed:{page - 1}")
-        nav_count += 1
-    if has_next:
-        nav.button(text="▶️ Далее", callback_data=f"adm:orders:closed:{page + 1}")
-        nav_count += 1
-    if nav_count:
-        nav.adjust(nav_count)
-        kb.attach(nav)
-
-    kb.button(text="⬅️ Назад", callback_data="adm:orders_menu")
-    markup = kb.as_markup()
-
-    try:
-        await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await cq.message.answer(text, reply_markup=markup, parse_mode="HTML")
-
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data == "adm:q",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.message.edit_text("📦 <b>Очередь заказов</b>", reply_markup=_queue_menu_markup(), parse_mode="HTML")
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data == "adm:q:flt",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_root(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await load_queue_filters(state)
-    await _render_filters_menu(cq.message, staff, state)
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data == "adm:q:flt:city",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_city(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await _render_city_selection(cq.message, staff, state)
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:flt:c:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_city_pick(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    filters = await load_queue_filters(state)
-    payload = cq.data.split(":")[-1]
-    
-    if payload == "0":
-        filters.city_id = None
-    else:
-        try:
-            filters.city_id = int(payload)
-        except ValueError:
-            await _safe_answer(cq, "❌ Неверный ID города", show_alert=True)
-            return
-    
-    await save_queue_filters(state, filters)
-    await _render_filters_menu(cq.message, staff, state)
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data == "adm:q:flt:cat",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_category(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    filters = await load_queue_filters(state)
-    selected_value = filters.category.value if filters.category else None
-    await _render_choice(
-        cq.message,
-        entries=CATEGORY_CHOICE_ENTRIES,
-        prefix="adm:q:flt:cat",
-        selected=selected_value,
-        state=state,
-        title="📂 Выберите категорию:",
-    )
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:flt:cat:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_category_pick(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    value = cq.data.split(":")[-1]
-    filters = await load_queue_filters(state)
-    
-    if value == "clr":
-        filters.category = None
-    else:
-        if value not in CATEGORY_VALUE_MAP:
-            await _safe_answer(cq, "❌ Неверная категория", show_alert=True)
-            return
-        filters.category = CATEGORY_VALUE_MAP[value]
-    
-    await save_queue_filters(state, filters)
-    await _render_filters_menu(cq.message, staff, state)
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data == "adm:q:flt:status",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_status(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    filters = await load_queue_filters(state)
-    selected_value = filters.status.value if filters.status else None
-    await _render_choice(
-        cq.message,
-        entries=STATUS_CHOICES,
-        prefix="adm:q:flt:st",
-        selected=selected_value,
-        state=state,
-        title="📊 Выберите статус:",
-    )
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:flt:st:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_status_pick(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    value = cq.data.split(":")[-1]
-    filters = await load_queue_filters(state)
-    
-    if value == "clr":
-        filters.status = None
-    else:
-        status_enum = normalize_status(value)
-        if not status_enum:
-            await _safe_answer(cq, "❌ Неверный статус", show_alert=True)
-            return
-        filters.status = status_enum
-    
-    await save_queue_filters(state, filters)
-    await _render_filters_menu(cq.message, staff, state)
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data == "adm:q:flt:master",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_master(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await state.set_state(QueueFiltersFSM.master)
-    await _safe_answer(cq, " ID  ", show_alert=True)
-
-
-@queue_router.message(
-    StateFilter(QueueFiltersFSM.master),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_master_input(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    text = msg.text.strip()
-    filters = await load_queue_filters(state)
-    
-    if text == "-":
-        filters.master_id = None
-    else:
-        if not text.isdigit():
-            await msg.answer("❌ ID мастера должен быть числом. Введите число или '-' для сброса.")
-            return
-        filters.master_id = int(text)
-    
-    # Save message ref before clearing state
-    msg_ref = await load_filters_message(state)
-    
-    await state.clear()
-    await save_queue_filters(state, filters)
-    
-    # Restore message ref
-    if msg_ref:
-        await save_filters_message(state, msg_ref.chat_id, msg_ref.message_id)
-    
-    await _render_filters_by_ref(msg.bot, staff, state)
-
-
-@queue_router.callback_query(
-    F.data == "adm:q:flt:date",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_date(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await state.set_state(QueueFiltersFSM.date)
-    await _safe_answer(cq, "  YYYY-MM-DD  '-'  ", show_alert=True)
-
-
-@queue_router.message(
-    StateFilter(QueueFiltersFSM.date),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_date_input(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    text = msg.text.strip()
-    filters = await load_queue_filters(state)
-    
-    if text == "-":
-        filters.date = None
-    else:
-        try:
-            filters.date = date.fromisoformat(text)
-        except ValueError:
-            await msg.answer("❌ Неверный формат даты. Используйте YYYY-MM-DD или '-' для сброса.")
-            return
-    
-    # Save message ref before clearing state
-    msg_ref = await load_filters_message(state)
-    
-    await state.clear()
-    await save_queue_filters(state, filters)
-    
-    # Restore message ref
-    if msg_ref:
-        await save_filters_message(state, msg_ref.chat_id, msg_ref.message_id)
-    
-    await _render_filters_by_ref(msg.bot, staff, state)
-
-
-@queue_router.callback_query(
-    F.data == "adm:q:flt:reset",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_reset(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    filters = QueueFilters()  # Create default filters
-    await save_queue_filters(state, filters)
-    await _render_filters_menu(cq.message, staff, state)
-    await _safe_answer(cq, "🔄 Фильтры сброшены")
-
-
-@queue_router.callback_query(
-    F.data == "adm:q:flt:apply",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_filters_apply(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await _render_queue_list(cq.message, staff, state, page=1)
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:list:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    try:
-        page = int(cq.data.split(":")[3])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, " ", show_alert=True)
-        return
-    await _render_queue_list(cq.message, staff, state, page=page)
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:card:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    parts = cq.data.split(':')
-    try:
-        order_id = int(parts[3])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, '  ', show_alert=True)
-        return
-    orders_service = get_service(cq.message.bot, 'orders_service')
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, '  ', show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, '   ', show_alert=True)
-        return
-    history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
-    show_guarantee = await _should_show_guarantee_button(order, orders_service, visible_city_ids_for(staff))
-    await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee)
-    await _safe_answer(cq)
-
-@queue_router.callback_query(
-    F.data.regexp(r'^adm:q:as:\d+$'),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_assign_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    order_id = int(cq.data.split(':')[3])
-    orders_service = get_service(cq.message.bot, 'orders_service')
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, '  ', show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, '   ', show_alert=True)
-        return
-    address_bits = [bit for bit in (order.city_name, order.district_name, order.street_name) if bit]
-    if order.house:
-        address_bits.append(str(order.house))
-    address_label = ', '.join(address_bits) if address_bits else '-'
-    text = (
-        f" #{order.id}\n"
-        f": {address_label}\n"
-        "  ."
-    )
-    allow_auto = bool(order.district_id)
-    markup = assign_menu_keyboard(order.id, allow_auto=allow_auto)
-    try:
-        await cq.message.edit_text(text, reply_markup=markup)
-    except TelegramBadRequest as exc:
-        if exc.message == 'Message is not modified':
-            await _safe_answer(cq)
-            return
-        await cq.message.answer(text, reply_markup=markup)
-    await _safe_answer(cq)
-
-
-
-
-
-
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:as:auto:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[4])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверный формат", show_alert=True)
-        return
-
-    orders_service = get_service(cq.message.bot, "orders_service")
-    distribution_service = get_service(cq.message.bot, "distribution_service")
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "Нет доступа к этому городу", show_alert=True)
-        return
-
-    # ⚠️ ПРОВЕРКА СТАТУСА DEFERRED
-    if (order.status or "").upper() == "DEFERRED":
-        from aiogram.utils.keyboard import InlineKeyboardBuilder
-        
-        builder = InlineKeyboardBuilder()
-        builder.button(text="✅ Да, запустить", callback_data=f"adm:q:as:auto:force:{order_id}")
-        builder.button(text="❌ Отмена", callback_data=f"adm:q:card:{order_id}")
-        builder.adjust(2)
-        
-        try:
-            await cq.message.edit_text(
-                f"⚠️ <b>Заказ #{order.id} в статусе ОТЛОЖЕН</b>\n\n"
-                "Сейчас нерабочее время. Автораспределение может не найти мастеров.\n\n"
-                "Запустить распределение сейчас?",
-                reply_markup=builder.as_markup(),
-                parse_mode="HTML",
-            )
-        except TelegramBadRequest:
-            await cq.message.answer(
-                f"⚠️ <b>Заказ #{order.id} в статусе ОТЛОЖЕН</b>\n\n"
-                "Сейчас нерабочее время. Автораспределение может не найти мастеров.\n\n"
-                "Запустить распределение сейчас?",
-                reply_markup=builder.as_markup(),
-                parse_mode="HTML",
-            )
-        await _safe_answer(cq)
-        return
-
-    ok, result = await distribution_service.assign_auto(order_id, staff.id)
-
-    lines: list[str] = [f" #{order.id}"]
-    lines.append(" ." if ok else " .")
-    lines.append("")
-    lines.append(result.message)
-    if not ok and result.code == "no_candidates":
-        lines.append("")
-        lines.append("  .    .")
-
-    text_body = "\n".join(lines)
-
-    builder = InlineKeyboardBuilder()
-    builder.button(text=" ", callback_data=f"adm:q:card:{order_id}")
-    builder.button(text=" ", callback_data=f"adm:q:as:{order_id}")
-    builder.adjust(1)
-
-    try:
-        await cq.message.edit_text(text_body, reply_markup=builder.as_markup())
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await cq.message.answer(text_body, reply_markup=builder.as_markup())
-
-    if ok:
-        await _safe_answer(cq, " ", show_alert=False)
-    else:
-        alert_codes = {"no_district", "no_category", "forbidden", "not_found", "offer_conflict"}
-        await _safe_answer(cq, result.message, show_alert=result.code in alert_codes)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:as:auto:force:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_assign_auto_force(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Принудительное автораспределение для DEFERRED заказов."""
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[5])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверный формат", show_alert=True)
-        return
-
-    orders_service = get_service(cq.message.bot, "orders_service")
-    distribution_service = get_service(cq.message.bot, "distribution_service")
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "Нет доступа к этому городу", show_alert=True)
-        return
-
-    ok, result = await distribution_service.assign_auto(order_id, staff.id)
-
-    lines: list[str] = [f"Заказ #{order.id}"]
-    lines.append("Автораспределение запущено." if ok else "Не удалось запустить распределение.")
-    lines.append("")
-    lines.append(result.message)
-    if not ok and result.code == "no_candidates":
-        lines.append("")
-        lines.append("Нет доступных мастеров. Попробуйте назначить вручную.")
-
-    text_body = "\n".join(lines)
-
-    builder = InlineKeyboardBuilder()
-    builder.button(text="Карточка заказа", callback_data=f"adm:q:card:{order_id}")
-    builder.button(text="Назначение", callback_data=f"adm:q:as:{order_id}")
-    builder.adjust(1)
-
-    try:
-        await cq.message.edit_text(text_body, reply_markup=builder.as_markup(), parse_mode="HTML")
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await cq.message.answer(text_body, reply_markup=builder.as_markup(), parse_mode="HTML")
-
-    if ok:
-        await _safe_answer(cq, "Распределение запущено", show_alert=False)
-    else:
-        alert_codes = {"no_district", "no_category", "forbidden", "not_found", "offer_conflict"}
-        await _safe_answer(cq, result.message, show_alert=result.code in alert_codes)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:as:man:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_assign_manual_list(
-    cq: CallbackQuery,
-    staff: StaffUser,
-) -> None:
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[4])
-        page = int(parts[5])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверный формат", show_alert=True)
-        return
-
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "Нет доступа к этому городу", show_alert=True)
-        return
-
-    # ⚠️ ПРЕДУПРЕЖДЕНИЕ ДЛЯ DEFERRED
-    warning_prefix = ""
-    if (order.status or "").upper() == "DEFERRED":
-        warning_prefix = "⚠️ <b>Заказ сейчас ОТЛОЖЕН (нерабочее время)</b>\n\n"
-
-    masters, has_next = await orders_service.manual_candidates(
-        order_id,
-        page=page,
-        page_size=MANUAL_PAGE_SIZE,
-        city_ids=visible_city_ids_for(staff),
-    )
-    text = warning_prefix + _manual_candidates_text(order, masters, page)
-    markup = manual_candidates_keyboard(order.id, masters, page=page, has_next=has_next)
-    try:
-        await cq.message.edit_text(
-            text,
-            reply_markup=markup,
-            disable_web_page_preview=True,
-        )
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await cq.message.answer(
-                text,
-                reply_markup=markup,
-                disable_web_page_preview=True,
-            )
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:as:check:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_assign_manual_check(
-    cq: CallbackQuery,
-    staff: StaffUser,
-) -> None:
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[4])
-        page = int(parts[5])
-        master_id = int(parts[6])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, " ", show_alert=True)
-        return
-
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "  ", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "   ", show_alert=True)
-        return
-
-    masters, _ = await orders_service.manual_candidates(
-        order_id,
-        page=page,
-        page_size=MANUAL_PAGE_SIZE,
-        city_ids=visible_city_ids_for(staff),
-    )
-    candidate = next((m for m in masters if m.id == master_id), None)
-    if candidate is None:
-        await _safe_answer(cq, "    .  .", show_alert=True)
-        return
-
-    reasons: list[str] = []
-    available = candidate.is_on_shift and not candidate.on_break
-    if not candidate.is_on_shift:
-        reasons.append("  ")
-    elif candidate.on_break:
-        reasons.append("  ")
-    at_limit = (
-        candidate.max_active_orders > 0
-        and candidate.active_orders >= candidate.max_active_orders
-    )
-    if at_limit:
-        reasons.append(
-            f" {candidate.active_orders}/{candidate.max_active_orders}"
-        )
-
-    if available and not at_limit:
-        distribution_service = get_service(cq.message.bot, "distribution_service")
-        ok, message = await distribution_service.send_manual_offer(
-            order_id,
-            master_id,
-            staff.id,
-        )
-        if not ok:
-            await _safe_answer(cq, message, show_alert=True)
-            return
-
-        builder = InlineKeyboardBuilder()
-        builder.button(text=" ", callback_data=f"adm:q:card:{order_id}")
-        builder.button(
-            text=" ",
-            callback_data=f"adm:q:as:man:{order_id}:{page}",
-        )
-        builder.adjust(1)
-        text_lines = [
-            f" #{order.id}",
-            master_brief_line(candidate),
-            "",
-            "  .",
-        ]
-        try:
-            await cq.message.edit_text(
-                "\n".join(text_lines),
-                reply_markup=builder.as_markup(),
-            )
-        except TelegramBadRequest as exc:
-            if exc.message != "Message is not modified":
-                await cq.message.answer(
-                    "\n".join(text_lines),
-                    reply_markup=builder.as_markup(),
-                )
-        await _safe_answer(cq, " ")
-        return
-
-    text_lines = [
-        f" #{order.id}",
-        master_brief_line(candidate),
-        "",
-    ]
-    if reasons:
-        text_lines.append(" : " + "; ".join(reasons))
-        text_lines.append("")
-    text_lines.append("   ?")
-    markup = manual_confirm_keyboard(order.id, master_id, page)
-    try:
-        await cq.message.edit_text(
-            "\n".join(text_lines),
-            reply_markup=markup,
-            disable_web_page_preview=True,
-        )
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await cq.message.answer(
-                "\n".join(text_lines),
-                reply_markup=markup,
-                disable_web_page_preview=True,
-            )
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:as:pick:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_assign_manual_pick(
-    cq: CallbackQuery,
-    staff: StaffUser,
-) -> None:
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[4])
-        page = int(parts[5])
-        master_id = int(parts[6])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, " ", show_alert=True)
-        return
-
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "  ", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "   ", show_alert=True)
-        return
-
-    distribution_service = get_service(cq.message.bot, "distribution_service")
-    ok, message = await distribution_service.send_manual_offer(
-        order_id,
-        master_id,
-        staff.id,
-    )
-    if not ok:
-        await _safe_answer(cq, message, show_alert=True)
-        return
-
-    masters, _ = await orders_service.manual_candidates(
-        order_id,
-        page=page,
-        page_size=MANUAL_PAGE_SIZE,
-        city_ids=visible_city_ids_for(staff),
-    )
-    candidate = next((m for m in masters if m.id == master_id), None)
-    summary = master_brief_line(candidate) if candidate else f" #{master_id}"
-
-    builder = InlineKeyboardBuilder()
-    builder.button(text=" ", callback_data=f"adm:q:card:{order_id}")
-    builder.button(
-        text=" ",
-        callback_data=f"adm:q:as:man:{order_id}:{page}",
-    )
-    builder.adjust(1)
-    text_lines = [
-        f" #{order.id}",
-        summary,
-        "",
-        "  .",
-    ]
-    try:
-        await cq.message.edit_text(
-            "\n".join(text_lines),
-            reply_markup=builder.as_markup(),
-        )
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await cq.message.answer(
-                "\n".join(text_lines),
-                reply_markup=builder.as_markup(),
-            )
-    await _safe_answer(cq, " ")
-
-
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:activate:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_activate_deferred(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Активировать DEFERRED заказ (перевести в PENDING)."""
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[3])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверный формат", show_alert=True)
-        return
-
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "Нет доступа к этому городу", show_alert=True)
-        return
-
-    # Переводим DEFERRED → PENDING
-    ok = await orders_service.activate_deferred_order(order_id, staff.id)
-    
-    if not ok:
-        await _safe_answer(cq, "Не удалось активировать заказ", show_alert=True)
-        return
-    
-    # Обновляем карточку
-    updated = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not updated:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
-        return
-    
-    history = await _call_service(
-        orders_service.list_status_history,
-        order_id,
-        limit=ORDER_CARD_HISTORY_LIMIT,
-        city_ids=visible_city_ids_for(staff)
-    )
-    
-    show_guarantee = await _should_show_guarantee_button(updated, orders_service, visible_city_ids_for(staff))
-    await _render_order_card(cq.message, updated, history, show_guarantee=show_guarantee)
-    await _safe_answer(cq, "✅ Заказ переведён в активный поиск")
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:gar:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_guarantee(cq: CallbackQuery, staff: StaffUser) -> None:
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[3])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "  ", show_alert=True)
-        return
-
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "  ", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "   ", show_alert=True)
-        return
-
-    status = (order.status or "").upper()
-    if status != "CLOSED":
-        await _safe_answer(cq, "      ", show_alert=True)
-        return
-    if order.order_type is OrderType.GUARANTEE:
-        await _safe_answer(cq, "   ", show_alert=True)
-        return
-    if not order.master_id:
-        await _safe_answer(cq, "    ", show_alert=True)
-        return
-    if await _call_service(orders_service.has_active_guarantee, order.id, city_ids=visible_city_ids_for(staff)):
-        await _safe_answer(cq, "   ", show_alert=True)
-        return
-
-    try:
-        new_order_id = await orders_service.create_guarantee_order(order.id, staff.id)
-    except GuaranteeError as exc:
-        await _safe_answer(cq, str(exc), show_alert=True)
-        return
-
-    updated = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
-    await _render_order_card(cq.message, updated or order, history, show_guarantee=False)
-
-    await cq.message.answer(
-        f"  #{new_order_id}     ."
-    )
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:ret:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_return(cq: CallbackQuery, staff: StaffUser) -> None:
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[3])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "  ", show_alert=True)
-        return
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "  ", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "   ", show_alert=True)
-        return
-    ok = await orders_service.return_to_search(order_id, staff.id)
-    if not ok:
-        await _safe_answer(cq, "     ", show_alert=True)
-        return
-    updated = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not updated:
-        await _safe_answer(cq, "  ", show_alert=True)
-        return
-    history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
-    show_guarantee = await _should_show_guarantee_button(updated, orders_service, visible_city_ids_for(staff))
-    await _render_order_card(cq.message, updated, history, show_guarantee=show_guarantee)
-    await _safe_answer(cq, "   ")
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:cnl:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_cancel_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[3])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, "❌ Неверный ID заказа", show_alert=True)
-        return
-    
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await _call_service(
-        orders_service.get_card,
-        order_id,
-        city_ids=visible_city_ids_for(staff)
-    )
-    
-    if not order:
-        await _safe_answer(cq, "❌ Заказ не найден", show_alert=True)
-        return
-    
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "❌ Нет доступа к этому городу", show_alert=True)
-        return
-    
-    await state.set_state(QueueActionFSM.cancel_reason)
-    await save_cancel_state(state, order_id, cq.message.chat.id, cq.message.message_id)
-    
-    await cq.message.edit_text(
-        f"📝 Введите причину отмены заказа #{order_id}\n\n"
-        f"Минимум {CANCEL_REASON_MIN} символов (или пустое сообщение для пропуска).\n"
-        f"Для отмены введите /cancel",
-        reply_markup=queue_cancel_keyboard(order_id),
-        parse_mode="HTML",
-    )
-    await _safe_answer(cq)
-
-
-@queue_router.callback_query(
-    F.data.startswith("adm:q:cnl:bk:"),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_cancel_back(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    parts = cq.data.split(":")
-    try:
-        order_id = int(parts[4])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, " ", show_alert=True)
-        return
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _clear_cancel_state(state)
-        await _safe_answer(cq, "  ", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _clear_cancel_state(state)
-        await _safe_answer(cq, "   ", show_alert=True)
-        return
-    history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
-    show_guarantee = await _should_show_guarantee_button(order, orders_service, visible_city_ids_for(staff))
-    await _render_order_card(cq.message, order, history, show_guarantee=show_guarantee)
-    await _clear_cancel_state(state)
-    await _safe_answer(cq)
-
-
-@queue_router.message(
-    StateFilter(QueueActionFSM.cancel_reason),
-    StaffRoleFilter(_ALLOWED_ROLES),
-    F.text == "/cancel",
-)
-async def queue_cancel_abort(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    cancel_state = await load_cancel_state(state)
-    await _clear_cancel_state(state)
-    
-    await msg.answer("🔙 Отмена прервана.")
-    
-    if not cancel_state:
-        return
-    
-    orders_service = get_service(msg.bot, "orders_service")
-    order = await _call_service(
-        orders_service.get_card,
-        cancel_state.order_id,
-        city_ids=visible_city_ids_for(staff)
-    )
-    
-    if not order:
-        return
-    
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        return
-    
-    history = await _call_service(
-        orders_service.list_status_history,
-        cancel_state.order_id,
-        limit=ORDER_CARD_HISTORY_LIMIT,
-        city_ids=visible_city_ids_for(staff)
-    )
-    
-    text_body = _format_order_card_text(order, history)
-    show_guarantee = await _should_show_guarantee_button(
-        order,
-        orders_service,
-        visible_city_ids_for(staff)
-    )
-    markup = _order_card_markup(order, show_guarantee=show_guarantee)
-    
-    try:
-        await msg.bot.edit_message_text(
-            chat_id=cancel_state.chat_id,
-            message_id=cancel_state.message_id,
-            text=text_body,
-            reply_markup=markup,
-            parse_mode="HTML",
-        )
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await msg.bot.send_message(
-                cancel_state.chat_id,
-                text_body,
-                reply_markup=markup,
-                parse_mode="HTML",
-            )
-
-
-@queue_router.message(
-    StateFilter(QueueActionFSM.cancel_reason),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    text_raw = msg.text or ""
-    reason = text_raw
-    
-    # Validate reason length
-    if text_raw.strip() and len(text_raw.strip()) < CANCEL_REASON_MIN:
-        await msg.answer(
-            f"❌ Причина отмены должна содержать минимум {CANCEL_REASON_MIN} символов "
-            f"(максимум {CANCEL_REASON_MAX})."
-        )
-        return
-    
-    cancel_state = await load_cancel_state(state)
-    
-    if not cancel_state:
-        await _clear_cancel_state(state)
-        await msg.answer("❌ Ошибка: не найдено состояние отмены. Попробуйте снова.")
-        return
-    orders_service = get_service(msg.bot, "orders_service")
-    order = await _call_service(
-        orders_service.get_card,
-        cancel_state.order_id,
-        city_ids=visible_city_ids_for(staff)
-    )
-    
-    if not order:
-        await _clear_cancel_state(state)
-        await msg.answer("❌ Заказ не найден.")
-        return
-    
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _clear_cancel_state(state)
-        await msg.answer("❌ Нет доступа к этому городу.")
-        return
-    
-    ok = await orders_service.cancel(
-        cancel_state.order_id,
-        reason=reason,
-        by_staff_id=staff.id
-    )
-    
-    if ok:
-        await msg.answer(f"✅ Заказ #{cancel_state.order_id} отменён.")
-    else:
-        await msg.answer("❌ Не удалось отменить заказ.")
-    
-    updated = await _call_service(
-        orders_service.get_card,
-        cancel_state.order_id,
-        city_ids=visible_city_ids_for(staff)
-    )
-    
-    if updated:
-        history = await _call_service(
-            orders_service.list_status_history,
-            cancel_state.order_id,
-            limit=ORDER_CARD_HISTORY_LIMIT,
-            city_ids=visible_city_ids_for(staff)
-        )
-        text_body = _format_order_card_text(updated, history)
-        markup = _order_card_markup(updated)
-        
-        try:
-            await msg.bot.edit_message_text(
-                chat_id=cancel_state.chat_id,
-                message_id=cancel_state.message_id,
-                text=text_body,
-                reply_markup=markup,
-                parse_mode="HTML",
-            )
-        except TelegramBadRequest as exc:
-            if exc.message != "Message is not modified":
-                await msg.bot.send_message(
-                    cancel_state.chat_id,
-                    text_body,
-                    reply_markup=markup,
-                    parse_mode="HTML",
-                )
-    
-    await _clear_cancel_state(state)
-
-
-@queue_router.callback_query(
-    F.data.startswith('adm:q:att:'),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_attachment(cq: CallbackQuery, staff: StaffUser) -> None:
-    parts = cq.data.split(':')
-    try:
-        order_id = int(parts[3])
-        attachment_id = int(parts[4])
-    except (IndexError, ValueError):
-        await _safe_answer(cq, ' ', show_alert=True)
-        return
-    orders_service = get_service(cq.message.bot, 'orders_service')
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, '  ', show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, '   ', show_alert=True)
-        return
-    attachment = await _call_service(orders_service.get_order_attachment, order_id, attachment_id, city_ids=visible_city_ids_for(staff))
-    if not attachment:
-        await _safe_answer(cq, '  ', show_alert=True)
-        return
-    caption = attachment.caption or None
-    file_type = (attachment.file_type or '').upper()
-    try:
-        if file_type.endswith('PHOTO'):
-            await cq.message.answer_photo(attachment.file_id, caption=caption)
-        else:
-            await cq.message.answer_document(attachment.file_id, caption=caption)
-    except TelegramBadRequest as exc:
-        await _safe_answer(cq, f'   : {exc.message}', show_alert=True)
-        return
-    await _safe_answer(cq)
-
-# P1-9: ПОИСК ЗАКАЗА ПО ID
-@queue_router.callback_query(
-    F.data == "adm:q:search",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_search_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """P1-9: Начать поиск заказа по ID."""
-    await state.set_state(QueueActionFSM.search_by_id)
-    await cq.message.answer(
-        "📋 <b>Поиск заказа по ID</b>\n\n"
-        "Введите номер заказа (например, 12345) или '-' для отмены.",
-        parse_mode="HTML",
-    )
-    await _safe_answer(cq, "Введите ID заказа")
-
-
-@queue_router.message(
-    StateFilter(QueueActionFSM.search_by_id),
-    StaffRoleFilter(_ALLOWED_ROLES),
-    F.text == "-",
-)
-async def queue_search_cancel(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    """P1-9: Отменить поиск."""
-    await state.set_state(None)
-    await msg.answer("🔙 Поиск отменён.")
-
-
-@queue_router.message(
-    StateFilter(QueueActionFSM.search_by_id),
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    """P1-9: Поиск заказа по ID."""
-    text = (msg.text or "").strip()
-    
-    # Валидация ID
-    if not text.isdigit():
-        await msg.answer(
-            "⚠️ ID заказа должен быть числом.\n"
-            "Попробуйте ещё раз или введите '-' для отмены."
-        )
-        return
-    
-    order_id = int(text)
-    await state.set_state(None)
-    
-    # Загрузить заказ
-    orders_service = get_service(msg.bot, "orders_service")
-    order = await _call_service(
-        orders_service.get_card,
-        order_id,
-        city_ids=visible_city_ids_for(staff)
-    )
-    
-    if not order:
-        builder = InlineKeyboardBuilder()
-        builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
-        builder.button(text="🏠 В меню", callback_data="adm:menu")
-        builder.adjust(1)
-        await msg.answer(
-            f"❌ Заказ #{order_id} не найден или у вас нет доступа к этому городу.",
-            reply_markup=builder.as_markup()
-        )
-        return
-    
-    # Проверить доступ (дополнительная проверка)
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        builder = InlineKeyboardBuilder()
-        builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
-        builder.button(text="🏠 В меню", callback_data="adm:menu")
-        builder.adjust(1)
-        await msg.answer(
-            f"❌ Заказ #{order_id} находится в городе, к которому у вас нет доступа.",
-            reply_markup=builder.as_markup()
-        )
-        return
-    
-    # Загрузить историю и отобразить карточку
-    history = await _call_service(
-        orders_service.list_status_history,
-        order_id,
-        limit=ORDER_CARD_HISTORY_LIMIT,
-        city_ids=visible_city_ids_for(staff)
-    )
-    
-    show_guarantee = await _should_show_guarantee_button(
-        order,
-        orders_service,
-        visible_city_ids_for(staff)
-    )
-    
-    # Отправить карточку
-    text_body = _format_order_card_text(order, history)
-    markup = _order_card_markup(order, show_guarantee=show_guarantee)
-    
-    await msg.answer(text_body, reply_markup=markup, parse_mode="HTML")
-    
-    # Подтверждение
-    builder = InlineKeyboardBuilder()
-    builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
-    builder.adjust(1)
-    await msg.answer(
-        f"✅ Найден заказ #{order_id}",
-        reply_markup=builder.as_markup()
-    )
-
-
-@queue_router.callback_query(
-    F.data == "adm:q:bk",
-    StaffRoleFilter(_ALLOWED_ROLES),
-)
-async def cb_queue_back(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await cq.message.edit_text("📦 <b>Очередь заказов</b>", reply_markup=_queue_menu_markup(), parse_mode="HTML")
-    await _safe_answer(cq)
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\queue_state.py
-```python
-"""
-P2.2: Typed state management for admin queue filters and actions.
-
-Использование dataclasses для type-safe хранения FSM state вместо магических словарей.
-"""
-from __future__ import annotations
-
-from dataclasses import dataclass, field, asdict
-from datetime import date
-from typing import Optional
-
-from aiogram.fsm.context import FSMContext
-
-from .dto import OrderCategory, OrderStatus
-
-
-# =============================================================================
-# DATACLASSES
-# =============================================================================
-
-@dataclass
-class QueueFilters:
-    """Фильтры для списка заказов в очереди."""
-    
-    city_id: Optional[int] = None
-    category: Optional[OrderCategory] = None
-    status: Optional[OrderStatus] = None
-    master_id: Optional[int] = None
-    date: Optional[date] = None
-    
-    def to_dict(self) -> dict[str, Optional[str | int]]:
-        """Сериализация для хранения в FSM state."""
-        return {
-            "city_id": self.city_id,
-            "category": self.category.value if self.category else None,
-            "status": self.status.value if self.status else None,
-            "master_id": self.master_id,
-            "date": self.date.isoformat() if self.date else None,
-        }
-    
-    @classmethod
-    def from_dict(cls, data: dict[str, Optional[str | int]]) -> QueueFilters:
-        """Десериализация из FSM state."""
-        city_id = data.get("city_id")
-        category_value = data.get("category")
-        status_value = data.get("status")
-        master_id = data.get("master_id")
-        date_value = data.get("date")
-        
-        # Parse enums
-        category = None
-        if category_value:
-            try:
-                category = OrderCategory(category_value)
-            except ValueError:
-                pass
-        
-        status = None
-        if status_value:
-            try:
-                status = OrderStatus(status_value)
-            except ValueError:
-                pass
-        
-        # Parse date
-        parsed_date = None
-        if date_value:
-            try:
-                parsed_date = date.fromisoformat(str(date_value))
-            except (ValueError, TypeError):
-                pass
-        
-        return cls(
-            city_id=int(city_id) if city_id else None,
-            category=category,
-            status=status,
-            master_id=int(master_id) if master_id else None,
-            date=parsed_date,
-        )
-
-
-@dataclass
-class QueueFiltersMessage:
-    """Ссылка на сообщение с фильтрами (для редактирования)."""
-    
-    chat_id: int
-    message_id: int
-    
-    def to_dict(self) -> dict[str, int]:
-        return {"chat_id": self.chat_id, "message_id": self.message_id}
-    
-    @classmethod
-    def from_dict(cls, data: dict[str, int]) -> Optional[QueueFiltersMessage]:
-        chat_id = data.get("chat_id")
-        message_id = data.get("message_id")
-        if chat_id is None or message_id is None:
-            return None
-        return cls(chat_id=chat_id, message_id=message_id)
-
-
-@dataclass
-class CancelOrderState:
-    """State для процесса отмены заказа."""
-    
-    order_id: int
-    chat_id: int
-    message_id: int
-    
-    def to_dict(self) -> dict[str, int]:
-        return {
-            "order_id": self.order_id,
-            "chat_id": self.chat_id,
-            "message_id": self.message_id,
-        }
-    
-    @classmethod
-    def from_dict(cls, data: dict[str, int]) -> Optional[CancelOrderState]:
-        order_id = data.get("order_id")
-        chat_id = data.get("chat_id")
-        message_id = data.get("message_id")
-        if order_id is None or chat_id is None or message_id is None:
-            return None
-        return cls(order_id=order_id, chat_id=chat_id, message_id=message_id)
-
-
-# =============================================================================
-# STATE KEYS (константы для хранения в FSM)
-# =============================================================================
-
-_QUEUE_FILTERS_KEY = "queue:filters"
-_QUEUE_FILTERS_MSG_KEY = "queue:filters:msg"
-_QUEUE_CANCEL_KEY = "queue:cancel"
-
-
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-
-async def load_queue_filters(state: FSMContext) -> QueueFilters:
-    """Загрузить фильтры очереди из FSM state."""
-    data = await state.get_data()
-    stored = data.get(_QUEUE_FILTERS_KEY)
-    if not stored:
-        # Default filters
-        filters = QueueFilters()
-        await save_queue_filters(state, filters)
-        return filters
-    return QueueFilters.from_dict(stored)
-
-
-async def save_queue_filters(state: FSMContext, filters: QueueFilters) -> None:
-    """Сохранить фильтры очереди в FSM state."""
-    await state.update_data({_QUEUE_FILTERS_KEY: filters.to_dict()})
-
-
-async def load_filters_message(state: FSMContext) -> Optional[QueueFiltersMessage]:
-    """Загрузить ссылку на сообщение с фильтрами."""
-    data = await state.get_data()
-    stored = data.get(_QUEUE_FILTERS_MSG_KEY)
-    if not stored:
-        return None
-    return QueueFiltersMessage.from_dict(stored)
-
-
-async def save_filters_message(state: FSMContext, chat_id: int, message_id: int) -> None:
-    """Сохранить ссылку на сообщение с фильтрами."""
-    msg = QueueFiltersMessage(chat_id=chat_id, message_id=message_id)
-    await state.update_data({_QUEUE_FILTERS_MSG_KEY: msg.to_dict()})
-
-
-async def load_cancel_state(state: FSMContext) -> Optional[CancelOrderState]:
-    """Загрузить state отмены заказа."""
-    data = await state.get_data()
-    stored = data.get(_QUEUE_CANCEL_KEY)
-    if not stored:
-        return None
-    return CancelOrderState.from_dict(stored)
-
-
-async def save_cancel_state(
-    state: FSMContext,
-    order_id: int,
-    chat_id: int,
-    message_id: int
-) -> None:
-    """Сохранить state отмены заказа."""
-    cancel_state = CancelOrderState(
-        order_id=order_id,
-        chat_id=chat_id,
-        message_id=message_id
-    )
-    await state.update_data({_QUEUE_CANCEL_KEY: cancel_state.to_dict()})
-
-
-async def clear_cancel_state(state: FSMContext) -> None:
-    """Очистить state отмены заказа."""
-    current = await state.get_state()
-    if current and current.startswith("QueueActionFSM:cancel_reason"):
-        await state.set_state(None)
-    
-    data = await state.get_data()
-    if _QUEUE_CANCEL_KEY in data:
-        data.pop(_QUEUE_CANCEL_KEY)
-        await state.set_data(data)
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\services_db.py
-```python
-﻿from __future__ import annotations
-
-from dataclasses import dataclass
-from datetime import date, datetime, time, timezone, timedelta
-from zoneinfo import ZoneInfo
-from decimal import Decimal, InvalidOperation
-import json
-import re
-import logging
-import secrets
-import string
-from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
-from types import SimpleNamespace
-
-from sqlalchemy import and_, delete, func, insert, select, text, update, inspect
-from sqlalchemy.exc import OperationalError, ProgrammingError
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from rapidfuzz import fuzz, process
-from field_service.config import settings
-
-from field_service.db import models as m
-from field_service.db.session import SessionLocal
-from field_service.services import distribution_scheduler as dw
-from field_service.services.candidates import select_candidates
-from field_service.services import live_log
-from field_service.services import time_service
-from field_service.services import settings_service as settings_store
-from field_service.services import owner_requisites_service as owner_reqs
-from field_service.services import guarantee_service
-from field_service.services.guarantee_service import GuaranteeError
-from field_service.services.referral_service import apply_rewards_for_commission
-from field_service.data import cities as city_catalog
-
-from .dto import (
-    CityRef,
-    CommissionAttachment,
-    CommissionDetail,
-    CommissionListItem,
-    DistrictRef,
-    MasterBrief,
-    MasterListItem,
-    MasterDocument,
-    MasterDetail,
-    NewOrderAttachment,
-    NewOrderData,
-    OrderAttachment,
-    OrderDetail,
-    OrderStatusHistoryItem,
-    OrderListItem,
-    OrderCategory,
-    OrderStatus,
-    OrderType,
-    StaffAccessCode,
-    StaffMember,
-    StaffRole,
-    StaffUser,
-    StreetRef,
-    TimeslotOption,
-    WaitPayRecipient,
-)
-from .normalizers import normalize_category, normalize_status
-
-UTC = timezone.utc
-logger = logging.getLogger(__name__)
-PAYMENT_METHOD_LABELS = {
-    "card": "рџ’і РљР°СЂС‚Р°",
-    "sbp": "РЎР‘Рџ",
-    "cash": "РќР°Р»РёС‡РЅС‹Рµ",
-}
-
-OWNER_PAY_SETTING_FIELDS: dict[str, tuple[str, str]] = {
-    'methods': ('owner_pay_methods_enabled', 'JSON'),
-    'card_number': ('owner_pay_card_number', 'STR'),
-    'card_holder': ('owner_pay_card_holder', 'STR'),
-    'card_bank': ('owner_pay_card_bank', 'STR'),
-    'sbp_phone': ('owner_pay_sbp_phone', 'STR'),
-    'sbp_bank': ('owner_pay_sbp_bank', 'STR'),
-    'sbp_qr_file_id': ('owner_pay_sbp_qr_file_id', 'STR'),
-    'other_text': ('owner_pay_other_text', 'STR'),
-    'comment_template': ('owner_pay_comment_template', 'STR'),
-}
-
-LOCAL_TZ = settings_store.get_timezone()
-
-
-HAS_STREET_CENTROIDS: bool | None = None
-HAS_DISTRICT_CENTROIDS: bool | None = None
-HAS_CITY_CENTROIDS: bool | None = None
-
-async def _ensure_centroid_flag(session: AsyncSession, scope: str) -> bool:
-    global HAS_STREET_CENTROIDS, HAS_DISTRICT_CENTROIDS, HAS_CITY_CENTROIDS
-
-    flags = {
-        'street': 'HAS_STREET_CENTROIDS',
-        'district': 'HAS_DISTRICT_CENTROIDS',
-        'city': 'HAS_CITY_CENTROIDS',
-    }
-    column_sets = {
-        'street': (m.streets.centroid_lat, m.streets.centroid_lon),
-        'district': (m.districts.centroid_lat, m.districts.centroid_lon),
-        'city': (m.cities.centroid_lat, m.cities.centroid_lon),
-    }
-
-    flag_name = flags[scope]
-    current = globals()[flag_name]
-    if current is not None:
-        return current
-
-    selectors = column_sets[scope]
-    try:
-        await session.execute(select(*selectors).limit(1))
-    except ProgrammingError as exc:
-        if _is_column_missing_error(exc):
-            globals()[flag_name] = False
-            await session.rollback()
-            return False
-        raise
-    else:
-        globals()[flag_name] = True
-        return True
-
-
-def _is_column_missing_error(exc: Exception) -> bool:
-    original = getattr(exc, "orig", None)
-    if original is None:
-        return False
-    message = str(original).lower()
-    return (
-        original.__class__.__name__ == "UndefinedColumnError"
-        or "undefined column" in message
-        or "does not exist" in message
-    )
-
-STREET_DUPLICATE_THRESHOLD = 93
-STREET_MIN_SCORE = 60
-
-
-
-def _normalize_street_name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", value.lower())
-
-def _format_datetime_local(value: Optional[datetime]) -> Optional[str]:
-    if not value:
-        return None
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=UTC)
-    return value.astimezone(LOCAL_TZ).strftime('%d.%m %H:%M')
-
-
-
-def _parse_env_time(value: str, fallback: time) -> time:
-    try:
-        hh, mm = map(int, value.split(":"))
-        return time(hour=hh, minute=mm)
-    except Exception:
-        return fallback
-
-
-WORKDAY_START_DEFAULT = time_service.parse_time_string(settings.workday_start, default=time(10, 0))
-WORKDAY_END_DEFAULT = time_service.parse_time_string(settings.workday_end, default=time(20, 0))
-LATE_ASAP_THRESHOLD = time_service.parse_time_string(settings.asap_late_threshold, default=time(19, 30))
-
-def _zone_storage_value(tz: ZoneInfo) -> str:
-    return getattr(tz, 'key', str(tz))
-
-
-async def _workday_window() -> tuple[time, time]:
-    try:
-        return await settings_store.get_working_window()
-    except Exception:
-        return WORKDAY_START_DEFAULT, WORKDAY_END_DEFAULT
-
-
-QUEUE_STATUSES = {
-    m.OrderStatus.SEARCHING,
-    m.OrderStatus.ASSIGNED,
-    m.OrderStatus.EN_ROUTE,
-    m.OrderStatus.WORKING,
-    m.OrderStatus.PAYMENT,
-    m.OrderStatus.GUARANTEE,
-}
-
-ACTIVE_ORDER_STATUSES = (
-    m.OrderStatus.ASSIGNED,
-    m.OrderStatus.EN_ROUTE,
-    m.OrderStatus.WORKING,
-    m.OrderStatus.PAYMENT,
-)
-
-AVG_CHECK_STATUSES = (
-    m.OrderStatus.WORKING,
-    m.OrderStatus.PAYMENT,
-    m.OrderStatus.CLOSED,
-)
-
-
-@dataclass(slots=True)
-class _StaffAccess:
-    id: int
-    role: m.StaffRole
-    is_active: bool
-    city_ids: frozenset[int]
-    full_name: Optional[str] = None
-
-
-async def _load_staff_access(
-    session: AsyncSession, staff_id: Optional[int]
-) -> Optional[_StaffAccess]:
-    if not staff_id:
-        return None
-    row = await session.execute(
-        select(m.staff_users).where(m.staff_users.id == staff_id)
-    )
-    staff = row.scalar_one_or_none()
-    if not staff or not staff.is_active:
-        return None
-    cities_q = await session.execute(
-        select(m.staff_cities.city_id).where(m.staff_cities.staff_user_id == staff.id)
-    )
-    city_ids = frozenset(int(c[0]) for c in cities_q)
-    return _StaffAccess(
-        id=staff.id,
-        role=staff.role,
-        is_active=staff.is_active,
-        city_ids=city_ids,
-        full_name=staff.full_name,
-    )
-
-
-def _visible_city_ids_for_staff(staff: Optional[_StaffAccess]) -> Optional[frozenset[int]]:
-    if staff is None:
-        return None
-    if staff.role == m.StaffRole.ADMIN:
-        return None
-    return staff.city_ids
-
-
-def _staff_can_access_city(
-    staff: Optional[_StaffAccess], city_id: Optional[int]
-) -> bool:
-    if city_id is None:
-        return False
-    visible = _visible_city_ids_for_staff(staff)
-    if visible is None:
-        return True
-    return city_id in visible
-
-def _prepare_setting_value(value: object, value_type: str) -> str:
-    vt = value_type.upper()
-    if vt == "JSON":
-        return json.dumps(value, ensure_ascii=False)
-    if vt == "BOOL":
-        if isinstance(value, str):
-            return "true" if value.strip().lower() in {"1", "true", "yes", "on"} else "false"
-        return "true" if bool(value) else "false"
-    if vt == "TIME" and isinstance(value, time):
-        return value.strftime("%H:%M")
-    return "" if value is None else str(value)
-
-
-def _format_created_at(dt: Optional[datetime]) -> str:
-    if not dt:
-        return ""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    return dt.astimezone(LOCAL_TZ).strftime("%d.%m %H:%M")
-
-
-def _raw_order_type(entity: Any) -> Any:
-    value = getattr(entity, "type", None)
-    if value is None:
-        value = getattr(entity, "order_type", None)
-    return value
-
-
-def _map_staff_role(db_role: m.StaffRole) -> StaffRole:
-    if db_role == m.StaffRole.ADMIN:
-        return StaffRole.GLOBAL_ADMIN
-    if hasattr(m.StaffRole, "CITY_ADMIN") and db_role == getattr(
-        m.StaffRole, "CITY_ADMIN"
-    ):
-        return StaffRole.CITY_ADMIN
-    return StaffRole.LOGIST
-
-
-def _map_staff_role_to_db(role: StaffRole) -> m.StaffRole:
-    if role is StaffRole.CITY_ADMIN and hasattr(m.StaffRole, "CITY_ADMIN"):
-        return getattr(m.StaffRole, "CITY_ADMIN")
-    if role is StaffRole.LOGIST:
-        return m.StaffRole.LOGIST
-    return m.StaffRole.ADMIN
-
-
-def _sorted_city_tuple(city_ids: Optional[Iterable[int]]) -> tuple[int, ...]:
-    if not city_ids:
-        return tuple()
-    return tuple(sorted({int(cid) for cid in city_ids}))
-
-
-async def _load_staff_city_map(
-    session: AsyncSession, staff_rows: Sequence[m.staff_users]
-) -> dict[int, list[int]]:
-    ids = [row.id for row in staff_rows]
-    city_map: dict[int, list[int]] = {sid: [] for sid in ids}
-    if not ids:
-        return city_map
-    rows = await session.execute(
-        select(m.staff_cities.staff_user_id, m.staff_cities.city_id).where(
-            m.staff_cities.staff_user_id.in_(ids)
-        )
-    )
-    for staff_id, city_id in rows:
-        city_map[int(staff_id)].append(int(city_id))
-    return city_map
-
-
-async def _collect_code_cities(
-    session: AsyncSession, code_ids: Sequence[int]
-) -> dict[int, list[int]]:
-    links: dict[int, list[int]] = {cid: [] for cid in code_ids}
-    if not code_ids:
-        return links
-    rows = await session.execute(
-        select(
-            m.staff_access_code_cities.access_code_id,
-            m.staff_access_code_cities.city_id,
-        ).where(m.staff_access_code_cities.access_code_id.in_(code_ids))
-    )
-    for code_id, city_id in rows:
-        links[int(code_id)].append(int(city_id))
-    return links
-
-
-class AccessCodeError(RuntimeError):
-    def __init__(self, reason: str) -> None:
-        super().__init__(reason)
-        self.reason = reason
-
-
-def _order_type_from_db(value: Any) -> OrderType:
-    if value is None:
-        return OrderType.NORMAL
-    if isinstance(value, OrderType):
-        return value
-    if isinstance(value, m.OrderType):
-        return OrderType(value.value)
-    if isinstance(value, str):
-        candidate = value.upper().strip()
-        try:
-            return OrderType(candidate)
-        except ValueError:
-            return OrderType.NORMAL
-    return OrderType.NORMAL
-
-
-def _map_order_type_to_db(order_type: OrderType) -> m.OrderType:
-    if order_type is OrderType.GUARANTEE:
-        return m.OrderType.GUARANTEE
-    return m.OrderType.NORMAL
-
-
-def _attachment_type_from_string(value: Optional[str]) -> m.AttachmentFileType:
-    if not value:
-        return m.AttachmentFileType.OTHER
-    normalized = value.lower()
-    if normalized == "photo":
-        return m.AttachmentFileType.PHOTO
-    if normalized == "document":
-        return m.AttachmentFileType.DOCUMENT
-    return m.AttachmentFileType.OTHER
-
-
-def _generate_staff_code() -> str:
-    alphabet = string.ascii_uppercase + string.digits
-    return "".join(secrets.choice(alphabet) for _ in range(8))
-
-
-class DBStaffService:
-    def __init__(self, session_factory=SessionLocal, *, access_code_ttl_hours: int | None = None) -> None:
-        self._session_factory = session_factory
-        if access_code_ttl_hours is None:
-            access_code_ttl_hours = settings.access_code_ttl_hours
-        self._access_code_ttl_hours = int(access_code_ttl_hours) if access_code_ttl_hours is not None else 0
-
-    async def seed_global_admins(self, tg_ids: Sequence[int]) -> int:
-        unique_ids = sorted({int(tg) for tg in tg_ids if tg})
-        if not unique_ids:
-            return 0
-        async with self._session_factory() as session:
-            payload = [
-                {
-                    "tg_user_id": tg_id,
-                    "role": m.StaffRole.ADMIN,
-                    "is_active": True,
-                }
-                for tg_id in unique_ids
-            ]
-            if not payload:
-                return 0
-            async with session.begin():
-                total = await session.scalar(select(func.count()).select_from(m.staff_users))
-                if total and int(total) > 0:
-                    return 0
-                await session.execute(insert(m.staff_users), payload)
-            return len(payload)
-
-    async def get_by_tg_id(self, tg_id: int) -> Optional[StaffUser]:
-        if tg_id is None:
-            return None
-        async with self._session_factory() as session:
-            row = await session.execute(
-                select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
-            )
-            staff = row.scalar_one_or_none()
-            if not staff:
-                return None
-            city_rows = await session.execute(
-                select(m.staff_cities.city_id).where(
-                    m.staff_cities.staff_user_id == staff.id
-                )
-            )
-            city_ids = frozenset(int(c[0]) for c in city_rows)
-            return StaffUser(
-                id=staff.id,
-                tg_id=staff.tg_user_id or 0,
-                role=_map_staff_role(staff.role),
-                is_active=bool(staff.is_active),
-                city_ids=city_ids,
-                full_name=staff.full_name or "",
-                phone=staff.phone or "",
-            )
-        
-    async def get_by_tg_id_or_username(
-        self,
-        tg_id: int,
-        username: Optional[str] = None,
-        update_tg_id: bool = True,
-    ) -> Optional[StaffUser]:
-        """Найти сотрудника по Telegram ID ИЛИ username."""
-        if tg_id is None:
-            return None
-        
-        async with self._session_factory() as session:
-            # 1. Пытаемся найти по tg_user_id
-            row = await session.execute(
-                select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
-            )
-            staff = row.scalar_one_or_none()
-            
-            # 2. Если не нашли по tg_id, пытаемся по username
-            if not staff and username:
-                normalized_username = username.lower().lstrip("@")
-                row = await session.execute(
-                    select(m.staff_users).where(
-                        m.staff_users.username == normalized_username
-                    )
-                )
-                staff = row.scalar_one_or_none()
-                
-                # 3. Если нашли по username и tg_user_id=NULL - обновляем
-                if staff and staff.tg_user_id is None and update_tg_id:
-                    # Обновляем без вложенной транзакции
-                    staff.tg_user_id = tg_id
-                    await session.commit()
-                    live_log.push(
-                        "staff",
-                        f"tg_id linked: staff_id={staff.id} username={normalized_username} tg_id={tg_id}"
-                    )
-            
-            if not staff:
-                return None
-            
-            # Загружаем города
-            city_rows = await session.execute(
-                select(m.staff_cities.city_id).where(
-                    m.staff_cities.staff_user_id == staff.id
-                )
-            )
-            city_ids = frozenset(int(c[0]) for c in city_rows)
-            
-            return StaffUser(
-                id=staff.id,
-                tg_id=staff.tg_user_id or tg_id,
-                role=_map_staff_role(staff.role),
-                is_active=bool(staff.is_active),
-                city_ids=city_ids,
-                full_name=staff.full_name or "",
-                phone=staff.phone or "",
-            )
-    async def link_username_to_tg_id(
-        self,
-        username: str,
-        tg_user_id: int,
-        full_name: Optional[str] = None,
-    ) -> Optional[StaffUser]:
-        normalized_username = username.lower().lstrip("@")
-    
-        async with self._session_factory() as session:
-            async with session.begin():
-                stmt = (
-                    select(m.staff_users)
-                    .where(
-                        m.staff_users.username == normalized_username,
-                        m.staff_users.tg_user_id.is_(None)
-                    )
-                    .with_for_update()
-                )
-                row = await session.execute(stmt)
-                staff = row.scalar_one_or_none()
-                
-                if not staff:
-                    return None
-                
-                staff.tg_user_id = tg_user_id
-                if full_name:
-                    staff.full_name = full_name
-                
-                await session.flush()
-                
-                city_rows = await session.execute(
-                    select(m.staff_cities.city_id).where(
-                        m.staff_cities.staff_user_id == staff.id
-                    )
-                )
-                city_ids = frozenset(int(c[0]) for c in city_rows)
-                
-                live_log.push(
-                    "staff",
-                    f"username linked: staff_id={staff.id} username={normalized_username} tg_id={tg_user_id}"
-                )
-        
-        return StaffUser(
-            id=staff.id,
-            tg_id=tg_user_id,
-            role=_map_staff_role(staff.role),
-            is_active=bool(staff.is_active),
-            city_ids=city_ids,
-            full_name=staff.full_name or "",
-            phone=staff.phone or "",
-        )
-    async def list_staff(
-        self,
-        *,
-        role: Optional[StaffRole],
-        page: int,
-        page_size: int,
-    ) -> tuple[list[StaffMember], bool]:
-        offset = max(page - 1, 0) * page_size
-        async with self._session_factory() as session:
-            stmt = select(m.staff_users).order_by(m.staff_users.created_at.desc())
-            if role:
-                stmt = stmt.where(
-                    m.staff_users.role == _map_staff_role_to_db(role)
-                )
-            rows = await session.execute(stmt.offset(offset).limit(page_size + 1))
-            staff_rows = rows.scalars().all()
-            has_next = len(staff_rows) > page_size
-            staff_rows = staff_rows[:page_size]
-            if not staff_rows:
-                return [], has_next
-            city_map = await _load_staff_city_map(session, staff_rows)
-            members = [
-                StaffMember(
-                    id=staff.id,
-                    tg_id=staff.tg_user_id,
-                    username=staff.username,
-                    full_name=staff.full_name or "",
-                    phone=staff.phone,
-                    role=_map_staff_role(staff.role),
-                    is_active=bool(staff.is_active),
-                    city_ids=_sorted_city_tuple(city_map.get(staff.id)),
-                    created_at=staff.created_at,
-                    updated_at=staff.updated_at,
-                )
-                for staff in staff_rows
-            ]
-            return members, has_next
-
-    async def get_staff_member(self, staff_id: int) -> Optional[StaffMember]:
-        async with self._session_factory() as session:
-            row = await session.execute(
-                select(m.staff_users).where(m.staff_users.id == staff_id)
-            )
-            staff = row.scalar_one_or_none()
-            if not staff:
-                return None
-            city_map = await _load_staff_city_map(session, [staff])
-            return StaffMember(
-                id=staff.id,
-                tg_id=staff.tg_user_id,
-                username=staff.username,
-                full_name=staff.full_name or "",
-                phone=staff.phone,
-                role=_map_staff_role(staff.role),
-                is_active=bool(staff.is_active),
-                city_ids=_sorted_city_tuple(city_map.get(staff.id)),
-                created_at=staff.created_at,
-                updated_at=staff.updated_at,
-            )
-
-    async def set_staff_cities(
-        self, staff_id: int, city_ids: Iterable[int]
-    ) -> None:
-        normalized = _sorted_city_tuple(city_ids)
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    delete(m.staff_cities).where(m.staff_cities.staff_user_id == staff_id)
-                )
-                session.add_all(
-                    m.staff_cities(staff_user_id=staff_id, city_id=cid)
-                    for cid in normalized
-                )
-
-    async def set_staff_role(self, staff_id: int, role: StaffRole) -> None:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.staff_users)
-                    .where(m.staff_users.id == staff_id)
-                    .values(role=_map_staff_role_to_db(role))
-                )
-
-    async def set_staff_active(self, staff_id: int, is_active: bool) -> None:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.staff_users)
-                    .where(m.staff_users.id == staff_id)
-                    .values(is_active=is_active)
-                )
-
-    async def update_staff_profile(
-        self, staff_id: int, *, full_name: str, phone: str, username: Optional[str] | None = None
-    ) -> None:
-        values: dict[str, Any] = {"full_name": full_name, "phone": phone}
-        if username is not None:
-            values["username"] = username
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.staff_users)
-                    .where(m.staff_users.id == staff_id)
-                    .values(**values)
-                )
-
-
-    async def create_access_code(
-        self,
-        *,
-        role: StaffRole,
-        city_ids: Iterable[int],
-        issued_by_staff_id: Optional[int] = None,
-        created_by_staff_id: Optional[int] = None,
-        expires_at: Optional[datetime],
-        comment: Optional[str],
-    ) -> StaffAccessCode:
-        unique_cities = _sorted_city_tuple(city_ids)
-        expires_at_value = expires_at
-        ttl_hours = max(0, self._access_code_ttl_hours)
-        if expires_at_value is None and ttl_hours > 0:
-            expires_at_value = datetime.now(UTC) + timedelta(hours=ttl_hours)
-        async with self._session_factory() as session:
-            async with session.begin():
-                code_value = await self._generate_unique_code(session)
-                db_role = _map_staff_role_to_db(role)
-                city_column = unique_cities[0] if len(unique_cities) == 1 else None
-                issuer_id = issued_by_staff_id if issued_by_staff_id is not None else created_by_staff_id
-                code_row = m.staff_access_codes(
-                    code=code_value,
-                    role=db_role,
-                    city_id=city_column,
-                    issued_by_staff_id=issuer_id,
-                    expires_at=expires_at_value,
-                    comment=comment,
-                )
-                session.add(code_row)
-                await session.flush()
-                session.add_all(
-                    m.staff_access_code_cities(
-                        access_code_id=code_row.id, city_id=cid
-                    )
-                    for cid in unique_cities
-                )
-                cities_label = "".join(str(cid) for cid in unique_cities) or '-'
-                live_log.push("staff", f"access_code issued code={code_value} role={role.value} cities={cities_label}")
-            return StaffAccessCode(
-                id=code_row.id,
-                code=code_row.code,
-                role=role,
-                city_ids=unique_cities,
-                issued_by_staff_id=code_row.issued_by_staff_id,
-                used_by_staff_id=code_row.used_by_staff_id,
-                expires_at=code_row.expires_at,
-                used_at=code_row.used_at,
-                revoked_at=None,
-                is_revoked=bool(code_row.is_revoked),
-                comment=code_row.comment,
-                created_at=code_row.created_at,
-            )
-
-    async def validate_access_code_value(self, code_value: str) -> Optional[StaffAccessCode]:
-        normalized = (code_value or "").strip().upper()
-        if not normalized:
-            return None
-        now = datetime.now(UTC)
-        async with self._session_factory() as session:
-            row = await session.execute(
-                select(m.staff_access_codes).where(m.staff_access_codes.code == normalized)
-            )
-            code_row = row.scalar_one_or_none()
-            if not code_row:
-                return None
-            if bool(code_row.is_revoked):
-                return None
-            if code_row.used_at is not None:
-                return None
-            expires_at = code_row.expires_at
-            if expires_at and expires_at.tzinfo is None:
-                expires_at = expires_at.replace(tzinfo=UTC)
-            if expires_at and expires_at < now:
-                return None
-            link_map = await _collect_code_cities(session, [code_row.id])
-            cities = _sorted_city_tuple(
-                link_map.get(code_row.id) or ([code_row.city_id] if code_row.city_id else [])
-            )
-            role = _map_staff_role(code_row.role)
-            if role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST) and not cities:
-                return None
-            return StaffAccessCode(
-                id=code_row.id,
-                code=code_row.code,
-                role=role,
-                city_ids=cities,
-                issued_by_staff_id=code_row.issued_by_staff_id,
-                used_by_staff_id=code_row.used_by_staff_id,
-                expires_at=code_row.expires_at,
-                used_at=code_row.used_at,
-                revoked_at=None,
-                is_revoked=bool(code_row.is_revoked),
-                comment=code_row.comment,
-                created_at=code_row.created_at,
-            )
-
-    async def add_staff_direct(
-        self,
-        *,
-        tg_id: Optional[int],
-        username: Optional[str],
-        role: StaffRole,
-        city_ids: Iterable[int],
-        created_by_staff_id: int,
-    ) -> StaffUser:
-        """Create staff user without requiring an access code."""
-        if tg_id is None and (username is None or not username.strip()):
-            raise ValueError("Either tg_id or username must be provided")
-
-        unique_cities = _sorted_city_tuple(city_ids)
-        now = datetime.now(UTC)
-
-        async with self._session_factory() as session:
-            async with session.begin():
-                if tg_id is not None:
-                    existing = await session.execute(
-                        select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
-                    )
-                    if existing.scalar_one_or_none():
-                        raise AccessCodeError("already_staff")
-
-                full_name = (username or "").strip() or (f"User{tg_id}" if tg_id else "Unknown")
-
-                staff_row = m.staff_users(
-                    tg_user_id=tg_id,
-                    username=username,
-                    full_name=full_name,
-                    phone="",
-                    role=_map_staff_role_to_db(role),
-                    is_active=True,
-                )
-                session.add(staff_row)
-                await session.flush()
-
-                if unique_cities:
-                    session.add_all(
-                        m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
-                        for cid in unique_cities
-                    )
-
-                cities_label = ", ".join(str(cid) for cid in unique_cities) or "all"
-                live_log.push(
-                    "staff",
-                    (
-                        f"staff added direct: id={staff_row.id} tg_id={tg_id} "
-                        f"username={username} role={role.value} cities={cities_label} "
-                        f"by={created_by_staff_id}"
-                    ),
-                )
-
-        return StaffUser(
-            id=staff_row.id,
-            tg_id=tg_id or 0,
-            role=role,
-            is_active=True,
-            city_ids=frozenset(unique_cities),
-            full_name=staff_row.full_name or "",
-            phone=staff_row.phone or "",
-        )
-
-    async def register_staff_user_from_code(
-        self,
-        *,
-        code_value: str,
-        tg_user_id: int,
-        username: Optional[str],
-        full_name: str,
-        phone: str,
-    ) -> StaffUser:
-        normalized = (code_value or "").strip().upper()
-        if not normalized:
-            raise AccessCodeError("invalid_code")
-        now = datetime.now(UTC)
-        async with self._session_factory() as session:
-            async with session.begin():
-                code_stmt = (
-                    select(m.staff_access_codes)
-                    .where(
-                        m.staff_access_codes.code == normalized,
-                        m.staff_access_codes.is_revoked == False,
-                        m.staff_access_codes.used_at.is_(None),
-                    )
-                    .with_for_update()
-                )
-                code_row = (await session.execute(code_stmt)).scalar_one_or_none()
-                if not code_row:
-                    raise AccessCodeError("invalid_code")
-                expires_at = code_row.expires_at
-                if expires_at and expires_at.tzinfo is None:
-                    expires_at = expires_at.replace(tzinfo=UTC)
-                if expires_at and expires_at < now:
-                    raise AccessCodeError("expired")
-                link_map = await _collect_code_cities(session, [code_row.id])
-                city_ids = _sorted_city_tuple(
-                    link_map.get(code_row.id) or ([code_row.city_id] if code_row.city_id else [])
-                )
-                role = _map_staff_role(code_row.role)
-                if role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST) and not city_ids:
-                    raise AccessCodeError("no_cities")
-                existing = await session.execute(
-                    select(m.staff_users).where(m.staff_users.tg_user_id == tg_user_id)
-                )
-                if existing.scalar_one_or_none():
-                    raise AccessCodeError("already_staff")
-                staff_row = m.staff_users(
-                    tg_user_id=tg_user_id,
-                    username=username,
-                    full_name=full_name,
-                    phone=phone,
-                    role=_map_staff_role_to_db(role),
-                    is_active=True,
-                )
-                session.add(staff_row)
-                await session.flush()
-                session.add_all(
-                    m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
-                    for cid in city_ids
-                )
-                await session.execute(
-                    update(m.staff_access_codes)
-                    .where(m.staff_access_codes.id == code_row.id)
-                    .values(
-                        used_by_staff_id=staff_row.id,
-                        used_at=now,
-                    )
-                )
-                live_log.push('staff', f'access_code used code={code_row.code} staff={staff_row.id}')
-            return StaffUser(
-                id=staff_row.id,
-                tg_id=tg_user_id,
-                role=role,
-                is_active=True,
-                city_ids=frozenset(city_ids),
-                full_name=staff_row.full_name or '',
-                phone=staff_row.phone or '',
-            )
-
-
-    async def list_access_codes(
-        self,
-        *,
-        state: str,
-        page: int,
-        page_size: int,
-    ) -> tuple[list[StaffAccessCode], bool]:
-        offset = max(page - 1, 0) * page_size
-        now = datetime.now(UTC)
-        async with self._session_factory() as session:
-            stmt = select(m.staff_access_codes).order_by(
-                m.staff_access_codes.created_at.desc()
-            )
-            if state == "active":
-                stmt = stmt.where(
-                    (m.staff_access_codes.is_revoked == False)  # noqa: E712
-                    & (m.staff_access_codes.used_at.is_(None))
-                    & (
-                        (m.staff_access_codes.expires_at.is_(None))
-                        | (m.staff_access_codes.expires_at >= now)
-                    )
-                )
-            elif state == "used":
-                stmt = stmt.where(m.staff_access_codes.used_at.is_not(None))
-            elif state == "revoked":
-                stmt = stmt.where(m.staff_access_codes.is_revoked == True)  # noqa: E712
-            rows = await session.execute(stmt.offset(offset).limit(page_size + 1))
-            code_rows = rows.scalars().all()
-            has_next = len(code_rows) > page_size
-            code_rows = code_rows[:page_size]
-            if not code_rows:
-                return [], has_next
-            link_map = await _collect_code_cities(
-                session, [code.id for code in code_rows]
-            )
-            items: list[StaffAccessCode] = []
-            for code in code_rows:
-                cities = _sorted_city_tuple(
-                    link_map.get(code.id) or ([code.city_id] if code.city_id else [])
-                )
-                items.append(
-                    StaffAccessCode(
-                        id=code.id,
-                        code=code.code,
-                        role=_map_staff_role(code.role),
-                        city_ids=cities,
-                        issued_by_staff_id=code.issued_by_staff_id,
-                        used_by_staff_id=code.used_by_staff_id,
-                        expires_at=code.expires_at,
-                        used_at=code.used_at,
-                        is_revoked=bool(code.is_revoked),
-                        comment=code.comment,
-                        created_at=code.created_at,
-                    )
-                )
-            return items, has_next
-
-
-    async def list_warranty_orders(
-        self,
-        *,
-        city_ids: Optional[Iterable[int]],
-        page: int,
-        page_size: int,
-    ) -> tuple[list[OrderListItem], bool]:
-        """Return orders closed less than 14 days ago with paid commission."""
-        offset = max(page - 1, 0) * page_size
-        now = datetime.now(UTC)
-        warranty_deadline = now - timedelta(days=14)
-
-        city_filter: Optional[list[int]] = None
-        if city_ids is not None:
-            city_filter = [int(cid) for cid in city_ids]
-            if not city_filter:
-                return [], False
-
-        async with self._session_factory() as session:
-            stmt = (
-                select(
-                    m.orders.id,
-                    m.orders.city_id,
-                    m.cities.name.label("city_name"),
-                    m.orders.district_id,
-                    m.districts.name.label("district_name"),
-                    m.streets.name.label("street_name"),
-                    m.orders.house,
-                    m.orders.status,
-                    m.orders.type.label("order_type"),
-                    m.orders.category,
-                    m.orders.created_at,
-                    m.orders.updated_at,
-                    m.orders.assigned_master_id,
-                    m.masters.full_name.label("master_name"),
-                    m.masters.phone.label("master_phone"),
-                    m.commissions.paid_approved_at,
-                    func.count(m.attachments.id).label("attachments_count"),
-                )
-                .select_from(m.orders)
-                .join(m.cities, m.orders.city_id == m.cities.id)
-                .join(m.commissions, m.commissions.order_id == m.orders.id)
-                .join(
-                    m.districts,
-                    m.orders.district_id == m.districts.id,
-                    isouter=True,
-                )
-                .join(
-                    m.streets,
-                    m.orders.street_id == m.streets.id,
-                    isouter=True,
-                )
-                .join(
-                    m.masters,
-                    m.orders.assigned_master_id == m.masters.id,
-                    isouter=True,
-                )
-                .join(
-                    m.attachments,
-                    (m.attachments.entity_type == m.AttachmentEntity.ORDER)
-                    & (m.attachments.entity_id == m.orders.id),
-                    isouter=True,
-                )
-                .where(
-                    m.orders.status == m.OrderStatus.CLOSED,
-                    m.orders.type != m.OrderType.GUARANTEE,
-                    m.commissions.paid_approved_at.isnot(None),
-                    m.commissions.paid_approved_at >= warranty_deadline,
-                )
-            )
-
-            if city_filter is not None:
-                stmt = stmt.where(m.orders.city_id.in_(city_filter))
-
-            stmt = (
-                stmt.group_by(
-                    m.orders.id,
-                    m.orders.city_id,
-                    m.cities.name,
-                    m.orders.district_id,
-                    m.districts.name,
-                    m.streets.name,
-                    m.orders.house,
-                    m.orders.status,
-                    m.orders.type,
-                    m.orders.category,
-                    m.orders.created_at,
-                    m.orders.updated_at,
-                    m.orders.assigned_master_id,
-                    m.masters.full_name,
-                    m.masters.phone,
-                    m.commissions.paid_approved_at,
-                )
-                .order_by(m.commissions.paid_approved_at.desc())
-                .offset(offset)
-                .limit(page_size + 1)
-            )
-
-            rows = await session.execute(stmt)
-            fetched = rows.all()
-            has_next = len(fetched) > page_size
-
-            items: list[OrderListItem] = []
-
-            for row in fetched[:page_size]:
-                days_left = 0
-                if row.paid_approved_at:
-                    warranty_end = row.paid_approved_at + timedelta(days=14)
-                    remaining = warranty_end - now
-                    days_left = max(0, remaining.days)
-
-                order_type = _order_type_from_db(row.order_type)
-                items.append(
-                    OrderListItem(
-                        id=row.id,
-                        city_id=row.city_id,
-                        city_name=row.city_name,
-                        district_id=row.district_id,
-                        district_name=row.district_name,
-                        street_name=row.street_name,
-                        house=row.house,
-                        status=str(row.status),
-                        order_type=order_type,
-                        category=row.category,
-                        created_at_local=_format_created_at(row.created_at),
-                        timeslot_local=f"Гарантия: {days_left} дн.",
-                        master_id=row.assigned_master_id,
-                        master_name=row.master_name,
-                        master_phone=row.master_phone,
-                        has_attachments=bool(row.attachments_count),
-                    )
-                )
-
-        return items, has_next
-
-    async def list_closed_orders(
-        self,
-        *,
-        city_ids: Optional[Iterable[int]],
-        page: int,
-        page_size: int,
-    ) -> tuple[list[OrderListItem], bool]:
-        """Return closed orders outside guarantee window or guarantee type."""
-        offset = max(page - 1, 0) * page_size
-        now = datetime.now(UTC)
-        warranty_deadline = now - timedelta(days=14)
-
-        city_filter: Optional[list[int]] = None
-        if city_ids is not None:
-            city_filter = [int(cid) for cid in city_ids]
-            if not city_filter:
-                return [], False
-
-        async with self._session_factory() as session:
-            stmt = (
-                select(
-                    m.orders.id,
-                    m.orders.city_id,
-                    m.cities.name.label("city_name"),
-                    m.orders.district_id,
-                    m.districts.name.label("district_name"),
-                    m.streets.name.label("street_name"),
-                    m.orders.house,
-                    m.orders.status,
-                    m.orders.type.label("order_type"),
-                    m.orders.category,
-                    m.orders.created_at,
-                    m.orders.updated_at,
-                    m.orders.assigned_master_id,
-                    m.masters.full_name.label("master_name"),
-                    m.masters.phone.label("master_phone"),
-                    m.commissions.paid_approved_at,
-                    func.count(m.attachments.id).label("attachments_count"),
-                )
-                .select_from(m.orders)
-                .join(m.cities, m.orders.city_id == m.cities.id)
-                .join(
-                    m.commissions,
-                    m.commissions.order_id == m.orders.id,
-                    isouter=True,
-                )
-                .join(
-                    m.districts,
-                    m.orders.district_id == m.districts.id,
-                    isouter=True,
-                )
-                .join(
-                    m.streets,
-                    m.orders.street_id == m.streets.id,
-                    isouter=True,
-                )
-                .join(
-                    m.masters,
-                    m.orders.assigned_master_id == m.masters.id,
-                    isouter=True,
-                )
-                .join(
-                    m.attachments,
-                    (m.attachments.entity_type == m.AttachmentEntity.ORDER)
-                    & (m.attachments.entity_id == m.orders.id),
-                    isouter=True,
-                )
-                .where(
-                    m.orders.status == m.OrderStatus.CLOSED,
-                    (
-                        (
-                            (m.orders.type != m.OrderType.GUARANTEE)
-                            & (m.commissions.paid_approved_at.isnot(None))
-                            & (m.commissions.paid_approved_at < warranty_deadline)
-                        )
-                        | (m.orders.type == m.OrderType.GUARANTEE)
-                        | (m.commissions.paid_approved_at.is_(None))
-                    ),
-                )
-            )
-
-            if city_filter is not None:
-                stmt = stmt.where(m.orders.city_id.in_(city_filter))
-
-            stmt = (
-                stmt.group_by(
-                    m.orders.id,
-                    m.orders.city_id,
-                    m.cities.name,
-                    m.orders.district_id,
-                    m.districts.name,
-                    m.streets.name,
-                    m.orders.house,
-                    m.orders.status,
-                    m.orders.type,
-                    m.orders.category,
-                    m.orders.created_at,
-                    m.orders.updated_at,
-                    m.orders.assigned_master_id,
-                    m.masters.full_name,
-                    m.masters.phone,
-                    m.commissions.paid_approved_at,
-                )
-                .order_by(m.orders.updated_at.desc())
-                .offset(offset)
-                .limit(page_size + 1)
-            )
-
-            rows = await session.execute(stmt)
-            fetched = rows.all()
-            has_next = len(fetched) > page_size
-
-            items: list[OrderListItem] = []
-
-            for row in fetched[:page_size]:
-                closed_date = _format_datetime_local(row.updated_at) or "-"
-                order_type = _order_type_from_db(row.order_type)
-                items.append(
-                    OrderListItem(
-                        id=row.id,
-                        city_id=row.city_id,
-                        city_name=row.city_name,
-                        district_id=row.district_id,
-                        district_name=row.district_name,
-                        street_name=row.street_name,
-                        house=row.house,
-                        status=str(row.status),
-                        order_type=order_type,
-                        category=row.category,
-                        created_at_local=_format_created_at(row.created_at),
-                        timeslot_local=f"Закрыта: {closed_date}",
-                        master_id=row.assigned_master_id,
-                        master_name=row.master_name,
-                        master_phone=row.master_phone,
-                        has_attachments=bool(row.attachments_count),
-                    )
-                )
-
-        return items, has_next
-
-    async def count_orders_by_sections(
-        self,
-        city_ids: Optional[Iterable[int]],
-    ) -> dict[str, int]:
-        """Count orders for queue menu counters."""
-        now = datetime.now(UTC)
-        warranty_deadline = now - timedelta(days=14)
-
-        city_filter: Optional[list[int]] = None
-        if city_ids is not None:
-            city_filter = [int(cid) for cid in city_ids]
-            if not city_filter:
-                return {'queue': 0, 'guarantee': 0, 'closed': 0}
-
-        async with self._session_factory() as session:
-            queue_stmt = select(func.count(m.orders.id)).where(
-                m.orders.status.in_(
-                    [
-                        m.OrderStatus.SEARCHING,
-                        m.OrderStatus.ASSIGNED,
-                        m.OrderStatus.EN_ROUTE,
-                        m.OrderStatus.WORKING,
-                        m.OrderStatus.PAYMENT,
-                        m.OrderStatus.GUARANTEE,
-                        m.OrderStatus.DEFERRED,
-                    ]
-                )
-            )
-            if city_filter is not None:
-                queue_stmt = queue_stmt.where(m.orders.city_id.in_(city_filter))
-            queue_count = await session.scalar(queue_stmt) or 0
-
-            warranty_stmt = (
-                select(func.count(m.orders.id))
-                .select_from(m.orders)
-                .join(m.commissions, m.commissions.order_id == m.orders.id)
-                .where(
-                    m.orders.status == m.OrderStatus.CLOSED,
-                    m.orders.type != m.OrderType.GUARANTEE,
-                    m.commissions.paid_approved_at.isnot(None),
-                    m.commissions.paid_approved_at >= warranty_deadline,
-                )
-            )
-            if city_filter is not None:
-                warranty_stmt = warranty_stmt.where(m.orders.city_id.in_(city_filter))
-            warranty_count = await session.scalar(warranty_stmt) or 0
-
-            closed_stmt = (
-                select(func.count(m.orders.id))
-                .select_from(m.orders)
-                .join(
-                    m.commissions,
-                    m.commissions.order_id == m.orders.id,
-                    isouter=True,
-                )
-                .where(
-                    m.orders.status == m.OrderStatus.CLOSED,
-                    (
-                        (
-                            (m.orders.type != m.OrderType.GUARANTEE)
-                            & (m.commissions.paid_approved_at.isnot(None))
-                            & (m.commissions.paid_approved_at < warranty_deadline)
-                        )
-                        | (m.orders.type == m.OrderType.GUARANTEE)
-                        | (m.commissions.paid_approved_at.is_(None))
-                    ),
-                )
-            )
-            if city_filter is not None:
-                closed_stmt = closed_stmt.where(m.orders.city_id.in_(city_filter))
-            closed_count = await session.scalar(closed_stmt) or 0
-
-        return {
-            'queue': int(queue_count),
-            'guarantee': int(warranty_count),
-            'closed': int(closed_count),
-        }
-
-    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
-        async with self._session_factory() as session:
-            rows = await session.execute(
-                select(
-                    m.masters.id,
-                    m.masters.tg_user_id,
-                    m.masters.full_name,
-                )
-                .join(m.commissions, m.commissions.master_id == m.masters.id)
-                .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
-                .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
-                .order_by(m.masters.id)
-            )
-            recipients: list[WaitPayRecipient] = []
-            for master_id, tg_user_id, full_name in rows.all():
-                if tg_user_id is None:
-                    continue
-                recipients.append(
-                    WaitPayRecipient(
-                        master_id=int(master_id),
-                        tg_user_id=int(tg_user_id),
-                        full_name=full_name or f'Master {master_id}',
-                    )
-                )
-        return recipients
-
-    async def get_access_code(self, code_id: int) -> Optional[StaffAccessCode]:
-        async with self._session_factory() as session:
-            row = await session.execute(
-                select(m.staff_access_codes).where(m.staff_access_codes.id == code_id)
-            )
-            code = row.scalar_one_or_none()
-            if not code:
-                return None
-            link_map = await _collect_code_cities(session, [code.id])
-            cities = _sorted_city_tuple(
-                link_map.get(code.id) or ([code.city_id] if code.city_id else [])
-            )
-            return StaffAccessCode(
-                id=code.id,
-                code=code.code,
-                role=_map_staff_role(code.role),
-                city_ids=cities,
-                issued_by_staff_id=code.issued_by_staff_id,
-                used_by_staff_id=code.used_by_staff_id,
-                expires_at=code.expires_at,
-                used_at=code.used_at,
-                is_revoked=bool(code.is_revoked),
-                comment=code.comment,
-                created_at=code.created_at,
-            )
-
-    async def revoke_access_code(
-        self, code_id: int, *, by_staff_id: Optional[int] = None
-    ) -> bool:
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
-                    update(m.staff_access_codes)
-                    .where(
-                        (m.staff_access_codes.id == code_id)
-                        & (m.staff_access_codes.used_at.is_(None))
-                        & (m.staff_access_codes.is_revoked == False)  # noqa: E712
-                    )
-                    .values(is_revoked=True)
-                    .returning(m.staff_access_codes.id, m.staff_access_codes.code)
-                )
-                row = result.first()
-                if not row:
-                    return False
-                revoked_code = row.code
-            live_log.push("staff", f"access_code revoked code={revoked_code} by={by_staff_id}")
-        return True
-
-    async def _generate_unique_code(self, session: AsyncSession) -> str:
-        for _ in range(50):
-            code_value = _generate_staff_code()
-            exists = await session.execute(
-                select(m.staff_access_codes.id).where(
-                    m.staff_access_codes.code == code_value
-                )
-            )
-            if exists.first() is None:
-                return code_value
-        raise RuntimeError("Unable to generate unique access code after 50 attempts")
-
-
-class DBOrdersService:
-    def __init__(self, session_factory=SessionLocal) -> None:
-            self._session_factory = session_factory
-
-    async def _city_timezone(self, session: AsyncSession, city_id: Optional[int]) -> ZoneInfo:
-        if not city_id:
-            return time_service.resolve_timezone(settings.timezone)
-        if hasattr(m.cities, "timezone"):
-            row = await session.execute(
-                select(m.cities.timezone).where(m.cities.id == int(city_id))
-            )
-            value = row.scalar_one_or_none()
-            if value:
-                return time_service.resolve_timezone(str(value))
-        return time_service.resolve_timezone(settings.timezone)
-
-    async def get_city_timezone(self, city_id: Optional[int]) -> str:
-        async with self._session_factory() as session:
-            tz = await self._city_timezone(session, city_id)
-            return _zone_storage_value(tz)
-
-    async def list_cities(
-            self, *, query: Optional[str] = None, limit: int = 20
-        ) -> list[CityRef]:
-            matching = city_catalog.match_cities(query)
-            if limit is not None and limit > 0:
-                matching = matching[:limit]
-            if not matching:
-                return []
-            async with self._session_factory() as session:
-                rows = await session.execute(
-                    select(m.cities.id, m.cities.name)
-                    .where(
-                        m.cities.is_active == True,  # noqa: E712
-                        m.cities.name.in_(matching),
-                    )
-                )
-                fetched = {row.name: int(row.id) for row in rows}
-            return [
-                CityRef(id=fetched[name], name=name)
-                for name in matching
-                if name in fetched
-            ]
-
-    async def get_city(self, city_id: int) -> Optional[CityRef]:
-            async with self._session_factory() as session:
-                row = await session.execute(
-                    select(m.cities.id, m.cities.name).where(m.cities.id == city_id)
-                )
-                result = row.first()
-                if not result:
-                    return None
-                return CityRef(id=int(result.id), name=result.name)
-
-    async def list_districts(
-            self, city_id: int, *, page: int, page_size: int
-        ) -> tuple[list[DistrictRef], bool]:
-            offset = max(page - 1, 0) * page_size
-            async with self._session_factory() as session:
-                stmt = (
-                    select(m.districts.id, m.districts.name)
-                    .where(m.districts.city_id == city_id)
-                    .order_by(m.districts.name)
-                    .offset(offset)
-                    .limit(page_size + 1)
-                )
-                rows = await session.execute(stmt)
-                fetched = rows.all()
-            has_next = len(fetched) > page_size
-            districts = [
-                DistrictRef(id=int(row.id), city_id=city_id, name=row.name)
-                for row in fetched[:page_size]
-            ]
-            return districts, has_next
-
-    async def get_district(self, district_id: int) -> Optional[DistrictRef]:
-            async with self._session_factory() as session:
-                row = await session.execute(
-                    select(m.districts.id, m.districts.name, m.districts.city_id)
-                    .where(m.districts.id == district_id)
-                )
-                result = row.first()
-                if not result:
-                    return None
-                return DistrictRef(
-                    id=int(result.id), city_id=int(result.city_id), name=result.name
-                )
-
-    async def search_streets(
-            self, city_id: int, query: str, *, limit: int = 10
-        ) -> list[StreetRef]:
-            normalized = query.strip()
-            if not normalized:
-                return []
-            async with self._session_factory() as session:
-                stmt = (
-                    select(
-                        m.streets.id,
-                        m.streets.name,
-                        m.streets.district_id,
-                        m.streets.centroid_lat,
-                        m.streets.centroid_lon,
-                    )
-                    .where(m.streets.city_id == city_id)
-                    .order_by(m.streets.name)
-                    .limit(200)
-                )
-                rows = await session.execute(stmt)
-                items = rows.all()
-            if not items:
-                return []
-            choices = {row.name: row for row in items}
-            matches = process.extract(
-                normalized,
-                list(choices.keys()),
-                scorer=fuzz.WRatio,
-                processor=lambda s: s.lower(),
-                limit=min(limit * 3, len(choices)),
-            )
-            matches = sorted(matches, key=lambda item: (-item[1], -len(item[0])))
-            result: list[StreetRef] = []
-            used_ids: set[int] = set()
-            used_norms: list[str] = []
-            for name, score, _ in matches:
-                if score is None or score < STREET_MIN_SCORE:
-                    continue
-                row = choices[name]
-                street_id = int(row.id)
-                if street_id in used_ids:
-                    continue
-                normalized_candidate = _normalize_street_name(name)
-                if any(
-                    max(
-                        fuzz.WRatio(normalized_candidate, existing),
-                        fuzz.partial_ratio(normalized_candidate, existing),
-                        fuzz.partial_ratio(existing, normalized_candidate),
-                    ) >= STREET_DUPLICATE_THRESHOLD
-                    for existing in used_norms
-                ):
-                    continue
-                result.append(
-                    StreetRef(
-                        id=street_id,
-                        city_id=city_id,
-                        district_id=int(row.district_id) if row.district_id is not None else None,
-                        name=row.name,
-                        score=float(score),
-                    )
-                )
-                used_ids.add(street_id)
-                used_norms.append(normalized_candidate)
-                if len(result) >= limit:
-                    break
-            return result
-    async def get_street(self, street_id: int) -> Optional[StreetRef]:
-            async with self._session_factory() as session:
-                row = await session.execute(
-                    select(
-                        m.streets.id,
-                        m.streets.city_id,
-                        m.streets.district_id,
-                        m.streets.name,
-                    ).where(m.streets.id == street_id)
-                )
-                result = row.first()
-                if not result:
-                    return None
-                return StreetRef(
-                    id=int(result.id),
-                    city_id=int(result.city_id),
-                    district_id=int(result.district_id) if result.district_id is not None else None,
-                    name=result.name,
-                )
-
-    async def list_queue(
-            self,
-            *,
-            city_ids: Optional[Iterable[int]],
-            page: int,
-            page_size: int,
-            status_filter: Optional[OrderStatus] = None,
-            category: Optional[OrderCategory] = None,
-            master_id: Optional[int] = None,
-            timeslot_date: Optional[date] = None,
-        ) -> tuple[list[OrderListItem], bool]:
-            offset = max(page - 1, 0) * page_size
-            city_filter: Optional[list[int]] = None
-            if city_ids is not None:
-                city_filter = [int(cid) for cid in city_ids]
-                if not city_filter:
-                    return [], False
-            allowed_statuses = [status.value for status in QUEUE_STATUSES]
-            async with self._session_factory() as session:
-                category_enum = normalize_category(category)
-                stmt = (
-                    select(
-                        m.orders.id,
-                        m.orders.city_id,
-                        m.cities.name.label("city_name"),
-                        m.orders.district_id,
-                        m.districts.name.label("district_name"),
-                        m.streets.name.label("street_name"),
-                        m.orders.house,
-                        m.orders.status,
-                        m.orders.type.label("order_type"),
-                        m.orders.category,
-                        m.orders.created_at,
-                        m.orders.timeslot_start_utc,
-                        m.orders.timeslot_end_utc,
-                        m.orders.assigned_master_id,
-                        m.masters.full_name.label("master_name"),
-                        m.masters.phone.label("master_phone"),
-                        func.count(m.attachments.id).label("attachments_count"),
-                    )
-                    .select_from(m.orders)
-                    .join(m.cities, m.orders.city_id == m.cities.id)
-                    .join(
-                        m.districts,
-                        m.orders.district_id == m.districts.id,
-                        isouter=True,
-                    )
-                    .join(
-                        m.streets,
-                        m.orders.street_id == m.streets.id,
-                        isouter=True,
-                    )
-                    .join(
-                        m.masters,
-                        m.orders.assigned_master_id == m.masters.id,
-                        isouter=True,
-                    )
-                    .join(
-                        m.attachments,
-                        (m.attachments.entity_type == m.AttachmentEntity.ORDER)
-                        & (m.attachments.entity_id == m.orders.id),
-                        isouter=True,
-                    )
-                )
-                if status_filter:
-                    stmt = stmt.where(m.orders.status == status_filter.value)
-                else:
-                    stmt = stmt.where(m.orders.status.in_(allowed_statuses))
-                if city_filter is not None:
-                    stmt = stmt.where(m.orders.city_id.in_(city_filter))
-                if category_enum:
-                    stmt = stmt.where(m.orders.category == category_enum)
-                if master_id:
-                    stmt = stmt.where(m.orders.assigned_master_id == master_id)
-                if timeslot_date:
-                    stmt = stmt.where(func.date(m.orders.timeslot_start_utc) == timeslot_date)
-                stmt = (
-                    stmt.group_by(
-                        m.orders.id,
-                        m.orders.city_id,
-                        m.cities.name,
-                        m.orders.district_id,
-                        m.districts.name,
-                        m.streets.name,
-                        m.orders.house,
-                        m.orders.status,
-                        m.orders.type,
-                        m.orders.category,
-                        m.orders.created_at,
-                        m.orders.timeslot_start_utc,
-                        m.orders.timeslot_end_utc,
-                        m.orders.assigned_master_id,
-                        m.masters.full_name,
-                        m.masters.phone,
-                    )
-                    .order_by(m.orders.created_at.desc())
-                    .offset(offset)
-                    .limit(page_size + 1)
-                )
-                rows = await session.execute(stmt)
-                fetched = rows.all()
-                has_next = len(fetched) > page_size
-                items: list[OrderListItem] = []
-                tz_cache: dict[int, ZoneInfo] = {}
-                for row in fetched[:page_size]:
-                    order_type = _order_type_from_db(row.order_type)
-                    tz = tz_cache.get(row.city_id)
-                    if tz is None:
-                        tz = await self._city_timezone(session, row.city_id)
-                        tz_cache[row.city_id] = tz
-                    timeslot = time_service.format_timeslot_local(
-                        row.timeslot_start_utc,
-                        row.timeslot_end_utc,
-                        tz=tz,
-                    )
-                    items.append(
-                        OrderListItem(
-                            id=row.id,
-                            city_id=row.city_id,
-                            city_name=row.city_name,
-                            district_id=row.district_id,
-                            district_name=row.district_name,
-                            street_name=row.street_name,
-                            house=row.house,
-                            status=str(row.status),
-                            order_type=order_type,
-                            category=row.category,
-                            created_at_local=_format_created_at(row.created_at),
-                            timeslot_local=timeslot,
-                            master_id=row.assigned_master_id,
-                            master_name=row.master_name,
-                            master_phone=row.master_phone,
-                            has_attachments=bool(row.attachments_count),
-                        )
-                    )
-            return items, has_next
-    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
-            async with self._session_factory() as session:
-                rows = await session.execute(
-                    select(
-                        m.masters.id,
-                        m.masters.tg_user_id,
-                        m.masters.full_name,
-                    )
-                    .join(m.commissions, m.commissions.master_id == m.masters.id)
-                    .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
-                    .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
-                    .order_by(m.masters.id)
-                )
-                recipients: list[WaitPayRecipient] = []
-                for master_id, tg_user_id, full_name in rows.all():
-                    if tg_user_id is None:
-                        continue
-                    recipients.append(
-                        WaitPayRecipient(
-                            master_id=int(master_id),
-                            tg_user_id=int(tg_user_id),
-                            full_name=full_name or f'Master {master_id}',
-                        )
-                    )
-            return recipients
-
-    async def get_card(self, order_id: int, *, city_ids: Optional[Iterable[int]] = None) -> Optional[OrderDetail]:
-            async with self._session_factory() as session:
-                stmt = (
-                    select(
-                        m.orders,
-                        m.cities.name.label("city_name"),
-                        m.districts.name.label("district_name"),
-                        m.streets.name.label("street_name"),
-                        m.masters.full_name.label("master_name"),
-                        m.masters.phone.label("master_phone"),
-                    )
-                    .select_from(m.orders)
-                    .join(m.cities, m.orders.city_id == m.cities.id)
-                    .join(
-                        m.districts,
-                        m.orders.district_id == m.districts.id,
-                        isouter=True,
-                    )
-                    .join(
-                        m.streets,
-                        m.orders.street_id == m.streets.id,
-                        isouter=True,
-                    )
-                    .join(
-                        m.masters,
-                        m.orders.assigned_master_id == m.masters.id,
-                        isouter=True,
-                    )
-                    .where(m.orders.id == order_id)
-                )
-                if city_ids is not None:
-                    allowed = tuple(int(c) for c in city_ids)
-                    if not allowed:
-                        return None
-                    stmt = stmt.where(m.orders.city_id.in_(allowed))
-                row = await session.execute(stmt)
-                data = row.first()
-                if not data:
-                    return None
-                order: m.orders = data.orders
-                attachments = await self._load_attachments(session, order.id)
-                tz = await self._city_timezone(session, order.city_id)
-                timeslot = time_service.format_timeslot_local(
-                    order.timeslot_start_utc,
-                    order.timeslot_end_utc,
-                    tz=tz,
-                )
-                order_type = _order_type_from_db(_raw_order_type(order))
-                return OrderDetail(
-                    id=order.id,
-                    city_id=order.city_id,
-                    city_name=data.city_name,
-                    district_id=order.district_id,
-                    district_name=data.district_name,
-                    street_name=data.street_name,
-                    house=order.house,
-                    status=order.status.value,
-                    order_type=order_type,
-                    category=order.category,
-                    created_at_local=_format_created_at(order.created_at),
-                    timeslot_local=timeslot,
-                    master_id=order.assigned_master_id,
-                    master_name=data.master_name,
-                    master_phone=data.master_phone,
-                    has_attachments=bool(attachments),
-                    client_name=order.client_name,
-                    client_phone=order.client_phone,
-                    apartment=order.apartment,
-                    address_comment=order.address_comment,
-                    description=order.description,
-                    lat=float(order.lat) if order.lat is not None else None,
-                    lon=float(order.lon) if order.lon is not None else None,
-                    company_payment=Decimal(order.company_payment or 0),
-                    total_sum=Decimal(order.total_sum or 0),
-                    attachments=attachments,
-                )
-
-    async def list_status_history(
-            self, order_id: int, *, limit: int = 5, city_ids: Optional[Iterable[int]] = None
-        ) -> tuple[OrderStatusHistoryItem, ...]:
-            async with self._session_factory() as session:
-                limited = max(1, limit)
-                stmt = (
-                    select(
-                        m.order_status_history.id,
-                        m.order_status_history.from_status,
-                        m.order_status_history.to_status,
-                        m.order_status_history.reason,
-                        m.order_status_history.changed_by_staff_id,
-                        m.order_status_history.changed_by_master_id,
-                        m.order_status_history.created_at,
-                    )
-                    .join(m.orders, m.orders.id == m.order_status_history.order_id)
-                    .where(m.order_status_history.order_id == order_id)
-                    .order_by(m.order_status_history.created_at.desc())
-                    .limit(limited)
-                )
-                if city_ids is not None:
-                    allowed = tuple(int(c) for c in city_ids)
-                    if not allowed:
-                        return tuple()
-                    stmt = stmt.where(m.orders.city_id.in_(allowed))
-                rows = await session.execute(stmt)
-                items: list[OrderStatusHistoryItem] = []
-                for row in rows:
-                    items.append(
-                        OrderStatusHistoryItem(
-                            id=row.id,
-                            from_status=row.from_status.value if row.from_status else None,
-                            to_status=row.to_status.value if row.to_status else None,
-                            reason=row.reason,
-                            changed_by_staff_id=row.changed_by_staff_id,
-                            changed_by_master_id=row.changed_by_master_id,
-                            changed_at_local=_format_created_at(row.created_at) or "",
-                        )
-                    )
-                return tuple(items)
-
-    async def get_order_attachment(
-            self, order_id: int, attachment_id: int, *, city_ids: Optional[Iterable[int]] = None
-        ) -> Optional[OrderAttachment]:
-            async with self._session_factory() as session:
-                stmt = (
-                    select(
-                        m.attachments.id,
-                        m.attachments.file_type,
-                        m.attachments.file_id,
-                        m.attachments.file_name,
-                        m.attachments.caption,
-                    )
-                    .select_from(m.attachments)
-                    .join(
-                        m.orders,
-                        and_(
-                            m.attachments.entity_type == m.AttachmentEntity.ORDER,
-                            m.attachments.entity_id == m.orders.id,
-                        ),
-                    )
-                    .where(
-                        and_(
-                            m.attachments.entity_type == m.AttachmentEntity.ORDER,
-                            m.attachments.entity_id == order_id,
-                            m.attachments.id == attachment_id,
-                        )
-                    )
-                    .limit(1)
-                )
-                if city_ids is not None:
-                    allowed = tuple(int(c) for c in city_ids)
-                    if not allowed:
-                        return None
-                    stmt = stmt.where(m.orders.city_id.in_(allowed))
-                row = await session.execute(stmt)
-                data = row.first()
-                if not data:
-                    return None
-                return OrderAttachment(
-                    id=data.id,
-                    file_type=str(data.file_type),
-                    file_id=data.file_id,
-                    file_name=data.file_name,
-                    caption=data.caption,
-                )
-
-    async def _load_attachments(
-            self, session: AsyncSession, order_id: int
-        ) -> tuple[OrderAttachment, ...]:
-            rows = await session.execute(
-                select(
-                    m.attachments.id,
-                    m.attachments.file_type,
-                    m.attachments.file_id,
-                    m.attachments.file_name,
-                    m.attachments.caption,
-                )
-                .where(
-                    (m.attachments.entity_type == m.AttachmentEntity.ORDER)
-                    & (m.attachments.entity_id == order_id)
-                )
-                .order_by(m.attachments.created_at.asc())
-            )
-            attachments = []
-            for row in rows:
-                attachments.append(
-                    OrderAttachment(
-                        id=row.id,
-                        file_type=str(row.file_type),
-                        file_id=row.file_id,
-                        file_name=row.file_name,
-                        caption=row.caption,
-                    )
-                )
-            return tuple(attachments)
-
-    @staticmethod
-    def _coerce_float(value: Optional[float]) -> Optional[float]:
-        if value is None:
-            return None
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return None
-
-
-    async def _resolve_order_coordinates(
-        self,
-        session: AsyncSession,
-        *,
-        city_id: int,
-        district_id: Optional[int],
-        street_id: Optional[int],
-        raw_lat: Optional[float],
-        raw_lon: Optional[float],
-    ) -> tuple[Optional[float], Optional[float], Optional[str], Optional[int], Optional[int]]:
-        lat = self._coerce_float(raw_lat)
-        lon = self._coerce_float(raw_lon)
-        resolved_district = district_id
-        if lat is not None and lon is not None:
-            return lat, lon, "user_location", 100, resolved_district
-
-        street_has_centroids = False
-        if street_id:
-            street_has_centroids = await _ensure_centroid_flag(session, "street")
-            street_columns = [m.streets.district_id]
-            if street_has_centroids:
-                street_columns.extend([m.streets.centroid_lat, m.streets.centroid_lon])
-            try:
-                row = await session.execute(
-                    select(*street_columns).where(m.streets.id == street_id)
-                )
-            except ProgrammingError as exc:
-                if street_has_centroids and _is_column_missing_error(exc):
-                    globals()["HAS_STREET_CENTROIDS"] = False
-                    await session.rollback()
-                    row = await session.execute(
-                        select(m.streets.district_id).where(m.streets.id == street_id)
-                    )
-                    street_has_centroids = False
-                else:
-                    raise
-            data = row.mappings().first()
-            if data is not None:
-                district_val = data.get("district_id")
-                if resolved_district is None and district_val is not None:
-                    resolved_district = int(district_val)
-                if street_has_centroids:
-                    lat_val = data.get("centroid_lat")
-                    lon_val = data.get("centroid_lon")
-                    if lat_val is not None and lon_val is not None:
-                        return (
-                            float(lat_val),
-                            float(lon_val),
-                            "street_centroid",
-                            80,
-                            resolved_district,
-                        )
-
-        district_has_centroids = False
-        if resolved_district is not None:
-            district_has_centroids = await _ensure_centroid_flag(session, "district")
-            if district_has_centroids:
-                try:
-                    row = await session.execute(
-                        select(
-                            m.districts.centroid_lat,
-                            m.districts.centroid_lon,
-                        ).where(m.districts.id == resolved_district)
-                    )
-                except ProgrammingError as exc:
-                    if _is_column_missing_error(exc):
-                        globals()["HAS_DISTRICT_CENTROIDS"] = False
-                        await session.rollback()
-                        district_has_centroids = False
-                    else:
-                        raise
-                else:
-                    data = row.mappings().first()
-                    if data:
-                        lat_val = data.get("centroid_lat")
-                        lon_val = data.get("centroid_lon")
-                        if lat_val is not None and lon_val is not None:
-                            return (
-                                float(lat_val),
-                                float(lon_val),
-                                "district_centroid",
-                                60,
-                                resolved_district,
-                            )
-
-        city_has_centroids = await _ensure_centroid_flag(session, "city")
-        if city_has_centroids:
-            try:
-                row = await session.execute(
-                    select(
-                        m.cities.centroid_lat,
-                        m.cities.centroid_lon,
-                    ).where(m.cities.id == city_id)
-                )
-            except ProgrammingError as exc:
-                if _is_column_missing_error(exc):
-                    globals()["HAS_CITY_CENTROIDS"] = False
-                    await session.rollback()
-                    city_has_centroids = False
-                else:
-                    raise
-            else:
-                data = row.mappings().first()
-                if data:
-                    lat_val = data.get("centroid_lat")
-                    lon_val = data.get("centroid_lon")
-                    if lat_val is not None and lon_val is not None:
-                        return (
-                            float(lat_val),
-                            float(lon_val),
-                            "city_centroid",
-                            40,
-                            resolved_district,
-                        )
-
-        return None, None, None, None, resolved_district
-
-    async def create_order(self, data: NewOrderData) -> int:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    tz = await self._city_timezone(session, data.city_id)
-                    _, workday_end = await _workday_window()
-                    now_local = datetime.now(timezone.utc).astimezone(tz)
-                    current_time = now_local.timetz()
-                    if current_time.tzinfo is not None:
-                        current_time = current_time.replace(tzinfo=None)
-                    normalized_status = normalize_status(data.initial_status)
-                    initial_status = normalized_status or m.OrderStatus.SEARCHING
-                    status_provided = normalized_status is not None
-                    if not status_provided and current_time >= workday_end:
-                        initial_status = m.OrderStatus.DEFERRED
-                    (
-                        resolved_lat,
-                        resolved_lon,
-                        geocode_provider,
-                        geocode_confidence,
-                        resolved_district,
-                    ) = await self._resolve_order_coordinates(
-                        session,
-                        city_id=data.city_id,
-                        district_id=data.district_id,
-                        street_id=data.street_id,
-                        raw_lat=data.lat,
-                        raw_lon=data.lon,
-                    )
-                    no_district_flag = bool(data.no_district or resolved_district is None)
-                    order = m.orders(
-                        city_id=data.city_id,
-                        district_id=resolved_district,
-                        street_id=data.street_id,
-                        house=data.house,
-                        apartment=data.apartment,
-                        address_comment=data.address_comment,
-                        client_name=data.client_name,
-                        client_phone=data.client_phone,
-                        category=data.category,
-                        description=data.description,
-                        type=_map_order_type_to_db(data.order_type),
-                        timeslot_start_utc=data.timeslot_start_utc,
-                        timeslot_end_utc=data.timeslot_end_utc,
-                        lat=resolved_lat,
-                        lon=resolved_lon,
-                        geocode_provider=geocode_provider,
-                        geocode_confidence=geocode_confidence,
-                        no_district=no_district_flag,
-                        preferred_master_id=data.preferred_master_id,
-                        guarantee_source_order_id=data.guarantee_source_order_id,
-                        company_payment=Decimal(data.company_payment or 0),
-                        total_sum=Decimal(data.total_sum or 0),
-                        created_by_staff_id=data.created_by_staff_id,
-                        status=initial_status,
-                    )
-                    session.add(order)
-                    await session.flush()
-                    if data.attachments:
-                        session.add_all(
-                            m.attachments(
-                                entity_type=m.AttachmentEntity.ORDER,
-                                entity_id=order.id,
-                                file_type=_attachment_type_from_string(att.file_type),
-                                file_id=att.file_id,
-                                file_unique_id=att.file_unique_id,
-                                file_name=att.file_name,
-                                mime_type=att.mime_type,
-                                caption=att.caption,
-                                uploaded_by_staff_id=data.created_by_staff_id,
-                            )
-                            for att in data.attachments
-                        )
-                    session.add(
-                        m.order_status_history(
-                            order_id=order.id,
-                            from_status=None,
-                            to_status=initial_status,
-                            reason="created_by_staff",
-                            changed_by_staff_id=data.created_by_staff_id,
-                        )
-                    )
-                return order.id
-    async def has_active_guarantee(self, source_order_id: int, *, city_ids: Optional[Iterable[int]] = None) -> bool:
-            async with self._session_factory() as session:
-                stmt = (
-                    select(1)
-                    .where(m.orders.guarantee_source_order_id == source_order_id)
-                    .where(~m.orders.status.in_([m.OrderStatus.CANCELED, m.OrderStatus.CLOSED]))
-                    .limit(1)
-                )
-                if city_ids is not None:
-                    allowed = tuple(int(c) for c in city_ids)
-                    if not allowed:
-                        return False
-                    stmt = stmt.where(m.orders.city_id.in_(allowed))
-                row = await session.execute(stmt)
-                return row.first() is not None
-
-    async def create_guarantee_order(self, source_order_id: int, by_staff_id: int) -> int:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    src_query = await session.execute(
-                        select(m.orders)
-                        .where(m.orders.id == source_order_id)
-                        .with_for_update()
-                    )
-                    source = src_query.scalar_one_or_none()
-                    if source is None:
-                        raise GuaranteeError("source order not found")
-
-                    staff = await _load_staff_access(session, by_staff_id or None)
-                    if not _staff_can_access_city(staff, source.city_id):
-                        raise GuaranteeError("no access to city")
-
-                    status_val = getattr(source, "status", None)
-                    if isinstance(status_val, m.OrderStatus):
-                        status_is_closed = status_val == m.OrderStatus.CLOSED
-                    else:
-                        status_is_closed = str(status_val).upper() == m.OrderStatus.CLOSED.value
-                    if not status_is_closed:
-                        raise GuaranteeError("source order must be CLOSED")
-
-                    if _raw_order_type(source) == m.OrderType.GUARANTEE:
-                        raise GuaranteeError("source order already guarantee")
-
-                    if not source.assigned_master_id:
-                        raise GuaranteeError("source order has no assigned master")
-
-                    existing = await session.execute(
-                        select(m.orders.id)
-                        .where(m.orders.guarantee_source_order_id == source_order_id)
-                        .where(~m.orders.status.in_([m.OrderStatus.CANCELED, m.OrderStatus.CLOSED]))
-                        .limit(1)
-                    )
-                    if existing.first():
-                        raise GuaranteeError("guarantee already exists")
-
-                    created = await guarantee_service.create_from_closed_order(
-                        session,
-                        source_order_id,
-                        source=source,
-                        created_by_staff_id=staff.id if staff else None,
-                    )
-                    return created.id
-
-    async def return_to_search(self, order_id: int, by_staff_id: int) -> bool:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    q = await session.execute(
-                        select(m.orders)
-                        .where(m.orders.id == order_id)
-                        .with_for_update()
-                    )
-                    order = q.scalar_one_or_none()
-                    if not order:
-                        return False
-                    staff = await _load_staff_access(session, by_staff_id or None)
-                    if not _staff_can_access_city(staff, order.city_id):
-                        return False
-                    if order.status in {m.OrderStatus.CANCELED, m.OrderStatus.CLOSED}:
-                        return False
-                    prev_status = order.status
-                    order.assigned_master_id = None
-                    order.status = (
-                        m.OrderStatus.GUARANTEE
-                        if _raw_order_type(order) == m.OrderType.GUARANTEE
-                        else m.OrderStatus.SEARCHING
-                    )
-                    order.updated_at = datetime.now(UTC)
-                    order.version = (order.version or 0) + 1
-                    order.cancel_reason = None
-                    session.add(
-                        m.order_status_history(
-                            order_id=order.id,
-                            from_status=prev_status,
-                            to_status=m.OrderStatus.SEARCHING,
-                            reason="manual_return",
-                            changed_by_staff_id=staff.id if staff else None,
-                        )
-                    )
-                    # Cancel any active offers (SENT/VIEWED/ACCEPTED) and log how many were canceled
-                    res = await session.execute(
-                        update(m.offers)
-                        .where(
-                            (m.offers.order_id == order.id)
-                            & (
-                                m.offers.state.in_(
-                                    [
-                                        m.OfferState.SENT,
-                                        m.OfferState.VIEWED,
-                                        m.OfferState.ACCEPTED,
-                                    ]
-                                )
-                            )
-                        )
-                        .values(state=m.OfferState.CANCELED, responded_at=func.now())
-                    )
-                    try:
-                        canceled_count = int(getattr(res, "rowcount", 0) or 0)
-                    except Exception:
-                        canceled_count = 0
-                    _push_dist_log(
-                        f"[dist] return_to_search order={order.id} canceled_offers={canceled_count}",
-                        level="INFO",
-                    )
-            return True
-
-    async def cancel(self, order_id: int, reason: str, by_staff_id: int) -> bool:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    q = await session.execute(
-                        select(m.orders)
-                        .where(m.orders.id == order_id)
-                        .with_for_update()
-                    )
-                    order = q.scalar_one_or_none()
-                    if not order:
-                        return False
-                    staff = await _load_staff_access(session, by_staff_id or None)
-                    if not _staff_can_access_city(staff, order.city_id):
-                        return False
-                    if order.status == m.OrderStatus.CANCELED:
-                        return True
-                    prev_status = order.status
-                    order.assigned_master_id = None
-                    order.status = m.OrderStatus.CANCELED
-                    order.updated_at = datetime.now(UTC)
-                    order.version = (order.version or 0) + 1
-                    order.cancel_reason = reason
-                    session.add(
-                        m.order_status_history(
-                            order_id=order.id,
-                            from_status=prev_status,
-                            to_status=m.OrderStatus.CANCELED,
-                            reason=reason,
-                            changed_by_staff_id=staff.id if staff else None,
-                        )
-                    )
-                    await session.execute(
-                        update(m.offers)
-                        .where(
-                            (m.offers.order_id == order.id)
-                            & (
-                                m.offers.state.in_(
-                                    [
-                                        m.OfferState.SENT,
-                                        m.OfferState.VIEWED,
-                                        m.OfferState.ACCEPTED,
-                                    ]
-                                )
-                            )
-                        )
-                        .values(state=m.OfferState.CANCELED, responded_at=func.now())
-                    )
-            return True
-
-    async def assign_master(
-            self, order_id: int, master_id: int, by_staff_id: int
-        ) -> bool:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    order_q = await session.execute(
-                        select(m.orders)
-                        .where(m.orders.id == order_id)
-                        .with_for_update()
-                    )
-                    order = order_q.scalar_one_or_none()
-                    if not order:
-                        return False
-                    staff = await _load_staff_access(session, by_staff_id or None)
-                    if not _staff_can_access_city(staff, order.city_id):
-                        return False
-                    master_q = await session.execute(
-                        select(m.masters).where(m.masters.id == master_id)
-                    )
-                    master = master_q.scalar_one_or_none()
-                    if not master:
-                        return False
-                    if master.city_id is not None and master.city_id != order.city_id:
-                        return False
-                    if order.district_id:
-                        md_q = await session.execute(
-                            select(m.master_districts)
-                            .where(
-                                (m.master_districts.master_id == master.id)
-                                & (m.master_districts.district_id == order.district_id)
-                            )
-                            .limit(1)
-                        )
-                        if md_q.first() is None:
-                            return False
-                    prev_status = order.status
-                    order.assigned_master_id = master.id
-                    order.status = m.OrderStatus.ASSIGNED
-                    order.updated_at = datetime.now(UTC)
-                    order.version = (order.version or 0) + 1
-                    order.cancel_reason = None
-                    session.add(
-                        m.order_status_history(
-                            order_id=order.id,
-                            from_status=prev_status,
-                            to_status=m.OrderStatus.ASSIGNED,
-                            reason="manual_assign",
-                            changed_by_staff_id=staff.id if staff else None,
-                        )
-                    )
-                    await session.execute(
-                        update(m.offers)
-                        .where(
-                            (m.offers.order_id == order.id)
-                            & (
-                                m.offers.state.in_(
-                                    [m.OfferState.SENT, m.OfferState.VIEWED]
-                                )
-                            )
-                        )
-                        .values(state=m.OfferState.CANCELED, responded_at=func.now())
-                    )
-            return True
-
-    async def activate_deferred_order(self, order_id: int, staff_id: int) -> bool:
-        """
-        Перевести DEFERRED заказ в PENDING (активировать поиск мастера).
-        
-        Args:
-            order_id: ID заказа
-            staff_id: ID сотрудника, который активирует заказ
-            
-        Returns:
-            True если успешно, False если не удалось
-        """
-        async with self._session_factory() as session:
-            async with session.begin():
-                # Загружаем заказ с блокировкой
-                q = await session.execute(
-                    select(m.orders)
-                    .where(m.orders.id == order_id)
-                    .with_for_update()
-                )
-                order = q.scalar_one_or_none()
-                if not order:
-                    return False
-                
-                # Проверяем доступ админа
-                staff = await _load_staff_access(session, staff_id or None)
-                if not _staff_can_access_city(staff, order.city_id):
-                    return False
-                
-                # Проверяем, что заказ в статусе DEFERRED
-                if order.status != m.OrderStatus.DEFERRED:
-                    return False
-                
-                # Переводим в PENDING (или SEARCHING для обычных, GUARANTEE для гарантийных)
-                prev_status = order.status
-                order_type = _raw_order_type(order)
-                if order_type == m.OrderType.GUARANTEE:
-                    new_status = m.OrderStatus.GUARANTEE
-                else:
-                    new_status = m.OrderStatus.PENDING
-                
-                order.status = new_status
-                order.updated_at = datetime.now(UTC)
-                order.version = (order.version or 0) + 1
-                
-                # Записываем в историю
-                session.add(
-                    m.order_status_history(
-                        order_id=order.id,
-                        from_status=prev_status,
-                        to_status=new_status,
-                        reason="activated_by_admin",
-                        changed_by_staff_id=staff.id if staff else None,
-                    )
-                )
-                
-                # Логируем активацию
-                live_log.push(
-                    "orders",
-                    f"DEFERRED order #{order_id} activated → {new_status.value} by staff #{staff_id}",
-                    level="INFO"
-                )
-        
-        # Автораспределение будет запущено в следующем тике (каждые 30 секунд)
-        # Заказ перешёл в статус PENDING/SEARCHING/GUARANTEE и будет обработан автоматически
-        return True
-
-
-
-@dataclass(frozen=True)
-class AutoAssignResult:
-    message: str
-    master_id: Optional[int] = None
-    deadline: Optional[datetime] = None
-    code: str = "ok"
-
-
-
-
-def _push_dist_log(message: str, *, level: str = "INFO") -> None:
-    try:
-        live_log.push("dist", message, level=level)
-    except Exception:
-        pass
-    print(message)
-
-
-def _coerce_order_status(value: Any) -> m.OrderStatus:
-    if isinstance(value, m.OrderStatus):
-        return value
-    if value is None:
-        return m.OrderStatus.SEARCHING
-    try:
-        return m.OrderStatus(str(value))
-    except ValueError:
-        return m.OrderStatus.SEARCHING
-
-
-class DBDistributionService:
-    def __init__(self, session_factory=SessionLocal) -> None:
-        self._session_factory = session_factory
-
-
-    async def assign_auto(
-        self,
-        order_id: int,
-        by_staff_id: int,
-    ) -> tuple[bool, AutoAssignResult]:
-        async with self._session_factory() as session:
-            async with session.begin():
-                order_q = await session.execute(
-                    select(
-                        m.orders.id,
-                        m.orders.city_id,
-                        m.orders.district_id,
-                        m.orders.preferred_master_id,
-                        m.orders.category,
-                        m.orders.status,
-                        m.orders.type.label("order_type"),
-                        m.orders.dist_escalated_logist_at,
-                        m.orders.dist_escalated_admin_at,
-                    )
-                    .where(m.orders.id == order_id)
-                    .with_for_update()
-                )
-                data = order_q.first()
-                if not data:
-                    return False, AutoAssignResult(
-                        "  ",
-                        code="not_found",
-                    )
-
-                staff = await _load_staff_access(session, by_staff_id or None)
-                if not _staff_can_access_city(staff, data.city_id):
-                    return False, AutoAssignResult(
-                        "   ",
-                        code="forbidden",
-                    )
-
-                status_enum = _coerce_order_status(getattr(data, "status", None))
-                logistic_mark = getattr(data, "dist_escalated_logist_at", None)
-
-                if data.district_id is None:
-                    if logistic_mark is None:
-                        await session.execute(
-                            update(m.orders)
-                            .where(m.orders.id == order_id)
-                            .values(
-                                dist_escalated_logist_at=func.now(),
-                                dist_escalated_admin_at=None,
-                            )
-                        )
-                        await session.execute(
-                            insert(m.order_status_history).values(
-                                order_id=order_id,
-                                from_status=status_enum,
-                                to_status=status_enum,
-                                reason=f"{dw.ESC_REASON_LOGIST}:no_district",
-                                actor_type=m.ActorType.AUTO_DISTRIBUTION,
-                            )
-                        )
-                    message = dw.log_skip_no_district(order_id)
-                    _push_dist_log(message, level="WARN")
-                    return False, AutoAssignResult(
-                        "  :   .   .",
-                        code="no_district",
-                    )
-
-                category = getattr(data, "category", None)
-                skill_code = dw._skill_code_for_category(category)
-                if skill_code is None:
-                    message = dw.log_skip_no_category(order_id, category)
-                    _push_dist_log(message, level="WARN")
-                    return False, AutoAssignResult(
-                        "     ",
-                        code="no_category",
-                    )
-
-                order_type = _order_type_from_db(getattr(data, "order_type", None))
-                is_guarantee = (
-                    status_enum is m.OrderStatus.GUARANTEE
-                    or order_type is OrderType.GUARANTEE
-                )
-
-                cfg = await dw._load_config(session)  # type: ignore[attr-defined]
-                current_round = await dw.current_round(session, order_id)
-                if current_round >= cfg.rounds:
-                    return False, AutoAssignResult(
-                        "   ",
-                        code="rounds_exhausted",
-                    )
-
-                candidate_infos = await select_candidates(
-                    data,
-                    "auto",
-                    session=session,
-                    limit=50,
-                    log_hook=lambda message: _push_dist_log(message, level="INFO"),
-                )
-
-                candidates = [
-                    {
-                        "mid": candidate.master_id,
-                        "car": candidate.has_car,
-                        "avg_week": candidate.avg_week_check,
-                        "rating": candidate.rating_avg,
-                        "rnd": candidate.random_rank,
-                        "shift": candidate.is_on_shift,
-                    }
-                    for candidate in candidate_infos
-                ]
-
-                header = dw.log_tick_header(
-                    data,
-                    current_round + 1,
-                    cfg.rounds,
-                    cfg.sla_seconds,
-                    len(candidates),
-                )
-                _push_dist_log(header)
-
-                if is_guarantee and data.preferred_master_id and candidates:
-                    try:
-                        pref_id = int(data.preferred_master_id)
-                    except (TypeError, ValueError):
-                        pref_id = None
-                    if candidates and pref_id is not None and int(candidates[0]["mid"]) == pref_id:
-                        _push_dist_log(dw.log_force_first(pref_id))
-
-                if candidates:
-                    top_limit = min(len(candidates), 10)
-                    ranked_items = ", ".join(
-                        dw.fmt_rank_item(
-                            {
-                                "mid": row.get("mid"),
-                                "car": row.get("car"),
-                                "avg_week": float(row.get("avg_week") or 0),
-                                "rating": float(row.get("rating") or 0),
-                                "rnd": float(row.get("rnd") or 0),
-                                "shift": row.get("shift", True),
-                            }
-                        )
-                        for row in candidates[:top_limit]
-                    )
-                    if ranked_items:
-                        _push_dist_log("ranked=[\n  " + ranked_items + "\n]")
-
-                    master_id = int(candidates[0]["mid"])
-                    next_round = current_round + 1
-                    sent = await dw.send_offer(
-                        session,
-                        order_id,
-                        master_id,
-                        next_round,
-                        cfg.sla_seconds,
-                    )
-                    if not sent:
-                        conflict = (
-                            f"[dist] order={order_id} race_conflict: offer exists for mid={master_id}"
-                        )
-                        _push_dist_log(conflict, level="WARN")
-                        return False, AutoAssignResult(
-                            "    ",
-                            code="offer_conflict",
-                        )
-
-                    await session.execute(
-                        update(m.orders)
-                        .where(m.orders.id == order_id)
-                        .values(
-                            dist_escalated_logist_at=None,
-                            dist_escalated_admin_at=None,
-                        )
-                    )
-
-                    deadline = datetime.now(timezone.utc) + timedelta(seconds=cfg.sla_seconds)
-                    _push_dist_log(dw.log_decision_offer(master_id, deadline))
-                    
-                    # CR-2025-10-03-015: Форматируем дедлайн красиво
-                    deadline_formatted = _format_datetime_local(deadline) or deadline.strftime("%d.%m %H:%M")
-                    
-                    return True, AutoAssignResult(
-                        message=(
-                            f"✅ Предложение отправлено\n\n"
-                            f"👤 Мастер #{master_id}\n"
-                            f"⏰ Срок: {deadline_formatted}"
-                        ),
-                        master_id=master_id,
-                        deadline=deadline,
-                        code="offer_sent",
-                    )
-
-                if logistic_mark is None:
-                    await session.execute(
-                        update(m.orders)
-                        .where(m.orders.id == order_id)
-                        .values(
-                            dist_escalated_logist_at=func.now(),
-                            dist_escalated_admin_at=None,
-                        )
-                    )
-                    await session.execute(
-                        insert(m.order_status_history).values(
-                            order_id=order_id,
-                            from_status=status_enum,
-                            to_status=status_enum,
-                            reason=f"{dw.ESC_REASON_LOGIST}:no_candidates",
-                            actor_type=m.ActorType.AUTO_DISTRIBUTION,
-                        )
-                    )
-
-                _push_dist_log(dw.log_escalate(order_id), level="WARN")
-                return False, AutoAssignResult(
-                    "   ",
-                    code="no_candidates",
-                )
-
-
-
-    async def send_manual_offer(
-        self,
-        order_id: int,
-        master_id: int,
-        by_staff_id: int,
-    ) -> tuple[bool, str]:
-        async with self._session_factory() as session:
-            async with session.begin():
-                order_row = await session.execute(
-                    select(
-                        m.orders.id,
-                        m.orders.city_id,
-                        m.orders.district_id,
-                        m.orders.category,
-                        m.orders.status,
-                        m.orders.type.label("order_type"),
-                    )
-                    .where(m.orders.id == order_id)
-                    .with_for_update()
-                )
-                order = order_row.first()
-                if not order:
-                    return False, "  "
-
-                staff = await _load_staff_access(session, by_staff_id or None)
-                if not _staff_can_access_city(staff, order.city_id):
-                    return False, "   "
-
-                status = getattr(order, "status", None)
-                allowed_statuses = {
-                    m.OrderStatus.SEARCHING,
-                    m.OrderStatus.GUARANTEE,
-                }
-                status_enum = (
-                    status if isinstance(status, m.OrderStatus) else m.OrderStatus(str(status))
-                    if status is not None
-                    else m.OrderStatus.SEARCHING
-                )
-                if status_enum not in allowed_statuses:
-                    return False, "   "
-
-                category = getattr(order, "category", None)
-                skill_code = dw._skill_code_for_category(category)
-                if skill_code is None:
-                    return False, "   "
-
-                master_row = await session.execute(
-                    select(
-                        m.masters.id,
-                        m.masters.city_id,
-                        m.masters.is_active,
-                        m.masters.is_blocked,
-                        m.masters.verified,
-                    ).where(m.masters.id == master_id)
-                )
-                master = master_row.first()
-                if not master:
-                    return False, "  "
-                if master.city_id != order.city_id:
-                    return False, "    "
-                if not master.is_active or master.is_blocked or not master.verified:
-                    return False, " "
-
-                if order.district_id:
-                    district_row = await session.execute(
-                        select(m.master_districts)
-                        .where(
-                            (m.master_districts.master_id == master_id)
-                            & (m.master_districts.district_id == order.district_id)
-                        )
-                        .limit(1)
-                    )
-                    if district_row.first() is None:
-                        return False, "   "
-
-                skill_row = await session.execute(
-                    select(m.master_skills.master_id)
-                    .join(m.skills, m.master_skills.skill_id == m.skills.id)
-                    .where(
-                        (m.master_skills.master_id == master_id)
-                        & (m.skills.code == skill_code)
-                        & (m.skills.is_active == True)
-                    )
-                    .limit(1)
-                )
-                if skill_row.first() is None:
-                    return False, "Мастер не владеет требуемым навыком"
-
-                existing_offer = await session.execute(
-                    select(m.offers.id)
-                    .where(
-                        (m.offers.order_id == order_id)
-                        & (m.offers.master_id == master_id)
-                        & (
-                            m.offers.state.in_(
-                                [
-                                    m.OfferState.SENT,
-                                    m.OfferState.VIEWED,
-                                    m.OfferState.ACCEPTED,
-                                ]
-                            )
-                        )
-                    )
-                    .limit(1)
-                )
-                if existing_offer.first() is not None:
-                    return False, "    "
-
-                cfg = await dw._load_config(session)
-                current_round = await dw.current_round(session, order_id)
-                round_number = (current_round or 0) + 1
-                sent = await dw.send_offer(
-                    session,
-                    order_id,
-                    master_id,
-                    round_number,
-                    cfg.sla_seconds,
-                )
-                if not sent:
-                    return False, "   "
-
-                await session.execute(
-                    update(m.orders)
-                    .where(m.orders.id == order_id)
-                    .values(
-                        dist_escalated_logist_at=None,
-                        dist_escalated_admin_at=None,
-                    )
-                )
-        return True, " "
-
-
-
-class DBFinanceService:
-    """Сервис для работы с комиссиями и финансами."""
-    
-    def __init__(self, session_factory=SessionLocal) -> None:
-        self._session_factory = session_factory
-
-    async def bulk_approve_commissions(
-        self,
-        start_date: date,
-        end_date: date,
-        by_staff_id: int,
-        *,
-        city_ids: Optional[Iterable[int]] = None,
-    ) -> tuple[int, list[str]]:
-        """
-        Массовое одобрение комиссий за период.
-        
-        Args:
-            start_date: Начало периода
-            end_date: Конец периода (включительно)
-            by_staff_id: ID админа
-            city_ids: Фильтр по городам (RBAC)
-        
-        Returns:
-            (количество одобренных, список ошибок)
-        """
-        errors: list[str] = []
-        approved_count = 0
-        
-        async with self._session_factory() as session:
-            # Загружаем админа для RBAC
-            staff = await _load_staff_access(session, by_staff_id)
-            if staff is None:
-                return 0, ["Админ не найден"]
-            
-            # Применяем фильтр по городам
-            visible_cities = _visible_city_ids_for_staff(staff)
-            if visible_cities is not None:
-                if city_ids is not None:
-                    allowed = frozenset(city_ids) & visible_cities
-                else:
-                    allowed = visible_cities
-            elif city_ids is not None:
-                allowed = frozenset(city_ids)
-            else:
-                allowed = None
-            
-            # Находим комиссии WAIT_PAY за период
-            stmt = (
-                select(m.commissions.id)
-                .join(m.orders, m.commissions.order_id == m.orders.id)
-                .where(
-                    m.commissions.status == m.CommissionStatus.WAIT_PAY,
-                    func.date(m.commissions.created_at) >= start_date,
-                    func.date(m.commissions.created_at) <= end_date,
-                )
-            )
-            
-            if allowed is not None:
-                stmt = stmt.where(m.orders.city_id.in_(allowed))
-            
-            rows = await session.execute(stmt)
-            commission_ids = [row[0] for row in rows]
-            
-            if not commission_ids:
-                return 0, ["Нет комиссий для одобрения"]
-            
-            # Одобряем каждую комиссию
-            for comm_id in commission_ids:
-                try:
-                    async with session.begin():
-                        # Загружаем комиссию с блокировкой
-                        comm_stmt = (
-                            select(m.commissions)
-                            .where(m.commissions.id == comm_id)
-                            .with_for_update()
-                        )
-                        comm_row = await session.execute(comm_stmt)
-                        commission = comm_row.scalar_one_or_none()
-                        
-                        if not commission:
-                            errors.append(f"Комиссия #{comm_id} не найдена")
-                            continue
-                        
-                        if commission.status != m.CommissionStatus.WAIT_PAY:
-                            errors.append(f"Комиссия #{comm_id} не в статусе WAIT_PAY")
-                            continue
-                        
-                        # Обновляем статус
-                        commission.status = m.CommissionStatus.PAID
-                        commission.approved_by_staff_id = by_staff_id
-                        commission.approved_at = datetime.now(UTC)
-                        commission.updated_at = datetime.now(UTC)
-                        
-                        # Применяем реферальные вознаграждения
-                        try:
-                            await apply_rewards_for_commission(session, commission)
-                        except Exception as exc:
-                            logger.warning(
-                                "Failed to apply rewards for commission %s: %s",
-                                comm_id,
-                                exc,
-                            )
-                        
-                        approved_count += 1
-                        
-                except Exception as exc:
-                    errors.append(f"Ошибка при одобрении #{comm_id}: {exc}")
-                    logger.exception("Bulk approve failed for commission %s", comm_id)
-        
-        return approved_count, errors
-
-
-class DBMastersService:
-    def __init__(self, session_factory=SessionLocal) -> None:
-        self._session_factory = session_factory
-
-    async def list_active_skills(self) -> list[dict[str, object]]:
-        async with self._session_factory() as session:
-            rows = await session.execute(
-                select(m.skills.id, m.skills.code, m.skills.name)
-                .where(m.skills.is_active.is_(True))
-                .order_by(m.skills.name.asc())
-            )
-            skills: list[dict[str, object]] = []
-            for skill_id, code, name in rows.all():
-                label = str(name or code or skill_id)
-                skills.append(
-                    {
-                        "id": int(skill_id),
-                        "code": str(code or skill_id),
-                        "name": label,
-                    }
-                )
-            return skills
-
-    async def _get_default_master_limit(self, session: AsyncSession) -> int:
-        value = await session.scalar(
-            select(m.settings.value).where(m.settings.key == "max_active_orders")
-        )
-        try:
-            parsed = int(value)
-            if parsed > 0:
-                return parsed
-        except (TypeError, ValueError):
-            pass
-        return 5
-
-    async def _log_admin_action(
-        self,
-        session: AsyncSession,
-        *,
-        admin_id: int,
-        master_id: int,
-        action: str,
-        payload: Mapping[str, Any] | None = None,
-    ) -> None:
-        try:
-            payload_json = dict(payload or {})
-        except Exception:
-            payload_json = {"raw": str(payload)}
-        await session.execute(
-            insert(m.admin_audit_log).values(
-                admin_id=admin_id or None,
-                master_id=master_id,
-                action=action,
-                payload_json=payload_json,
-            )
-        )
-
-    async def get_master_referral_stats(self, master_id: int) -> dict[str, int | Decimal]:
-        """Return referral statistics for a given master."""
-        async with self._session_factory() as session:
-            invited_stmt = (
-                select(func.count())
-                .select_from(m.masters)
-                .where(m.masters.referred_by_master_id == master_id)
-            )
-            invited_total = int((await session.execute(invited_stmt)).scalar() or 0)
-
-            pending_stmt = (
-                select(func.count())
-                .select_from(m.masters)
-                .where(
-                    m.masters.referred_by_master_id == master_id,
-                    m.masters.verified.is_(False),
-                )
-            )
-            invited_pending = int((await session.execute(pending_stmt)).scalar() or 0)
-
-            rewards_stmt = (
-                select(
-                    func.count(),
-                    func.sum(m.referral_rewards.amount),
-                )
-                .select_from(m.referral_rewards)
-                .where(
-                    m.referral_rewards.referrer_id == master_id,
-                    m.referral_rewards.status != m.ReferralRewardStatus.CANCELED,
-                )
-            )
-            rewards_row = (await session.execute(rewards_stmt)).first()
-            rewards_count = int((rewards_row[0] if rewards_row else 0) or 0)
-            amount_raw = rewards_row[1] if rewards_row else None
-            rewards_amount = (
-                amount_raw if isinstance(amount_raw, Decimal)
-                else Decimal(str(amount_raw)) if amount_raw is not None
-                else Decimal(0)
-            )
-
-            return {
-                "invited_total": invited_total,
-                "invited_pending": invited_pending,
-                "rewards_count": rewards_count,
-                "rewards_amount": rewards_amount,
-            }
-
-    async def list_masters(
-        self,
-        group: str,
-        *,
-        city_ids: Optional[Iterable[int]],
-        category: Optional[str],
-        page: int,
-        page_size: int,
-    ) -> tuple[list[MasterListItem], bool]:
-        group_key = (group or "ok").lower()
-        filters: list[Any] = [m.masters.is_deleted.is_(False)]
-        if city_ids is not None:
-            ids = [int(cid) for cid in city_ids]
-            if not ids:
-                return [], False
-            filters.append(m.masters.city_id.in_(ids))
-
-        if group_key in {"mod", "pending"}:
-            filters.append(m.masters.verified.is_(False))
-        elif group_key in {"blk", "blocked"}:
-            filters.append(m.masters.is_active.is_(False))
-        else:
-            filters.append(m.masters.verified.is_(True))
-            if group_key in {"ok", "approved"}:
-                filters.append(m.masters.is_active.is_(True))
-
-        category_value = (category or "").strip()
-        if category_value and category_value.lower() != "all":
-            skill_query = (
-                select(m.master_skills.master_id)
-                .join(m.skills, m.skills.id == m.master_skills.skill_id)
-                .where(
-                    m.master_skills.master_id == m.masters.id,
-                    m.skills.is_active.is_(True),
-                )
-            )
-            if category_value.isdigit():
-                skill_query = skill_query.where(
-                    m.master_skills.skill_id == int(category_value)
-                )
-            else:
-                skill_query = skill_query.where(
-                    func.lower(m.skills.code) == category_value.lower()
-                )
-            filters.append(skill_query.exists())
-
-        offset = max(page - 1, 0) * page_size
-        async with self._session_factory() as session:
-            default_limit = await self._get_default_master_limit(session)
-            active_orders_subq = (
-                select(
-                    m.orders.assigned_master_id.label("master_id"),
-                    func.count(m.orders.id).label("cnt"),
-                )
-                .where(m.orders.status.in_(ACTIVE_ORDER_STATUSES))
-                .group_by(m.orders.assigned_master_id)
-                .subquery()
-            )
-            avg_check_subq = (
-                select(
-                    m.orders.assigned_master_id.label("master_id"),
-                    func.avg(m.orders.total_sum).label("avg_check"),
-                )
-                .where(
-                    m.orders.status.in_(AVG_CHECK_STATUSES),
-                    m.orders.assigned_master_id.is_not(None),
-                )
-                .group_by(m.orders.assigned_master_id)
-                .subquery()
-            )
-            skills_subq = (
-                select(
-                    m.master_skills.master_id.label("master_id"),
-                    func.array_agg(func.distinct(m.skills.name)).label("skills"),
-                )
-                .join(m.skills, m.skills.id == m.master_skills.skill_id)
-                .where(m.skills.is_active.is_(True))
-                .group_by(m.master_skills.master_id)
-                .subquery()
-            )
-
-            stmt = (
-                select(
-                    m.masters.id,
-                    m.masters.full_name,
-                    m.cities.name.label("city_name"),
-                    m.masters.rating,
-                    m.masters.has_vehicle,
-                    m.masters.is_on_shift,
-                    m.masters.shift_status,
-                    m.masters.break_until,
-                    m.masters.verified,
-                    m.masters.is_active,
-                    m.masters.is_deleted,
-                    m.masters.max_active_orders_override,
-                    active_orders_subq.c.cnt,
-                    avg_check_subq.c.avg_check,
-                    skills_subq.c.skills,
-                )
-                .select_from(m.masters)
-                .join(m.cities, m.masters.city_id == m.cities.id, isouter=True)
-                .join(
-                    active_orders_subq,
-                    active_orders_subq.c.master_id == m.masters.id,
-                    isouter=True,
-                )
-                .join(
-                    avg_check_subq,
-                    avg_check_subq.c.master_id == m.masters.id,
-                    isouter=True,
-                )
-                .join(
-                    skills_subq,
-                    skills_subq.c.master_id == m.masters.id,
-                    isouter=True,
-                )
-                .where(*filters)
-                .order_by(m.masters.full_name.asc())
-                .offset(offset)
-                .limit(page_size + 1)
-            )
-            rows = (await session.execute(stmt)).all()
-
-        now_utc = datetime.now(UTC)
-        items: list[MasterListItem] = []
-        for row in rows[:page_size]:
-            shift_status_value = (
-                row.shift_status.value
-                if hasattr(row.shift_status, "value")
-                else str(row.shift_status or "SHIFT_OFF")
-            )
-            break_until = getattr(row, "break_until", None)
-            on_break = False
-            if break_until is not None:
-                if break_until.tzinfo is None:
-                    break_until = break_until.replace(tzinfo=UTC)
-                on_break = break_until > now_utc
-            if not on_break and shift_status_value.upper() == m.ShiftStatus.BREAK.value:
-                on_break = True
-
-            max_limit = row.max_active_orders_override
-            if max_limit is None or int(max_limit) <= 0:
-                max_limit = default_limit
-
-            avg_value = None
-            if row.avg_check is not None:
-                try:
-                    avg_value = Decimal(row.avg_check)
-                except (TypeError, InvalidOperation):
-                    avg_value = Decimal(str(row.avg_check))
-
-            skills = tuple(row.skills or ())
-            items.append(
-                MasterListItem(
-                    id=int(row.id),
-                    full_name=row.full_name or f"#{row.id}",
-                    city_name=row.city_name,
-                    skills=skills,
-                    rating=float(row.rating or 0),
-                    has_vehicle=bool(row.has_vehicle),
-                    is_on_shift=bool(row.is_on_shift),
-                    shift_status=shift_status_value,
-                    on_break=on_break,
-                    verified=bool(row.verified),
-                    is_active=bool(row.is_active),
-                    is_deleted=bool(row.is_deleted),
-                    active_orders=int(row.cnt or 0),
-                    max_active_orders=int(max_limit) if max_limit is not None else None,
-                    avg_check=avg_value,
-                )
-            )
-
-        has_next = len(rows) > page_size
-        return items, has_next
-
-    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
-        async with self._session_factory() as session:
-            rows = await session.execute(
-                select(
-                    m.masters.id,
-                    m.masters.tg_user_id,
-                    m.masters.full_name,
-                )
-                .join(m.commissions, m.commissions.master_id == m.masters.id)
-                .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
-                .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
-                .order_by(m.masters.id)
-            )
-            recipients: list[WaitPayRecipient] = []
-            for master_id, tg_user_id, full_name in rows.all():
-                if tg_user_id is None:
-                    continue
-                recipients.append(
-                    WaitPayRecipient(
-                        master_id=int(master_id),
-                        tg_user_id=int(tg_user_id),
-                        full_name=full_name or f'Master {master_id}',
-                    )
-                )
-        return recipients
-
-    async def get_master_detail(self, master_id: int) -> Optional[MasterDetail]:
-        async with self._session_factory() as session:
-            default_limit = await self._get_default_master_limit(session)
-            row = await session.execute(
-                select(m.masters, m.cities.name.label("city_name"))
-                .join(m.cities, m.masters.city_id == m.cities.id, isouter=True)
-                .where(m.masters.id == master_id)
-            )
-            result = row.first()
-            if not result:
-                return None
-            master: m.masters = result.masters
-            city_name = result.city_name
-
-            active_orders = await session.scalar(
-                select(func.count(m.orders.id)).where(
-                    (m.orders.assigned_master_id == master.id)
-                    & (m.orders.status.in_(ACTIVE_ORDER_STATUSES))
-                )
-            ) or 0
-
-            avg_check_value = await session.scalar(
-                select(func.avg(m.orders.total_sum)).where(
-                    (m.orders.assigned_master_id == master.id)
-                    & (m.orders.status.in_(AVG_CHECK_STATUSES))
-                )
-            )
-            if avg_check_value is not None:
-                try:
-                    avg_check = Decimal(avg_check_value)
-                except (TypeError, InvalidOperation):
-                    avg_check = Decimal(str(avg_check_value))
-            else:
-                avg_check = None
-
-            has_orders = bool(
-                await session.scalar(
-                    select(m.orders.id)
-                    .where(m.orders.assigned_master_id == master.id)
-                    .limit(1)
-                )
-            )
-            has_commissions = bool(
-                await session.scalar(
-                    select(m.commissions.id)
-                    .where(m.commissions.master_id == master.id)
-                    .limit(1)
-                )
-            )
-
-            district_rows = await session.execute(
-                select(m.districts.name)
-                .join(
-                    m.master_districts,
-                    m.master_districts.district_id == m.districts.id,
-                )
-                .where(m.master_districts.master_id == master.id)
-                .order_by(m.districts.name)
-            )
-            district_names = tuple(dr[0] for dr in district_rows)
-
-            skill_rows = await session.execute(
-                select(m.skills.name)
-                .join(
-                    m.master_skills,
-                    m.master_skills.skill_id == m.skills.id,
-                )
-                .where(m.master_skills.master_id == master.id)
-                .order_by(m.skills.name)
-            )
-            skill_names = tuple(sr[0] for sr in skill_rows)
-
-            doc_rows = await session.execute(
-                select(
-                    m.attachments.id,
-                    m.attachments.file_type,
-                    m.attachments.file_id,
-                    m.attachments.file_name,
-                    m.attachments.caption,
-                    m.attachments.document_type,
-                )
-                .where(
-                    (m.attachments.entity_type == m.AttachmentEntity.MASTER)
-                    & (m.attachments.entity_id == master.id)
-                    & (
-                        (m.attachments.document_type.in_(["passport", "selfie"]))
-                        | (m.attachments.document_type.is_(None))
-                    )
-                )
-                .order_by(m.attachments.created_at.asc())
-            )
-            documents = tuple(
-                MasterDocument(
-                    id=int(doc.id),
-                    file_type=str(getattr(doc.file_type, "value", doc.file_type)),
-                    file_id=doc.file_id,
-                    file_name=doc.file_name,
-                    caption=doc.caption,
-                    document_type=doc.document_type,
-                )
-                for doc in doc_rows
-            )
-
-            moderation_status = (
-                master.moderation_status.value
-                if hasattr(master.moderation_status, "value")
-                else str(master.moderation_status)
-            )
-            shift_status = (
-                master.shift_status.value
-                if getattr(master, "shift_status", None) is not None
-                else "UNKNOWN"
-            )
-            payout_method = (
-                master.payout_method.value
-                if getattr(master, "payout_method", None) is not None
-                else None
-            )
-            created_at_local = _format_created_at(master.created_at)
-            updated_at_local = _format_datetime_local(master.updated_at) or created_at_local
-            blocked_at_local = _format_datetime_local(master.blocked_at)
-            verified_at_local = _format_datetime_local(getattr(master, "verified_at", None))
-            moderation_reason = getattr(master, "moderation_reason", None) or getattr(
-                master, "moderation_note", None
-            )
-            current_limit = master.max_active_orders_override
-            if current_limit is None or int(current_limit) <= 0:
-                current_limit = default_limit
-
-            return MasterDetail(
-                id=master.id,
-                full_name=master.full_name,
-                phone=master.phone,
-                city_id=master.city_id,
-                city_name=city_name,
-                rating=float(master.rating or 0),
-                has_vehicle=bool(getattr(master, "has_vehicle", False)),
-                is_active=bool(master.is_active),
-                is_blocked=bool(master.is_blocked),
-                is_deleted=bool(getattr(master, "is_deleted", False)),
-                blocked_reason=master.blocked_reason,
-                blocked_at_local=blocked_at_local,
-                moderation_status=moderation_status,
-                moderation_reason=moderation_reason,
-                verified=bool(master.verified),
-                verified_at_local=verified_at_local,
-                verified_by=getattr(master, "verified_by", None),
-                is_on_shift=bool(master.is_on_shift),
-                shift_status=shift_status,
-                payout_method=payout_method,
-                payout_data=dict(master.payout_data or {}),
-                referral_code=master.referral_code,
-                referred_by_master_id=master.referred_by_master_id,
-                current_limit=current_limit,
-                active_orders=int(active_orders),
-                avg_check=avg_check,
-                moderation_history=None,
-                has_orders=has_orders,
-                has_commissions=has_commissions,
-                created_at_local=created_at_local,
-                updated_at_local=updated_at_local,
-                district_names=district_names,
-                skill_names=skill_names,
-                documents=documents,
-            )
-
-
-    async def manual_candidates(
-        self,
-        order_id: int,
-        *,
-        page: int,
-        page_size: int,
-    ) -> tuple[list[MasterBrief], bool]:
-        page = max(page, 1)
-        offset = (page - 1) * page_size
-        async with self._session_factory() as session:
-            order_q = await session.execute(
-                select(
-                    m.orders.id,
-                    m.orders.city_id,
-                    m.orders.district_id,
-                    m.orders.category,
-                ).where(m.orders.id == order_id)
-            )
-            order_row = order_q.first()
-            if not order_row:
-                return [], False
-
-            raw_city = getattr(order_row, "city_id", None)
-            raw_district = getattr(order_row, "district_id", None)
-            try:
-                city_id = int(raw_city) if raw_city is not None else None
-            except (TypeError, ValueError):
-                city_id = None
-            try:
-                district_id = int(raw_district) if raw_district is not None else None
-            except (TypeError, ValueError):
-                district_id = None
-
-            order_payload = SimpleNamespace(
-                id=order_id,
-                city_id=city_id,
-                district_id=district_id,
-                category=getattr(order_row, "category", None),
-            )
-
-            candidate_infos = await select_candidates(
-                order_payload,
-                "manual",
-                session=session,
-            )
-
-            slice_end = offset + page_size + 1
-            page_slice = candidate_infos[offset:slice_end]
-            has_next = len(page_slice) > page_size
-            page_candidates = page_slice[:page_size]
-
-            briefs: list[MasterBrief] = []
-            for candidate in page_candidates:
-                briefs.append(
-                    MasterBrief(
-                        id=candidate.master_id,
-                        full_name=candidate.full_name,
-                        city_id=candidate.city_id,
-                        has_car=candidate.has_car,
-                        avg_week_check=candidate.avg_week_check,
-                        rating_avg=candidate.rating_avg,
-                        is_on_shift=candidate.is_on_shift,
-                        is_active=candidate.is_active,
-                        verified=candidate.verified,
-                        in_district=candidate.in_district,
-                        active_orders=candidate.active_orders,
-                        max_active_orders=candidate.max_active_orders,
-                        on_break=candidate.on_break,
-                    )
-                )
-
-            return briefs, has_next
-
-    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
-        async with self._session_factory() as session:
-            rows = await session.execute(
-                select(
-                    m.masters.id,
-                    m.masters.tg_user_id,
-                    m.masters.full_name,
-                )
-                .join(m.commissions, m.commissions.master_id == m.masters.id)
-                .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
-                .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
-                .order_by(m.masters.id)
-            )
-            recipients: list[WaitPayRecipient] = []
-            for master_id, tg_user_id, full_name in rows.all():
-                if tg_user_id is None:
-                    continue
-                recipients.append(
-                    WaitPayRecipient(
-                        master_id=int(master_id),
-                        tg_user_id=int(tg_user_id),
-                        full_name=full_name or f" #{int(master_id)}",
-                    )
-                )
-        return recipients
-
-    async def approve_master(self, master_id: int, by_staff_id: int) -> bool:
-        """Mark a master as approved and log the action."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
-                    update(m.masters)
-                    .where(m.masters.id == master_id)
-                    .values(
-                        verified=True,
-                        moderation_status=m.ModerationStatus.APPROVED,
-                        verified_at=datetime.now(UTC),
-                        verified_by=by_staff_id,
-                    )
-                    .returning(m.masters.id)
-                )
-                if not result.first():
-                    return False
-
-                await self._log_admin_action(
-                    session,
-                    admin_id=by_staff_id,
-                    master_id=master_id,
-                    action="approve_master",
-                    payload={},
-                )
-                live_log.push("moderation", f"master#{master_id} approved by staff#{by_staff_id}")
-        return True
-
-    async def reject_master(self, master_id: int, reason: str, by_staff_id: int) -> bool:
-        """Reject a master with a provided reason."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
-                    update(m.masters)
-                    .where(m.masters.id == master_id)
-                    .values(
-                        verified=False,
-                        moderation_status=m.ModerationStatus.REJECTED,
-                        moderation_reason=reason,
-                    )
-                    .returning(m.masters.id)
-                )
-                if not result.first():
-                    return False
-
-                await self._log_admin_action(
-                    session,
-                    admin_id=by_staff_id,
-                    master_id=master_id,
-                    action="reject_master",
-                    payload={"reason": reason},
-                )
-                live_log.push(
-                    "moderation",
-                    f"master#{master_id} rejected by staff#{by_staff_id}: {reason}",
-                )
-        return True
-
-    async def block_master(self, master_id: int, reason: str, by_staff_id: int) -> bool:
-        """Block a master and make them inactive."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
-                    update(m.masters)
-                    .where(m.masters.id == master_id)
-                    .values(
-                        is_blocked=True,
-                        is_active=False,
-                        blocked_at=datetime.now(UTC),
-                        blocked_reason=reason,
-                    )
-                    .returning(m.masters.id)
-                )
-                if not result.first():
-                    return False
-
-                await self._log_admin_action(
-                    session,
-                    admin_id=by_staff_id,
-                    master_id=master_id,
-                    action="block_master",
-                    payload={"reason": reason},
-                )
-                live_log.push(
-                    "moderation",
-                    f"master#{master_id} blocked by staff#{by_staff_id}: {reason}",
-                )
-        return True
-
-    async def unblock_master(self, master_id: int, by_staff_id: int) -> bool:
-        """Lift a block from a master and reactivate them."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
-                    update(m.masters)
-                    .where(m.masters.id == master_id)
-                    .values(
-                        is_blocked=False,
-                        is_active=True,
-                        blocked_at=None,
-                        blocked_reason=None,
-                    )
-                    .returning(m.masters.id)
-                )
-                if not result.first():
-                    return False
-
-                await self._log_admin_action(
-                    session,
-                    admin_id=by_staff_id,
-                    master_id=master_id,
-                    action="unblock_master",
-                    payload={},
-                )
-                live_log.push(
-                    "moderation",
-                    f"master#{master_id} unblocked by staff#{by_staff_id}",
-                )
-        return True
-
-    async def set_master_limit(
-        self,
-        master_id: int,
-        limit: int | None,
-        by_staff_id: int,
-    ) -> bool:
-        """Override the max active orders limit for a master."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
-                    update(m.masters)
-                    .where(m.masters.id == master_id)
-                    .values(max_active_orders_override=limit)
-                    .returning(m.masters.id)
-                )
-                if not result.first():
-                    return False
-
-                await self._log_admin_action(
-                    session,
-                    admin_id=by_staff_id,
-                    master_id=master_id,
-                    action="set_limit",
-                    payload={"limit": limit},
-                )
-                live_log.push(
-                    "moderation",
-                    f"master#{master_id} limit set to {limit} by staff#{by_staff_id}",
-                )
-        return True
-
-    async def enqueue_master_notification(self, master_id: int, message: str) -> None:
-        """Queue a moderation notification for a master."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                row = await session.execute(
-                    select(m.masters.tg_user_id).where(m.masters.id == master_id)
-                )
-                tg_user_id = row.scalar_one_or_none()
-
-                if not tg_user_id:
-                    logger.warning(f"Cannot notify master#{master_id}: no tg_user_id")
-                    return
-
-                await session.execute(
-                    insert(m.notifications_outbox).values(
-                        master_id=master_id,
-                        event="moderation_update",
-                        payload={"message": message},
-                    )
-                )
-                live_log.push("moderation", f"notification queued for master#{master_id}")
-
-class DBFinanceService:
-    def __init__(self, session_factory=SessionLocal) -> None:
-        self._session_factory = session_factory
-
-    async def list_commissions(
-        self,
-        segment: str,
-        *,
-        page: int,
-        page_size: int,
-        city_ids: Optional[Iterable[int]],
-    ) -> tuple[list[CommissionListItem], bool]:
-        status_map = {
-            "aw": [
-                m.CommissionStatus.WAIT_PAY.value,
-                m.CommissionStatus.REPORTED.value,
-            ],
-            "pd": [m.CommissionStatus.APPROVED.value],
-            "ov": [m.CommissionStatus.OVERDUE.value],
-        }
-        statuses = status_map.get(segment, [m.CommissionStatus.WAIT_PAY.value])
-        offset = max(page - 1, 0) * page_size
-        async with self._session_factory() as session:
-            stmt = (
-                select(
-                    m.commissions.id,
-                    m.commissions.order_id,
-                    m.commissions.amount,
-                    m.commissions.status,
-                    m.commissions.deadline_at,
-                    m.masters.full_name,
-                    m.masters.id.label("master_id"),
-                    m.orders.city_id,
-                )
-                .select_from(m.commissions)
-                .join(m.orders, m.orders.id == m.commissions.order_id)
-                .join(m.masters, m.masters.id == m.commissions.master_id, isouter=True)
-                .where(m.commissions.status.in_(statuses))
-                .order_by(m.commissions.created_at.desc())
-                .offset(offset)
-                .limit(page_size + 1)
-            )
-            if city_ids is not None:
-                ids = [int(cid) for cid in city_ids]
-                if not ids:
-                    return [], False
-                stmt = stmt.where(m.orders.city_id.in_(ids))
-            rows = await session.execute(stmt)
-            fetched = rows.all()
-        has_next = len(fetched) > page_size
-        items: list[CommissionListItem] = []
-        for row in fetched[:page_size]:
-            deadline = _format_created_at(row.deadline_at)
-            items.append(
-                CommissionListItem(
-                    id=row.id,
-                    order_id=row.order_id,
-                    master_id=row.master_id,
-                    master_name=row.full_name,
-                    status=row.status,
-                    amount=Decimal(row.amount or 0),
-                    deadline_at_local=deadline if deadline else None,
-                )
-            )
-        return items, has_next
-
-    async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
-        async with self._session_factory() as session:
-            rows = await session.execute(
-                select(
-                    m.masters.id,
-                    m.masters.tg_user_id,
-                    m.masters.full_name,
-                )
-                .join(m.commissions, m.commissions.master_id == m.masters.id)
-                .where(m.commissions.status == m.CommissionStatus.WAIT_PAY)
-                .group_by(m.masters.id, m.masters.tg_user_id, m.masters.full_name)
-                .order_by(m.masters.id)
-            )
-            recipients: list[WaitPayRecipient] = []
-            for master_id, tg_user_id, full_name in rows.all():
-                if tg_user_id is None:
-                    continue
-                recipients.append(
-                    WaitPayRecipient(
-                        master_id=int(master_id),
-                        tg_user_id=int(tg_user_id),
-                        full_name=full_name or f'Master {master_id}',
-                    )
-                )
-        return recipients
-
-    async def get_commission_detail(
-        self, commission_id: int
-    ) -> Optional[CommissionDetail]:
-        async with self._session_factory() as session:
-            stmt = (
-                select(m.commissions, m.orders, m.masters)
-                .join(m.orders, m.orders.id == m.commissions.order_id)
-                .join(m.masters, m.masters.id == m.commissions.master_id, isouter=True)
-                .where(m.commissions.id == commission_id)
-            )
-            row = await session.execute(stmt)
-            result = row.first()
-            if not result:
-                return None
-            commission, order, master = result
-            attachments_rows = (
-                await session.execute(
-                    select(
-                        m.attachments.id,
-                        m.attachments.file_type,
-                        m.attachments.file_id,
-                        m.attachments.file_name,
-                        m.attachments.caption,
-                    )
-                    .where(
-                        (m.attachments.entity_type == m.AttachmentEntity.COMMISSION)
-                        & (m.attachments.entity_id == commission.id)
-                    )
-                    .order_by(m.attachments.created_at.asc())
-                )
-            ).all()
-            attachments = tuple(
-                CommissionAttachment(
-                    id=int(att.id),
-                    file_type=str(getattr(att.file_type, 'value', att.file_type)),
-                    file_id=att.file_id,
-                    file_name=att.file_name,
-                    caption=att.caption,
-                )
-                for att in attachments_rows
-            )
-            deadline = _format_created_at(commission.deadline_at)
-            created_at = _format_created_at(commission.created_at)
-            paid_reported = _format_created_at(commission.paid_reported_at)
-            paid_approved = _format_created_at(commission.paid_approved_at)
-            snapshot = commission.pay_to_snapshot or {}
-            methods = tuple(
-                PAYMENT_METHOD_LABELS.get(str(meth), str(meth))
-                for meth in snapshot.get("methods", [])
-                if str(meth)
-            )
-            snapshot_map: dict[str, Optional[str]] = {
-                "card_last4": snapshot.get("card_number_last4"),
-                "card_holder": snapshot.get("card_holder"),
-                "card_bank": snapshot.get("card_bank"),
-                "sbp_phone": snapshot.get("sbp_phone_masked"),
-                "sbp_bank": snapshot.get("sbp_bank"),
-                "other_text": snapshot.get("other_text"),
-                "comment": snapshot.get("comment"),
-                "qr_file_id": snapshot.get("sbp_qr_file_id"),
-            }
-            master_phone = getattr(master, "phone", None) if master else None
-            return CommissionDetail(
-
-                id=commission.id,
-                order_id=commission.order_id,
-                master_id=commission.master_id,
-                master_name=getattr(master, "full_name", None) if master else None,
-                master_phone=master_phone,
-                status=commission.status.value
-                if hasattr(commission.status, "value")
-                else str(commission.status),
-                amount=Decimal(commission.amount or 0),
-                rate=Decimal(commission.rate or commission.percent or 0),
-                deadline_at_local=deadline or None,
-                created_at_local=created_at or "",
-                paid_reported_at_local=paid_reported or None,
-                paid_approved_at_local=paid_approved or None,
-                paid_amount=Decimal(commission.paid_amount or 0)
-                if commission.paid_amount is not None
-                else None,
-                has_checks=bool(commission.has_checks),
-                snapshot_methods=methods,
-                snapshot_data=snapshot_map,
-                attachments=attachments,
-            )
-
-    async def approve(self, commission_id: int, *, paid_amount: Decimal, by_staff_id: int) -> bool:
-        paid_amount = Decimal(str(paid_amount)).quantize(Decimal('0.01'))
-        async with self._session_factory() as session:
-            async with session.begin():
-                row = await session.execute(
-                    select(m.commissions, m.orders)
-                    .join(m.orders, m.orders.id == m.commissions.order_id)
-                    .where(m.commissions.id == commission_id)
-                    .with_for_update()
-                )
-                result = row.first()
-                if not result:
-                    return False
-                commission_row, order_row = result
-                await session.execute(
-                    update(m.commissions)
-                    .where(m.commissions.id == commission_id)
-                    .values(
-                        status=m.CommissionStatus.APPROVED,
-                        is_paid=True,
-                        paid_amount=paid_amount,
-                        paid_approved_at=datetime.now(UTC),
-                        payment_reference=None,
-                    )
-                )
-                if order_row.status != m.OrderStatus.CLOSED:
-                    await session.execute(
-                        update(m.orders)
-                        .where(m.orders.id == order_row.id)
-                        .values(
-                            status=m.OrderStatus.CLOSED,
-                            updated_at=func.now(),
-                            version=order_row.version + 1,
-                        )
-                    )
-                    await session.execute(
-                        insert(m.order_status_history).values(
-                            order_id=order_row.id,
-                            from_status=order_row.status,
-                            to_status=m.OrderStatus.CLOSED,
-                            changed_by_staff_id=by_staff_id,
-                            reason='commission_paid',
-                            actor_type=m.ActorType.ADMIN,
-                        )
-                    )
-
-            await apply_rewards_for_commission(
-                session,
-                commission_id=commission_id,
-                master_id=commission_row.master_id,
-                base_amount=paid_amount,
-            )
-        return True
-
-    async def reject(
-        self, commission_id: int, reason: str, by_staff_id: int
-    ) -> bool:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.commissions)
-                    .where(m.commissions.id == commission_id)
-                    .values(
-                        status=m.CommissionStatus.WAIT_PAY,
-                        is_paid=False,
-                        paid_approved_at=None,
-                        paid_reported_at=None,
-                        paid_amount=None,
-                        payment_reference=reason,
-                    )
-                )
-        return True
-
-    async def block_master_for_overdue(
-        self, master_id: int, by_staff_id: int
-    ) -> bool:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.masters)
-                    .where(m.masters.id == master_id)
-                    .values(
-                        is_blocked=True,
-                        is_active=False,
-                        blocked_at=datetime.now(UTC),
-                        blocked_reason="manual_block_from_finance",
-                        updated_at=func.now(),
-                    )
-                )
-        return True
-
-
-class DBSettingsService:
-    def __init__(self, session_factory=SessionLocal) -> None:
-        self._session_factory = session_factory
-
-    async def get_channel_settings(self) -> dict[str, Optional[int]]:
-        keys = ("alerts_channel_id", "logs_channel_id", "reports_channel_id")
-        async with self._session_factory() as session:
-            rows = await session.execute(
-                select(m.settings.key, m.settings.value).where(m.settings.key.in_(keys))
-            )
-            result: dict[str, Optional[int]] = {key: None for key in keys}
-            for key, value in rows:
-                try:
-                    result[str(key)] = int(value) if value is not None else None
-                except (TypeError, ValueError):
-                    result[str(key)] = None
-            return result
-
-
-
-    async def get_values(self, keys: Sequence[str]) -> dict[str, tuple[str, str]]:
-        if not keys:
-            return {}
-        async with self._session_factory() as session:
-            rows = await session.execute(
-                select(m.settings.key, m.settings.value, m.settings.value_type).where(
-                    m.settings.key.in_(list(keys))
-                )
-            )
-            return {row[0]: (row[1], row[2]) for row in rows}
-
-    async def get_owner_pay_snapshot(self) -> dict[str, Any]:
-        keys = [setting_key for setting_key, _ in OWNER_PAY_SETTING_FIELDS.values()]
-        async with self._session_factory() as session:
-            rows = await session.execute(
-                select(m.settings.key, m.settings.value, m.settings.value_type).where(
-                    m.settings.key.in_(keys)
-                )
-            )
-            raw_values = {row[0]: (row[1], row[2]) for row in rows}
-        snapshot: dict[str, Any] = {}
-        for field, (setting_key, expected_type) in OWNER_PAY_SETTING_FIELDS.items():
-            value, stored_type = raw_values.get(setting_key, (None, expected_type))
-            value_type = (stored_type or expected_type).upper()
-            if value_type == 'JSON':
-                try:
-                    parsed = json.loads(value) if value else []
-                except (TypeError, json.JSONDecodeError):
-                    parsed = []
-                snapshot[field] = parsed
-            else:
-                snapshot[field] = value or ''
-        return owner_reqs.ensure_schema(snapshot)
-
-    async def update_owner_pay_snapshot(self, **payload: Any) -> None:
-        normalized = owner_reqs.ensure_schema(payload)
-        values: dict[str, tuple[object, str]] = {}
-        for field, (setting_key, value_type) in OWNER_PAY_SETTING_FIELDS.items():
-            values[setting_key] = (normalized.get(field), value_type)
-        await settings_store.set_values(values)
-
-    async def set_value(self, key: str, value: object, *, value_type: str = "STR") -> None:
-        normalized = settings_store._normalize_value_type(value_type)
-        payload = settings_store._serialize_value(value, normalized)
-
-        async def _apply(session: AsyncSession) -> None:
-            stmt = insert(m.settings).values(key=key, value=payload, value_type=normalized)
-            if hasattr(stmt, "on_conflict_do_update"):
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=[m.settings.key],
-                    set_={"value": payload, "value_type": normalized},
-                )
-                await session.execute(stmt)
-            else:
-                existing = await session.execute(
-                    select(m.settings).where(m.settings.key == key)
-                )
-                if existing.scalar_one_or_none():
-                    await session.execute(
-                        update(m.settings)
-                        .where(m.settings.key == key)
-                        .values(value=payload, value_type=normalized)
-                    )
-                else:
-                    await session.execute(
-                        insert(m.settings).values(
-                            key=key,
-                            value=payload,
-                            value_type=normalized,
-                        )
-                    )
-
-        async with self._session_factory() as session:
-            for attempt in range(2):
-                try:
-                    if session.in_transaction():
-                        await _apply(session)
-                    else:
-                        async with session.begin():
-                            await _apply(session)
-                except OperationalError as exc:
-                    message = str(exc).lower()
-                    if "no such table" in message and "settings" in message and attempt == 0:
-                        await session.run_sync(
-                            lambda sync_session: m.settings.__table__.create(
-                                sync_session.connection(), checkfirst=True
-                            )
-                        )
-                        continue
-                    raise
-                else:
-                    break
-        settings_store.invalidate_working_window_cache()
-
-
-    async def get_owner_pay_requisites(self, *, staff_id: int | None = None) -> dict[str, Any]:
-        async with self._session_factory() as session:
-            if staff_id is not None:
-                data = await owner_reqs.fetch_for_staff(session, staff_id)
-                if not owner_reqs.is_default(data):
-                    return data
-            return await owner_reqs.fetch_effective(session)
-
-    async def update_owner_pay_requisites(self, staff_id: int, payload: dict[str, Any]) -> None:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await owner_reqs.update_for_staff(session, staff_id, payload)
-
-
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\service_registry.py
-```python
-﻿from __future__ import annotations
-
-from typing import Any
-
-_SERVICES: dict[str, Any] = {}
-
-
-def register_service(key: str, service: Any) -> None:
-    _SERVICES[key] = service
-
-
-def register_services(mapping: dict[str, Any]) -> None:
-    _SERVICES.update(mapping)
-
-
-def get_service(key: str) -> Any | None:
-    return _SERVICES.get(key)
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\states.py
-```python
-﻿from __future__ import annotations
-
-from aiogram.fsm.state import State, StatesGroup
-
-
-class NewOrderFSM(StatesGroup):
-    city = State()
-    district = State()
-    street_mode = State()
-    street_search = State()
-    street_manual = State()
-    house = State()
-    apartment = State()
-    address_comment = State()
-    client_name = State()
-    client_phone = State()
-    category = State()
-    description = State()
-    order_type = State()
-    slot = State()
-    slot_custom_date = State()
-    slot_custom_time = State()
-    attachments = State()
-    confirm = State()
-    confirm_deferred = State()  # ⚠️ Подтверждение создания в нерабочее время
-
-
-class OwnerPayEditFSM(StatesGroup):
-    field = State()
-    value = State()
-
-
-class SettingsEditFSM(StatesGroup):
-    awaiting_value = State()
-
-
-class StaffCityEditFSM(StatesGroup):
-    action = State()
-
-
-class AccessCodeNewFSM(StatesGroup):
-    city_select = State()
-
-
-# DEPRECATED: Коды доступа больше не используются
-# class StaffAccessFSM(StatesGroup):
-#     code = State()
-#     pdn = State()
-#     full_name = State()
-#     phone = State()
-
-
-class FinanceActionFSM(StatesGroup):
-    commission_id = State()
-    reject_reason = State()
-    approve_amount = State()
-    bulk_approve_period = State()  # P2-11: Массовое одобрение
-
-
-
-
-class QueueFiltersFSM(StatesGroup):
-    master = State()
-    date = State()
-
-
-class QueueActionFSM(StatesGroup):
-    cancel_reason = State()
-    search_by_id = State()  # P1-9: Поиск заказа по ID
-
-
-class MasterActionFSM(StatesGroup):
-    master_id = State()
-    reject_reason = State()
-    block_reason = State()
-    limit_value = State()
-
-
-
-
-class ReportsExportFSM(StatesGroup):
-    awaiting_period = State()
-
-
-class StaffAddFSM(StatesGroup):
-    """FSM для добавления персонала по ID/username."""
-    role_select = State()
-    user_input = State()
-    city_select = State()
-    confirm = State()
-
-
-class StaffEditFSM(StatesGroup):
-    """FSM для редактирования персонала."""
-    role_select = State()
-    city_select = State()
-    confirm = State()
-
-
-__all__ = [
-    "QueueFiltersFSM",
-    "QueueActionFSM",
-    "AccessCodeNewFSM",
-    "FinanceActionFSM",
-    "MasterActionFSM",
-    "NewOrderFSM",
-    "OwnerPayEditFSM",
-    "SettingsEditFSM",
-    "StaffCityEditFSM",
-    # "StaffAccessFSM",  # DEPRECATED: Коды доступа больше не используются
-    "ReportsExportFSM",
-    "StaffAddFSM",
-    "StaffEditFSM",
-]
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\stubs.py
-```python
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import Iterable, Optional, Sequence
-
-from field_service.db import OrderCategory
-
-from .services_db import AutoAssignResult
-
-@dataclass(slots=True)
-class StubStaffUser:
-    id: int
-    tg_id: int
-    role: str
-    is_active: bool
-    city_ids: frozenset[int]
-
-
-class StubStaffService:
-    async def get_by_tg_id(self, tg_id: int) -> Optional[StubStaffUser]:
-        return None
-
-
-class StubOrdersService:
-    async def list_queue(
-        self,
-        *,
-        city_ids: Optional[Iterable[int]],
-        page: int,
-        page_size: int,
-        status_filter: Optional[object] = None,
-        category: Optional[OrderCategory] = None,
-        master_id: Optional[int] = None,
-        timeslot_date: Optional[object] = None,
-    ) -> tuple[list[object], bool]:
-        return [], False
-
-    async def list_cities(
-        self, *, query: Optional[str] = None, limit: int = 20
-    ) -> list[object]:
-        return []
-
-    async def get_city(self, city_id: int) -> Optional[object]:
-        return None
-
-    async def list_districts(
-        self, city_id: int, *, page: int, page_size: int
-    ) -> tuple[list[object], bool]:
-        return [], False
-
-    async def get_district(self, district_id: int) -> Optional[object]:
-        return None
-
-    async def search_streets(
-        self, city_id: int, query: str, *, limit: int = 10
-    ) -> list[object]:
-        return []
-
-    async def get_street(self, street_id: int) -> Optional[object]:
-        return None
-
-    async def create_order(self, data) -> int:
-        return 0
-
-    async def get_card(self, order_id: int, *, city_ids: Optional[Iterable[int]] = None) -> Optional[object]:
-        return None
-
-    async def return_to_search(self, order_id: int, by_staff_id: int) -> bool:
-        return False
-
-    async def cancel(self, order_id: int, reason: str, by_staff_id: int) -> bool:
-        return False
-
-    async def assign_master(
-        self, order_id: int, master_id: int, by_staff_id: int
-    ) -> bool:
-        return False
-
-
-class StubDistributionService:
-    async def assign_auto(self, order_id: int, by_staff_id: int) -> tuple[bool, AutoAssignResult]:
-        return False, AutoAssignResult("service is not configured", code="not_configured")
-
-
-class StubFinanceService:
-    async def list_commissions(
-        self,
-        segment: str,
-        *,
-        page: int,
-        page_size: int,
-        city_ids: Optional[Iterable[int]],
-    ) -> tuple[list[str], bool]:
-        return [], False
-
-    async def get_commission_detail(self, commission_id: int) -> Optional[object]:
-        return None
-
-    async def approve(self, commission_id: int, by_staff_id: int) -> bool:
-        return False
-
-    async def reject(self, commission_id: int, reason: str, by_staff_id: int) -> bool:
-        return False
-
-    async def block_master_for_overdue(self, master_id: int, by_staff_id: int) -> bool:
-        return False
-
-
-class StubSettingsService:
-    async def get_owner_pay_requisites(self, *, staff_id: int | None = None) -> dict[str, object]:
-        return {}
-
-    async def update_owner_pay_requisites(self, staff_id: int, payload: dict[str, object]) -> None:
-        return None
-
-    async def get_owner_pay_snapshot(self) -> dict[str, object]:
-        return {}
-
-    async def update_owner_pay_snapshot(self, **payload: object) -> None:
-        return None
-
-    async def get_channel_settings(self) -> dict[str, Optional[int]]:
-        return {"alerts_channel_id": None, "logs_channel_id": None, "reports_channel_id": None}
-
-    async def get_values(self, keys: Sequence[str]) -> dict[str, tuple[str, str]]:
-        return {}
-
-    async def set_value(self, key: str, value: object, *, value_type: str = "STR") -> None:
-        return None
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\texts.py
-```python
-from __future__ import annotations
-
-from decimal import Decimal
-import html
-from typing import Mapping, Sequence
-
-from .dto import (
-    CommissionDetail,
-    CommissionListItem,
-    MasterBrief,
-    OrderCard,
-    OrderCategory,
-    OrderListItem,
-)
-
-FSM_TIMEOUT_MESSAGE = "Сессия истекла. Нажмите /start"
-
-
-COMMISSION_STATUS_LABELS = {
-    'WAIT_PAY': 'Ожидает оплаты',
-    'REPORTED': 'Проверяется',
-    'APPROVED': 'Оплачено',
-    'OVERDUE': 'Просрочено',
-}
-
-
-def _category_value(category: object) -> str:
-    if isinstance(category, OrderCategory):
-        return category.value
-    if isinstance(category, str):
-        return category
-    return ""
-
-
-def order_teaser(order: OrderListItem) -> str:
-    district = order.district_name or ""
-    slot = f" ⏰ {order.timeslot_local}" if order.timeslot_local else ""
-    category = _category_value(order.category)
-    return (
-        f"#{order.id} • {order.city_name}/{district} • {category}{slot} • {order.status}"
-    )
-
-
-def order_card(order: OrderCard) -> str:
-    district = order.district_name or ""
-    slot = order.timeslot_local or ""
-    master_line = (
-        f" {order.master_name}" + (f" ({order.master_phone})" if order.master_phone else "")
-    ) if order.master_name else " "
-    customer = order.client_name or ""
-    if order.client_phone:
-        customer += f" ({order.client_phone})"
-    address_parts = [order.city_name, district]
-    if order.street_name:
-        address_parts.append(order.street_name)
-    if order.house:
-        address_parts.append(str(order.house))
-    address = ", ".join(p for p in address_parts if p)
-    lines = [
-        f"🧾 <b>Заказ #{order.id}</b>",
-        f"📍 {address}",
-        f"🔧 Категория: {_category_value(order.category)}",
-        f"📦 Тип: {order.order_type.value}",
-        f"⏰ Слот: {slot}",
-        f"📌 Статус: {order.status}",
-        f"🗓 Создан: {order.created_at_local}",
-        f"👤 Клиент: {customer}",
-        master_line,
-    ]
-    if order.description:
-        lines.append("📝 Описание: " + order.description)
-    return "\n".join(lines)
-
-
-def master_brief_line(master: MasterBrief) -> str:
-    available = master.is_on_shift and not master.on_break
-    status_icon = "" if available else ""
-    car_icon = "" if master.has_car else ""
-    parts = [
-        f"{status_icon} #{master.id} {master.full_name}",
-        f"{master.rating_avg:.1f}",
-        f"{master.avg_week_check:.0f}",
-    ]
-    if master.max_active_orders > 0:
-        parts.append(f" {master.active_orders}/{master.max_active_orders}")
-    parts.append(car_icon)
-    text_block = "  ".join(parts)
-    flags = []
-    if not master.is_on_shift:
-        flags.append(' ')
-    elif master.on_break:
-        flags.append('')
-    if not master.in_district:
-        flags.append(' ')
-    if master.max_active_orders > 0 and master.active_orders >= master.max_active_orders:
-        flags.append('')
-    if not master.is_active or not master.verified:
-        flags.append('')
-    if flags:
-        flags_text = '; '.join(flags)
-        text_block = f"{text_block}  {flags_text}"
-    return text_block
-def finance_list_line(item: CommissionListItem) -> str:
-    master = item.master_name or ""
-    status_label = COMMISSION_STATUS_LABELS.get((item.status or '').upper(), item.status)
-    parts = [
-        f"#{item.id}",
-        f" #{item.order_id}",
-        master,
-        f"{item.amount:.2f} ",
-        status_label,
-    ]
-    if item.deadline_at_local:
-        parts.append(f" {item.deadline_at_local}")
-    return "  ".join(parts)
-
-
-def commission_detail(detail: CommissionDetail) -> str:
-    status_label = COMMISSION_STATUS_LABELS.get((detail.status or '').upper(), detail.status)
-    master_name = html.escape(detail.master_name) if detail.master_name else ''
-    master_phone = html.escape(detail.master_phone) if detail.master_phone else ''
-    master_line = f"👨‍🔧 Мастер: {master_name}" + (f" ({master_phone})" if master_phone else '')
-
-    lines = [
-        f"💸 <b>Комиссия #{detail.id}</b>",
-        f"🧾 Заказ: #{detail.order_id}",
-        master_line,
-        f"📌 Статус: {status_label}",
-        f"💰 Сумма: {detail.amount:.2f} ₽",
-    ]
-
-    rate = detail.rate or Decimal('0')
-    rate_percent = rate * 100 if rate <= 1 else rate
-    rate_str = f"{rate_percent:.2f}".rstrip('0').rstrip('.')
-    if rate_percent > 0:
-        lines.append(f"🧮 Ставка: {rate_str}%")
-
-    if detail.deadline_at_local:
-        lines.append(f"⏳ Дедлайн: {html.escape(detail.deadline_at_local)}")
-    lines.append(f"🗓 Создано: {html.escape(detail.created_at_local)}")
-    if detail.paid_reported_at_local:
-        lines.append(f"📨 Сообщено об оплате: {html.escape(detail.paid_reported_at_local)}")
-    if detail.paid_approved_at_local:
-        lines.append(f"✅ Подтверждено: {html.escape(detail.paid_approved_at_local)}")
-    if detail.paid_amount is not None:
-        lines.append(f"💳 Оплачено: {detail.paid_amount:.2f} ₽")
-
-    if detail.snapshot_methods:
-        methods = ', '.join(detail.snapshot_methods)
-        lines.append(f"💼 Способы оплаты: {html.escape(methods)}")
-
-    card_last4 = detail.snapshot_data.get('card_last4')
-    if card_last4:
-        card_info = [f"****{card_last4}"]
-        card_holder = detail.snapshot_data.get('card_holder')
-        if card_holder:
-            card_info.append(html.escape(card_holder))
-        card_bank = detail.snapshot_data.get('card_bank')
-        if card_bank:
-            card_info.append(html.escape(card_bank))
-        lines.append(f"💳 Карта: {' / '.join(card_info)}")
-
-    sbp_phone = detail.snapshot_data.get('sbp_phone')
-    if sbp_phone:
-        sbp_line = f"🏦 СБП: {html.escape(sbp_phone)}"
-        sbp_bank = detail.snapshot_data.get('sbp_bank')
-        if sbp_bank:
-            sbp_line += f" ({html.escape(sbp_bank)})"
-        lines.append(sbp_line)
-
-    if detail.snapshot_data.get('qr_file_id'):
-        lines.append("QR: доступен")
-
-    other_text = detail.snapshot_data.get('other_text')
-    if other_text:
-        lines.append(html.escape(other_text))
-
-    comment = detail.snapshot_data.get('comment')
-    if comment:
-        lines.append(f"📝 Комментарий: {html.escape(comment)}")
-
-    lines.append(f"📎 Чеки: {'есть' if detail.has_checks else 'нет'}")
-    return "\n".join(lines)
-
-
-def new_order_summary(data: Mapping[str, object]) -> str:
-    lines = ["🆕 <b>Новый заказ</b>"]
-    lines.append(f"Город: {data.get('city_name', '')}")
-    lines.append(f"Район: {data.get('district_name', '')}")
-    lines.append(f"Улица: {data.get('street_name', '')}")
-    lines.append(f"Дом: {data.get('house', '')}")
-    if data.get('apartment'):
-        lines.append(f"Кв.: {data['apartment']}")
-    if data.get('address_comment'):
-        lines.append(f"Комментарий к адресу: {data['address_comment']}")
-    lines.append(
-        "Клиент: "
-        + str(data.get('client_name', ''))
-        + (f" ({data['client_phone']})" if data.get('client_phone') else "")
-    )
-    category_obj = data.get('category')
-    if isinstance(category_obj, OrderCategory):
-        category_fallback = category_obj.value
-    else:
-        category_fallback = str(category_obj or '')
-    lines.append(
-        f"Категория: {data.get('category_label', category_fallback)}"
-    )
-    lines.append(f"Тип: {data.get('order_type', 'NORMAL')}")
-    lines.append(f"Слот: {data.get('timeslot_display', '')}")
-    if data.get('description'):
-        lines.append("Описание: " + str(data['description']))
-    if data.get('attachments_count'):
-        lines.append(f"Вложения: {data['attachments_count']}")
-    return "\n".join(lines)
-
-
-__all__ = [
-    "commission_detail",
-    "finance_list_line",
-    "master_brief_line",
-    "new_order_summary",
-    "order_card",
-    "order_teaser",
-]
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\utils.py
-```python
-﻿from __future__ import annotations
-
-from typing import Any
-
-from .service_registry import get_service as registry_get
-
-
-def get_service(bot: Any, key: str, *, required: bool = True) -> Any:
-    services = getattr(bot, "_services", None)
-    svc = None
-    if isinstance(services, dict):
-        svc = services.get(key)
-    if svc is None:
-        svc = registry_get(key)
-    if not svc and required:
-        raise RuntimeError(f"Service '{key}' is not configured on bot instance")
-    return svc
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\__init__.py
-```python
-from . import services_db as _services_db
-from .manual_candidates_patch import apply_manual_candidates_patch
-
-apply_manual_candidates_patch(_services_db.DBOrdersService)
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\handlers\staff_management.py
-```python
-"""
-Модуль управления персоналом админ-бота.
-
-Современный UI для добавления и управления персоналом
-без использования системы access-кодов.
-
-Функционал:
-- Добавление персонала по Telegram ID или @username
-- Выбор роли (Global Admin, City Admin, Logist)
-- Привязка к городам
-- Просмотр списков персонала
-- Редактирование прав доступа
-- Блокировка/активация персонала
-"""
-
-from __future__ import annotations
-
-import logging
-from typing import Any, Optional, Sequence
-
-from aiogram import Bot, F, Router
-from aiogram.filters import StateFilter
-from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from ..dto import CityRef, StaffRole, StaffUser
-from ..filters import StaffRoleFilter
-from ..states import StaffAddFSM, StaffEditFSM
-from ..utils import get_service
-from .helpers import _staff_service, _resolve_city_names
-from .menu import STAFF_ROLE_LABELS
-
-logger = logging.getLogger(__name__)
-
-router = Router(name="staff_management")
-
-
-# ===========================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-# ===========================================
-
-async def safe_edit_text(
-    message,
-    text: str,
-    reply_markup=None,
-    **kwargs
-) -> bool:
-    """Безопасное редактирование сообщения, игнорирует ошибку 'message is not modified'."""
-    try:
-        await message.edit_text(text, reply_markup=reply_markup, **kwargs)
-        return True
-    except Exception:
-        return False
-
-# Константы
-PAGE_SIZE = 10
-ADMIN_ROLES = {StaffRole.GLOBAL_ADMIN}
-MANAGE_ROLES = {StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}
-
-# Эмодзи для UI
-EMOJI = {
-    "add": "➕",
-    "list": "📋",
-    "edit": "✏️",
-    "delete": "🗑",
-    "active": "✅",
-    "inactive": "❌",
-    "back": "⬅️",
-    "confirm": "✔️",
-    "cancel": "🚫",
-    "global_admin": "👑",
-    "city_admin": "🏛",
-    "logist": "📦",
-}
-
-# ============================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-# ============================================
-
-def _orders_service(bot) -> Any:
-    return get_service(bot, "orders_service")
-
-
-def _format_staff_info(member, city_names: list[str]) -> str:
-    """Форматирование информации о сотруднике."""
-    lines = []
-    
-    # Роль с эмодзи
-    role_emoji = {
-        StaffRole.GLOBAL_ADMIN: EMOJI["global_admin"],
-        StaffRole.CITY_ADMIN: EMOJI["city_admin"],
-        StaffRole.LOGIST: EMOJI["logist"],
-    }.get(member.role, "👤")
-    
-    role_label = STAFF_ROLE_LABELS.get(member.role, member.role.value)
-    lines.append(f"<b>{role_emoji} {role_label}</b>")
-    lines.append("")
-    
-    # Основная информация
-    lines.append(f"🆔 ID: <code>{member.tg_id}</code>")
-    if member.username:
-        lines.append(f"📱 @{member.username}")
-    lines.append(f"👤 {member.full_name or 'Не указано'}")
-    if member.phone:
-        lines.append(f"📞 {member.phone}")
-    
-    # Города
-    if city_names:
-        lines.append(f"🏙 Города: {', '.join(city_names)}")
-    else:
-        lines.append("🏙 Города: Все")
-    
-    # Статус
-    status = f"{EMOJI['active']} Активен" if member.is_active else f"{EMOJI['inactive']} Заблокирован"
-    lines.append(f"📊 Статус: {status}")
-    
-    # Даты
-    if member.created_at:
-        created = member.created_at.strftime("%d.%m.%Y %H:%M")
-        lines.append(f"📅 Добавлен: {created}")
-    
-    return "\n".join(lines)
-
-
-async def _get_cities_list(bot) -> list[CityRef]:
-    """Получить список всех городов."""
-    orders_service = _orders_service(bot)
-    cities = await orders_service.list_cities()
-    return sorted(cities, key=lambda c: c.name)
-
-
-def _build_city_keyboard(
-    cities: Sequence[CityRef],
-    selected: set[int],
-    prefix: str,
-    show_done: bool = True,
-) -> InlineKeyboardBuilder:
-    """Построить клавиатуру выбора городов."""
-    kb = InlineKeyboardBuilder()
-    
-    for city in cities:
-        is_selected = city.id in selected
-        check = "✅ " if is_selected else ""
-        kb.button(
-            text=f"{check}{city.name}",
-            callback_data=f"{prefix}:toggle:{city.id}"
-        )
-    
-    kb.adjust(2)
-    
-    # Кнопки управления
-    controls = InlineKeyboardBuilder()
-    
-    if selected:
-        controls.button(text="❌ Сбросить все", callback_data=f"{prefix}:clear")
-    else:
-        controls.button(text="✅ Выбрать все", callback_data=f"{prefix}:all")
-    
-    if show_done:
-        controls.button(text=f"{EMOJI['confirm']} Готово", callback_data=f"{prefix}:done")
-    
-    controls.button(text=f"{EMOJI['back']} Назад", callback_data=f"{prefix}:cancel")
-    controls.adjust(2)
-    
-    kb.attach(controls)
-    return kb
-
-
-def _build_role_keyboard(prefix: str) -> InlineKeyboardBuilder:
-    """Построить клавиатуру выбора роли."""
-    kb = InlineKeyboardBuilder()
-    
-    kb.button(
-        text=f"{EMOJI['global_admin']} Global Admin",
-        callback_data=f"{prefix}:role:GLOBAL_ADMIN"
-    )
-    kb.button(
-        text=f"{EMOJI['city_admin']} City Admin",
-        callback_data=f"{prefix}:role:CITY_ADMIN"
-    )
-    kb.button(
-        text=f"{EMOJI['logist']} Logist",
-        callback_data=f"{prefix}:role:LOGIST"
-    )
-    kb.button(
-        text=f"{EMOJI['back']} Отмена",
-        callback_data="adm:staff:menu"
-    )
-    
-    kb.adjust(1)
-    return kb
-
-
-# ============================================
-# ГЛАВНОЕ МЕНЮ УПРАВЛЕНИЯ ПЕРСОНАЛОМ
-# ============================================
-
-@router.callback_query(
-    F.data == "adm:staff:menu",
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_menu(cq: CallbackQuery, state: FSMContext) -> None:
-    """Главное меню управления персоналом."""
-    await state.clear()
-    
-    kb = InlineKeyboardBuilder()
-    kb.button(text=f"{EMOJI['add']} Добавить персонал", callback_data="adm:staff:add:start")
-    kb.button(text=f"{EMOJI['global_admin']} Global Admins", callback_data="adm:staff:list:GLOBAL_ADMIN:1")
-    kb.button(text=f"{EMOJI['city_admin']} City Admins", callback_data="adm:staff:list:CITY_ADMIN:1")
-    kb.button(text=f"{EMOJI['logist']} Logists", callback_data="adm:staff:list:LOGIST:1")
-    kb.button(text=f"{EMOJI['back']} В главное меню", callback_data="adm:menu")
-    kb.adjust(1)
-    
-    text = (
-        "<b>👥 Управление персоналом</b>\n\n"
-        "Выберите действие:"
-    )
-    
-    await safe_edit_text(cq.message, text, reply_markup=kb.as_markup())
-    await cq.answer()
-
-
-# ============================================
-# ДОБАВЛЕНИЕ ПЕРСОНАЛА
-# ============================================
-
-@router.callback_query(
-    F.data == "adm:staff:add:start",
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_add_start(cq: CallbackQuery, state: FSMContext) -> None:
-    """Начало процесса добавления персонала - выбор роли."""
-    await state.clear()
-    
-    kb = _build_role_keyboard("adm:staff:add")
-    
-    text = (
-        "<b>➕ Добавление персонала</b>\n\n"
-        "Выберите роль для нового сотрудника:"
-    )
-    
-    await safe_edit_text(cq.message, text, reply_markup=kb.as_markup())
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:staff:add:role:"),
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_add_role_selected(cq: CallbackQuery, state: FSMContext) -> None:
-    """Обработка выбора роли."""
-    try:
-        role_value = cq.data.split(":")[-1]
-        role = StaffRole(role_value)
-    except (ValueError, IndexError):
-        await cq.answer("Ошибка: неверная роль", show_alert=True)
-        return
-    
-    await state.update_data(role=role.value)
-    await state.set_state(StaffAddFSM.user_input)
-    
-    role_label = STAFF_ROLE_LABELS.get(role, role.value)
-    
-    kb = InlineKeyboardBuilder()
-    kb.button(text=f"{EMOJI['back']} Отмена", callback_data="adm:staff:menu")
-    
-    text = (
-        f"<b>➕ Добавление: {role_label}</b>\n\n"
-        "Отправьте <b>Telegram ID</b> или <b>@username</b> сотрудника:\n\n"
-        "Примеры:\n"
-        "• <code>123456789</code> (Telegram ID)\n"
-        "• <code>@username</code> (username)\n\n"
-        "💡 Чтобы узнать Telegram ID:\n"
-        "1. Попросите сотрудника написать боту @userinfobot\n"
-        "2. Или используйте @getmyid_bot\n"
-    )
-    
-    await safe_edit_text(cq.message, text, reply_markup=kb.as_markup())
-    await cq.answer()
-
-
-@router.message(
-    StateFilter(StaffAddFSM.user_input),
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_add_user_input(msg: Message, state: FSMContext, staff: StaffUser) -> None:
-    """Обработка ввода Telegram ID или username."""
-    if not msg.text:
-        await msg.answer("Пожалуйста, отправьте текстовое сообщение.")
-        return
-    
-    user_input = msg.text.strip()
-    
-    # Парсинг ввода
-    tg_id: Optional[int] = None
-    username: Optional[str] = None
-    
-    if user_input.startswith("@"):
-        username = user_input[1:].lower()
-    elif user_input.isdigit():
-        tg_id = int(user_input)
-    else:
-        await msg.answer(
-            "❌ Неверный формат!\n\n"
-            "Используйте:\n"
-            "• Telegram ID (только цифры): <code>123456789</code>\n"
-            "• Username (с @): <code>@username</code>"
-        )
-        return
-    
-    # Проверка существования
-    staff_service = _staff_service(msg.bot)
-    
-    if tg_id:
-        existing = await staff_service.get_by_tg_id(tg_id)
-        if existing:
-            await msg.answer(
-                f"❌ Пользователь с ID {tg_id} уже зарегистрирован в системе!\n\n"
-                f"Роль: {STAFF_ROLE_LABELS.get(existing.role, existing.role.value)}"
-            )
-            return
-    
-    # Сохраняем данные
-    await state.update_data(
-        tg_id=tg_id,
-        username=username,
-        user_display=user_input
-    )
-    
-    # Переход к выбору городов
-    data = await state.get_data()
-    role = StaffRole(data["role"])
-    
-    if role == StaffRole.GLOBAL_ADMIN:
-        # Для глобальных админов города не нужны
-        await state.set_state(StaffAddFSM.confirm)
-        await _show_add_confirm(msg.bot, msg.chat.id, state)
-    else:
-        # Для остальных ролей выбираем города
-        await state.set_state(StaffAddFSM.city_select)
-        await state.update_data(selected_cities=[])
-        
-        cities = await _get_cities_list(msg.bot)
-        kb = _build_city_keyboard(cities, set(), "adm:staff:add:city")
-        
-        role_label = STAFF_ROLE_LABELS.get(role, role.value)
-        text = (
-            f"<b>➕ Добавление: {role_label}</b>\n"
-            f"👤 Пользователь: {user_input}\n\n"
-            "Выберите города для доступа:"
-        )
-        
-        await msg.answer(text, reply_markup=kb.as_markup())
-
-
-# Обработчики выбора городов
-@router.callback_query(
-    F.data.startswith("adm:staff:add:city:toggle:"),
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_add_city_toggle(cq: CallbackQuery, state: FSMContext) -> None:
-    """Переключение города."""
-    try:
-        city_id = int(cq.data.split(":")[-1])
-    except (ValueError, IndexError):
-        await cq.answer("Ошибка", show_alert=True)
-        return
-    
-    data = await state.get_data()
-    selected = set(data.get("selected_cities", []))
-    
-    if city_id in selected:
-        selected.remove(city_id)
-    else:
-        selected.add(city_id)
-    
-    await state.update_data(selected_cities=list(selected))
-    
-    # Обновляем клавиатуру
-    cities = await _get_cities_list(cq.bot)
-    kb = _build_city_keyboard(cities, selected, "adm:staff:add:city")
-    
-    role = StaffRole(data["role"])
-    role_label = STAFF_ROLE_LABELS.get(role, role.value)
-    user_display = data.get("user_display", "")
-    
-    text = (
-        f"<b>➕ Добавление: {role_label}</b>\n"
-        f"👤 Пользователь: {user_display}\n\n"
-        "Выберите города для доступа:"
-    )
-    
-    await cq.message.edit_text(text, reply_markup=kb.as_markup())
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data == "adm:staff:add:city:all",
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_add_city_all(cq: CallbackQuery, state: FSMContext) -> None:
-    """Выбрать все города."""
-    cities = await _get_cities_list(cq.bot)
-    selected = {city.id for city in cities}
-    
-    await state.update_data(selected_cities=list(selected))
-    
-    kb = _build_city_keyboard(cities, selected, "adm:staff:add:city")
-    
-    data = await state.get_data()
-    role = StaffRole(data["role"])
-    role_label = STAFF_ROLE_LABELS.get(role, role.value)
-    user_display = data.get("user_display", "")
-    
-    text = (
-        f"<b>➕ Добавление: {role_label}</b>\n"
-        f"👤 Пользователь: {user_display}\n\n"
-        "Выберите города для доступа:"
-    )
-    
-    await cq.message.edit_text(text, reply_markup=kb.as_markup())
-    await cq.answer("Все города выбраны")
-
-
-@router.callback_query(
-    F.data == "adm:staff:add:city:clear",
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_add_city_clear(cq: CallbackQuery, state: FSMContext) -> None:
-    """Сбросить выбор городов."""
-    await state.update_data(selected_cities=[])
-    
-    cities = await _get_cities_list(cq.bot)
-    kb = _build_city_keyboard(cities, set(), "adm:staff:add:city")
-    
-    data = await state.get_data()
-    role = StaffRole(data["role"])
-    role_label = STAFF_ROLE_LABELS.get(role, role.value)
-    user_display = data.get("user_display", "")
-    
-    text = (
-        f"<b>➕ Добавление: {role_label}</b>\n"
-        f"👤 Пользователь: {user_display}\n\n"
-        "Выберите города для доступа:"
-    )
-    
-    await cq.message.edit_text(text, reply_markup=kb.as_markup())
-    await cq.answer("Выбор сброшен")
-
-
-@router.callback_query(
-    F.data == "adm:staff:add:city:done",
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_add_city_done(cq: CallbackQuery, state: FSMContext) -> None:
-    """Завершение выбора городов."""
-    data = await state.get_data()
-    selected_cities = data.get("selected_cities", [])
-    
-    if not selected_cities:
-        await cq.answer("Выберите хотя бы один город!", show_alert=True)
-        return
-    
-    await state.set_state(StaffAddFSM.confirm)
-    await _show_add_confirm(cq.bot, cq.message.chat.id, state)
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data == "adm:staff:add:city:cancel",
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_add_city_cancel(cq: CallbackQuery, state: FSMContext) -> None:
-    """Отмена добавления."""
-    await state.clear()
-    await staff_menu(cq, state)
-
-
-async def _show_add_confirm(bot: Bot, chat_id: int, state: FSMContext) -> None:
-    """Показать подтверждение добавления."""
-    data = await state.get_data()
-    
-    role = StaffRole(data["role"])
-    role_label = STAFF_ROLE_LABELS.get(role, role.value)
-    user_display = data.get("user_display", "")
-    selected_cities = data.get("selected_cities", [])
-    
-    # Получаем названия городов
-    if selected_cities:
-        city_names = await _resolve_city_names(bot, selected_cities)
-        cities_text = ", ".join(city_names)
-    else:
-        cities_text = "Все города (Global Admin)"
-    
-    text = (
-        "<b>📋 Подтверждение добавления</b>\n\n"
-        f"👤 Пользователь: {user_display}\n"
-        f"🏛 Роль: {role_label}\n"
-        f"🏙 Города: {cities_text}\n\n"
-        "Подтвердите добавление сотрудника:"
-    )
-    
-    kb = InlineKeyboardBuilder()
-    kb.button(text=f"{EMOJI['confirm']} Подтвердить", callback_data="adm:staff:add:confirm")
-    kb.button(text=f"{EMOJI['cancel']} Отмена", callback_data="adm:staff:menu")
-    kb.adjust(1)
-    
-    await bot.send_message(chat_id, text, reply_markup=kb.as_markup())
-
-
-@router.callback_query(
-    F.data == "adm:staff:add:confirm",
-    StateFilter(StaffAddFSM.confirm),
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_add_confirm(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
-    """Подтверждение и создание сотрудника."""
-    data = await state.get_data()
-    
-    role = StaffRole(data["role"])
-    tg_id = data.get("tg_id")
-    username = data.get("username")
-    selected_cities = data.get("selected_cities", [])
-    
-    staff_service = _staff_service(cq.bot)
-    
-    try:
-        # Добавляем сотрудника
-        new_staff = await staff_service.add_staff_direct(
-            tg_id=tg_id,
-            username=username,
-            role=role,
-            city_ids=selected_cities,
-            created_by_staff_id=staff.id
-        )
-        
-        await state.clear()
-        
-        role_label = STAFF_ROLE_LABELS.get(role, role.value)
-        
-        text = (
-            f"✅ <b>Сотрудник успешно добавлен!</b>\n\n"
-            f"🆔 ID: <code>{new_staff.tg_id}</code>\n"
-            f"🏛 Роль: {role_label}\n\n"
-            f"Сотрудник может начать работу, написав команду /start боту."
-        )
-        
-        kb = InlineKeyboardBuilder()
-        kb.button(text=f"{EMOJI['list']} К списку персонала", callback_data="adm:staff:menu")
-        kb.button(text=f"{EMOJI['back']} В главное меню", callback_data="adm:menu")
-        kb.adjust(1)
-        
-        await safe_edit_text(cq.message, text, reply_markup=kb.as_markup())
-        await cq.answer()
-        
-    except Exception as e:
-        logger.error(f"Error adding staff: {e}")
-        await cq.answer(f"Ошибка при добавлении: {str(e)}", show_alert=True)
-
-
-# ============================================
-# ПРОСМОТР СПИСКОВ ПЕРСОНАЛА
-# ============================================
-
-@router.callback_query(
-    F.data.startswith("adm:staff:list:"),
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_list(cq: CallbackQuery, state: FSMContext) -> None:
-    """Просмотр списка персонала по роли."""
-    await state.clear()
-    
-    parts = cq.data.split(":")
-    try:
-        role = StaffRole(parts[3])
-        page = int(parts[4]) if len(parts) > 4 else 1
-    except (IndexError, ValueError):
-        await cq.answer("Ошибка параметров", show_alert=True)
-        return
-    
-    staff_service = _staff_service(cq.bot)
-    members, has_next = await staff_service.list_staff(
-        role=role,
-        page=page,
-        page_size=PAGE_SIZE
-    )
-    
-    role_label = STAFF_ROLE_LABELS.get(role, role.value)
-    
-    if not members:
-        text = f"<b>{role_label}</b>\n\nСписок пуст."
-        kb = InlineKeyboardBuilder()
-        kb.button(text=f"{EMOJI['back']} Назад", callback_data="adm:staff:menu")
-        
-        await cq.message.edit_text(text, reply_markup=kb.as_markup())
-        await cq.answer()
-        return
-    
-    # Формируем список
-    lines = [f"<b>{role_label}</b>", f"Страница {page}", ""]
-    
-    for i, member in enumerate(members, start=1):
-        status = EMOJI["active"] if member.is_active else EMOJI["inactive"]
-        username_part = f"@{member.username}" if member.username else f"ID: {member.tg_id}"
-        lines.append(f"{i}. {status} {username_part}")
-    
-    text = "\n".join(lines)
-    
-    # Клавиатура
-    kb = InlineKeyboardBuilder()
-    
-    # Кнопки персонала
-    for member in members:
-        display = member.username or str(member.tg_id)
-        kb.button(
-            text=f"👤 {display}",
-            callback_data=f"adm:staff:view:{member.id}"
-        )
-    
-    kb.adjust(2)
-    
-    # Навигация
-    nav = InlineKeyboardBuilder()
-    if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:staff:list:{role.value}:{page-1}")
-    if has_next:
-        nav.button(text="▶️ Далее", callback_data=f"adm:staff:list:{role.value}:{page+1}")
-    nav.adjust(2)
-    
-    kb.attach(nav)
-    
-    # Кнопка возврата
-    back = InlineKeyboardBuilder()
-    back.button(text=f"{EMOJI['back']} В меню персонала", callback_data="adm:staff:menu")
-    kb.attach(back)
-    
-    await cq.message.edit_text(text, reply_markup=kb.as_markup())
-    await cq.answer()
-
-
-# ============================================
-# ПРОСМОТР И РЕДАКТИРОВАНИЕ СОТРУДНИКА
-# ============================================
-
-@router.callback_query(
-    F.data.startswith("adm:staff:view:"),
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_view(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Просмотр информации о сотруднике."""
-    try:
-        staff_id = int(cq.data.split(":")[-1])
-    except (ValueError, IndexError):
-        await cq.answer("Ошибка ID", show_alert=True)
-        return
-    
-    staff_service = _staff_service(cq.bot)
-    member = await staff_service.get_staff_member(staff_id)
-    
-    if not member:
-        await cq.answer("Сотрудник не найден", show_alert=True)
-        return
-    
-    # Получаем названия городов
-    city_names = await _resolve_city_names(cq.bot, member.city_ids)
-    
-    text = _format_staff_info(member, city_names)
-    
-    # Клавиатура действий
-    kb = InlineKeyboardBuilder()
-    
-    # Блокировка/активация
-    if member.is_active:
-        kb.button(
-            text=f"{EMOJI['inactive']} Заблокировать",
-            callback_data=f"adm:staff:block:{staff_id}"
-        )
-    else:
-        kb.button(
-            text=f"{EMOJI['active']} Активировать",
-            callback_data=f"adm:staff:activate:{staff_id}"
-        )
-    
-    # Редактирование (только для не-глобальных админов или если мы глобальный админ)
-    if staff.role == StaffRole.GLOBAL_ADMIN or member.role != StaffRole.GLOBAL_ADMIN:
-        kb.button(
-            text=f"{EMOJI['edit']} Изменить роль",
-            callback_data=f"adm:staff:edit:role:{staff_id}"
-        )
-        
-        if member.role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST):
-            kb.button(
-                text=f"{EMOJI['edit']} Изменить города",
-                callback_data=f"adm:staff:edit:cities:{staff_id}"
-            )
-    
-    kb.button(
-        text=f"{EMOJI['back']} К списку",
-        callback_data=f"adm:staff:list:{member.role.value}:1"
-    )
-    
-    kb.adjust(1)
-    
-    await cq.message.edit_text(text, reply_markup=kb.as_markup())
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:staff:block:"),
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_block(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Блокировка сотрудника."""
-    try:
-        staff_id = int(cq.data.split(":")[-1])
-    except (ValueError, IndexError):
-        await cq.answer("Ошибка ID", show_alert=True)
-        return
-    
-    staff_service = _staff_service(cq.bot)
-    member = await staff_service.get_staff_member(staff_id)
-    
-    if not member:
-        await cq.answer("Сотрудник не найден", show_alert=True)
-        return
-    
-    # Запрет на блокировку самого себя и других глобальных админов
-    if member.id == staff.id:
-        await cq.answer("Нельзя заблокировать самого себя!", show_alert=True)
-        return
-    
-    if member.role == StaffRole.GLOBAL_ADMIN and staff.role != StaffRole.GLOBAL_ADMIN:
-        await cq.answer("Недостаточно прав", show_alert=True)
-        return
-    
-    await staff_service.set_staff_active(staff_id, is_active=False)
-    
-    await cq.answer("✅ Сотрудник заблокирован")
-    await staff_view(cq, staff)
-
-
-@router.callback_query(
-    F.data.startswith("adm:staff:activate:"),
-    StaffRoleFilter(ADMIN_ROLES)
-)
-async def staff_activate(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Активация сотрудника."""
-    try:
-        staff_id = int(cq.data.split(":")[-1])
-    except (ValueError, IndexError):
-        await cq.answer("Ошибка ID", show_alert=True)
-        return
-    
-    staff_service = _staff_service(cq.bot)
-    await staff_service.set_staff_active(staff_id, is_active=True)
-    
-    await cq.answer("✅ Сотрудник активирован")
-    await staff_view(cq, staff)
-
-
-__all__ = ["router"]
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\handlers\__init__.py
-```python
-# field_service/bots/admin_bot/handlers/__init__.py
-"""
-Модули обработчиков админ-бота.
-
-Структура:
-- menu.py: Главное меню, навигация, регистрация через access code
-- logs.py: Просмотр и управление логами
-- helpers.py: Общие функции и хелперы
-- (handlers.py в корне остаётся для остальных обработчиков до полной миграции)
-"""
-from aiogram import Router
-
-from .menu import router as menu_router
-from .logs import router as logs_router
-from .orders import router as orders_router
-from .settings import router as settings_router
-from .reports import router as reports_router  # P2-08: Отчёты
-# from .staff_access import router as staff_access_router  # DEPRECATED: Коды доступа больше не используются
-from .staff_management import router as staff_management_router  # CR-2025-10-04: Управление персоналом
-
-
-def create_combined_router() -> Router:
-    """Объединяет все роутеры модулей handlers в один."""
-    combined = Router(name="admin_handlers_combined")
-    # combined.include_router(staff_access_router)  # DEPRECATED: Коды доступа больше не используются
-    combined.include_router(staff_management_router)  # CR-2025-10-04: Управление персоналом
-    combined.include_router(menu_router)
-    combined.include_router(logs_router)
-    combined.include_router(orders_router)
-    combined.include_router(settings_router)
-    combined.include_router(reports_router)
-    return combined
-
-
-__all__ = [
-    "create_combined_router",
-    "menu_router",
-    "logs_router",
-    "orders_router",
-    "settings_router",
-    "reports_router",  # P2-08
-    # "staff_access_router",  # DEPRECATED: Коды доступа больше не используются
-    "staff_management_router",  # CR-2025-10-04
-]
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\routers\admin_masters.py
-```python
-﻿from __future__ import annotations
-
-import logging
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, Optional
-
-from aiogram import F, Router
-from aiogram.filters import StateFilter
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from pathlib import Path
-from tempfile import TemporaryDirectory
-from aiogram import Bot
-from aiogram.types import FSInputFile
-from field_service.config import settings as env_settings
-from field_service.services.push_notifications import (
-    notify_master as push_notify_master,
-    NotificationEvent,
-)
-
-from field_service.bots.common import FSMTimeoutConfig, FSMTimeoutMiddleware
-
-from ..dto import MasterDetail, MasterListItem, StaffRole, StaffUser
-from ..filters import StaffRoleFilter
-from ..keyboards import back_to_menu
-from ..utils import get_service
-
-PAGE_SIZE = 10
-VIEW_ROLES = {
-    StaffRole.GLOBAL_ADMIN,
-    StaffRole.CITY_ADMIN,
-    StaffRole.LOGIST,
-}
-MANAGE_ROLES = {
-    StaffRole.GLOBAL_ADMIN,
-    StaffRole.CITY_ADMIN,
-}
-SHIFT_LABELS = {
-    "SHIFT_ON": "На смене",
-    "SHIFT_OFF": "Не на смене",
-    "BREAK": "Перерыв",
-}
-GROUP_LABELS = {
-    "ok": "Одобренные",
-    "mod": "На модерации",
-    "blk": "Неактивные",
-}
-
-MASTER_GROUP_ORDER = ("ok", "mod", "blk")
-
-logger = logging.getLogger(__name__)
-UTC = timezone.utc
-
-
-@dataclass(slots=True)
-class MasterAction:
-    prefix: str
-    action: str
-    master_id: int
-    group: str | None = None
-    category: str | None = None
-    page: int | None = None
-
-    @property
-    def mode(self) -> str:
-        return "moderation" if self.prefix == "adm:mod" else "masters"
-
-
-def parse_master_action(data: str) -> MasterAction:
-    parts = data.split(":")
-    if len(parts) < 3:
-        raise ValueError("Invalid callback data")
-    prefix = ":".join(parts[:2])
-    action = parts[2]
-    tail = parts[3:]
-    if not tail:
-        raise ValueError("Missing master identifier")
-    try:
-        master_id = int(tail[-1])
-    except ValueError as exc:
-        raise ValueError("Invalid master identifier") from exc
-    group = category = None
-    page: int | None = None
-    if len(tail) >= 4:
-        group = tail[-4]
-        category = tail[-3]
-        page_str = tail[-2]
-        try:
-            page = int(page_str)
-        except ValueError:
-            page = None
-    return MasterAction(prefix, action, master_id, group, category, page)
-
-
-class RejectReasonState(StatesGroup):
-    waiting = State()
-
-
-class ChangeLimitState(StatesGroup):
-    waiting = State()
-
-
-router = Router(name="admin_masters")
-_timeout_middleware = FSMTimeoutMiddleware(
-    FSMTimeoutConfig(timeout=timedelta(minutes=5))
-)
-router.callback_query.middleware(_timeout_middleware)
-router.message.middleware(_timeout_middleware)
-
-
-def _masters_service(bot):
-    return get_service(bot, "masters_service")
-
-
-def _can_manage(staff: StaffUser) -> bool:
-    return staff.role in MANAGE_ROLES
-
-
-def _city_scope(staff: StaffUser) -> Optional[Iterable[int]]:
-    if staff.role is StaffRole.GLOBAL_ADMIN:
-        return None
-    return list(staff.city_ids)
-
-
-def _group_label(group: str) -> str:
-    return GROUP_LABELS.get(group.lower(), group)
-
-
-def _shift_label(status: str, on_break: bool) -> str:
-    status_key = (status or "").upper()
-    base = SHIFT_LABELS.get(status_key, status_key or "UNKNOWN")
-    if on_break:
-        return f"{base} (перерыв)"
-    return base
-
-
-def _category_label(category: str, skills: list[dict[str, object]]) -> str:
-    if not category or category == "all":
-        return "Все"
-    lookup: dict[str, str] = {}
-    for item in skills:
-        code = str(item.get("code") or "").lower()
-        name = str(item.get("name") or item.get("id"))
-        lookup[str(item.get("id"))] = name
-        if code:
-            lookup[code] = name
-    return lookup.get(category.lower(), category)
-
-
-def _format_master_line(item: MasterListItem) -> str:
-    skills = ", ".join(item.skills) if item.skills else "—"
-    transport = "🚗" if item.has_vehicle else "🚶"
-    on_break = item.on_break or item.shift_status.upper() == "BREAK"
-    shift = _shift_label(item.shift_status, on_break)
-    status_flags: list[str] = []
-    if item.is_deleted:
-        status_flags.append("удален")
-    if not item.verified:
-        status_flags.append("не проверен")
-    if not item.is_active:
-        status_flags.append("не активен")
-    flags = f" ({', '.join(status_flags)})" if status_flags else ""
-    limit_value: str
-    if item.max_active_orders:
-        limit_value = f"{item.active_orders}/{item.max_active_orders}"
-    else:
-        limit_value = str(item.active_orders)
-    avg_check = f"{item.avg_check:.0f} ₽" if item.avg_check is not None else "—"
-    city = item.city_name or "—"
-    return (
-        f"#{item.id} {item.full_name} • {city} • {skills} • {item.rating:.1f} ★ • "
-        f"{transport} • {shift}{flags}\n"
-        f"Активные заказы: {limit_value} • Средний чек: {avg_check}"
-    )
-
-
-def build_list_kb(
-    group: str,
-    category: str,
-    page: int,
-    items: list[MasterListItem],
-    has_next: bool,
-    skills: list[dict[str, object]],
-    *,
-    prefix: str = "adm:m",
-) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-
-    if prefix == "adm:m":
-        active_group = (group or "ok").lower()
-        buttons: list[InlineKeyboardButton] = []
-        for key in MASTER_GROUP_ORDER:
-            label = _group_label(key)
-            text_label = label if key != active_group else f"[{label}]"
-            buttons.append(
-                InlineKeyboardButton(
-                    text=text_label,
-                    callback_data=f"adm:m:grp:{key}",
-                )
-            )
-        if buttons:
-            kb.row(*buttons)
-
-    list_builder = InlineKeyboardBuilder()
-    for item in items:
-        list_builder.button(
-            text=f"Открыть #{item.id}",
-            callback_data=f"{prefix}:card:{group}:{category}:{page}:{item.id}",
-        )
-    if items:
-        list_builder.adjust(1)
-        kb.attach(list_builder)
-
-    nav = InlineKeyboardBuilder()
-    if page > 1:
-        nav.button(
-            text="◀️ Назад",
-            callback_data=f"{prefix}:list:{group}:{category}:{page - 1}",
-        )
-    if has_next:
-        nav.button(
-            text="▶️ Вперёд",
-            callback_data=f"{prefix}:list:{group}:{category}:{page + 1}",
-        )
-    nav_count = 0
-    if page > 1:
-        nav_count += 1
-    if has_next:
-        nav_count += 1
-    if nav_count:
-        nav.adjust(nav_count)
-        kb.attach(nav)
-
-    categories = InlineKeyboardBuilder()
-    categories.button(text="Все", callback_data=f"{prefix}:list:{group}:all:1")
-    for skill in skills[:6]:
-        skill_id = str(skill.get("id"))
-        label = str(skill.get("name") or skill_id)
-        if len(label) > 24:
-            label = label[:21] + "…"
-        categories.button(
-            text=label,
-            callback_data=f"{prefix}:list:{group}:{skill_id}:1",
-        )
-    categories_count = 1 + min(len(skills), 6)
-    if categories_count:
-        categories.adjust(min(categories_count, 3))
-        kb.attach(categories)
-
-    footer = InlineKeyboardBuilder()
-    footer.button(text="⬅️ Назад", callback_data="adm:menu")
-    footer.button(text="🏠 Меню", callback_data="adm:menu")
-    footer.adjust(2)
-    kb.attach(footer)
-
-    return kb.as_markup()
-
-
-def build_card_kb(
-    detail: MasterDetail,
-    staff: StaffUser,
-    *,
-    mode: str = "masters",
-    prefix: str = "adm:m",
-    group: str | None = None,
-    category: str | None = None,
-    page: int | None = None,
-) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    manage = _can_manage(staff) and not detail.is_deleted
-    group_value = group or ("mod" if mode == "moderation" else "ok")
-    category_value = category or "all"
-    page_value = page or 1
-
-    def _action_callback(action: str) -> str:
-        return f"{prefix}:{action}:{group_value}:{category_value}:{page_value}:{detail.id}"
-
-    if mode == "moderation":
-        if manage and not detail.verified:
-            kb.button(text="✅ Одобрить", callback_data=_action_callback("ok"))
-        if manage:
-            kb.button(text="❌ Отклонить", callback_data=_action_callback("rej"))
-        kb.button(text="📄 Документы", callback_data=_action_callback("docs"))
-        kb.adjust(1)
-        kb.row(
-            InlineKeyboardButton(
-                text="⬅️ Назад",
-                callback_data=f"{prefix}:list:{group_value}:{category_value}:{page_value}",
-            ),
-            InlineKeyboardButton(text="🏠 Меню", callback_data="adm:menu"),
-        )
-        return kb.as_markup()
-
-    if manage and not detail.verified:
-        kb.button(text="✅ Одобрить", callback_data=_action_callback("ok"))
-    if manage:
-        kb.button(text="❌ Отклонить", callback_data=_action_callback("rej"))
-    if manage:
-        if detail.is_active and not detail.is_deleted:
-            kb.button(text="🚫 Заблокировать", callback_data=_action_callback("blk"))
-        else:
-            kb.button(text="✅ Разблокировать", callback_data=_action_callback("unb"))
-        kb.button(text="🎯 Изм. лимит", callback_data=_action_callback("lim"))
-    kb.button(text="📄 Документы", callback_data=_action_callback("docs"))
-    if manage:
-        delete_text = (
-            "🗑 Удалить"
-            if not (detail.has_orders or detail.has_commissions)
-            else "🧹 Мягкое удаление"
-        )
-        kb.button(text=delete_text, callback_data=_action_callback("del"))
-
-    kb.adjust(2, 2, 2)
-    kb.row(
-        InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data=f"{prefix}:list:{group_value}:{category_value}:{page_value}",
-        ),
-        InlineKeyboardButton(text="🏠 Меню", callback_data="adm:menu"),
-    )
-    return kb.as_markup()
-
-
-async def render_master_list(
-    bot,
-    group: str,
-    category: str,
-    page: int,
-    *,
-    staff: StaffUser,
-    mode: str = "masters",
-    prefix: str = "adm:m",
-) -> tuple[str, InlineKeyboardMarkup, list[MasterListItem], list[dict[str, object]], bool]:
-    service = _masters_service(bot)
-    skills = await service.list_active_skills()
-    items, has_next = await service.list_masters(
-        group,
-        city_ids=_city_scope(staff),
-        category=category,
-        page=page,
-        page_size=PAGE_SIZE,
-    )
-    title = "👷 <b>Мастера</b>"
-    if mode == "moderation":
-        title = "🛠 <b>Модерация мастеров</b>"
-    group_label = _group_label(group)
-    category_label = _category_label(category, skills)
-    lines = [
-        title,
-        f"Группа: {group_label}",
-        f"Категория: {category_label}",
-        f"Страница: {page}",
-    ]
-    if not items:
-        lines.append("Список пуст.")
-    else:
-        for item in items:
-            lines.append(_format_master_line(item))
-    markup = build_list_kb(
-        group,
-        category,
-        page,
-        items,
-        has_next,
-        skills,
-        prefix=prefix,
-    )
-    return "\n\n".join(lines), markup, items, skills, has_next
-
-
-async def render_master_card(
-    bot,
-    master_id: int,
-    *,
-    staff: StaffUser,
-    mode: str = "masters",
-    prefix: str = "adm:m",
-    group: str | None = None,
-    category: str | None = None,
-    page: int | None = None,
-) -> tuple[str, InlineKeyboardMarkup]:
-    service = _masters_service(bot)
-    detail = await service.get_master_detail(master_id)
-    if not detail:
-        return "Мастер не найден или удалён.", back_to_menu()
-
-    status_parts: list[str] = []
-    if detail.is_deleted:
-        status_parts.append("удалён")
-    if not detail.verified:
-        status_parts.append("не проверен")
-    if not detail.is_active:
-        status_parts.append("не активен")
-    if detail.is_blocked:
-        status_parts.append("заблокирован")
-    status_line = ", ".join(status_parts) if status_parts else "активен"
-
-    avg_check = f"{detail.avg_check:.0f} ₽" if detail.avg_check is not None else "—"
-    limit_value = detail.current_limit if detail.current_limit else "—"
-    verified_at = detail.verified_at_local or "—"
-    status_value = (detail.shift_status or "").upper()
-    shift = _shift_label(status_value, status_value == "BREAK")
-
-    lines = [
-        f"👷 <b>{detail.full_name}</b> #{detail.id}",
-        f"📍 Город: {detail.city_name or '—'}",
-        f"📞 Телефон: {detail.phone or '—'}",
-        f"⭐️ Рейтинг: {detail.rating:.1f}",
-        f"🚗 Транспорт: {'Авто' if detail.has_vehicle else 'Пеший'}",
-        f"🕒 Смена: {shift}",
-        f"📊 Активные заказы: {detail.active_orders}",
-        f"🎯 Лимит: {limit_value}",
-        f"💰 Средний чек: {avg_check}",
-        f"📎 Статус: {status_line}",
-        f"✅ Проверен: {detail.verified}",
-        f"📅 Дата проверки: {verified_at}",
-    ]
-    if detail.referral_code:
-        lines.append(f"?? ???. ???: {detail.referral_code}")
-        try:
-            ref_stats = await service.get_master_referral_stats(master_id)
-            if ref_stats and ref_stats.get("invited_total", 0) > 0:
-                lines.append(
-                    f"?? ?????????: {ref_stats['invited_total']} "
-                    f"(????????: {ref_stats['invited_pending']})"
-                )
-                lines.append(
-                    f"?? ??????????: {ref_stats['rewards_amount']:.2f} ? "
-                    f"({ref_stats['rewards_count']} ??.)"
-                )
-        except Exception:
-            logger.debug("Failed to load referral stats", exc_info=True)
-
-    if detail.moderation_reason:
-        lines.append(f"📝 Причина: {detail.moderation_reason}")
-    if detail.blocked_reason:
-        lines.append(f"🚫 Блокировка: {detail.blocked_reason}")
-    lines.append(
-        "🏙 Районы: " + (", ".join(detail.district_names) or "—")
-    )
-    lines.append(
-        "🛠 Навыки: " + (", ".join(detail.skill_names) or "—")
-    )
-    if detail.documents:
-        doc_types = ", ".join(filter(None, (doc.document_type for doc in detail.documents)))
-        lines.append("📄 Документы: " + (doc_types or "доступны"))
-    lines.append(f"📅 Создан: {detail.created_at_local}")
-    lines.append(f"🆙 Обновлён: {detail.updated_at_local}")
-
-    markup = build_card_kb(
-        detail,
-        staff,
-        mode=mode,
-        prefix=prefix,
-        group=group,
-        category=category,
-        page=page,
-    )
-    return "\n".join(lines), markup
-
-
-async def _refresh_card_message(
-    bot,
-    chat_id: int,
-    message_id: int,
-    master_id: int,
-    staff: StaffUser,
-    *,
-    mode: str = "masters",
-    prefix: str = "adm:m",
-    group: str | None = None,
-    category: str | None = None,
-    page: int | None = None,
-) -> None:
-    try:
-        text, markup = await render_master_card(
-            bot,
-            master_id,
-            staff=staff,
-            mode=mode,
-            prefix=prefix,
-            group=group,
-            category=category,
-            page=page,
-        )
-        await bot.edit_message_text(
-            text,
-            chat_id=chat_id,
-            message_id=message_id,
-            reply_markup=markup,
-        )
-    except Exception:
-        logger.debug("Failed to refresh master card", exc_info=True)
-
-
-async def refresh_card(
-    cq: CallbackQuery,
-    master_id: int,
-    staff: StaffUser,
-    *,
-    mode: str | None = None,
-    prefix: str = "adm:m",
-    group: str | None = None,
-    category: str | None = None,
-    page: int | None = None,
-) -> None:
-    if not cq.message:
-        return
-    text, markup = await render_master_card(
-        cq.bot,
-        master_id,
-        staff=staff,
-        mode=mode or ("moderation" if prefix == "adm:mod" else "masters"),
-        prefix=prefix,
-        group=group,
-        category=category,
-        page=page,
-    )
-    await cq.message.edit_text(text, reply_markup=markup)
-
-
-async def _send_master_event(
-    service,
-    master_id: int,
-    event: NotificationEvent,
-    **payload: Any,
-) -> None:
-    session_factory = getattr(service, "_session_factory", None)
-    if session_factory is None:
-        return
-    try:
-        async with session_factory() as session:
-            await push_notify_master(
-                session,
-                master_id=master_id,
-                event=event,
-                **payload,
-            )
-            await session.commit()
-    except Exception:
-        logger.warning(
-            "Failed to enqueue push notification %s for master %s",
-            event,
-            master_id,
-            exc_info=True,
-        )
-
-
-async def notify_master_event(
-    bot,
-    master_id: int,
-    event: NotificationEvent,
-    **kwargs: Any,
-) -> None:
-    service = _masters_service(bot)
-    await _send_master_event(service, master_id, event, **kwargs)
-
-
-async def notify_master(bot, master_id: int, message: str) -> None:
-    try:
-        service = _masters_service(bot)
-        await service.enqueue_master_notification(master_id, message)
-    except Exception:
-        logger.warning("Failed to enqueue master notification", exc_info=True)
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:grp:"),
-    StaffRoleFilter(VIEW_ROLES),
-)
-async def open_group(cq: CallbackQuery, staff: StaffUser) -> None:
-    group = cq.data.split(":")[-1]
-    text, markup, *_ = await render_master_list(
-        cq.bot,
-        group,
-        "all",
-        1,
-        staff=staff,
-    )
-    if cq.message:
-        await cq.message.edit_text(text, reply_markup=markup)
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:list:"),
-    StaffRoleFilter(VIEW_ROLES),
-)
-async def list_page(cq: CallbackQuery, staff: StaffUser) -> None:
-    parts = cq.data.split(":")
-    try:
-        _, _, _, group, category, page = parts
-        page_num = max(1, int(page))
-    except (ValueError, IndexError):
-        await cq.answer("Некорректный запрос", show_alert=True)
-        return
-    text, markup, *_ = await render_master_list(
-        cq.bot,
-        group,
-        category,
-        page_num,
-        staff=staff,
-    )
-    if cq.message:
-        await cq.message.edit_text(text, reply_markup=markup)
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:card:"),
-    StaffRoleFilter(VIEW_ROLES),
-)
-async def master_card(cq: CallbackQuery, staff: StaffUser) -> None:
-    try:
-        action = parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    text, markup = await render_master_card(
-        cq.bot,
-        action.master_id,
-        staff=staff,
-        mode=action.mode,
-        prefix=action.prefix,
-        group=action.group,
-        category=action.category,
-        page=action.page,
-    )
-    if cq.message:
-        await cq.message.edit_text(text, reply_markup=markup)
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:ok"),
-    StaffRoleFilter(MANAGE_ROLES),
-)
-async def approve_master(cq: CallbackQuery, staff: StaffUser) -> None:
-    try:
-        action = parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    master_id = action.master_id
-    service = _masters_service(cq.bot)
-    if not await service.approve_master(master_id, staff.id):
-        await cq.answer("Не удалось обновить статус", show_alert=True)
-        return
-    await _send_master_event(
-        service,
-        master_id,
-        NotificationEvent.MODERATION_APPROVED,
-    )
-    await notify_master(
-        cq.bot,
-        master_id,
-        "Анкета одобрена. Вам доступна смена.",
-    )
-    await refresh_card(
-        cq,
-        master_id,
-        staff,
-        mode=action.mode,
-        prefix=action.prefix,
-        group=action.group,
-        category=action.category,
-        page=action.page,
-    )
-    await cq.answer("Мастер одобрен")
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:rej"),
-    StaffRoleFilter(MANAGE_ROLES),
-)
-async def ask_reject_reason(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
-    try:
-        action = parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    await state.set_state(RejectReasonState.waiting)
-    await state.update_data(
-        master_id=action.master_id,
-        action="reject",
-        origin_chat_id=cq.message.chat.id if cq.message else None,
-        origin_message_id=cq.message.message_id if cq.message else None,
-        prefix=action.prefix,
-        group=action.group,
-        category=action.category,
-        page=action.page,
-        mode=action.mode,
-    )
-    if cq.message:
-        await cq.message.answer("Укажите причину отклонения (1–200 символов).")
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:blk"),
-    StaffRoleFilter(MANAGE_ROLES),
-)
-async def ask_block_reason(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
-    try:
-        action = parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    await state.set_state(RejectReasonState.waiting)
-    await state.update_data(
-        master_id=action.master_id,
-        action="block",
-        origin_chat_id=cq.message.chat.id if cq.message else None,
-        origin_message_id=cq.message.message_id if cq.message else None,
-        prefix=action.prefix,
-        group=action.group,
-        category=action.category,
-        page=action.page,
-        mode=action.mode,
-    )
-    if cq.message:
-        await cq.message.answer("Укажите причину блокировки (1–200 символов).")
-    await cq.answer()
-
-
-@router.message(
-    StateFilter(RejectReasonState.waiting),
-    StaffRoleFilter(MANAGE_ROLES),
-)
-async def process_reason(message: Message, state: FSMContext, staff: StaffUser) -> None:
-    data = await state.get_data()
-    master_id = int(data.get("master_id", 0))
-    action = data.get("action")
-    origin_chat_id = data.get("origin_chat_id")
-    origin_message_id = data.get("origin_message_id")
-    reason = (message.text or "").strip()
-    if not 1 <= len(reason) <= 200:
-        await message.answer("Причина должна быть от 1 до 200 символов.")
-        return
-    service = _masters_service(message.bot)
-    if action == "reject":
-        ok = await service.reject_master(master_id, reason=reason, by_staff_id=staff.id)
-        if not ok:
-            await message.answer("Не удалось отклонить мастера.")
-            await state.clear()
-            return
-        await _send_master_event(
-            service,
-            master_id,
-            NotificationEvent.MODERATION_REJECTED,
-            reason=reason,
-        )
-        await notify_master(
-            message.bot,
-            master_id,
-            f"Анкета отклонена. Причина: {reason}",
-        )
-        await message.answer("Анкета отклонена.")
-    else:
-        ok = await service.block_master(master_id, reason=reason, by_staff_id=staff.id)
-        if not ok:
-            await message.answer("Не удалось заблокировать мастера.")
-            await state.clear()
-            return
-        await _send_master_event(
-            service,
-            master_id,
-            NotificationEvent.ACCOUNT_BLOCKED,
-            reason=reason,
-        )
-        await notify_master(
-            message.bot,
-            master_id,
-            f"Ваш аккаунт заблокирован. Причина: {reason}",
-        )
-        await message.answer("Мастер заблокирован.")
-    if origin_chat_id and origin_message_id:
-        await _refresh_card_message(
-            message.bot,
-            origin_chat_id,
-            origin_message_id,
-            master_id,
-            staff,
-            mode=data.get("mode", "masters"),
-            prefix=str(data.get("prefix") or "adm:m"),
-            group=data.get("group"),
-            category=data.get("category"),
-            page=data.get("page"),
-        )
-    await state.clear()
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:unb"),
-    StaffRoleFilter(MANAGE_ROLES),
-)
-async def unblock_master(cq: CallbackQuery, staff: StaffUser) -> None:
-    try:
-        action = parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    master_id = action.master_id
-    service = _masters_service(cq.bot)
-    if not await service.unblock_master(master_id, by_staff_id=staff.id):
-        await cq.answer("Не удалось разблокировать", show_alert=True)
-        return
-    await _send_master_event(
-        service,
-        master_id,
-        NotificationEvent.ACCOUNT_UNBLOCKED,
-    )
-    await notify_master(cq.bot, master_id, "Ваш аккаунт разблокирован.")
-    await refresh_card(
-        cq,
-        master_id,
-        staff,
-        mode=action.mode,
-        prefix=action.prefix,
-        group=action.group,
-        category=action.category,
-        page=action.page,
-    )
-    await cq.answer("Разблокирован")
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:lim"),
-    StaffRoleFilter(MANAGE_ROLES),
-)
-async def ask_limit(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
-    try:
-        action = parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    await state.set_state(ChangeLimitState.waiting)
-    await state.update_data(
-        master_id=action.master_id,
-        origin_chat_id=cq.message.chat.id if cq.message else None,
-        origin_message_id=cq.message.message_id if cq.message else None,
-        prefix=action.prefix,
-        group=action.group,
-        category=action.category,
-        page=action.page,
-        mode=action.mode,
-    )
-    if cq.message:
-        await cq.message.answer("Введите лимит активных заказов (1–20):")
-    await cq.answer()
-
-
-@router.message(
-    StateFilter(ChangeLimitState.waiting),
-    StaffRoleFilter(MANAGE_ROLES),
-)
-async def change_limit(message: Message, state: FSMContext, staff: StaffUser) -> None:
-    data = await state.get_data()
-    master_id = int(data.get("master_id", 0))
-    origin_chat_id = data.get("origin_chat_id")
-    origin_message_id = data.get("origin_message_id")
-    raw_value = (message.text or "").strip()
-    if not raw_value.isdigit():
-        await message.answer("Введите число от 1 до 20.")
-        return
-    limit = max(1, min(int(raw_value), 20))
-    service = _masters_service(message.bot)
-    if not await service.set_master_limit(master_id, limit=limit, by_staff_id=staff.id):
-        await message.answer("Не удалось обновить лимит.")
-        await state.clear()
-        return
-    await _send_master_event(
-        service,
-        master_id,
-        NotificationEvent.LIMIT_CHANGED,
-        limit=limit,
-    )
-    await notify_master(
-        message.bot,
-        master_id,
-        f"Ваш лимит активных заказов обновлён: {limit}",
-    )
-    await message.answer(f"Лимит обновлён: {limit}")
-    if origin_chat_id and origin_message_id:
-        await _refresh_card_message(
-            message.bot,
-            origin_chat_id,
-            origin_message_id,
-            master_id,
-            staff,
-            mode=data.get("mode", "masters"),
-            prefix=str(data.get("prefix") or "adm:m"),
-            group=data.get("group"),
-            category=data.get("category"),
-            page=data.get("page"),
-        )
-    await state.clear()
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:docs"),
-    StaffRoleFilter(VIEW_ROLES),
-)
-async def _relay_document(current_bot, *, chat_id: int, file_id: str, file_type: str, caption: str = "", filename: str | None = None) -> bool:
-    token = getattr(env_settings, 'master_bot_token', None)
-    if not token:
-        return False
-    try:
-        async with Bot(token) as source_bot:
-            with TemporaryDirectory() as tmpdir:
-                # Resolve filename from Telegram file info or fallback by type
-                try:
-                    info = await source_bot.get_file(file_id)
-                    suggested = Path(getattr(info, "file_path", "") or "").name or None
-                except Exception:
-                    suggested = None
-                if not filename and suggested:
-                    filename_use = suggested
-                elif filename:
-                    filename_use = filename
-                else:
-                    ext = ".jpg" if file_type.upper() == "PHOTO" else (".pdf" if file_type.upper() == "DOCUMENT" else ".bin")
-                    filename_use = f"doc{ext}"
-                tmp = Path(tmpdir) / filename_use
-                await source_bot.download(file_id, destination=tmp)
-                if file_type.upper() == "PHOTO":
-                    await current_bot.send_photo(chat_id, FSInputFile(tmp, filename=filename_use), caption=caption)
-                else:
-                    await current_bot.send_document(chat_id, FSInputFile(tmp, filename=filename_use), caption=caption)
-        return True
-    except Exception:
-        logger.warning('Relay via master bot failed', exc_info=True)
-        return False
-
-async def show_documents(cq: CallbackQuery, staff: StaffUser) -> None:
-    try:
-        action = parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    master_id = action.master_id
-    try:
-        await cq.answer()
-    except Exception:
-        pass
-    service = _masters_service(cq.bot)
-    detail = await service.get_master_detail(master_id)
-    if not detail or not detail.documents:
-        if cq.message:
-            await cq.message.answer("Документы отсутствуют")
-        return
-    chat_id = cq.message.chat.id if cq.message else None
-    for document in detail.documents:
-        caption = document.caption or document.document_type or ''
-        file_type = (document.file_type or '').upper()
-        try:
-            if file_type == 'PHOTO':
-                await cq.message.answer_photo(document.file_id, caption=caption)
-            elif file_type == 'DOCUMENT':
-                await cq.message.answer_document(document.file_id, caption=caption)
-            else:
-                await cq.message.answer(f"Неизвестный тип файла: {document.file_type}")
-        except Exception:
-            if chat_id is not None:
-                ok = await _relay_document(cq.bot, chat_id=chat_id, file_id=document.file_id, file_type=file_type, caption=caption, filename=(document.file_name or None))
-                if not ok:
-                    logger.warning('Failed to send document', exc_info=True)
-            else:
-                logger.warning('Failed to send document', exc_info=True)
-@router.callback_query(
-    F.data.startswith("adm:m:del"),
-    StaffRoleFilter(MANAGE_ROLES),
-)
-async def delete_master(cq: CallbackQuery, staff: StaffUser) -> None:
-    try:
-        action = parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    master_id = action.master_id
-    group_value = action.group or ("mod" if action.mode == "moderation" else "ok")
-    category_value = action.category or "all"
-    page_value = action.page or 1
-    prefix = action.prefix
-    kb = InlineKeyboardBuilder()
-    kb.button(
-        text="✅ Подтвердить",
-        callback_data=f"{prefix}:delconfirm:{group_value}:{category_value}:{page_value}:{master_id}",
-    )
-    kb.button(
-        text="⬅️ Назад",
-        callback_data=f"{prefix}:card:{group_value}:{category_value}:{page_value}:{master_id}",
-    )
-    if cq.message:
-        await cq.message.edit_text(
-            "Точно удалить мастера?", reply_markup=kb.as_markup()
-        )
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:m:delconfirm"),
-    StaffRoleFilter(MANAGE_ROLES),
-)
-async def perform_delete(cq: CallbackQuery, staff: StaffUser) -> None:
-    try:
-        action = parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    master_id = action.master_id
-    service = _masters_service(cq.bot)
-    success, soft = await service.delete_master(master_id, by_staff_id=staff.id)
-    if not success:
-        await cq.answer("Не удалось удалить", show_alert=True)
-        return
-    if soft:
-        await cq.answer("Профиль помечен как удалён", show_alert=True)
-        await refresh_card(
-            cq,
-            master_id,
-            staff,
-            mode=action.mode,
-            prefix=action.prefix,
-            group=action.group,
-            category=action.category,
-            page=action.page,
-        )
-    else:
-        if cq.message:
-            await cq.message.edit_text("Профиль удалён окончательно.", reply_markup=back_to_menu())
-        await cq.answer("Профиль удалён", show_alert=True)
-
-
-__all__ = [
-    "router",
-    "render_master_list",
-    "render_master_card",
-    "build_card_kb",
-    "refresh_card",
-    "notify_master",
-    "notify_master_event",
-    "parse_master_action",
-    "RejectReasonState",
+    "AdminPaths",
+    "FSMTimeoutConfig",
+    "FSMTimeoutMiddleware",
+    "MasterPaths",
+    "RetryContext",
+    "RetryMiddleware",
+    "add_breadcrumbs_to_text",
+    "build_breadcrumbs",
+    "clear_retry_context",
+    "format_breadcrumb_header",
+    "load_retry_context",
+    "retry_router",
+    "safe_answer_callback",
+    "safe_delete_and_send",
+    "safe_edit_or_send",
+    "safe_send_message",
+    "save_retry_context",
+    "setup_retry_middleware",
 ]
 
-
-
-
 ```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\routers\admin_moderation.py
-```python
-﻿from __future__ import annotations
 
-from aiogram import F, Router
-from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery
+---
 
-from ..dto import StaffRole, StaffUser
-from ..filters import StaffRoleFilter
-from ..utils import get_service
-from . import admin_masters
-from field_service.services.push_notifications import NotificationEvent
+###### `field-service/field_service/bots/common/breadcrumbs.py`
 
-router = Router(name="admin_moderation")
+**Strok:** 161  
+**Razmer:** 5.08 KB
 
-MOD_VIEW_ROLES = {
-    StaffRole.GLOBAL_ADMIN,
-    StaffRole.CITY_ADMIN,
-    StaffRole.LOGIST,
-}
-MOD_MANAGE_ROLES = {
-    StaffRole.GLOBAL_ADMIN,
-    StaffRole.CITY_ADMIN,
-}
-
-
-def _masters_service(bot):
-    return get_service(bot, "masters_service")
-
-
-@router.callback_query(
-    F.data == "adm:mod:list",
-    StaffRoleFilter(MOD_VIEW_ROLES),
-)
-@router.callback_query(
-    F.data.startswith("adm:mod:list:"),
-    StaffRoleFilter(MOD_VIEW_ROLES),
-)
-async def moderation_list(cq: CallbackQuery, staff: StaffUser) -> None:
-    parts = cq.data.split(":")
-    group = "mod"
-    category = "all"
-    page = 1
-    if len(parts) >= 6:
-        _, _, _, group, category, page_str = parts[:6]
-        try:
-            page = max(1, int(page_str))
-        except ValueError:
-            page = 1
-    elif len(parts) >= 4:
-        try:
-            page = max(1, int(parts[-1]))
-        except ValueError:
-            page = 1
-    text, markup, *_ = await admin_masters.render_master_list(
-        cq.bot,
-        group,
-        category,
-        page,
-        staff=staff,
-        mode="moderation",
-        prefix="adm:mod",
-    )
-    if cq.message:
-        await cq.message.edit_text(text, reply_markup=markup)
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:mod:card:"),
-    StaffRoleFilter(MOD_VIEW_ROLES),
-)
-async def moderation_card(cq: CallbackQuery, staff: StaffUser) -> None:
-    try:
-        action = admin_masters.parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    text, markup = await admin_masters.render_master_card(
-        cq.bot,
-        action.master_id,
-        staff=staff,
-        mode=action.mode,
-        prefix=action.prefix,
-        group=action.group,
-        category=action.category,
-        page=action.page,
-    )
-    if cq.message:
-        await cq.message.edit_text(text, reply_markup=markup)
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:mod:ok"),
-    StaffRoleFilter(MOD_MANAGE_ROLES),
-)
-async def moderation_approve(cq: CallbackQuery, staff: StaffUser) -> None:
-    try:
-        action = admin_masters.parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    master_id = action.master_id
-    service = _masters_service(cq.bot)
-    by_id = staff.id
-    if by_id == 0:
-        try:
-            staff_service = get_service(cq.bot, "staff_service", required=False)
-            if staff_service and cq.from_user:
-                resolved = await staff_service.get_by_tg_id(cq.from_user.id)
-                if resolved:
-                    by_id = resolved.id
-        except Exception:
-            pass
-    if not await service.approve_master(master_id, by_id):
-        await cq.answer("Не удалось одобрить", show_alert=True)
-        return
-    await admin_masters.notify_master_event(
-        cq.bot,
-        master_id,
-        NotificationEvent.MODERATION_APPROVED,
-    )
-    await admin_masters.notify_master(
-        cq.bot,
-        master_id,
-        "Анкета одобрена. Вам доступна смена.",
-    )
-    await admin_masters.refresh_card(
-        cq,
-        master_id,
-        staff,
-        mode=action.mode,
-        prefix=action.prefix,
-        group=action.group,
-        category=action.category,
-        page=action.page,
-    )
-    await cq.answer("Одобрено")
-
-
-@router.callback_query(
-    F.data.startswith("adm:mod:rej"),
-    StaffRoleFilter(MOD_MANAGE_ROLES),
-)
-async def moderation_reject(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> None:
-    try:
-        action = admin_masters.parse_master_action(cq.data)
-    except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
-        return
-    await state.set_state(admin_masters.RejectReasonState.waiting)
-    await state.update_data(
-        master_id=action.master_id,
-        action="reject",
-        origin_chat_id=cq.message.chat.id if cq.message else None,
-        origin_message_id=cq.message.message_id if cq.message else None,
-        prefix=action.prefix,
-        group=action.group,
-        category=action.category,
-        page=action.page,
-        mode=action.mode,
-    )
-    if cq.message:
-        await cq.message.answer("Укажите причину отклонения (1–200 символов).")
-    await cq.answer()
-
-
-@router.callback_query(
-    F.data.startswith("adm:mod:docs"),
-    StaffRoleFilter(MOD_VIEW_ROLES),
-)
-async def moderation_docs(cq: CallbackQuery, staff: StaffUser) -> None:
-    # reuse master handler for docs
-    await admin_masters.show_documents(cq, staff)
-
-
-@router.callback_query(
-    F.data.startswith("adm:mod:del"),
-    StaffRoleFilter(MOD_MANAGE_ROLES),
-)
-async def disable_delete(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.answer("Удаление недоступно из модерации", show_alert=True)
-
-
-__all__ = ["router"]
-
-```
-.
-## \ProjectF\field-service\field_service\bots\admin_bot.backup\routers\__init__.py
-```python
-"""Router package for admin bot submodules."""
-
-from . import admin_masters, admin_moderation  # noqa: F401
-
-__all__ = [
-    "admin_masters",
-    "admin_moderation",
-]
-```
-.
-## \ProjectF\field-service\field_service\bots\common\breadcrumbs.py
 ```python
 """Breadcrumbs navigation utility for both bots.
 
@@ -38478,9 +25410,16 @@ def add_breadcrumbs_to_text(text: str, path: Sequence[str]) -> str:
     breadcrumbs = build_breadcrumbs(path)
     header = format_breadcrumb_header(breadcrumbs)
     return f"{header}{text}"
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\common\copy_utils.py
+
+---
+
+###### `field-service/field_service/bots/common/copy_utils.py`
+
+**Strok:** 66  
+**Razmer:** 2.50 KB
+
 ```python
 """
 Утилиты для быстрого копирования данных (P1-19).
@@ -38547,9 +25486,16 @@ def format_copy_message(data_type: str, data: str) -> str:
     
     # Используем <code> для моноширинного шрифта - легче копировать
     return f"<b>{label}:</b>\n\n<code>{data}</code>\n\n<i>Нажмите на текст чтобы скопировать</i>"
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\common\error_middleware.py
+
+---
+
+###### `field-service/field_service/bots/common/error_middleware.py`
+
+**Strok:** 127  
+**Razmer:** 3.58 KB
+
 ```python
 from __future__ import annotations
 
@@ -38677,9 +25623,16 @@ def _extract_user_id(update: Update | TelegramObject | None) -> Optional[int]:
                 return user_id
     return None
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\common\fsm_timeout.py
+
+---
+
+###### `field-service/field_service/bots/common/fsm_timeout.py`
+
+**Strok:** 76  
+**Razmer:** 2.51 KB
+
 ```python
 from __future__ import annotations
 
@@ -38756,9 +25709,16 @@ class FSMTimeoutMiddleware(BaseMiddleware):
             return
         finally:
             self._tasks.pop(storage_key, None)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\common\polling.py
+
+---
+
+###### `field-service/field_service/bots/common/polling.py`
+
+**Strok:** 27  
+**Razmer:** 0.75 KB
+
 ```python
 from __future__ import annotations
 
@@ -38786,9 +25746,16 @@ async def poll_with_single_instance_guard(
             await send_log(bot, "409 Conflict: another instance running → exit", chat_id=logs_chat_id)
             raise SystemExit(0) from None
         raise
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\common\retry_context.py
+
+---
+
+###### `field-service/field_service/bots/common/retry_context.py`
+
+**Strok:** 116  
+**Razmer:** 3.28 KB
+
 ```python
 """
 Модуль для работы с контекстом повтора действий.
@@ -38905,9 +25872,16 @@ async def clear_retry_context(state: FSMContext) -> None:
     if "retry_context" in data:
         data.pop("retry_context")
         await state.set_data(data)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\common\retry_handler.py
+
+---
+
+###### `field-service/field_service/bots/common/retry_handler.py`
+
+**Strok:** 150  
+**Razmer:** 4.73 KB
+
 ```python
 """
 Обработчик повтора действий после ошибок.
@@ -39058,9 +26032,16 @@ async def retry_cancel(callback: CallbackQuery, state: FSMContext):
             "user_id": callback.from_user.id,
         },
     )
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\common\retry_middleware.py
+
+---
+
+###### `field-service/field_service/bots/common/retry_middleware.py`
+
+**Strok:** 160  
+**Razmer:** 5.50 KB
+
 ```python
 """
 Middleware для перехвата ошибок и предложения повтора действия.
@@ -39221,9 +26202,16 @@ def setup_retry_middleware(dp, enabled: bool = True) -> None:
     """
     middleware = RetryMiddleware(enabled=enabled)
     dp.callback_query.middleware(middleware)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\common\telegram_safe.py
+
+---
+
+###### `field-service/field_service/bots/common/telegram_safe.py`
+
+**Strok:** 239  
+**Razmer:** 8.34 KB
+
 ```python
 from __future__ import annotations
 
@@ -39463,58 +26451,27 @@ async def safe_delete_and_send(
             **kwargs,
         ),
     )
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\common\__init__.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/__init__.py`
+
+**Strok:** 1  
+**Razmer:** 0.00 KB
+
 ```python
-from __future__ import annotations
 
-from .breadcrumbs import (
-    AdminPaths,
-    MasterPaths,
-    add_breadcrumbs_to_text,
-    build_breadcrumbs,
-    format_breadcrumb_header,
-)
-from .fsm_timeout import FSMTimeoutConfig, FSMTimeoutMiddleware
-from .retry_context import (
-    RetryContext,
-    clear_retry_context,
-    load_retry_context,
-    save_retry_context,
-)
-from .retry_handler import retry_router
-from .retry_middleware import RetryMiddleware, setup_retry_middleware
-from .telegram_safe import (
-    safe_answer_callback,
-    safe_delete_and_send,
-    safe_edit_or_send,
-    safe_send_message,
-)
-
-__all__ = [
-    "AdminPaths",
-    "FSMTimeoutConfig",
-    "FSMTimeoutMiddleware",
-    "MasterPaths",
-    "RetryContext",
-    "RetryMiddleware",
-    "add_breadcrumbs_to_text",
-    "build_breadcrumbs",
-    "clear_retry_context",
-    "format_breadcrumb_header",
-    "load_retry_context",
-    "retry_router",
-    "safe_answer_callback",
-    "safe_delete_and_send",
-    "safe_edit_or_send",
-    "safe_send_message",
-    "save_retry_context",
-    "setup_retry_middleware",
-]
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\dto.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/dto.py`
+
+**Strok:** 64  
+**Razmer:** 1.38 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -39579,9 +26536,16 @@ class ReferralStats:
     level_one_total: Decimal
     level_two_total: Decimal
     recent_rewards: Sequence[m.referral_rewards]
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\filters.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/filters.py`
+
+**Strok:** 35  
+**Razmer:** 1.16 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -39617,9 +26581,16 @@ class PendingModerationFilter(BaseFilter):
             return False
         status = getattr(master, "moderation_status", m.ModerationStatus.PENDING)
         return status == m.ModerationStatus.PENDING
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\finance.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/finance.py`
+
+**Strok:** 63  
+**Razmer:** 1.88 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -39683,1022 +26654,85 @@ def format_pay_snapshot(snapshot: Optional[dict]) -> str:
         lines.append(f"Комментарий к оплате: {comment}")
 
     return "\n".join(lines)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\keyboards.py
-```python
-﻿from __future__ import annotations
 
-from typing import Iterable, Sequence
+---
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+###### `field-service/field_service/bots/master_bot/handlers/__init__.py`
 
-from field_service.db import models as m
+**Strok:** 59  
+**Razmer:** 1.87 KB
 
-from .texts import MAIN_MENU_BUTTONS
-from .utils import inline_keyboard
-
-
-def cancel_button(callback_data: str = "m:cancel") -> list[InlineKeyboardButton]:
-    """Создаёт кнопку отмены для любого FSM-состояния."""
-    return [InlineKeyboardButton(text="❌ Отменить", callback_data=callback_data)]
-
-
-def start_onboarding_keyboard() -> InlineKeyboardMarkup:
-    return inline_keyboard(
-        [
-            [
-                InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["start_onboarding"],
-                    callback_data="m:onboarding:start",
-                )
-            ]
-        ]
-    )
-
-
-def pdn_keyboard() -> InlineKeyboardMarkup:
-    return inline_keyboard(
-        [
-            [InlineKeyboardButton(text="Согласен", callback_data="m:onboarding:pdn_accept")],
-            [InlineKeyboardButton(text="Не согласен", callback_data="m:onboarding:pdn_decline")],
-            cancel_button(),
-        ]
-    )
-
-
-def vehicle_keyboard() -> InlineKeyboardMarkup:
-    return inline_keyboard(
-        [
-            [InlineKeyboardButton(text="Есть авто", callback_data="m:onboarding:vehicle_yes")],
-            [InlineKeyboardButton(text="Нет авто", callback_data="m:onboarding:vehicle_no")],
-            cancel_button(),
-        ]
-    )
-
-
-def districts_keyboard(
-    *,
-    options: Sequence[tuple[int, str, bool]],
-    page: int,
-    total_pages: int,
-) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
-    for district_id, title, selected in options:
-        label = ("✅ " if selected else "▫️ ") + title
-        rows.append(
-            [InlineKeyboardButton(text=label, callback_data=f"m:onboarding:district:{district_id}")]
-        )
-
-    controls: list[InlineKeyboardButton] = []
-    if total_pages > 1:
-        if page > 1:
-            controls.append(
-                InlineKeyboardButton(text="‹ Назад", callback_data=f"m:onboarding:districts_page:{page - 1}")
-            )
-        controls.append(
-            InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="m:onboarding:districts_page:noop")
-        )
-        if page < total_pages:
-            controls.append(
-                InlineKeyboardButton(text="Вперёд ›", callback_data=f"m:onboarding:districts_page:{page + 1}")
-            )
-    controls.append(InlineKeyboardButton(text="Готово", callback_data="m:onboarding:districts_done"))
-    if controls:
-        rows.append(controls)
-    rows.append(cancel_button())
-    return inline_keyboard(rows)
-
-
-def skills_keyboard(skills: Sequence[tuple[int, str, bool]]) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
-    for skill_id, title, selected in skills:
-        label = ("✅ " if selected else "▫️ ") + title
-        rows.append(
-            [InlineKeyboardButton(text=label, callback_data=f"m:onboarding:skill:{skill_id}")]
-        )
-    rows.append([InlineKeyboardButton(text="Готово", callback_data="m:onboarding:skills_done")])
-    rows.append(cancel_button())
-    return inline_keyboard(rows)
-
-
-def payout_methods_keyboard(methods: Iterable[m.PayoutMethod]) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
-    for method in methods:
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=_method_title(method),
-                    callback_data=f"m:onboarding:payout:{method.value.lower()}",
-                )
-            ]
-        )
-    rows.append(cancel_button())
-    return inline_keyboard(rows)
-
-
-# 🔧 Список банков для СБП
-SBP_BANKS = [
-    ("sber", "Сбербанк"),
-    ("tinkoff", "Тинькофф"),
-    ("vtb", "ВТБ"),
-    ("alfa", "Альфа-Банк"),
-    ("raiff", "Райффайзенбанк"),
-    ("gpb", "Газпромбанк"),
-    ("mts", "МТС Банк"),
-    ("psb", "ПСБ"),
-    ("open", "Открытие"),
-    ("sovcom", "Совкомбанк"),
-    ("rsb", "Россельхозбанк"),
-    ("ak_bars", "Ак Барс"),
-    ("uralsib", "Уралсиб"),
-    ("mkb", "МКБ"),
-    ("other", "Другой банк"),
-]
-
-
-def sbp_bank_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура выбора банка для СБП."""
-    rows: list[list[InlineKeyboardButton]] = []
-    # Добавляем кнопки парами
-    for i in range(0, len(SBP_BANKS), 2):
-        row = []
-        for j in range(2):
-            idx = i + j
-            if idx < len(SBP_BANKS):
-                code, name = SBP_BANKS[idx]
-                row.append(
-                    InlineKeyboardButton(text=name, callback_data=f"m:onb:sbp_bank:{code}")
-                )
-        if row:
-            rows.append(row)
-    rows.append(cancel_button())
-    return inline_keyboard(rows)
-
-
-def home_geo_keyboard() -> InlineKeyboardMarkup:
-    return inline_keyboard(
-        [
-        [InlineKeyboardButton(text="Отправить геопозицию", callback_data="m:onboarding:home_geo_share")],
-        [InlineKeyboardButton(text="Пропустить", callback_data="m:onboarding:home_geo_skip")],
-        cancel_button(),
-        ]
-    )
-
-
-def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
-    if getattr(master, "verified", False):
-        shift_status = getattr(master, "shift_status", m.ShiftStatus.SHIFT_OFF)
-        if shift_status is m.ShiftStatus.SHIFT_OFF:
-            rows.append(
-                [
-                    InlineKeyboardButton(
-                        text=MAIN_MENU_BUTTONS["shift_on"],
-                        callback_data="m:sh:on",
-                    )
-                ]
-            )
-        elif shift_status is m.ShiftStatus.SHIFT_ON:
-            rows.append(
-                [
-                    InlineKeyboardButton(
-                        text=MAIN_MENU_BUTTONS["shift_break"],
-                        callback_data="m:sh:brk",
-                    )
-                ]
-            )
-            rows.append(
-                [
-                    InlineKeyboardButton(
-                        text=MAIN_MENU_BUTTONS["shift_off"],
-                        callback_data="m:sh:off",
-                    )
-                ]
-            )
-        elif shift_status is m.ShiftStatus.BREAK:
-            rows.append(
-                [
-                    InlineKeyboardButton(
-                        text=MAIN_MENU_BUTTONS["shift_break_end"],
-                        callback_data="m:sh:brk:ok",
-                    )
-                ]
-            )
-            rows.append(
-                [
-                    InlineKeyboardButton(
-                        text=MAIN_MENU_BUTTONS["shift_off"],
-                        callback_data="m:sh:off",
-                    )
-                ]
-            )
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["new_orders"],
-                    callback_data="m:new",
-                )
-            ]
-        )
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["active_orders"],
-                    callback_data="m:act",
-                )
-            ]
-        )
-        # P1-9: История заказов
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["history"],
-                    callback_data="m:hist",
-                )
-            ]
-        )
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["finance"],
-                    callback_data="m:fin",
-                )
-            ]
-        )
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["referral"],
-                    callback_data="m:rf",
-                )
-            ]
-        )
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["statistics"],
-                    callback_data="m:stats",
-                )
-            ]
-        )
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["knowledge"],
-                    callback_data="m:kb",
-                )
-            ]
-        )
-    else:
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=MAIN_MENU_BUTTONS["start_onboarding"],
-                    callback_data="m:onboarding:start",
-                )
-            ]
-        )
-    return inline_keyboard(rows)
-
-
-def _method_title(method: m.PayoutMethod) -> str:
-    mapping = {
-        m.PayoutMethod.CARD: "Банковская карта",
-        m.PayoutMethod.SBP: "СБП",
-        m.PayoutMethod.YOOMONEY: "ЮMoney",
-        m.PayoutMethod.BANK_ACCOUNT: "Банковский счёт",
-    }
-    return mapping.get(method, method.value.title())
-
-
-def close_order_cancel_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура с кнопкой отмены для процесса закрытия заказа."""
-    return inline_keyboard([cancel_button(callback_data="m:act:cls:cancel")])
-
-
-
-# P1-16: Клавиатура для напоминания о перерыве
-def break_reminder_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура для напоминания об окончании перерыва."""
-    return inline_keyboard(
-        [
-            [InlineKeyboardButton(text="🟢 Вернуться на смену", callback_data="m:sh:brk:ok")],
-            [InlineKeyboardButton(text="☕ Продлить перерыв на 2 часа", callback_data="m:sh:brk:extend")],
-        ]
-    )
-```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\main.py
 ```python
 from __future__ import annotations
 
-import asyncio
-import logging
-from contextlib import suppress
-import os
+from datetime import timedelta
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-
-from field_service.config import settings
-from field_service.bots.common.error_middleware import setup_error_middleware
-from field_service.bots.common.polling import poll_with_single_instance_guard
-from field_service.bots.common.retry_handler import retry_router  # P1-13
-from field_service.bots.common.retry_middleware import setup_retry_middleware  # P1-13
-from field_service.infra.notify import send_alert, send_log
-from field_service.services.heartbeat import run_heartbeat
-from field_service.services.break_reminder_scheduler import run_break_reminder  # P1-16
-from field_service.services.notifications_watcher import run_master_notifications  # Отправка уведомлений мастерам
-
-from .handlers import router as master_router
-
-
-logger = logging.getLogger(__name__)
-
-
-async def main() -> int:
-    # Basic logging to console; allow override via LOG_LEVEL env
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    if not logging.getLogger().handlers:
-        logging.basicConfig(
-            level=getattr(logging, log_level, logging.INFO),
-            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        )
-    # Reduce aiohttp noise but keep aiogram useful
-    logging.getLogger("aiogram").setLevel(getattr(logging, log_level, logging.INFO))
-    logging.getLogger("aiohttp").setLevel(logging.WARNING)
-    bot = Bot(
-        settings.master_bot_token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
-    dp = Dispatcher()
-    dp.include_router(master_router)
-    
-    # P1-13: Retry функциональность для повтора действий при ошибках
-    dp.include_router(retry_router)
-
-    alerts_chat_id = settings.alerts_channel_id
-    logs_chat_id = settings.logs_channel_id
-
-    setup_error_middleware(
-        dp,
-        bot=bot,
-        bot_label="master_bot",
-        logs_chat_id=logs_chat_id,
-        alerts_chat_id=alerts_chat_id,
-    )
-    
-    # P1-13: Подключаем retry middleware для автоматического предложения повтора при ошибках
-    setup_retry_middleware(dp, enabled=True)
-
-    heartbeat_task = asyncio.create_task(
-        run_heartbeat(bot, name="master", chat_id=logs_chat_id),
-        name="master_heartbeat",
-    )
-
-    # P1-16: Запуск планировщика напоминаний о перерывах
-    break_reminder_task = asyncio.create_task(
-        run_break_reminder(interval_seconds=60),
-        name="break_reminder",
-    )
-
-    # Запуск worker для отправки уведомлений мастерам
-    notifications_task = asyncio.create_task(
-        run_master_notifications(bot, interval_seconds=5),
-        name="master_notifications",
-    )
-
-    exit_code = 0
-    try:
-        logger.info("Starting master bot; allowed updates: %s", dp.resolve_used_update_types())
-        await poll_with_single_instance_guard(
-            dp,
-            bot,
-            logs_chat_id=logs_chat_id,
-        )
-    except SystemExit as conflict_exit:
-        exit_code = int(conflict_exit.code or 0)
-    except (KeyboardInterrupt, asyncio.CancelledError):
-        pass
-    except Exception as exc:
-        logger.exception("Master bot polling failed: %s", exc)
-        message = f"❗ Ошибка master_bot polling: {type(exc).__name__}: {exc}"
-        await send_alert(bot, message, chat_id=alerts_chat_id, exc=exc)
-        await send_log(bot, message, chat_id=logs_chat_id)
-        exit_code = 1
-    finally:
-        if heartbeat_task:
-            heartbeat_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await heartbeat_task
-        # P1-16: Отменяем задачу break_reminder
-        if break_reminder_task:
-            break_reminder_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await break_reminder_task
-        # Отменяем задачу notifications
-        if notifications_task:
-            notifications_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await notifications_task
-        await bot.session.close()
-
-    return exit_code
-
-
-if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))
-```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\middlewares.py
-```python
-﻿from __future__ import annotations
-
-import logging
-from typing import Any, Awaitable, Callable, Dict
-
-from aiogram import BaseMiddleware
-from aiogram.types import CallbackQuery, Message, TelegramObject
-
-from field_service.db.session import SessionLocal
-from field_service.services import onboarding_service
-
-
-class DbSessionMiddleware(BaseMiddleware):
-    async def __call__(
-        self,
-        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-        event: TelegramObject,
-        data: Dict[str, Any],
-    ) -> Any:
-        async with SessionLocal() as session:
-            data["session"] = session
-            try:
-                result = await handler(event, data)
-            except Exception:
-                # При ошибке - откатываем транзакцию
-                if session.in_transaction():
-                    await session.rollback()
-                raise
-            # При успехе - НЕ трогаем сессию, обработчик сам делает commit
-            return result
-
-
-class MasterContextMiddleware(BaseMiddleware):
-    async def __call__(
-        self,
-        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-        event: TelegramObject,
-        data: Dict[str, Any],
-    ) -> Any:
-        session = data.get("session")
-        if session is None:
-            return await handler(event, data)
-        tg_user_id = _extract_tg_id(event)
-        if tg_user_id is not None:
-            master = await onboarding_service.ensure_master(session, tg_user_id)
-            data["master"] = master
-        return await handler(event, data)
-
-
-def _extract_tg_id(event: TelegramObject) -> int | None:
-    if isinstance(event, Message):
-        return event.from_user.id if event.from_user else None
-    if isinstance(event, CallbackQuery):
-        return event.from_user.id if event.from_user else None
-    user = getattr(event, "from_user", None)
-    return user.id if user else None
-
-
-class DebugLoggingMiddleware(BaseMiddleware):
-    """Lightweight debug logger for incoming messages and callbacks.
-
-    Prints concise info to the standard logger so operators can see
-    what arrives and which handler chain processes it.
-    """
-
-    def __init__(self, *, logger: logging.Logger | None = None) -> None:
-        self._log = logger or logging.getLogger("master_bot.debug")
-
-    async def __call__(
-        self,
-        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-        event: TelegramObject,
-        data: Dict[str, Any],
-    ) -> Any:
-        try:
-            if isinstance(event, Message):
-                uid = getattr(getattr(event, "from_user", None), "id", None)
-                cid = getattr(getattr(event, "chat", None), "id", None)
-                text = getattr(event, "text", None) or getattr(event, "caption", None)
-                self._log.info("Message uid=%s chat=%s type=%s text=%r", uid, cid, getattr(event, "content_type", None), text)
-            elif isinstance(event, CallbackQuery):
-                uid = getattr(getattr(event, "from_user", None), "id", None)
-                cid = getattr(getattr(getattr(event, "message", None), "chat", None), "id", None)
-                data_str = getattr(event, "data", None)
-                self._log.info("Callback uid=%s chat=%s data=%r", uid, cid, data_str)
-        except Exception:
-            # Never allow logging failures to break the pipeline
-            pass
-        return await handler(event, data)
-```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\service_registry.py
-```python
-﻿from __future__ import annotations
-
-from typing import Any
-
-_SERVICES: dict[str, Any] = {}
-
-
-def register_service(key: str, service: Any) -> None:
-    _SERVICES[key] = service
-
-
-def register_services(mapping: dict[str, Any]) -> None:
-    _SERVICES.update(mapping)
-
-
-def get_service(key: str) -> Any | None:
-    return _SERVICES.get(key)
-```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\states.py
-```python
-﻿from __future__ import annotations
-
-from aiogram.fsm.state import State, StatesGroup
-
-
-class OnboardingStates(StatesGroup):
-    pdn = State()
-    last_name = State()
-    first_name = State()
-    middle_name = State()
-    phone = State()
-    city = State()
-    districts = State()
-    vehicle = State()
-    skills = State()
-    passport = State()
-    selfie = State()
-    payout_method = State()
-    payout_requisites = State()
-    payout_sbp_bank = State()  # 🔧 Выбор банка для СБП
-    confirm = State()
-
-
-class FinanceUploadStates(StatesGroup):
-    check = State()
-
-
-class CloseOrderStates(StatesGroup):
-    amount = State()
-    act = State()
-```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\texts.py
-```python
-from __future__ import annotations
-
-import html
-from dataclasses import dataclass
-from typing import Iterable, Mapping
-
-from field_service.db import models as m
-
-# P1-23: Breadcrumbs navigation
-from ..common import MasterPaths, add_breadcrumbs_to_text
-
-# Onboarding flow texts (missing constants used by handlers)
-ONBOARDING_ALREADY_VERIFIED = "Вы уже верифицированы."
-ONBOARDING_SENT = "Заявка отправлена на модерацию."
-ONBOARDING_SUMMARY_HEADER = "Проверьте данные анкеты:"
-
-MASTER_PDN_CONSENT = (
-    "Согласие на обработку персональных данных.",
-    "Я разрешаю Field Service обрабатывать мои ФИО, телефон и сведения о заказах для заключения договора и организации работы.",
-    "Я ознакомлен с тем, что могу отозвать согласие, написав в поддержку сервиса.",
-)
-
-MASTER_PDN_DECLINED = (
-    "Вы отказались от обработки персональных данных. Мы не сможем продолжить регистрацию.",
-)
-
-START_NOT_APPROVED = (
-    "Добро пожаловать в Field Service! Ваша анкета отправлена на модерацию.",
-    "Мы сообщим, как только проверим данные. Пока вы можете дополнить профиль и ознакомиться с требованиями.",
-)
-
-START_BLOCKED = (
-    "Ваш аккаунт заблокирован.",
-    "Если это ошибка, свяжитесь с поддержкой или администратором сервиса.",
-)
-
-START_APPROVED = (
-    "Рады видеть вас на смене! Вы можете включить смену, брать заявки и управлять финансами.",
-)
-
-FSM_TIMEOUT_MESSAGE = "Сессия истекла. Нажмите /start"
-
-MAIN_MENU_BUTTONS = {
-    "shift_on": "🟢 Включить смену",
-    "shift_break": "☕ Перерыв 2 часа",
-    "shift_break_end": "🟢 Включить смену",
-    "shift_off": "🔴 Выключить смену",
-    "new_orders": "🆕 Новые заказы",
-    "active_orders": "📦 Активные заказы",
-    "history": "📋 История заказов",  # P1-9
-    "finance": "💳 Финансы",
-    "referral": "🎁 Реферальная программа",
-    "statistics": "📊 Моя статистика",  # P1-17
-    "knowledge": "📚 База знаний",
-    "start_onboarding": "Заполнить анкету",
-}
-
-ORDER_STATUS_TITLES: Mapping[m.OrderStatus, str] = {
-    m.OrderStatus.ASSIGNED: "Назначено мастеру",
-    m.OrderStatus.EN_ROUTE: "Мастер в пути",
-    m.OrderStatus.WORKING: "Мастер работает",
-    m.OrderStatus.PAYMENT: "Ожидает подтверждения оплаты",
-    m.OrderStatus.CLOSED: "Заказ закрыт",
-    m.OrderStatus.DEFERRED: "Заказ отложен",
-    m.OrderStatus.GUARANTEE: "Гарантийный визит",
-    m.OrderStatus.CANCELED: "Заказ отменён",
-    m.OrderStatus.CREATED: "Создан",
-    m.OrderStatus.SEARCHING: "Идёт поиск мастера",
-}
-
-SHIFT_MESSAGES = {
-    "started": "Смена начата.",
-    "finished": "Смена завершена.",
-    "break_started": "Перерыв 2 часа начат.",
-    "break_finished": "Вы вернулись на смену.",
-    "break_extended": "Перерыв продлён ещё на 2 часа.",  # P1-16
-    "inactive": "Смена не активна.",
-    "not_break": "Сейчас не перерыв.",
-    "blocked": "Смена недоступна: аккаунт заблокирован.",
-    "pending": "Профиль на модерации. Дождитесь одобрения.",
-}
-
-OFFERS_EMPTY = "Нет новых предложений"
-OFFERS_REFRESH_BUTTON = "🔄 Обновить"
-OFFERS_HEADER_TEMPLATE = "<b>🆕 Новые заказы</b>\nСтраница {page}/{pages} • всего: {total}"
-
-
-def _escape(value: str | None) -> str:
-    return html.escape(value or "—")
-
-
-def offer_line(order_id: int, city: str, district: str | None, category: str, timeslot: str | None) -> str:
-    district_part = f", {_escape(district)}" if district else ""
-    slot = _escape(timeslot or "сегодня/ASAP")
-    return f"#{order_id} • {_escape(city)}{district_part} • {_escape(category)} • {slot}"
-
-
-def offer_card(
-    *,
-    order_id: int,
-    city: str,
-    district: str | None,
-    street: str | None,
-    house: str | None,
-    timeslot: str | None,
-    category: str,
-    description: str | None,
-) -> str:
-    address_parts: list[str] = [
-        _escape(city),
-    ]
-    if district:
-        address_parts.append(_escape(district))
-    if street:
-        address_parts.append(_escape(street))
-    if house:
-        address_parts.append(_escape(str(house)))
-    address = ", ".join(address_parts)
-    description_text = _escape(description.strip() if description else "—")
-    slot = _escape(timeslot or "—")
-    lines = [
-        f"<b>Заявка #{order_id}</b>",
-        f"📍 Адрес: {address}",
-        f"🗓 Слот: {slot}",
-        f"🛠 Категория: {_escape(category)}",
-        f"💬 Описание: {description_text}",
-    ]
-    
-    # P1-23: Add breadcrumbs navigation
-    text = "\n".join(lines)
-    breadcrumb_path = MasterPaths.offer_card(order_id)
-    return add_breadcrumbs_to_text(text, breadcrumb_path)
-
-
-@dataclass(slots=True)
-class ActiveOrderCard:
-    order_id: int
-    city: str
-    district: str | None
-    street: str | None
-    house: str | None
-    timeslot: str | None
-    status: m.OrderStatus
-    category: str | None = None
-
-    def lines(self) -> list[str]:
-        address_parts: list[str] = [_escape(self.city)]
-        if self.district:
-            address_parts.append(_escape(self.district))
-        if self.street:
-            address_parts.append(_escape(self.street))
-        if self.house:
-            address_parts.append(_escape(str(self.house)))
-        address = ", ".join(address_parts)
-        status_title = _escape(ORDER_STATUS_TITLES.get(self.status, self.status.value))
-        slot = _escape(self.timeslot or "—")
-        lines = [
-            f"<b>📦 Активный заказ #{self.order_id}</b>",
-            f"📍 Адрес: {address}",
-            f"🗓 Слот: {slot}",
-            f"🔁 Текущий статус: {status_title}",
-        ]
-        if self.category:
-            lines.insert(3, f"🛠 Категория: {_escape(self.category)}")
-        return lines
-    
-    def render(self) -> str:
-        """Render card with breadcrumbs navigation.
-        
-        P1-23: Added breadcrumbs support.
-        """
-        text = "\n".join(self.lines())
-        breadcrumb_path = MasterPaths.active_order_card(self.order_id)
-        return add_breadcrumbs_to_text(text, breadcrumb_path)
-
-
-ACTIVE_STATUS_ACTIONS: Mapping[m.OrderStatus, tuple[str, str]] = {
-    m.OrderStatus.ASSIGNED: ("🚗 В пути", "m:act:enr"),
-    m.OrderStatus.EN_ROUTE: ("🛠 На месте", "m:act:wrk"),
-    m.OrderStatus.WORKING: ("🧾 Закрыть", "m:act:cls"),
-}
-
-CLOSE_AMOUNT_PROMPT = "Введите сумму по заказу (например, 3500 или 4999.99)."
-CLOSE_AMOUNT_ERROR = "Некорректная сумма. Введите целое число или число с двумя знаками после точки."
-CLOSE_ACT_PROMPT = "Отправьте акт (фото или PDF одним файлом)."
-CLOSE_SUCCESS_TEMPLATE = "Заказ #{order_id} закрыт. Спасибо за работу!"
-CLOSE_PAYMENT_TEMPLATE = "Заказ #{order_id} отправлен на оплату. Сумма: {amount:.2f} ₽"
-CLOSE_DOCUMENT_RECEIVED = "Документ получен. Проверим и сообщим о результате."
-CLOSE_DOCUMENT_ERROR = "Нужен один файл: фото или PDF. Попробуйте ещё раз."
-
-# Сообщение после успешного закрытия заказа
-CLOSE_NEXT_STEPS = (
-    "✅ <b>Заказ #{order_id} закрыт!</b>\n"
-    "Сумма: {amount:.2f} ₽\n\n"
-    "📋 <b>Что дальше:</b>\n"
-    "1️⃣ Переведите комиссию администратору\n"
-    "2️⃣ Дождитесь подтверждения оплаты\n"
-    "3️⃣ После одобрения комиссия будет зачислена\n\n"
-    "💳 Следить за статусом можно в разделе <b>Финансы</b>\n\n"
-    "Спасибо за работу! 🎉"
-)
-
-CLOSE_GUARANTEE_SUCCESS = (
-    "✅ <b>Гарантийный заказ #{order_id} закрыт!</b>\n\n"
-    "Документ получен и отправлен на проверку.\n\n"
-    "Спасибо за работу! 🎉"
-)
-
-OFFER_NOT_FOUND = "Заявка не найдена. Возможно, её уже приняли другим мастером."
-
-# P0-1: Диалог подтверждения отклонения оффера
-OFFER_DECLINE_CONFIRM = "⚠️ Вы уверены, что хотите отклонить заказ #{order_id}?\n\nОтклонённый заказ пропадёт из списка."
-
-NAV_BACK = "⬅️ Назад"
-NAV_MENU = "🏠 Меню"
-NO_ACTIVE_ORDERS = "Сейчас нет активных заказов."
-
-# P0-4: Функция для генерации сообщения о блокировке с причиной
-def alert_account_blocked(reason: str | None = None) -> str:
-    """Генерирует сообщение о блокировке аккаунта с указанием причины."""
-    base_text = "⛔️ Ваш аккаунт заблокирован."
-    if reason:
-        return f"{base_text}\n\n<b>Причина:</b> {html.escape(reason)}\n\nОбратитесь в поддержку для разблокировки."
-    return f"{base_text}\n\nОбратитесь в поддержку для подробностей."
-
-# Для обратной совместимости
-ALERT_ACCOUNT_BLOCKED = alert_account_blocked()
-
-ALERT_LIMIT_REACHED = "Достигнут лимит активных заказов. Завершите текущие, чтобы брать новые."
-ALERT_ALREADY_TAKEN = "Упс, заказ уже забрали другим мастером"
-ALERT_ACCEPT_SUCCESS = "Заявка принята. Удачи в работе!"
-ALERT_DECLINE_SUCCESS = "Предложение скрыто."
-ALERT_EN_ROUTE_FAIL = "Не удалось перевести заказ в статус «В пути». Обновите карточку и попробуйте снова."
-ALERT_EN_ROUTE_SUCCESS = "Отметили, что вы в пути."
-ALERT_WORKING_FAIL = "Не удалось отметить начало работы. Обновите карточку и попробуйте снова."
-ALERT_WORKING_SUCCESS = "Отметили, что вы уже на месте."
-ALERT_CLOSE_NOT_FOUND = "Заказ не найден. Начните закрытие заново."
-ALERT_CLOSE_STATUS = "Статус заказа изменился. Попробуйте снова из активного заказа."
-ALERT_CLOSE_NOT_ALLOWED = "Сейчас нельзя закрыть этот заказ. Проверьте статус."
-ALERT_ORDER_NOT_FOUND = "Заказ не найден."
-
-REFERRAL_EMPTY = "Пока нет начислений по реферальной программе."
-FINANCE_EMPTY = "Комиссии не найдены."
-
-
-# P1-9: История заказов мастера
-HISTORY_EMPTY = "📋 У вас пока нет завершенных заказов.\n\nВключайте смену и берите заявки — они появятся здесь после выполнения!"
-HISTORY_HEADER_TEMPLATE = "<b>📋 История заказов</b>\nСтраница {page}/{pages} • всего: {total}"
-HISTORY_STATS_TEMPLATE = (
-    "📊 <b>Ваша статистика:</b>\n"
-    "✅ Выполнено: {total_completed}\n"
-    "💰 Заработано: {total_earned:.2f} ₽\n"
-    "⭐️ Средняя оценка: {avg_rating}"
-)
-
-
-def history_order_line(
-    order_id: int,
-    status: str,
-    city: str,
-    district: str | None,
-    category: str,
-    timeslot: str | None,
-) -> str:
-    """Формирует строку для списка истории заказов."""
-    district_part = f", {_escape(district)}" if district else ""
-    slot = _escape(timeslot or "сегодня/ASAP")
-    status_emoji = "✅" if status == "Заказ закрыт" else "❌"
-    return f"{status_emoji} #{order_id} • {_escape(city)}{district_part} • {_escape(category)} • {slot}"
-
-
-def history_order_card(
-    *,
-    order_id: int,
-    status: str,
-    city: str,
-    district: str | None,
-    street: str | None,
-    house: str | None,
-    apartment: str | None,
-    address_comment: str | None,
-    category: str,
-    description: str | None,
-    timeslot: str | None,
-    client_name: str | None,
-    client_phone: str | None,
-    final_amount: float | None,
-    created_at,
-    closed_at,
-) -> str:
-    """Формирует карточку завершенного заказа."""
-    from datetime import datetime
-    
-    # Адрес
-    address_parts: list[str] = [_escape(city)]
-    if district:
-        address_parts.append(_escape(district))
-    if street:
-        address_parts.append(_escape(street))
-    if house:
-        address_parts.append(_escape(str(house)))
-    if apartment:
-        address_parts.append(f"кв. {_escape(str(apartment))}")
-    address = ", ".join(address_parts)
-    
-    if address_comment:
-        address += f"\n   💬 {_escape(address_comment)}"
-    
-    # Описание
-    description_text = _escape(description.strip() if description else "—")
-    
-    # Слот
-    slot = _escape(timeslot or "—")
-    
-    # Клиент
-    client = _escape(client_name or "—")
-    phone = _escape(client_phone or "—")
-    
-    # Сумма
-    amount_text = f"{final_amount:.2f} ₽" if final_amount else "—"
-    
-    # Даты
-    created_str = created_at.strftime("%d.%m.%Y %H:%M") if isinstance(created_at, datetime) else "—"
-    closed_str = closed_at.strftime("%d.%m.%Y %H:%M") if isinstance(closed_at, datetime) and closed_at else "—"
-    
-    # Эмодзи статуса
-    status_emoji = "✅" if status == "Заказ закрыт" else "❌"
-    
-    lines = [
-        f"<b>{status_emoji} Заказ #{order_id}</b>",
-        f"🔁 Статус: {_escape(status)}",
-        "",
-        f"📍 Адрес: {address}",
-        f"🗓 Слот: {slot}",
-        f"🛠 Категория: {_escape(category)}",
-        f"💬 Описание: {description_text}",
-        "",
-        f"👤 Клиент: {client}",
-        f"📞 Телефон: {phone}",
-        "",
-        f"💰 Сумма: {amount_text}",
-        f"📅 Создан: {created_str}",
-        f"🏁 Завершён: {closed_str}",
-    ]
-    
-    return "\n".join(lines)
-```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\utils.py
-```python
-from __future__ import annotations
-
-import html
-import re
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Iterable, Optional
-
-from aiogram import Bot
+from aiogram import Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-UTC = timezone.utc
+from field_service.bots.common import FSMTimeoutConfig, FSMTimeoutMiddleware, safe_send_message
+
+from ..texts import FSM_TIMEOUT_MESSAGE
+from ..middlewares import (
+    DbSessionMiddleware,
+    MasterContextMiddleware,
+    DebugLoggingMiddleware,
+)
+from .finance import router as finance_router
+from .history import router as history_router  # P1-9
+from .onboarding import router as onboarding_router
+from .orders import router as orders_router
+from .referral import router as referral_router
+from .shift import router as shift_router
+from .start import router as start_router
+from .statistics import router as statistics_router  # P1-17
+
+router = Router(name="master_bot")
 
 
-def inline_keyboard(rows: Iterable[Iterable[InlineKeyboardButton]]) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[button for button in row] for row in rows])
-
-
-def yes_no_keyboard(callback_yes: str, callback_no: str) -> InlineKeyboardMarkup:
-    return inline_keyboard([
-        [InlineKeyboardButton(text="Да", callback_data=callback_yes)],
-        [InlineKeyboardButton(text="Нет", callback_data=callback_no)],
-    ])
-
-
-async def delete_message_silent(bot: Bot, chat_id: int, message_id: int) -> None:
+async def _notify_timeout(state: FSMContext) -> None:
+    chat_id = state.key.chat_id
+    if chat_id is None:
+        return
     try:
-        await bot.delete_message(chat_id, message_id)
+        await safe_send_message(state.bot, chat_id, FSM_TIMEOUT_MESSAGE)
     except Exception:
         pass
 
 
-async def push_step_message(
-    source: Message | CallbackQuery,
-    state: FSMContext,
-    text: str | Iterable[str],
-    reply_markup: InlineKeyboardMarkup | None = None,
-) -> Message:
-    message = source if isinstance(source, Message) else source.message
-    if not isinstance(text, str):
-        text = "\n".join(str(part) for part in text)
-    sent = await message.answer(text, reply_markup=reply_markup)
-    data = await state.get_data()
-    previous_id = data.get("last_step_msg_id")
-    if previous_id:
-        await delete_message_silent(message.bot, message.chat.id, previous_id)
-    all_ids = list(data.get("step_msg_ids", []))
-    all_ids.append(sent.message_id)
-    await state.update_data(last_step_msg_id=sent.message_id, step_msg_ids=all_ids)
-    return sent
+_fsm_timeout = FSMTimeoutMiddleware(
+    FSMTimeoutConfig(timeout=timedelta(minutes=7), callback=_notify_timeout)
+)
 
+router.message.middleware(DebugLoggingMiddleware())
+router.callback_query.middleware(DebugLoggingMiddleware())
+router.message.middleware(DbSessionMiddleware())
+router.callback_query.middleware(DbSessionMiddleware())
+router.message.middleware(MasterContextMiddleware())
+router.callback_query.middleware(MasterContextMiddleware())
+router.message.middleware(_fsm_timeout)
+router.callback_query.middleware(_fsm_timeout)
 
-async def clear_step_messages(bot: Bot, state: FSMContext, chat_id: int) -> None:
-    data = await state.get_data()
-    for message_id in data.get("step_msg_ids", []):
-        await delete_message_silent(bot, chat_id, message_id)
-    await state.update_data(last_step_msg_id=None, step_msg_ids=[])
+router.include_router(start_router)
+router.include_router(onboarding_router)
+router.include_router(shift_router)
+router.include_router(orders_router)
+router.include_router(history_router)  # P1-9
+router.include_router(referral_router)
+router.include_router(finance_router)
+router.include_router(statistics_router)  # P1-17
 
-
-def now_utc() -> datetime:
-    return datetime.now(UTC)
-
-
-def normalize_money(text: str | None) -> Optional[Decimal]:
-    if not text:
-        return None
-    prepared = text.strip().replace(",", ".")
-    if not prepared:
-        return None
-    if not re.fullmatch(r"^\d{1,7}(?:\.\d{1,2})?$", prepared):
-        return None
-    value = Decimal(prepared)
-    if value <= 0:
-        return None
-    return value
-
-
-def escape_html(value: str | None) -> str:
-    return html.escape(value or "")
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\__init__.py
-```python
-```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\handlers\finance.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/handlers/finance.py`
+
+**Strok:** 509  
+**Razmer:** 19.25 KB
+
 ```python
 from __future__ import annotations
 
@@ -40936,6 +26970,21 @@ async def _render_commission_list(
     if not current:
         lines.append("Комиссий в этом разделе пока нет.")
     else:
+        # НОВОЕ: Для раздела "К оплате" показываем информацию о реквизитах
+        if mode == "aw" and current:
+            lines.append("")
+            lines.append("💼 <b>Реквизиты для оплаты:</b>")
+            # Берём реквизиты из первой комиссии (все комиссии используют одни и те же реквизиты владельца)
+            first_commission = current[0]
+            snapshot_text = format_pay_snapshot(first_commission.pay_to_snapshot)
+            if snapshot_text:
+                lines.append(snapshot_text)
+            else:
+                lines.append("⚠️ Реквизиты пока не заполнены администратором.")
+            lines.append("")
+            lines.append("<i>Оплатите комиссию по указанным реквизитам и прикрепите чек в карточке комиссии.</i>")
+            lines.append("")
+        
         for commission in current:
             lines.append(_commission_summary_line(commission))
             lines.append(
@@ -41057,6 +27106,18 @@ async def _render_commission_card(
     check_status = "✅ Чеки загружены" if commission.has_checks else "⚠️ Чеки ещё не загружены"
     lines.append(check_status)
 
+    # НОВОЕ: Показываем реквизиты для оплаты комиссии
+    if commission.status in {m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED, m.CommissionStatus.OVERDUE}:
+        lines.append("")
+        lines.append("<b>💼 Реквизиты для оплаты комиссии:</b>")
+        
+        snapshot_text = format_pay_snapshot(commission.pay_to_snapshot)
+        if snapshot_text:
+            lines.append(snapshot_text)
+        else:
+            lines.append("⚠️ Реквизиты пока не заполнены администратором.")
+            lines.append("Обратитесь к администратору для уточнения реквизитов.")
+
     buttons: list[list[InlineKeyboardButton]] = []
     
     # P0-7: Кнопка перехода к заказу
@@ -41068,9 +27129,13 @@ async def _render_commission_card(
             )
         ])
     
-    buttons.append([
-        InlineKeyboardButton(text="📄 Реквизиты", callback_data=f"m:fin:cm:pt:{commission.id}")
-    ])
+    # Кнопка "Показать QR-код", если он есть
+    qr_id = commission.pay_to_snapshot.get("sbp_qr_file_id") if commission.pay_to_snapshot else None
+    if qr_id and commission.status in {m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED, m.CommissionStatus.OVERDUE}:
+        buttons.append([
+            InlineKeyboardButton(text="🔲 Показать QR-код СБП", callback_data=f"m:fin:cm:pt:{commission.id}")
+        ])
+    
     buttons.append([
         InlineKeyboardButton(text="📎 Прикрепить чек", callback_data=f"m:fin:cm:chk:{commission.id}")
     ])
@@ -41177,9 +27242,16 @@ def _commission_summary_line(commission: m.commissions) -> str:
     if commission.deadline_at:
         summary += f" • оплатить до {commission.deadline_at.strftime('%d.%m %H:%M')}"
     return summary
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\handlers\history.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/handlers/history.py`
+
+**Strok:** 333  
+**Razmer:** 11.30 KB
+
 ```python
 """История заказов мастера (P1-9)."""
 from __future__ import annotations
@@ -41513,9 +27585,16 @@ async def _render_history(
     
     if callback.message:
         await safe_edit_or_send(callback.message, text_with_breadcrumbs, keyboard)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\handlers\onboarding.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/handlers/onboarding.py`
+
+**Strok:** 1001  
+**Razmer:** 38.11 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -42517,9 +28596,16 @@ def _format_payout_summary(method_value: str | None, payload: dict | None) -> st
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\handlers\orders.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/handlers/orders.py`
+
+**Strok:** 1444  
+**Razmer:** 55.33 KB
+
 ```python
 from __future__ import annotations
 
@@ -43964,9 +30050,16 @@ async def copy_data_handler(
         order_id,
         data_type,
     )
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\handlers\referral.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/handlers/referral.py`
+
+**Strok:** 183  
+**Razmer:** 7.17 KB
+
 ```python
 from __future__ import annotations
 
@@ -44150,9 +30243,16 @@ async def _render_support(event: Message | CallbackQuery, session: AsyncSession)
     markup = inline_keyboard([[InlineKeyboardButton(text='⬅️ В главное меню', callback_data='m:menu')]])
     await safe_edit_or_send(event, "\n".join(lines), markup)
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\handlers\shift.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/handlers/shift.py`
+
+**Strok:** 166  
+**Razmer:** 6.03 KB
+
 ```python
 from __future__ import annotations
 
@@ -44171,7 +30271,12 @@ from .start import _render_start
 
 router = Router(name="master_shift")
 
-BREAK_DURATION = timedelta(hours=2)
+# Варианты длительности перерыва
+BREAK_DURATIONS = {
+    "15m": timedelta(minutes=15),
+    "1h": timedelta(hours=1),
+    "2h": timedelta(hours=2),
+}
 
 
 async def _answer(callback: CallbackQuery, message: str, *, alert: bool = True) -> None:
@@ -44207,15 +30312,49 @@ async def shift_off(callback: CallbackQuery, session: AsyncSession, master: m.ma
 
 
 @router.callback_query(F.data == "m:sh:brk")
-async def shift_break_start(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
+async def shift_break_choose(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
+    """Показать варианты длительности перерыва."""
     if master.shift_status != m.ShiftStatus.SHIFT_ON:
         await _answer(callback, SHIFT_MESSAGES["inactive"])
         return
+    
+    from ..keyboards import break_duration_keyboard
+    
+    await callback.message.edit_text(
+        text=SHIFT_MESSAGES["break_choose"],
+        reply_markup=break_duration_keyboard(),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("m:sh:brk:"))
+async def shift_break_start(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
+    """Начать перерыв с выбранной длительностью."""
+    if master.shift_status != m.ShiftStatus.SHIFT_ON:
+        await _answer(callback, SHIFT_MESSAGES["inactive"])
+        return
+    
+    # Извлекаем длительность из callback_data (например, "m:sh:brk:15m")
+    duration_key = callback.data.split(":")[-1]
+    
+    if duration_key not in BREAK_DURATIONS:
+        await _answer(callback, "Неверная длительность перерыва.")
+        return
+    
+    duration = BREAK_DURATIONS[duration_key]
+    duration_text = {
+        "15m": "15 минут",
+        "1h": "1 час",
+        "2h": "2 часа",
+    }.get(duration_key, str(duration))
+    
     master.shift_status = m.ShiftStatus.BREAK
     master.is_on_shift = False
-    master.break_until = now_utc() + BREAK_DURATION
+    master.break_until = now_utc() + duration
     await session.commit()
-    await _answer(callback, SHIFT_MESSAGES["break_started"])
+    
+    await _answer(callback, SHIFT_MESSAGES["break_started"].format(duration=duration_text))
     if callback.message:
         await _render_start(callback.message, master)
 
@@ -44234,28 +30373,66 @@ async def shift_break_end(callback: CallbackQuery, session: AsyncSession, master
         await _render_start(callback.message, master)
 
 
-
 # P1-16: Продление перерыва
 @router.callback_query(F.data == "m:sh:brk:extend")
 async def shift_break_extend(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
-    """Продлевает текущий перерыв ещё на 2 часа."""
+    """Показать варианты продления перерыва."""
     if master.shift_status != m.ShiftStatus.BREAK:
         await _answer(callback, SHIFT_MESSAGES["not_break"])
         return
     
-    # Продлеваем перерыв
-    master.break_until = now_utc() + BREAK_DURATION
+    from ..keyboards import break_duration_keyboard
+    
+    await callback.message.edit_text(
+        text=SHIFT_MESSAGES["break_extend_choose"],
+        reply_markup=break_duration_keyboard(extend_mode=True),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("m:sh:brk:ext:"))
+async def shift_break_extend_apply(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
+    """Продлить перерыв на выбранную длительность."""
+    if master.shift_status != m.ShiftStatus.BREAK:
+        await _answer(callback, SHIFT_MESSAGES["not_break"])
+        return
+    
+    # Извлекаем длительность из callback_data (например, "m:sh:brk:ext:15m")
+    duration_key = callback.data.split(":")[-1]
+    
+    if duration_key not in BREAK_DURATIONS:
+        await _answer(callback, "Неверная длительность перерыва.")
+        return
+    
+    duration = BREAK_DURATIONS[duration_key]
+    duration_text = {
+        "15m": "15 минут",
+        "1h": "1 час",
+        "2h": "2 часа",
+    }.get(duration_key, str(duration))
+    
+    # Продлеваем от текущего времени
+    master.break_until = now_utc() + duration
     await session.commit()
     
-    await _answer(callback, SHIFT_MESSAGES["break_extended"])
+    await _answer(callback, SHIFT_MESSAGES["break_extended"].format(duration=duration_text))
     if callback.message:
         await _render_start(callback.message, master)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\handlers\start.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/handlers/start.py`
+
+**Strok:** 208  
+**Razmer:** 7.44 KB
+
 ```python
 ﻿from __future__ import annotations
 
+from datetime import datetime, timezone
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
@@ -44270,7 +30447,7 @@ from field_service.db import models as m
 
 from ..keyboards import main_menu_keyboard, start_onboarding_keyboard
 from ..texts import START_APPROVED, START_BLOCKED, START_NOT_APPROVED
-from ..utils import escape_html
+from ..utils import escape_html, now_utc
 
 router = Router(name="master_start")
 
@@ -44281,10 +30458,54 @@ _STATUS_TITLES = {
 }
 
 
+def _format_break_time_left(break_until: datetime) -> str:
+    """
+    Форматирует оставшееся время перерыва в человеко-читаемый вид.
+    
+    Args:
+        break_until: Время окончания перерыва (UTC)
+    
+    Returns:
+        Строка вида "⏰ Перерыв до 14:30 (осталось 45 мин)"
+    """
+    now = now_utc()
+    
+    # Если перерыв уже закончился
+    if break_until <= now:
+        return "⏰ Перерыв закончился"
+    
+    # Вычисляем оставшееся время
+    time_left = break_until - now
+    total_seconds = int(time_left.total_seconds())
+    
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    
+    # Форматируем время окончания перерыва (локальное время)
+    break_time_str = break_until.strftime("%H:%M")
+    
+    # Форматируем оставшееся время
+    if hours > 0:
+        time_left_str = f"{hours} ч {minutes} мин"
+    else:
+        time_left_str = f"{minutes} мин"
+    
+    return f"⏰ Перерыв до {break_time_str} (осталось {time_left_str})"
+
+
 @router.message(CommandStart())
 async def handle_start(message: Message, state: FSMContext, master: m.masters) -> None:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"handle_start: START uid={message.from_user.id if message.from_user else 'None'} master_id={master.id if master else 'None'}")
     await state.clear()
-    await _render_start(message, master)
+    logger.info(f"handle_start: calling _render_start")
+    try:
+        await _render_start(message, master)
+        logger.info(f"handle_start: _render_start completed")
+    except Exception as e:
+        logger.exception(f"handle_start: ERROR {e}")
+        raise
 
 @router.message(Command("cancel"))
 async def handle_cancel(message: Message, state: FSMContext, master: m.masters) -> None:
@@ -44320,8 +30541,15 @@ async def handle_cancel_callback(callback: CallbackQuery, state: FSMContext, mas
         "<b>Field Service — мастер</b>",
         f"Статус анкеты: {status_label}",
         "",
-        escape_html(text),
     ]
+    
+    # Если мастер на перерыве, показываем таймер
+    if verified and master.shift_status == m.ShiftStatus.BREAK and master.break_until:
+        break_info = _format_break_time_left(master.break_until)
+        lines.append(break_info)
+        lines.append("")
+    
+    lines.append(escape_html(text))
     
     # Удаляем старое сообщение и отправляем новое
     await safe_delete_and_send(callback, "\n".join(lines), keyboard)
@@ -44356,8 +30584,15 @@ async def handle_menu(callback: CallbackQuery, state: FSMContext, master: m.mast
         "<b>Field Service — мастер</b>",
         f"Статус анкеты: {status_label}",
         "",
-        escape_html(text),
     ]
+    
+    # Если мастер на перерыве, показываем таймер
+    if verified and master.shift_status == m.ShiftStatus.BREAK and master.break_until:
+        break_info = _format_break_time_left(master.break_until)
+        lines.append(break_info)
+        lines.append("")
+    
+    lines.append(escape_html(text))
     
     # Удаляем старое сообщение и отправляем новое
     await safe_delete_and_send(callback, "\n".join(lines), keyboard)
@@ -44388,15 +30623,30 @@ async def _render_start(message: Message, master: m.masters) -> None:
         "<b>Field Service — мастер</b>",
         f"Статус анкеты: {status_label}",
         "",
-        escape_html(text),
     ]
+    
+    # Если мастер на перерыве, показываем таймер
+    if verified and master.shift_status == m.ShiftStatus.BREAK and master.break_until:
+        break_info = _format_break_time_left(master.break_until)
+        lines.append(break_info)
+        lines.append("")
+    
+    lines.append(escape_html(text))
+    
     await safe_edit_or_send(message, "\n".join(lines), keyboard)
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\handlers\statistics.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/handlers/statistics.py`
+
+**Strok:** 126  
+**Razmer:** 4.70 KB
+
 ```python
 """P1-17: Статистика мастера.
 
@@ -44523,71 +30773,1229 @@ async def handle_statistics(
     if callback.message:
         await safe_edit_or_send(callback.message, text, keyboard)
     await safe_answer_callback(callback)
+
 ```
-.
-## \ProjectF\field-service\field_service\bots\master_bot\handlers\__init__.py
+
+---
+
+###### `field-service/field_service/bots/master_bot/keyboards.py`
+
+**Strok:** 321  
+**Razmer:** 10.57 KB
+
+```python
+﻿from __future__ import annotations
+
+from typing import Iterable, Sequence
+
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+from field_service.db import models as m
+
+from .texts import MAIN_MENU_BUTTONS
+from .utils import inline_keyboard
+
+
+def cancel_button(callback_data: str = "m:cancel") -> list[InlineKeyboardButton]:
+    """Создаёт кнопку отмены для любого FSM-состояния."""
+    return [InlineKeyboardButton(text="❌ Отменить", callback_data=callback_data)]
+
+
+def start_onboarding_keyboard() -> InlineKeyboardMarkup:
+    return inline_keyboard(
+        [
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["start_onboarding"],
+                    callback_data="m:onboarding:start",
+                )
+            ]
+        ]
+    )
+
+
+def pdn_keyboard() -> InlineKeyboardMarkup:
+    return inline_keyboard(
+        [
+            [InlineKeyboardButton(text="Согласен", callback_data="m:onboarding:pdn_accept")],
+            [InlineKeyboardButton(text="Не согласен", callback_data="m:onboarding:pdn_decline")],
+            cancel_button(),
+        ]
+    )
+
+
+def vehicle_keyboard() -> InlineKeyboardMarkup:
+    return inline_keyboard(
+        [
+            [InlineKeyboardButton(text="Есть авто", callback_data="m:onboarding:vehicle_yes")],
+            [InlineKeyboardButton(text="Нет авто", callback_data="m:onboarding:vehicle_no")],
+            cancel_button(),
+        ]
+    )
+
+
+def districts_keyboard(
+    *,
+    options: Sequence[tuple[int, str, bool]],
+    page: int,
+    total_pages: int,
+) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for district_id, title, selected in options:
+        label = ("✅ " if selected else "▫️ ") + title
+        rows.append(
+            [InlineKeyboardButton(text=label, callback_data=f"m:onboarding:district:{district_id}")]
+        )
+
+    controls: list[InlineKeyboardButton] = []
+    if total_pages > 1:
+        if page > 1:
+            controls.append(
+                InlineKeyboardButton(text="‹ Назад", callback_data=f"m:onboarding:districts_page:{page - 1}")
+            )
+        controls.append(
+            InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="m:onboarding:districts_page:noop")
+        )
+        if page < total_pages:
+            controls.append(
+                InlineKeyboardButton(text="Вперёд ›", callback_data=f"m:onboarding:districts_page:{page + 1}")
+            )
+    controls.append(InlineKeyboardButton(text="Готово", callback_data="m:onboarding:districts_done"))
+    if controls:
+        rows.append(controls)
+    rows.append(cancel_button())
+    return inline_keyboard(rows)
+
+
+def skills_keyboard(skills: Sequence[tuple[int, str, bool]]) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for skill_id, title, selected in skills:
+        label = ("✅ " if selected else "▫️ ") + title
+        rows.append(
+            [InlineKeyboardButton(text=label, callback_data=f"m:onboarding:skill:{skill_id}")]
+        )
+    rows.append([InlineKeyboardButton(text="Готово", callback_data="m:onboarding:skills_done")])
+    rows.append(cancel_button())
+    return inline_keyboard(rows)
+
+
+def payout_methods_keyboard(methods: Iterable[m.PayoutMethod]) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for method in methods:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=_method_title(method),
+                    callback_data=f"m:onboarding:payout:{method.value.lower()}",
+                )
+            ]
+        )
+    rows.append(cancel_button())
+    return inline_keyboard(rows)
+
+
+# 🔧 Список банков для СБП
+SBP_BANKS = [
+    ("sber", "Сбербанк"),
+    ("tinkoff", "Тинькофф"),
+    ("vtb", "ВТБ"),
+    ("alfa", "Альфа-Банк"),
+    ("raiff", "Райффайзенбанк"),
+    ("gpb", "Газпромбанк"),
+    ("mts", "МТС Банк"),
+    ("psb", "ПСБ"),
+    ("open", "Открытие"),
+    ("sovcom", "Совкомбанк"),
+    ("rsb", "Россельхозбанк"),
+    ("ak_bars", "Ак Барс"),
+    ("uralsib", "Уралсиб"),
+    ("mkb", "МКБ"),
+    ("other", "Другой банк"),
+]
+
+
+def sbp_bank_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура выбора банка для СБП."""
+    rows: list[list[InlineKeyboardButton]] = []
+    # Добавляем кнопки парами
+    for i in range(0, len(SBP_BANKS), 2):
+        row = []
+        for j in range(2):
+            idx = i + j
+            if idx < len(SBP_BANKS):
+                code, name = SBP_BANKS[idx]
+                row.append(
+                    InlineKeyboardButton(text=name, callback_data=f"m:onb:sbp_bank:{code}")
+                )
+        if row:
+            rows.append(row)
+    rows.append(cancel_button())
+    return inline_keyboard(rows)
+
+
+def home_geo_keyboard() -> InlineKeyboardMarkup:
+    return inline_keyboard(
+        [
+        [InlineKeyboardButton(text="Отправить геопозицию", callback_data="m:onboarding:home_geo_share")],
+        [InlineKeyboardButton(text="Пропустить", callback_data="m:onboarding:home_geo_skip")],
+        cancel_button(),
+        ]
+    )
+
+
+def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    if getattr(master, "verified", False):
+        shift_status = getattr(master, "shift_status", m.ShiftStatus.SHIFT_OFF)
+        if shift_status is m.ShiftStatus.SHIFT_OFF:
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_on"],
+                        callback_data="m:sh:on",
+                    )
+                ]
+            )
+        elif shift_status is m.ShiftStatus.SHIFT_ON:
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_break"],
+                        callback_data="m:sh:brk",
+                    )
+                ]
+            )
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_off"],
+                        callback_data="m:sh:off",
+                    )
+                ]
+            )
+        elif shift_status is m.ShiftStatus.BREAK:
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_break_end"],
+                        callback_data="m:sh:brk:ok",
+                    )
+                ]
+            )
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=MAIN_MENU_BUTTONS["shift_off"],
+                        callback_data="m:sh:off",
+                    )
+                ]
+            )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["new_orders"],
+                    callback_data="m:new",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["active_orders"],
+                    callback_data="m:act",
+                )
+            ]
+        )
+        # P1-9: История заказов
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["history"],
+                    callback_data="m:hist",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["finance"],
+                    callback_data="m:fin",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["referral"],
+                    callback_data="m:rf",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["statistics"],
+                    callback_data="m:stats",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["knowledge"],
+                    callback_data="m:kb",
+                )
+            ]
+        )
+    else:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["start_onboarding"],
+                    callback_data="m:onboarding:start",
+                )
+            ]
+        )
+    return inline_keyboard(rows)
+
+
+def _method_title(method: m.PayoutMethod) -> str:
+    mapping = {
+        m.PayoutMethod.CARD: "Банковская карта",
+        m.PayoutMethod.SBP: "СБП",
+        m.PayoutMethod.YOOMONEY: "ЮMoney",
+        m.PayoutMethod.BANK_ACCOUNT: "Банковский счёт",
+    }
+    return mapping.get(method, method.value.title())
+
+
+def close_order_cancel_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура с кнопкой отмены для процесса закрытия заказа."""
+    return inline_keyboard([cancel_button(callback_data="m:act:cls:cancel")])
+
+
+
+# P1-16: Клавиатура выбора длительности перерыва
+def break_duration_keyboard(extend_mode: bool = False) -> InlineKeyboardMarkup:
+    """
+    Клавиатура выбора длительности перерыва.
+    
+    Args:
+        extend_mode: Если True, используется для продления перерыва (другие callback_data)
+    """
+    prefix = "m:sh:brk:ext:" if extend_mode else "m:sh:brk:"
+    
+    return inline_keyboard(
+        [
+            [InlineKeyboardButton(text="☕ 15 минут", callback_data=f"{prefix}15m")],
+            [InlineKeyboardButton(text="🍔 1 час", callback_data=f"{prefix}1h")],
+            [InlineKeyboardButton(text="😴 2 часа", callback_data=f"{prefix}2h")],
+            cancel_button(),
+        ]
+    )
+
+
+# P1-16: Клавиатура для напоминания о перерыве
+def break_reminder_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для напоминания об окончании перерыва."""
+    return inline_keyboard(
+        [
+            [InlineKeyboardButton(text="🟢 Вернуться на смену", callback_data="m:sh:brk:ok")],
+            [InlineKeyboardButton(text="☕ Продлить перерыв", callback_data="m:sh:brk:extend")],
+        ]
+    )
+
+```
+
+---
+
+###### `field-service/field_service/bots/master_bot/main.py`
+
+**Strok:** 132  
+**Razmer:** 4.97 KB
+
 ```python
 from __future__ import annotations
 
-from datetime import timedelta
+import asyncio
+import logging
+from contextlib import suppress
+import os
 
-from aiogram import Router
-from aiogram.fsm.context import FSMContext
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
-from field_service.bots.common import FSMTimeoutConfig, FSMTimeoutMiddleware, safe_send_message
+from field_service.config import settings
+from field_service.bots.common.error_middleware import setup_error_middleware
+from field_service.bots.common.polling import poll_with_single_instance_guard
+from field_service.bots.common.retry_handler import retry_router  # P1-13
+from field_service.bots.common.retry_middleware import setup_retry_middleware  # P1-13
+from field_service.infra.notify import send_alert, send_log
+from field_service.services.heartbeat import run_heartbeat
+from field_service.services.break_reminder_scheduler import run_break_reminder  # P1-16
+from field_service.services.notifications_watcher import run_master_notifications  # Отправка уведомлений мастерам
+from field_service.services.watchdogs import watchdog_expired_breaks  # Автоснятие со смены после перерыва
 
-from ..texts import FSM_TIMEOUT_MESSAGE
-from ..middlewares import (
-    DbSessionMiddleware,
-    MasterContextMiddleware,
-    DebugLoggingMiddleware,
-)
-from .finance import router as finance_router
-from .history import router as history_router  # P1-9
-from .onboarding import router as onboarding_router
-from .orders import router as orders_router
-from .referral import router as referral_router
-from .shift import router as shift_router
-from .start import router as start_router
-from .statistics import router as statistics_router  # P1-17
-
-router = Router(name="master_bot")
+from .handlers import router as master_router
 
 
-async def _notify_timeout(state: FSMContext) -> None:
-    chat_id = state.key.chat_id
-    if chat_id is None:
-        return
+logger = logging.getLogger(__name__)
+
+
+async def main() -> int:
+    # Basic logging to console; allow override via LOG_LEVEL env
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=getattr(logging, log_level, logging.INFO),
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
+    # Reduce aiohttp noise but keep aiogram useful
+    logging.getLogger("aiogram").setLevel(getattr(logging, log_level, logging.INFO))
+    logging.getLogger("aiohttp").setLevel(logging.WARNING)
+    bot = Bot(
+        settings.master_bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
+    dp = Dispatcher()
+    dp.include_router(master_router)
+    
+    # P1-13: Retry функциональность для повтора действий при ошибках
+    dp.include_router(retry_router)
+
+    alerts_chat_id = settings.alerts_channel_id
+    logs_chat_id = settings.logs_channel_id
+
+    setup_error_middleware(
+        dp,
+        bot=bot,
+        bot_label="master_bot",
+        logs_chat_id=logs_chat_id,
+        alerts_chat_id=alerts_chat_id,
+    )
+    
+    # P1-13: Подключаем retry middleware для автоматического предложения повтора при ошибках
+    setup_retry_middleware(dp, enabled=True)
+
+    heartbeat_task = asyncio.create_task(
+        run_heartbeat(bot, name="master", chat_id=logs_chat_id),
+        name="master_heartbeat",
+    )
+
+    # P1-16: Запуск планировщика напоминаний о перерывах
+    break_reminder_task = asyncio.create_task(
+        run_break_reminder(interval_seconds=60),
+        name="break_reminder",
+    )
+    
+    # Автоматическое снятие со смены после истечения перерыва
+    expired_breaks_task = asyncio.create_task(
+        watchdog_expired_breaks(interval_seconds=60),
+        name="expired_breaks",
+    )
+
+    # Запуск worker для отправки уведомлений мастерам
+    notifications_task = asyncio.create_task(
+        run_master_notifications(bot, interval_seconds=5),
+        name="master_notifications",
+    )
+
+    exit_code = 0
     try:
-        await safe_send_message(state.bot, chat_id, FSM_TIMEOUT_MESSAGE)
+        logger.info("Starting master bot; allowed updates: %s", dp.resolve_used_update_types())
+        await poll_with_single_instance_guard(
+            dp,
+            bot,
+            logs_chat_id=logs_chat_id,
+        )
+    except SystemExit as conflict_exit:
+        exit_code = int(conflict_exit.code or 0)
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        pass
+    except Exception as exc:
+        logger.exception("Master bot polling failed: %s", exc)
+        message = f"❗ Ошибка master_bot polling: {type(exc).__name__}: {exc}"
+        await send_alert(bot, message, chat_id=alerts_chat_id, exc=exc)
+        await send_log(bot, message, chat_id=logs_chat_id)
+        exit_code = 1
+    finally:
+        if heartbeat_task:
+            heartbeat_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await heartbeat_task
+        # P1-16: Отменяем задачу break_reminder
+        if break_reminder_task:
+            break_reminder_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await break_reminder_task
+        # Отменяем задачу expired_breaks
+        if expired_breaks_task:
+            expired_breaks_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await expired_breaks_task
+        # Отменяем задачу notifications
+        if notifications_task:
+            notifications_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await notifications_task
+        await bot.session.close()
+
+    return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(asyncio.run(main()))
+
+```
+
+---
+
+###### `field-service/field_service/bots/master_bot/middlewares.py`
+
+**Strok:** 90  
+**Razmer:** 3.43 KB
+
+```python
+﻿from __future__ import annotations
+
+import logging
+from typing import Any, Awaitable, Callable, Dict
+
+from aiogram import BaseMiddleware
+from aiogram.types import CallbackQuery, Message, TelegramObject
+
+from field_service.db.session import SessionLocal
+from field_service.services import onboarding_service
+
+
+class DbSessionMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
+    ) -> Any:
+        async with SessionLocal() as session:
+            data["session"] = session
+            try:
+                result = await handler(event, data)
+            except Exception:
+                # При ошибке - откатываем транзакцию
+                if session.in_transaction():
+                    await session.rollback()
+                raise
+            # При успехе - НЕ трогаем сессию, обработчик сам делает commit
+            return result
+
+
+class MasterContextMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
+    ) -> Any:
+        session = data.get("session")
+        if session is None:
+            return await handler(event, data)
+        tg_user_id = _extract_tg_id(event)
+        if tg_user_id is not None:
+            master = await onboarding_service.ensure_master(session, tg_user_id)
+            data["master"] = master
+        return await handler(event, data)
+
+
+def _extract_tg_id(event: TelegramObject) -> int | None:
+    if isinstance(event, Message):
+        return event.from_user.id if event.from_user else None
+    if isinstance(event, CallbackQuery):
+        return event.from_user.id if event.from_user else None
+    user = getattr(event, "from_user", None)
+    return user.id if user else None
+
+
+class DebugLoggingMiddleware(BaseMiddleware):
+    """Lightweight debug logger for incoming messages and callbacks.
+
+    Prints concise info to the standard logger so operators can see
+    what arrives and which handler chain processes it.
+    """
+
+    def __init__(self, *, logger: logging.Logger | None = None) -> None:
+        self._log = logger or logging.getLogger("master_bot.debug")
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
+    ) -> Any:
+        try:
+            if isinstance(event, Message):
+                uid = getattr(getattr(event, "from_user", None), "id", None)
+                cid = getattr(getattr(event, "chat", None), "id", None)
+                text = getattr(event, "text", None) or getattr(event, "caption", None)
+                self._log.info("Message uid=%s chat=%s type=%s text=%r", uid, cid, getattr(event, "content_type", None), text)
+            elif isinstance(event, CallbackQuery):
+                uid = getattr(getattr(event, "from_user", None), "id", None)
+                cid = getattr(getattr(getattr(event, "message", None), "chat", None), "id", None)
+                data_str = getattr(event, "data", None)
+                self._log.info("Callback uid=%s chat=%s data=%r", uid, cid, data_str)
+        except Exception:
+            # Never allow logging failures to break the pipeline
+            pass
+        return await handler(event, data)
+
+```
+
+---
+
+###### `field-service/field_service/bots/master_bot/service_registry.py`
+
+**Strok:** 18  
+**Razmer:** 0.33 KB
+
+```python
+﻿from __future__ import annotations
+
+from typing import Any
+
+_SERVICES: dict[str, Any] = {}
+
+
+def register_service(key: str, service: Any) -> None:
+    _SERVICES[key] = service
+
+
+def register_services(mapping: dict[str, Any]) -> None:
+    _SERVICES.update(mapping)
+
+
+def get_service(key: str) -> Any | None:
+    return _SERVICES.get(key)
+
+```
+
+---
+
+###### `field-service/field_service/bots/master_bot/states.py`
+
+**Strok:** 31  
+**Razmer:** 0.65 KB
+
+```python
+﻿from __future__ import annotations
+
+from aiogram.fsm.state import State, StatesGroup
+
+
+class OnboardingStates(StatesGroup):
+    pdn = State()
+    last_name = State()
+    first_name = State()
+    middle_name = State()
+    phone = State()
+    city = State()
+    districts = State()
+    vehicle = State()
+    skills = State()
+    passport = State()
+    selfie = State()
+    payout_method = State()
+    payout_requisites = State()
+    payout_sbp_bank = State()  # 🔧 Выбор банка для СБП
+    confirm = State()
+
+
+class FinanceUploadStates(StatesGroup):
+    check = State()
+
+
+class CloseOrderStates(StatesGroup):
+    amount = State()
+    act = State()
+
+```
+
+---
+
+###### `field-service/field_service/bots/master_bot/texts.py`
+
+**Strok:** 349  
+**Razmer:** 15.20 KB
+
+```python
+from __future__ import annotations
+
+import html
+from dataclasses import dataclass
+from typing import Iterable, Mapping
+
+from field_service.db import models as m
+
+# P1-23: Breadcrumbs navigation
+from ..common import MasterPaths, add_breadcrumbs_to_text
+
+# Onboarding flow texts (missing constants used by handlers)
+ONBOARDING_ALREADY_VERIFIED = "Вы уже верифицированы."
+ONBOARDING_SENT = "Заявка отправлена на модерацию."
+ONBOARDING_SUMMARY_HEADER = "Проверьте данные анкеты:"
+
+MASTER_PDN_CONSENT = (
+    "Согласие на обработку персональных данных.",
+    "Я разрешаю Field Service обрабатывать мои ФИО, телефон и сведения о заказах для заключения договора и организации работы.",
+    "Я ознакомлен с тем, что могу отозвать согласие, написав в поддержку сервиса.",
+)
+
+MASTER_PDN_DECLINED = (
+    "Вы отказались от обработки персональных данных. Мы не сможем продолжить регистрацию.",
+)
+
+START_NOT_APPROVED = (
+    "Добро пожаловать в Field Service! Ваша анкета отправлена на модерацию.",
+    "Мы сообщим, как только проверим данные. Пока вы можете дополнить профиль и ознакомиться с требованиями.",
+)
+
+START_BLOCKED = (
+    "Ваш аккаунт заблокирован.",
+    "Если это ошибка, свяжитесь с поддержкой или администратором сервиса.",
+)
+
+START_APPROVED = (
+    "Рады видеть вас на смене! Вы можете включить смену, брать заявки и управлять финансами.",
+)
+
+FSM_TIMEOUT_MESSAGE = "Сессия истекла. Нажмите /start"
+
+MAIN_MENU_BUTTONS = {
+    "shift_on": "🟢 Включить смену",
+    "shift_break": "☕ Перерыв",
+    "shift_break_end": "🟢 Включить смену",
+    "shift_off": "🔴 Выключить смену",
+    "new_orders": "🆕 Новые заказы",
+    "active_orders": "📦 Активные заказы",
+    "history": "📋 История заказов",  # P1-9
+    "finance": "💳 Финансы",
+    "referral": "🎁 Реферальная программа",
+    "statistics": "📊 Моя статистика",  # P1-17
+    "knowledge": "📚 База знаний",
+    "start_onboarding": "Заполнить анкету",
+}
+
+ORDER_STATUS_TITLES: Mapping[m.OrderStatus, str] = {
+    m.OrderStatus.ASSIGNED: "Назначено мастеру",
+    m.OrderStatus.EN_ROUTE: "Мастер в пути",
+    m.OrderStatus.WORKING: "Мастер работает",
+    m.OrderStatus.PAYMENT: "Ожидает подтверждения оплаты",
+    m.OrderStatus.CLOSED: "Заказ закрыт",
+    m.OrderStatus.DEFERRED: "Заказ отложен",
+    m.OrderStatus.GUARANTEE: "Гарантийный визит",
+    m.OrderStatus.CANCELED: "Заказ отменён",
+    m.OrderStatus.CREATED: "Создан",
+    m.OrderStatus.SEARCHING: "Идёт поиск мастера",
+}
+
+SHIFT_MESSAGES = {
+    "started": "Смена начата.",
+    "finished": "Смена завершена.",
+    "break_choose": "☕ <b>Выберите длительность перерыва:</b>",
+    "break_started": "Перерыв на {duration} начат.",
+    "break_finished": "Вы вернулись на смену.",
+    "break_extend_choose": "☕ <b>На сколько продлить перерыв?</b>",
+    "break_extended": "Перерыв продлён на {duration}.",
+    "inactive": "Смена не активна.",
+    "not_break": "Сейчас не перерыв.",
+    "blocked": "Смена недоступна: аккаунт заблокирован.",
+    "pending": "Профиль на модерации. Дождитесь одобрения.",
+}
+
+OFFERS_EMPTY = "Нет новых предложений"
+OFFERS_REFRESH_BUTTON = "🔄 Обновить"
+OFFERS_HEADER_TEMPLATE = "<b>🆕 Новые заказы</b>\nСтраница {page}/{pages} • всего: {total}"
+
+
+def _escape(value: str | None) -> str:
+    return html.escape(value or "—")
+
+
+def offer_line(order_id: int, city: str, district: str | None, category: str, timeslot: str | None) -> str:
+    district_part = f", {_escape(district)}" if district else ""
+    slot = _escape(timeslot or "сегодня/ASAP")
+    return f"#{order_id} • {_escape(city)}{district_part} • {_escape(category)} • {slot}"
+
+
+def offer_card(
+    *,
+    order_id: int,
+    city: str,
+    district: str | None,
+    street: str | None,
+    house: str | None,
+    timeslot: str | None,
+    category: str,
+    description: str | None,
+) -> str:
+    address_parts: list[str] = [
+        _escape(city),
+    ]
+    if district:
+        address_parts.append(_escape(district))
+    if street:
+        address_parts.append(_escape(street))
+    if house:
+        address_parts.append(_escape(str(house)))
+    address = ", ".join(address_parts)
+    description_text = _escape(description.strip() if description else "—")
+    slot = _escape(timeslot or "—")
+    lines = [
+        f"<b>Заявка #{order_id}</b>",
+        f"📍 Адрес: {address}",
+        f"🗓 Слот: {slot}",
+        f"🛠 Категория: {_escape(category)}",
+        f"💬 Описание: {description_text}",
+    ]
+    
+    # P1-23: Add breadcrumbs navigation
+    text = "\n".join(lines)
+    breadcrumb_path = MasterPaths.offer_card(order_id)
+    return add_breadcrumbs_to_text(text, breadcrumb_path)
+
+
+@dataclass(slots=True)
+class ActiveOrderCard:
+    order_id: int
+    city: str
+    district: str | None
+    street: str | None
+    house: str | None
+    timeslot: str | None
+    status: m.OrderStatus
+    category: str | None = None
+
+    def lines(self) -> list[str]:
+        address_parts: list[str] = [_escape(self.city)]
+        if self.district:
+            address_parts.append(_escape(self.district))
+        if self.street:
+            address_parts.append(_escape(self.street))
+        if self.house:
+            address_parts.append(_escape(str(self.house)))
+        address = ", ".join(address_parts)
+        status_title = _escape(ORDER_STATUS_TITLES.get(self.status, self.status.value))
+        slot = _escape(self.timeslot or "—")
+        lines = [
+            f"<b>📦 Активный заказ #{self.order_id}</b>",
+            f"📍 Адрес: {address}",
+            f"🗓 Слот: {slot}",
+            f"🔁 Текущий статус: {status_title}",
+        ]
+        if self.category:
+            lines.insert(3, f"🛠 Категория: {_escape(self.category)}")
+        return lines
+    
+    def render(self) -> str:
+        """Render card with breadcrumbs navigation.
+        
+        P1-23: Added breadcrumbs support.
+        """
+        text = "\n".join(self.lines())
+        breadcrumb_path = MasterPaths.active_order_card(self.order_id)
+        return add_breadcrumbs_to_text(text, breadcrumb_path)
+
+
+ACTIVE_STATUS_ACTIONS: Mapping[m.OrderStatus, tuple[str, str]] = {
+    m.OrderStatus.ASSIGNED: ("🚗 В пути", "m:act:enr"),
+    m.OrderStatus.EN_ROUTE: ("🛠 На месте", "m:act:wrk"),
+    m.OrderStatus.WORKING: ("🧾 Закрыть", "m:act:cls"),
+}
+
+CLOSE_AMOUNT_PROMPT = "Введите сумму по заказу (например, 3500 или 4999.99)."
+CLOSE_AMOUNT_ERROR = "Некорректная сумма. Введите целое число или число с двумя знаками после точки."
+CLOSE_ACT_PROMPT = "Отправьте акт (фото или PDF одним файлом)."
+CLOSE_SUCCESS_TEMPLATE = "Заказ #{order_id} закрыт. Спасибо за работу!"
+CLOSE_PAYMENT_TEMPLATE = "Заказ #{order_id} отправлен на оплату. Сумма: {amount:.2f} ₽"
+CLOSE_DOCUMENT_RECEIVED = "Документ получен. Проверим и сообщим о результате."
+CLOSE_DOCUMENT_ERROR = "Нужен один файл: фото или PDF. Попробуйте ещё раз."
+
+# Сообщение после успешного закрытия заказа
+CLOSE_NEXT_STEPS = (
+    "✅ <b>Заказ #{order_id} закрыт!</b>\n"
+    "Сумма: {amount:.2f} ₽\n\n"
+    "📋 <b>Что дальше:</b>\n"
+    "1️⃣ Переведите комиссию администратору\n"
+    "2️⃣ Дождитесь подтверждения оплаты\n"
+    "3️⃣ После одобрения комиссия будет зачислена\n\n"
+    "💳 Следить за статусом можно в разделе <b>Финансы</b>\n\n"
+    "Спасибо за работу! 🎉"
+)
+
+CLOSE_GUARANTEE_SUCCESS = (
+    "✅ <b>Гарантийный заказ #{order_id} закрыт!</b>\n\n"
+    "Документ получен и отправлен на проверку.\n\n"
+    "Спасибо за работу! 🎉"
+)
+
+OFFER_NOT_FOUND = "Заявка не найдена. Возможно, её уже приняли другим мастером."
+
+# P0-1: Диалог подтверждения отклонения оффера
+OFFER_DECLINE_CONFIRM = "⚠️ Вы уверены, что хотите отклонить заказ #{order_id}?\n\nОтклонённый заказ пропадёт из списка."
+
+NAV_BACK = "⬅️ Назад"
+NAV_MENU = "🏠 Меню"
+NO_ACTIVE_ORDERS = "Сейчас нет активных заказов."
+
+# P0-4: Функция для генерации сообщения о блокировке с причиной
+def alert_account_blocked(reason: str | None = None) -> str:
+    """Генерирует сообщение о блокировке аккаунта с указанием причины."""
+    base_text = "⛔️ Ваш аккаунт заблокирован."
+    if reason:
+        return f"{base_text}\n\n<b>Причина:</b> {html.escape(reason)}\n\nОбратитесь в поддержку для разблокировки."
+    return f"{base_text}\n\nОбратитесь в поддержку для подробностей."
+
+# Для обратной совместимости
+ALERT_ACCOUNT_BLOCKED = alert_account_blocked()
+
+ALERT_LIMIT_REACHED = "Достигнут лимит активных заказов. Завершите текущие, чтобы брать новые."
+ALERT_ALREADY_TAKEN = "Упс, заказ уже забрали другим мастером"
+ALERT_ACCEPT_SUCCESS = "Заявка принята. Удачи в работе!"
+ALERT_DECLINE_SUCCESS = "Предложение скрыто."
+ALERT_EN_ROUTE_FAIL = "Не удалось перевести заказ в статус «В пути». Обновите карточку и попробуйте снова."
+ALERT_EN_ROUTE_SUCCESS = "Отметили, что вы в пути."
+ALERT_WORKING_FAIL = "Не удалось отметить начало работы. Обновите карточку и попробуйте снова."
+ALERT_WORKING_SUCCESS = "Отметили, что вы уже на месте."
+ALERT_CLOSE_NOT_FOUND = "Заказ не найден. Начните закрытие заново."
+ALERT_CLOSE_STATUS = "Статус заказа изменился. Попробуйте снова из активного заказа."
+ALERT_CLOSE_NOT_ALLOWED = "Сейчас нельзя закрыть этот заказ. Проверьте статус."
+ALERT_ORDER_NOT_FOUND = "Заказ не найден."
+
+REFERRAL_EMPTY = "Пока нет начислений по реферальной программе."
+FINANCE_EMPTY = "Комиссии не найдены."
+
+
+# P1-9: История заказов мастера
+HISTORY_EMPTY = "📋 У вас пока нет завершенных заказов.\n\nВключайте смену и берите заявки — они появятся здесь после выполнения!"
+HISTORY_HEADER_TEMPLATE = "<b>📋 История заказов</b>\nСтраница {page}/{pages} • всего: {total}"
+HISTORY_STATS_TEMPLATE = (
+    "📊 <b>Ваша статистика:</b>\n"
+    "✅ Выполнено: {total_completed}\n"
+    "💰 Заработано: {total_earned:.2f} ₽\n"
+    "⭐️ Средняя оценка: {avg_rating}"
+)
+
+
+def history_order_line(
+    order_id: int,
+    status: str,
+    city: str,
+    district: str | None,
+    category: str,
+    timeslot: str | None,
+) -> str:
+    """Формирует строку для списка истории заказов."""
+    district_part = f", {_escape(district)}" if district else ""
+    slot = _escape(timeslot or "сегодня/ASAP")
+    status_emoji = "✅" if status == "Заказ закрыт" else "❌"
+    return f"{status_emoji} #{order_id} • {_escape(city)}{district_part} • {_escape(category)} • {slot}"
+
+
+def history_order_card(
+    *,
+    order_id: int,
+    status: str,
+    city: str,
+    district: str | None,
+    street: str | None,
+    house: str | None,
+    apartment: str | None,
+    address_comment: str | None,
+    category: str,
+    description: str | None,
+    timeslot: str | None,
+    client_name: str | None,
+    client_phone: str | None,
+    final_amount: float | None,
+    created_at,
+    closed_at,
+) -> str:
+    """Формирует карточку завершенного заказа."""
+    from datetime import datetime
+    
+    # Адрес
+    address_parts: list[str] = [_escape(city)]
+    if district:
+        address_parts.append(_escape(district))
+    if street:
+        address_parts.append(_escape(street))
+    if house:
+        address_parts.append(_escape(str(house)))
+    if apartment:
+        address_parts.append(f"кв. {_escape(str(apartment))}")
+    address = ", ".join(address_parts)
+    
+    if address_comment:
+        address += f"\n   💬 {_escape(address_comment)}"
+    
+    # Описание
+    description_text = _escape(description.strip() if description else "—")
+    
+    # Слот
+    slot = _escape(timeslot or "—")
+    
+    # Клиент
+    client = _escape(client_name or "—")
+    phone = _escape(client_phone or "—")
+    
+    # Сумма
+    amount_text = f"{final_amount:.2f} ₽" if final_amount else "—"
+    
+    # Даты
+    created_str = created_at.strftime("%d.%m.%Y %H:%M") if isinstance(created_at, datetime) else "—"
+    closed_str = closed_at.strftime("%d.%m.%Y %H:%M") if isinstance(closed_at, datetime) and closed_at else "—"
+    
+    # Эмодзи статуса
+    status_emoji = "✅" if status == "Заказ закрыт" else "❌"
+    
+    lines = [
+        f"<b>{status_emoji} Заказ #{order_id}</b>",
+        f"🔁 Статус: {_escape(status)}",
+        "",
+        f"📍 Адрес: {address}",
+        f"🗓 Слот: {slot}",
+        f"🛠 Категория: {_escape(category)}",
+        f"💬 Описание: {description_text}",
+        "",
+        f"👤 Клиент: {client}",
+        f"📞 Телефон: {phone}",
+        "",
+        f"💰 Сумма: {amount_text}",
+        f"📅 Создан: {created_str}",
+        f"🏁 Завершён: {closed_str}",
+    ]
+    
+    return "\n".join(lines)
+
+```
+
+---
+
+###### `field-service/field_service/bots/master_bot/utils.py`
+
+**Strok:** 81  
+**Razmer:** 2.50 KB
+
+```python
+from __future__ import annotations
+
+import html
+import re
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Iterable, Optional
+
+from aiogram import Bot
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+
+UTC = timezone.utc
+
+
+def inline_keyboard(rows: Iterable[Iterable[InlineKeyboardButton]]) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[button for button in row] for row in rows])
+
+
+def yes_no_keyboard(callback_yes: str, callback_no: str) -> InlineKeyboardMarkup:
+    return inline_keyboard([
+        [InlineKeyboardButton(text="Да", callback_data=callback_yes)],
+        [InlineKeyboardButton(text="Нет", callback_data=callback_no)],
+    ])
+
+
+async def delete_message_silent(bot: Bot, chat_id: int, message_id: int) -> None:
+    try:
+        await bot.delete_message(chat_id, message_id)
     except Exception:
         pass
 
 
-_fsm_timeout = FSMTimeoutMiddleware(
-    FSMTimeoutConfig(timeout=timedelta(minutes=7), callback=_notify_timeout)
-)
+async def push_step_message(
+    source: Message | CallbackQuery,
+    state: FSMContext,
+    text: str | Iterable[str],
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> Message:
+    message = source if isinstance(source, Message) else source.message
+    if not isinstance(text, str):
+        text = "\n".join(str(part) for part in text)
+    sent = await message.answer(text, reply_markup=reply_markup)
+    data = await state.get_data()
+    previous_id = data.get("last_step_msg_id")
+    if previous_id:
+        await delete_message_silent(message.bot, message.chat.id, previous_id)
+    all_ids = list(data.get("step_msg_ids", []))
+    all_ids.append(sent.message_id)
+    await state.update_data(last_step_msg_id=sent.message_id, step_msg_ids=all_ids)
+    return sent
 
-router.message.middleware(DebugLoggingMiddleware())
-router.callback_query.middleware(DebugLoggingMiddleware())
-router.message.middleware(DbSessionMiddleware())
-router.callback_query.middleware(DbSessionMiddleware())
-router.message.middleware(MasterContextMiddleware())
-router.callback_query.middleware(MasterContextMiddleware())
-router.message.middleware(_fsm_timeout)
-router.callback_query.middleware(_fsm_timeout)
 
-router.include_router(start_router)
-router.include_router(onboarding_router)
-router.include_router(shift_router)
-router.include_router(orders_router)
-router.include_router(history_router)  # P1-9
-router.include_router(referral_router)
-router.include_router(finance_router)
-router.include_router(statistics_router)  # P1-17
+async def clear_step_messages(bot: Bot, state: FSMContext, chat_id: int) -> None:
+    data = await state.get_data()
+    for message_id in data.get("step_msg_ids", []):
+        await delete_message_silent(bot, chat_id, message_id)
+    await state.update_data(last_step_msg_id=None, step_msg_ids=[])
+
+
+def now_utc() -> datetime:
+    return datetime.now(UTC)
+
+
+def normalize_money(text: str | None) -> Optional[Decimal]:
+    if not text:
+        return None
+    prepared = text.strip().replace(",", ".")
+    if not prepared:
+        return None
+    if not re.fullmatch(r"^\d{1,7}(?:\.\d{1,2})?$", prepared):
+        return None
+    value = Decimal(prepared)
+    if value <= 0:
+        return None
+    return value
+
+
+def escape_html(value: str | None) -> str:
+    return html.escape(value or "")
+
 ```
-.
-## \ProjectF\field-service\field_service\data\cities.py
+
+---
+
+#### `field-service/field_service/config.py`
+
+**Strok:** 99  
+**Razmer:** 3.10 KB
+
+```python
+﻿from __future__ import annotations
+
+import json
+import os
+from dataclasses import dataclass
+from typing import Optional
+
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+
+def _parse_int_or_none(value: str | None) -> int | None:
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
+def _parse_json_int_list(value: str) -> tuple[int, ...]:
+    try:
+        parsed = json.loads(value or "[]")
+    except (TypeError, json.JSONDecodeError):
+        return ()
+    if not isinstance(parsed, (list, tuple)):
+        return ()
+    result: list[int] = []
+    for item in parsed:
+        try:
+            number = int(item)
+        except (TypeError, ValueError):
+            continue
+        result.append(number)
+    unique: list[int] = []
+    seen: set[int] = set()
+    for number in result:
+        if number in seen:
+            continue
+        seen.add(number)
+        unique.append(number)
+    return tuple(unique)
+
+
+@dataclass(frozen=True)
+class Settings:
+    database_url: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://fs_user:fs_password@127.0.0.1:5439/field_service",
+    )
+    master_bot_token: str = os.getenv(
+        "MASTER_BOT_TOKEN", "8423680284:AAHXBq-Lmtn5cVwUoxMwhJPOAoCMVGz4688"
+    )
+    admin_bot_token: str = os.getenv(
+        "ADMIN_BOT_TOKEN", "7531617746:AAGvHQ0RySGtSSMAYenNdwyenZFkTZA6xbQ"
+    )
+    timezone: str = os.getenv("TIMEZONE", "Europe/Moscow")
+    logs_channel_id: Optional[int] = _parse_int_or_none(os.getenv("LOGS_CHANNEL_ID"))
+    alerts_channel_id: Optional[int] = _parse_int_or_none(os.getenv("ALERTS_CHANNEL_ID"))
+    reports_channel_id: Optional[int] = _parse_int_or_none(os.getenv("REPORTS_CHANNEL_ID"))
+    heartbeat_seconds: int = int(os.getenv("HEARTBEAT_SECONDS", "60"))
+
+    distribution_sla_seconds: int = int(os.getenv("DISTRIBUTION_SLA_SECONDS", "120"))
+    distribution_rounds: int = int(os.getenv("DISTRIBUTION_ROUNDS", "2"))
+    commission_deadline_hours: int = int(os.getenv("COMMISSION_DEADLINE_HOURS", "3"))
+    guarantee_company_payment: float = float(
+        os.getenv("GUARANTEE_COMPANY_PAYMENT", "2500")
+    )
+    workday_start: str = os.getenv("WORKDAY_START") or os.getenv("WORKING_HOURS_START", "10:00")
+    workday_end: str = os.getenv("WORKDAY_END") or os.getenv("WORKING_HOURS_END", "20:00")
+    asap_late_threshold: str = os.getenv("ASAP_LATE_THRESHOLD", "19:30")
+    admin_bot_superusers: tuple[int, ...] = tuple(
+        int(item.strip())
+        for item in os.getenv("ADMIN_BOT_SUPERUSERS", "").replace(";", ",").split(",")
+        if item.strip().isdigit()
+    )
+    global_admins_tg_ids: tuple[int, ...] = _parse_json_int_list(
+        os.getenv("GLOBAL_ADMINS_TG_IDS", "[]")
+    )
+    access_code_ttl_hours: int = int(os.getenv("ACCESS_CODE_TTL_HOURS", "24"))
+    overdue_watchdog_min: int = int(os.getenv("OVERDUE_WATCHDOG_MIN", "10"))
+
+    @property
+    def working_hours_start(self) -> str:
+        return self.workday_start
+
+    @property
+    def working_hours_end(self) -> str:
+        return self.workday_end
+
+
+
+settings = Settings()
+
+```
+
+---
+
+##### `field-service/field_service/data/__init__.py`
+
+**Strok:** 2  
+**Razmer:** 0.05 KB
+
+```python
+"Shared catalog data for Field Service domain."
+
+```
+
+---
+
+##### `field-service/field_service/data/cities.py`
+
+**Strok:** 255  
+**Razmer:** 7.77 KB
+
 ```python
 ﻿"""Canonical city registry for Field Service (v1.2)."""
 
@@ -44843,14 +32251,36 @@ __all__ = [
     "match_cities",
     "get_timezone",
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\data\__init__.py
+
+---
+
+##### `field-service/field_service/db/__init__.py`
+
+**Strok:** 10  
+**Razmer:** 0.14 KB
+
 ```python
-"Shared catalog data for Field Service domain."
+"""Database package public exports."""
+
+from __future__ import annotations
+
+from .pg_enums import OrderCategory
+
+__all__ = [
+    "OrderCategory",
+]
+
 ```
-.
-## \ProjectF\field-service\field_service\db\base.py
+
+---
+
+##### `field-service/field_service/db/base.py`
+
+**Strok:** 22  
+**Razmer:** 0.74 KB
+
 ```python
 from __future__ import annotations
 from sqlalchemy.orm import DeclarativeBase, declared_attr
@@ -44873,9 +32303,16 @@ class Base(DeclarativeBase):
     @declared_attr.directive
     def __tablename__(cls) -> str:  # noqa: N805
         return cls.__name__.lower()
+
 ```
-.
-## \ProjectF\field-service\field_service\db\models.py
+
+---
+
+##### `field-service/field_service/db/models.py`
+
+**Strok:** 1003  
+**Razmer:** 35.72 KB
+
 ```python
 from __future__ import annotations
 import enum
@@ -45879,9 +33316,16 @@ class commission_deadline_notifications(Base):
         ),
         Index("ix_commission_deadline_notifications__commission", "commission_id"),
     )
+
 ```
-.
-## \ProjectF\field-service\field_service\db\pg_enums.py
+
+---
+
+##### `field-service/field_service/db/pg_enums.py`
+
+**Strok:** 39  
+**Razmer:** 1.02 KB
+
 ```python
 from __future__ import annotations
 
@@ -45921,9 +33365,16 @@ class OrderCategory(StrEnum):
     WINDOWS = "WINDOWS"
     HANDYMAN = "HANDYMAN"
     ROADSIDE = "ROADSIDE"
+
 ```
-.
-## \ProjectF\field-service\field_service\db\session.py
+
+---
+
+##### `field-service/field_service/db/session.py`
+
+**Strok:** 25  
+**Razmer:** 0.68 KB
+
 ```python
 from __future__ import annotations
 import os
@@ -45949,22 +33400,30 @@ SessionLocal = async_sessionmaker(
     autocommit=False,
     class_=AsyncSession,
 )
+
 ```
-.
-## \ProjectF\field-service\field_service\db\__init__.py
+
+---
+
+##### `field-service/field_service/infra/__init__.py`
+
+**Strok:** 4  
+**Razmer:** 0.08 KB
+
 ```python
-"""Database package public exports."""
+﻿from .notify import send_alert, send_log
 
-from __future__ import annotations
+__all__ = ["send_log", "send_alert"]
 
-from .pg_enums import OrderCategory
-
-__all__ = [
-    "OrderCategory",
-]
 ```
-.
-## \ProjectF\field-service\field_service\infra\logging_utils.py
+
+---
+
+##### `field-service/field_service/infra/logging_utils.py`
+
+**Strok:** 50  
+**Razmer:** 1.43 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -46015,9 +33474,16 @@ def start_heartbeat(
             logger.exception("Heartbeat loop stopped unexpectedly")
 
     return asyncio.create_task(_heartbeat_loop(), name=f"{bot_name}_heartbeat")
+
 ```
-.
-## \ProjectF\field-service\field_service\infra\notify.py
+
+---
+
+##### `field-service/field_service/infra/notify.py`
+
+**Strok:** 99  
+**Razmer:** 2.57 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -46117,9 +33583,16 @@ async def send_report(
 
     target = chat_id if chat_id is not None else settings.reports_channel_id
     await _safe_send(bot, target, text, **kwargs)
+
 ```
-.
-## \ProjectF\field-service\field_service\infra\structured_logging.py
+
+---
+
+##### `field-service/field_service/infra/structured_logging.py`
+
+**Strok:** 212  
+**Razmer:** 6.48 KB
+
 ```python
 """
 Structured logging system for distribution and candidate selection.
@@ -46332,16 +33805,16 @@ def log_candidate_rejection(
         rejection_reasons=rejection_reasons,
         master_details=master_details,
     )
-```
-.
-## \ProjectF\field-service\field_service\infra\__init__.py
-```python
-﻿from .notify import send_alert, send_log
 
-__all__ = ["send_log", "send_alert"]
 ```
-.
-## \ProjectF\field-service\field_service\services\autoclose_scheduler.py
+
+---
+
+##### `field-service/field_service/services/autoclose_scheduler.py`
+
+**Strok:** 206  
+**Razmer:** 6.96 KB
+
 ```python
 """
 P1-01: Service for automatic order closure after 24 hours
@@ -46548,9 +34021,16 @@ async def autoclose_scheduler(
             break
         
         await asyncio.sleep(sleep_for)
+
 ```
-.
-## \ProjectF\field-service\field_service\services\break_reminder_scheduler.py
+
+---
+
+##### `field-service/field_service/services/break_reminder_scheduler.py`
+
+**Strok:** 168  
+**Razmer:** 6.38 KB
+
 ```python
 """
 P1-16: НАПОМИНАНИЕ ОБ ОКОНЧАНИИ ПЕРЕРЫВА
@@ -46719,9 +34199,16 @@ async def run_break_reminder(*, interval_seconds: int = 60) -> None:
             )
         
         await asyncio.sleep(sleep_for)
+
 ```
-.
-## \ProjectF\field-service\field_service\services\candidates.py
+
+---
+
+##### `field-service/field_service/services/candidates.py`
+
+**Strok:** 345  
+**Razmer:** 9.85 KB
+
 ```python
 from __future__ import annotations
 
@@ -47067,9 +34554,16 @@ ORDER BY m.id
     if limit is not None:
         return candidates[:limit]
     return candidates
+
 ```
-.
-## \ProjectF\field-service\field_service\services\commission_service.py
+
+---
+
+##### `field-service/field_service/services/commission_service.py`
+
+**Strok:** 259  
+**Razmer:** 8.74 KB
+
 ```python
 from __future__ import annotations
 
@@ -47329,9 +34823,187 @@ async def apply_overdue_commissions(
         )
 
     return events
+
 ```
-.
-## \ProjectF\field-service\field_service\services\distribution_metrics_service.py
+
+---
+
+###### `field-service/field_service/services/distribution/__init__.py`
+
+**Strok:** 3  
+**Razmer:** 0.04 KB
+
+```python
+from . import wakeup
+
+__all__ = ["wakeup"]
+```
+
+---
+
+###### `field-service/field_service/services/distribution/wakeup.py`
+
+**Strok:** 148  
+**Razmer:** 4.90 KB
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import List, Tuple, Optional
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import select, update, insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from field_service.db import models as m
+from field_service.services import settings_service, time_service
+
+UTC = timezone.utc
+_DEFERRED_LOGGED: set[int] = set()
+
+
+@dataclass(slots=True)
+class AwakenedOrder:
+    order_id: int
+    city_name: Optional[str]
+    target_local: datetime
+
+
+@dataclass(slots=True)
+class DeferredNotice:
+    order_id: int
+    city_name: Optional[str]
+    target_local: datetime
+
+
+async def _resolve_city_timezone(session: AsyncSession, city_id: Optional[int]) -> ZoneInfo:
+    if not city_id:
+        return time_service.resolve_timezone()
+    if hasattr(m.cities, "timezone"):
+        row = await session.execute(
+            select(m.cities.timezone).where(m.cities.id == int(city_id))
+        )
+        tz_value = row.scalar_one_or_none()
+        if tz_value:
+            return time_service.resolve_timezone(str(tz_value))
+    return time_service.resolve_timezone()
+
+
+async def run(
+    session: AsyncSession,
+    *,
+    now_utc: datetime,
+) -> Tuple[List[AwakenedOrder], List[DeferredNotice]]:
+    """
+    ✅ STEP 3.3: Оптимизация N+1 запроса для timezone.
+    Предзагружаем все timezone одним запросом вместо отдельного запроса для каждого города.
+    """
+    now_utc = now_utc.astimezone(UTC)
+    
+    # ✅ Предзагружаем все города и их таймзоны одним запросом
+    if hasattr(m.cities, "timezone"):
+        city_tz_stmt = select(m.cities.id, m.cities.timezone)
+        city_tz_rows = await session.execute(city_tz_stmt)
+        city_timezones = {
+            int(city_id): time_service.resolve_timezone(str(tz)) if tz else time_service.resolve_timezone()
+            for city_id, tz in city_tz_rows
+        }
+    else:
+        city_timezones = {}
+    
+    stmt = (
+        select(
+            m.orders.id,
+            m.orders.city_id,
+            m.orders.timeslot_start_utc,
+            m.cities.name,
+        )
+        .join(m.cities, m.cities.id == m.orders.city_id, isouter=True)
+        .where(m.orders.status == m.OrderStatus.DEFERRED)
+    )
+    rows = await session.execute(stmt)
+    items = rows.all()
+    if not items:
+        return [], []
+
+    workday_start, _ = await settings_service.get_working_window()
+    awakened: List[AwakenedOrder] = []
+    notices: List[DeferredNotice] = []
+
+    for order_id, city_id, start_utc, city_name in items:
+        # ✅ Используем предзагруженные timezone вместо запроса в БД
+        tz = city_timezones.get(city_id) if city_id is not None else None
+        if tz is None:
+            tz = time_service.resolve_timezone()
+        
+        local_now = now_utc.astimezone(tz)
+        if start_utc is not None:
+            su = start_utc if getattr(start_utc, "tzinfo", None) is not None else start_utc.replace(tzinfo=UTC)
+            target_local = su.astimezone(tz)
+        else:
+            target_local = datetime.combine(local_now.date(), workday_start, tzinfo=tz)
+        if target_local > local_now:
+            if order_id not in _DEFERRED_LOGGED:
+                _DEFERRED_LOGGED.add(order_id)
+                notices.append(
+                    DeferredNotice(
+                        order_id=int(order_id),
+                        city_name=city_name,
+                        target_local=target_local,
+                    )
+                )
+            continue
+
+        await session.execute(
+            update(m.orders)
+            .where(m.orders.id == order_id)
+            .values(
+                status=m.OrderStatus.SEARCHING,
+                updated_at=now_utc,
+                dist_escalated_logist_at=None,
+                dist_escalated_admin_at=None,
+            )
+        )
+        await session.execute(
+            insert(m.order_status_history).values(
+                order_id=order_id,
+                from_status=m.OrderStatus.DEFERRED,
+                to_status=m.OrderStatus.SEARCHING,
+                reason="deferred_wakeup",
+                changed_by_staff_id=None,
+                changed_by_master_id=None,
+                actor_type=m.ActorType.AUTO_DISTRIBUTION,
+                context={
+                    "action": "auto_wakeup",
+                    "reason": "working_hours_started",
+                    "target_time_local": target_local,
+                    "system": "distribution_scheduler"
+                }
+            )
+        )
+        _DEFERRED_LOGGED.discard(order_id)
+        awakened.append(
+            AwakenedOrder(
+                order_id=int(order_id),
+                city_name=city_name,
+                target_local=target_local,
+            )
+        )
+
+    await session.flush()
+    return awakened, notices
+
+```
+
+---
+
+##### `field-service/field_service/services/distribution_metrics_service.py`
+
+**Strok:** 317  
+**Razmer:** 13.16 KB
+
 ```python
 """Сервис аналитики метрик распределения заказов."""
 from __future__ import annotations
@@ -47649,9 +35321,16 @@ class DistributionMetricsService:
             )
             
             return {int(row.hour): row.count for row in result}
+
 ```
-.
-## \ProjectF\field-service\field_service\services\distribution_scheduler.py
+
+---
+
+##### `field-service/field_service/services/distribution_scheduler.py`
+
+**Strok:** 1313  
+**Razmer:** 48.54 KB
+
 ```python
 from __future__ import annotations
 
@@ -48965,9 +36644,16 @@ async def run_scheduler(bot: Bot | None = None, *, alerts_chat_id: Optional[int]
             logger.exception("[dist] exception: %s", exc)
             _dist_log(f"[dist] exception: {exc}", level="ERROR")
         await asyncio.sleep(sleep_for)
+
 ```
-.
-## \ProjectF\field-service\field_service\services\export_service.py
+
+---
+
+##### `field-service/field_service/services/export_service.py`
+
+**Strok:** 475  
+**Razmer:** 18.25 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -49443,9 +37129,16 @@ async def export_referral_rewards(*, date_from: datetime | date, date_to: dateti
 
 
 
+
 ```
-.
-## \ProjectF\field-service\field_service\services\guarantee_service.py
+
+---
+
+##### `field-service/field_service/services/guarantee_service.py`
+
+**Strok:** 133  
+**Razmer:** 4.69 KB
+
 ```python
 # field_service/services/guarantee_service.py
 from __future__ import annotations
@@ -49579,9 +37272,16 @@ async def create_from_closed_order(
 
     return new_order
 
+
 ```
-.
-## \ProjectF\field-service\field_service\services\heartbeat.py
+
+---
+
+##### `field-service/field_service/services/heartbeat.py`
+
+**Strok:** 36  
+**Razmer:** 0.91 KB
+
 ```python
 from __future__ import annotations
 
@@ -49618,9 +37318,16 @@ async def run_heartbeat(
         raise
     except Exception:
         logger.exception("Heartbeat loop for %s bot failed", name)
+
 ```
-.
-## \ProjectF\field-service\field_service\services\live_log.py
+
+---
+
+##### `field-service/field_service/services/live_log.py`
+
+**Strok:** 49  
+**Razmer:** 1.06 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -49670,9 +37377,16 @@ def clear() -> None:
 def size() -> int:
     """Current number of cached log entries."""
     return len(_BUFFER)
+
 ```
-.
-## \ProjectF\field-service\field_service\services\notifications.py
+
+---
+
+##### `field-service/field_service/services/notifications.py`
+
+**Strok:** 46  
+**Razmer:** 1.36 KB
+
 ```python
 from __future__ import annotations
 
@@ -49719,9 +37433,16 @@ async def enqueue_master_notification(
             payload=payload,
         )
     )
+
 ```
-.
-## \ProjectF\field-service\field_service\services\notifications_watcher.py
+
+---
+
+##### `field-service/field_service/services/notifications_watcher.py`
+
+**Strok:** 79  
+**Razmer:** 2.84 KB
+
 ```python
 from __future__ import annotations
 
@@ -49801,9 +37522,16 @@ async def run_master_notifications(bot: Bot, *, interval_seconds: int = 5) -> No
             pass
         await asyncio.sleep(sleep_for)
 
+
 ```
-.
-## \ProjectF\field-service\field_service\services\onboarding_service.py
+
+---
+
+##### `field-service/field_service/services/onboarding_service.py`
+
+**Strok:** 185  
+**Razmer:** 6.53 KB
+
 ```python
 from __future__ import annotations
 
@@ -49989,9 +37717,16 @@ def validate_payout(method_str: str, raw_payload: str) -> PayoutData:
         raise ValidationError("Неизвестный способ оплаты.")
 
     return PayoutData(method=method, payload=payload)
+
 ```
-.
-## \ProjectF\field-service\field_service\services\owner_requisites_service.py
+
+---
+
+##### `field-service/field_service/services/owner_requisites_service.py`
+
+**Strok:** 99  
+**Razmer:** 3.01 KB
+
 ```python
 from __future__ import annotations
 
@@ -50091,9 +37826,16 @@ def _normalize_methods(value: Any) -> list[str]:
         if lowered in ALLOWED_METHODS and lowered not in normalized:
             normalized.append(lowered)
     return normalized
+
 ```
-.
-## \ProjectF\field-service\field_service\services\push_notifications.py
+
+---
+
+##### `field-service/field_service/services/push_notifications.py`
+
+**Strok:** 242  
+**Razmer:** 7.63 KB
+
 ```python
 """
 P1-05: PUSH-УВЕДОМЛЕНИЯ КРИТИЧНЫХ СОБЫТИЙ
@@ -50336,9 +38078,16 @@ await notify_admin(
 # Service initialization logging disabled for Windows console compatibility
 # print("✅ P1-05: PUSH-УВЕДОМЛЕНИЯ - сервис создан")
 # print("Интегрировать в существующие обработчики событий")
+
 ```
-.
-## \ProjectF\field-service\field_service\services\referral_service.py
+
+---
+
+##### `field-service/field_service/services/referral_service.py`
+
+**Strok:** 97  
+**Razmer:** 2.73 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -50436,9 +38185,16 @@ async def apply_rewards_for_commission(
             status=m.ReferralRewardStatus.ACCRUED,
         )
         await session.execute(stmt)
+
 ```
-.
-## \ProjectF\field-service\field_service\services\settings_service.py
+
+---
+
+##### `field-service/field_service/services/settings_service.py`
+
+**Strok:** 160  
+**Razmer:** 4.91 KB
+
 ```python
 from __future__ import annotations
 import json
@@ -50599,9 +38355,16 @@ def invalidate_working_window_cache() -> None:
     """Clear cached working-window values (e.g. after admin update)."""
     global _WORKING_WINDOW_CACHE
     _WORKING_WINDOW_CACHE = None
+
 ```
-.
-## \ProjectF\field-service\field_service\services\time_service.py
+
+---
+
+##### `field-service/field_service/services/time_service.py`
+
+**Strok:** 276  
+**Razmer:** 8.60 KB
+
 ```python
 from __future__ import annotations
 
@@ -50878,9 +38641,16 @@ __all__ = [
     "parse_time_string",
     "resolve_timezone",
 ]
+
 ```
-.
-## \ProjectF\field-service\field_service\services\unassigned_monitor.py
+
+---
+
+##### `field-service/field_service/services/unassigned_monitor.py`
+
+**Strok:** 57  
+**Razmer:** 1.73 KB
+
 ```python
 from __future__ import annotations
 
@@ -50938,9 +38708,16 @@ async def monitor_unassigned_orders(
         except Exception as exc:
             logger.exception("Unassigned monitor error: %s", exc)
         await asyncio.sleep(sleep_for)
+
 ```
-.
-## \ProjectF\field-service\field_service\services\watchdogs.py
+
+---
+
+##### `field-service/field_service/services/watchdogs.py`
+
+**Strok:** 600  
+**Razmer:** 22.37 KB
+
 ```python
 from __future__ import annotations
 
@@ -51037,9 +38814,9 @@ async def _notify_overdue_commission(bot: Bot, chat_id: int, event: CommissionOv
 
 
 async def _notify_master_blocked(bot: Bot, event: CommissionOverdueEvent) -> None:
-    """P0-3: ?????????????? ??????? ??? ???????????? ???????? ???????? ???????."""
+    """P0-3: Уведомить мастера о блокировке аккаунта за просрочку комиссии."""
     reason_text = (
-        f"?????????? ???????? #{event.commission_id} ?? ?????? #{event.order_id}"
+        f"Просрочка комиссии #{event.commission_id} по заказу #{event.order_id}"
     )
     try:
         async with SessionLocal() as session:
@@ -51075,9 +38852,9 @@ async def _notify_master_blocked(bot: Bot, event: CommissionOverdueEvent) -> Non
                 )
 
             message = (
-                "??????! <b>??? ??????? ????????????</b>\n\n"
-                f"???????: {reason_text}.\n\n"
-                "?????? ????????? ???????? ? ???? ??? ????????? ???????."
+                "🚫 <b>Ваш аккаунт заблокирован</b>\n\n"
+                f"Причина: {reason_text}.\n\n"
+                "Чтобы разблокировать аккаунт, оплатите комиссию и свяжитесь с поддержкой."
             )
 
             await bot.send_message(
@@ -51309,6 +39086,99 @@ async def _send_deadline_reminder(
         return False
 
 
+# ===== Expired Breaks Watchdog =====
+
+
+async def watchdog_expired_breaks(
+    interval_seconds: int = 60,
+    *,
+    iterations: int | None = None,
+) -> None:
+    """
+    BUGFIX 2025-10-10: Automatically end expired breaks and set masters to SHIFT_OFF.
+    
+    When break_until expires and master hasn't manually ended the break,
+    this watchdog automatically transitions them to SHIFT_OFF status.
+    """
+    from sqlalchemy import and_, update
+    
+    sleep_for = max(30, int(interval_seconds) if interval_seconds else 60)
+    loops_done = 0
+    
+    live_log.push(
+        "watchdog",
+        f"watchdog_expired_breaks started (interval={sleep_for}s)",
+        level="INFO"
+    )
+    
+    while True:
+        try:
+            now = datetime.now(UTC)
+            async with SessionLocal() as session:
+                # Находим всех мастеров с истекшим перерывом
+                result = await session.execute(
+                    select(m.masters.id, m.masters.tg_user_id, m.masters.break_until)
+                    .where(
+                        and_(
+                            m.masters.shift_status == m.ShiftStatus.BREAK,
+                            m.masters.break_until.isnot(None),
+                            m.masters.break_until < now
+                        )
+                    )
+                )
+                
+                expired_breaks = result.all()
+                
+                if expired_breaks:
+                    # Обновляем статус всех мастеров с истекшими перерывами
+                    master_ids = [row.id for row in expired_breaks]
+                    
+                    await session.execute(
+                        update(m.masters)
+                        .where(m.masters.id.in_(master_ids))
+                        .values(
+                            shift_status=m.ShiftStatus.SHIFT_OFF,
+                            is_on_shift=False,
+                            break_until=None
+                        )
+                    )
+                    
+                    await session.commit()
+                    
+                    live_log.push(
+                        "watchdog",
+                        f"expired_breaks_ended count={len(expired_breaks)}",
+                        level="INFO"
+                    )
+                    
+                    for row in expired_breaks:
+                        logger.info(
+                            "break_expired_auto_ended master_id=%s tg_user_id=%s break_until=%s",
+                            row.id,
+                            row.tg_user_id,
+                            row.break_until
+                        )
+                        live_log.push(
+                            "watchdog",
+                            f"break_expired master={row.id} auto_ended",
+                            level="INFO"
+                        )
+                        
+        except Exception as exc:
+            logger.exception("watchdog_expired_breaks error")
+            live_log.push(
+                "watchdog",
+                f"watchdog_expired_breaks error: {exc}",
+                level="ERROR"
+            )
+        
+        loops_done += 1
+        if iterations is not None and loops_done >= iterations:
+            break
+        
+        await asyncio.sleep(sleep_for)
+
+
 # ===== Expired Offers Watchdog =====
 
 
@@ -51372,166 +39242,158 @@ async def watchdog_expired_offers(
             break
         
         await asyncio.sleep(sleep_for)
-```
-.
-## \ProjectF\field-service\field_service\services\distribution\wakeup.py
-```python
-from __future__ import annotations
-
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import List, Tuple, Optional
-from zoneinfo import ZoneInfo
-
-from sqlalchemy import select, update, insert
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from field_service.db import models as m
-from field_service.services import settings_service, time_service
-
-UTC = timezone.utc
-_DEFERRED_LOGGED: set[int] = set()
 
 
-@dataclass(slots=True)
-class AwakenedOrder:
-    order_id: int
-    city_name: Optional[str]
-    target_local: datetime
+# ===== Expired Breaks Watchdog =====
 
 
-@dataclass(slots=True)
-class DeferredNotice:
-    order_id: int
-    city_name: Optional[str]
-    target_local: datetime
-
-
-async def _resolve_city_timezone(session: AsyncSession, city_id: Optional[int]) -> ZoneInfo:
-    if not city_id:
-        return time_service.resolve_timezone()
-    if hasattr(m.cities, "timezone"):
-        row = await session.execute(
-            select(m.cities.timezone).where(m.cities.id == int(city_id))
-        )
-        tz_value = row.scalar_one_or_none()
-        if tz_value:
-            return time_service.resolve_timezone(str(tz_value))
-    return time_service.resolve_timezone()
-
-
-async def run(
-    session: AsyncSession,
+async def watchdog_expired_breaks(
+    interval_seconds: int = 60,
     *,
-    now_utc: datetime,
-) -> Tuple[List[AwakenedOrder], List[DeferredNotice]]:
+    iterations: int | None = None,
+) -> None:
     """
-    ✅ STEP 3.3: Оптимизация N+1 запроса для timezone.
-    Предзагружаем все timezone одним запросом вместо отдельного запроса для каждого города.
+    Периодически проверяет и снимает со смены мастеров с истёкшим перерывом.
+    
+    После окончания перерыва (break_until) мастер автоматически снимается со смены:
+    - shift_status = SHIFT_OFF
+    - is_on_shift = False
+    - break_until = None
     """
-    now_utc = now_utc.astimezone(UTC)
+    from sqlalchemy import text
     
-    # ✅ Предзагружаем все города и их таймзоны одним запросом
-    if hasattr(m.cities, "timezone"):
-        city_tz_stmt = select(m.cities.id, m.cities.timezone)
-        city_tz_rows = await session.execute(city_tz_stmt)
-        city_timezones = {
-            int(city_id): time_service.resolve_timezone(str(tz)) if tz else time_service.resolve_timezone()
-            for city_id, tz in city_tz_rows
-        }
-    else:
-        city_timezones = {}
+    sleep_for = max(30, int(interval_seconds) if interval_seconds else 60)
+    loops_done = 0
     
-    stmt = (
-        select(
-            m.orders.id,
-            m.orders.city_id,
-            m.orders.timeslot_start_utc,
-            m.cities.name,
-        )
-        .join(m.cities, m.cities.id == m.orders.city_id, isouter=True)
-        .where(m.orders.status == m.OrderStatus.DEFERRED)
-    )
-    rows = await session.execute(stmt)
-    items = rows.all()
-    if not items:
-        return [], []
-
-    workday_start, _ = await settings_service.get_working_window()
-    awakened: List[AwakenedOrder] = []
-    notices: List[DeferredNotice] = []
-
-    for order_id, city_id, start_utc, city_name in items:
-        # ✅ Используем предзагруженные timezone вместо запроса в БД
-        tz = city_timezones.get(city_id) if city_id is not None else None
-        if tz is None:
-            tz = time_service.resolve_timezone()
-        
-        local_now = now_utc.astimezone(tz)
-        if start_utc is not None:
-            su = start_utc if getattr(start_utc, "tzinfo", None) is not None else start_utc.replace(tzinfo=UTC)
-            target_local = su.astimezone(tz)
-        else:
-            target_local = datetime.combine(local_now.date(), workday_start, tzinfo=tz)
-        if target_local > local_now:
-            if order_id not in _DEFERRED_LOGGED:
-                _DEFERRED_LOGGED.add(order_id)
-                notices.append(
-                    DeferredNotice(
-                        order_id=int(order_id),
-                        city_name=city_name,
-                        target_local=target_local,
-                    )
+    while True:
+        try:
+            now = datetime.now(UTC)
+            async with SessionLocal() as session:
+                # Находим всех мастеров на перерыве с истёкшим временем
+                result = await session.execute(
+                    text("""
+                        UPDATE masters
+                        SET 
+                            shift_status = 'SHIFT_OFF',
+                            is_on_shift = false,
+                            break_until = NULL,
+                            updated_at = NOW()
+                        WHERE shift_status = 'BREAK'
+                          AND break_until IS NOT NULL
+                          AND break_until <= NOW()
+                        RETURNING id, tg_user_id, full_name
+                    """)
                 )
-            continue
+                expired_breaks = result.fetchall()
+                await session.commit()
+                
+                if expired_breaks:
+                    live_log.push(
+                        "watchdog",
+                        f"expired_breaks count={len(expired_breaks)}",
+                        level="INFO"
+                    )
+                    for master_id, tg_user_id, full_name in expired_breaks:
+                        logger.info(
+                            "break_expired master=%s name=%s",
+                            master_id,
+                            full_name or "???"
+                        )
+                        live_log.push(
+                            "watchdog",
+                            f"break_expired mid={master_id} tg={tg_user_id}",
+                            level="INFO"
+                        )
+                        
+        except Exception as exc:
+            logger.exception("watchdog_expired_breaks error")
+            live_log.push(
+                "watchdog",
+                f"watchdog_expired_breaks error: {exc}",
+                level="ERROR"
+            )
+        
+        loops_done += 1
+        if iterations is not None and loops_done >= iterations:
+            break
+        
+        await asyncio.sleep(sleep_for)
 
-        await session.execute(
-            update(m.orders)
-            .where(m.orders.id == order_id)
-            .values(
-                status=m.OrderStatus.SEARCHING,
-                updated_at=now_utc,
-                dist_escalated_logist_at=None,
-                dist_escalated_admin_at=None,
-            )
-        )
-        await session.execute(
-            insert(m.order_status_history).values(
-                order_id=order_id,
-                from_status=m.OrderStatus.DEFERRED,
-                to_status=m.OrderStatus.SEARCHING,
-                reason="deferred_wakeup",
-                changed_by_staff_id=None,
-                changed_by_master_id=None,
-                actor_type=m.ActorType.AUTO_DISTRIBUTION,
-                context={
-                    "action": "auto_wakeup",
-                    "reason": "working_hours_started",
-                    "target_time_local": target_local,
-                    "system": "distribution_scheduler"
-                }
-            )
-        )
-        _DEFERRED_LOGGED.discard(order_id)
-        awakened.append(
-            AwakenedOrder(
-                order_id=int(order_id),
-                city_name=city_name,
-                target_local=target_local,
-            )
-        )
-
-    await session.flush()
-    return awakened, notices
 ```
-.
-## \ProjectF\field-service\field_service\services\distribution\__init__.py
-```python
-from . import wakeup
 
-__all__ = ["wakeup"]```
-.
-## \ProjectF\field-service\scripts\audit_legacy.py
+---
+
+### `field-service/fix_indents_v2.py`
+
+**Strok:** 56  
+**Razmer:** 1.99 KB
+
+```python
+"""
+Скрипт для исправления отступов ТОЛЬКО внутри for order in orders:
+"""
+
+file_path = r"C:\ProjectF\field-service\field_service\services\distribution_scheduler.py"
+
+with open(file_path, 'r', encoding='utf-8') as f:
+    content = f.read()
+    lines = content.splitlines(keepends=True)
+
+fixed_lines = []
+inside_for_loop = False
+for_loop_line_num = 0
+
+for i, line in enumerate(lines):
+    line_num = i + 1
+    
+    # Находим строку "for order in orders:"
+    if "for order in orders:" in line and not inside_for_loop:
+        inside_for_loop = True
+        for_loop_line_num = line_num
+        fixed_lines.append(line)
+        print(f"[{line_num}] Found 'for order in orders:'")
+        continue
+    
+    # Находим строку "await session.commit()" на уровне функции (_tick_once_impl)
+    if inside_for_loop and "await session.commit()" in line:
+        # Проверяем отступ - должен быть 4 пробела (уровень функции)
+        indent = len(line) - len(line.lstrip())
+        if indent == 4:
+            inside_for_loop = False
+            fixed_lines.append(line)
+            print(f"[{line_num}] Found end of for loop at 'await session.commit()'")
+            continue
+    
+    # Внутри for loop - убираем 4 пробела если отступ > 8
+    if inside_for_loop:
+        if line.strip() and line[0] == ' ':
+            indent = len(line) - len(line.lstrip())
+            # Убираем 4 пробела только если отступ >= 12 (лишний отступ)
+            if indent >= 12:
+                fixed_line = line[4:]
+                fixed_lines.append(fixed_line)
+            else:
+                fixed_lines.append(line)
+        else:
+            fixed_lines.append(line)
+    else:
+        fixed_lines.append(line)
+
+# Записываем
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.writelines(fixed_lines)
+
+print(f"Fixed! Total lines: {len(lines)}")
+
+```
+
+---
+
+#### `field-service/scripts/audit_legacy.py`
+
+**Strok:** 145  
+**Razmer:** 3.82 KB
+
 ```python
 ﻿#!/usr/bin/env python3
 from __future__ import annotations
@@ -51677,9 +39539,16 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 ```
-.
-## \ProjectF\field-service\scripts\db_structure_snapshot.py
+
+---
+
+#### `field-service/scripts/db_structure_snapshot.py`
+
+**Strok:** 288  
+**Razmer:** 10.05 KB
+
 ```python
 """
 Скрипт для создания снапшота структуры базы данных PostgreSQL
@@ -51968,9 +39837,16 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 ```
-.
-## \ProjectF\field-service\scripts\import_districts.py
+
+---
+
+#### `field-service/scripts/import_districts.py`
+
+**Strok:** 412  
+**Razmer:** 14.46 KB
+
 ```python
 """
 Скрипт для массового импорта районов городов из CSV/JSON файла.
@@ -52383,9 +40259,89 @@ async def main() -> int:
 if __name__ == '__main__':
     exit_code = asyncio.run(main())
     raise SystemExit(exit_code)
+
 ```
-.
-## \ProjectF\field-service\tests\conftest.py
+
+---
+
+### `field-service/temp_fix_indents.py`
+
+**Strok:** 63  
+**Razmer:** 2.71 KB
+
+```python
+"""
+Временный скрипт для исправления отступов в distribution_scheduler.py
+"""
+
+file_path = r"C:\ProjectF\field-service\field_service\services\distribution_scheduler.py"
+
+# Читаем файл
+with open(file_path, 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+
+# Находим строку "for order in orders:" (примерно строка 771)
+# И до "await session.commit()" (примерно строка 1022)
+# Убираем 4 лишних пробела с каждой строки в этом диапазоне
+
+fixed_lines = []
+inside_for_loop = False
+for_loop_indent = 0
+
+for i, line in enumerate(lines):
+    line_num = i + 1
+    
+    # Начало блока
+    if "for order in orders:" in line and line_num >= 770:
+        inside_for_loop = True
+        for_loop_indent = len(line) - len(line.lstrip())
+        fixed_lines.append(line)
+        print(f"[{line_num}] Начало for loop, базовый отступ: {for_loop_indent}")
+        continue
+    
+    # Конец блока - найдена строка "await session.commit()" на уровне for loop
+    if inside_for_loop and "await session.commit()" in line:
+        # Проверяем что это на правильном уровне (8 пробелов = уровень функции _tick_once_impl)
+        current_indent = len(line) - len(line.lstrip())
+        if current_indent <= for_loop_indent:
+            inside_for_loop = False
+            fixed_lines.append(line)
+            print(f"[{line_num}] Конец for loop")
+            continue
+    
+    # Внутри блока - убираем 4 лишних пробела
+    if inside_for_loop:
+        # Если строка не пустая и начинается с пробелов
+        if line.strip() and line[0] == ' ':
+            current_indent = len(line) - len(line.lstrip())
+            # Убираем 4 пробела только если отступ больше базового
+            if current_indent > for_loop_indent:
+                fixed_line = line[4:]  # Убираем 4 пробела
+                fixed_lines.append(fixed_line)
+                if line_num <= 780 or line_num >= 1015:  # Логируем начало и конец
+                    print(f"[{line_num}] Исправлен отступ: {current_indent} -> {current_indent-4}")
+            else:
+                fixed_lines.append(line)
+        else:
+            fixed_lines.append(line)
+    else:
+        fixed_lines.append(line)
+
+# Записываем исправленный файл
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.writelines(fixed_lines)
+
+print(f"\n✅ Исправлено! Всего строк: {len(lines)}")
+
+```
+
+---
+
+#### `field-service/tests/conftest.py`
+
+**Strok:** 272  
+**Razmer:** 8.08 KB
+
 ```python
 from __future__ import annotations
 
@@ -52658,9 +40614,16 @@ async def sample_master(
     await async_session.commit()
     await async_session.refresh(master)
     return master
+
 ```
-.
-## \ProjectF\field-service\tests\test_admin_bot_manual_assign.py
+
+---
+
+#### `field-service/tests/test_admin_bot_manual_assign.py`
+
+**Strok:** 241  
+**Razmer:** 7.30 KB
+
 ```python
 from __future__ import annotations
 
@@ -52902,9 +40865,16 @@ async def test_manual_pick_confirms_and_sends_offer() -> None:
     assert any(btn.callback_data == "adm:q:card:1" for btn in buttons)
     assert any(btn.callback_data == "adm:q:as:man:1:1" for btn in buttons)
     assert callback.answers and callback.answers[-1][0] == " "
+
 ```
-.
-## \ProjectF\field-service\tests\test_admin_bot_new_order.py
+
+---
+
+#### `field-service/tests/test_admin_bot_new_order.py`
+
+**Strok:** 282  
+**Razmer:** 10.51 KB
+
 ```python
 import asyncio
 from dataclasses import dataclass
@@ -53187,9 +41157,16 @@ async def test_new_order_flow_manual_street_and_guarantee(monkeypatch):
         assert f"adm:q:as:man:{order_id}:1" in callbacks
     finally:
         await storage.close()
+
 ```
-.
-## \ProjectF\field-service\tests\test_admin_bot_queue_actions.py
+
+---
+
+#### `field-service/tests/test_admin_bot_queue_actions.py`
+
+**Strok:** 319  
+**Razmer:** 11.70 KB
+
 ```python
 
 import dataclasses
@@ -53509,9 +41486,16 @@ async def test_queue_cancel_reason_service_failure() -> None:
     assert message.answered[-1][0] == "   ."
     assert bot.edited, "   "
     assert state._state is None
+
 ```
-.
-## \ProjectF\field-service\tests\test_admin_bot_queue_card.py
+
+---
+
+#### `field-service/tests/test_admin_bot_queue_card.py`
+
+**Strok:** 150  
+**Razmer:** 4.88 KB
+
 ```python
 from decimal import Decimal
 
@@ -53662,9 +41646,16 @@ async def test_should_show_guarantee_button_false_for_guarantee_type() -> None:
     service = _StubOrdersService(has_active=False)
     result = await queue._should_show_guarantee_button(order, service)
     assert result is False
+
 ```
-.
-## \ProjectF\field-service\tests\test_admin_bot_queue_filters.py
+
+---
+
+#### `field-service/tests/test_admin_bot_queue_filters.py`
+
+**Strok:** 50  
+**Razmer:** 1.47 KB
+
 ```python
 from __future__ import annotations
 
@@ -53715,9 +41706,16 @@ async def test_available_cities_for_city_admin():
     result = await queue._available_cities(staff, service)
 
     assert [city.id for city in result] == [2, 3]
+
 ```
-.
-## \ProjectF\field-service\tests\test_admin_bot_queue_list.py
+
+---
+
+#### `field-service/tests/test_admin_bot_queue_list.py`
+
+**Strok:** 145  
+**Razmer:** 4.19 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -53863,9 +41861,16 @@ async def test_queue_list_empty_renders_placeholder() -> None:
     assert message.reply_markup is not None
     buttons = [btn for row in message.reply_markup.inline_keyboard for btn in row]
     assert any(btn.callback_data == "adm:q:flt" for btn in buttons)
+
 ```
-.
-## \ProjectF\field-service\tests\test_admin_finance_ui.py
+
+---
+
+#### `field-service/tests/test_admin_finance_ui.py`
+
+**Strok:** 63  
+**Razmer:** 2.03 KB
+
 ```python
 from decimal import Decimal
 
@@ -53929,9 +41934,16 @@ def test_finance_card_actions_hides_reject_when_overdue() -> None:
     values = {button.callback_data for row in markup.inline_keyboard for button in row}
     assert f"adm:f:cm:ok:{detail.id}" in values
     assert f"adm:f:cm:rej:{detail.id}" not in values
+
 ```
-.
-## \ProjectF\field-service\tests\test_admin_masters_keyboard.py
+
+---
+
+#### `field-service/tests/test_admin_masters_keyboard.py`
+
+**Strok:** 57  
+**Razmer:** 1.66 KB
+
 ```python
 from field_service.bots.admin_bot.dto import MasterListItem
 from field_service.bots.admin_bot.routers import admin_masters
@@ -53989,9 +42001,16 @@ def test_build_list_kb_no_group_tabs_for_other_prefix():
 
     callbacks = [button.callback_data for row in markup.inline_keyboard for button in row]
     assert not any(cb.startswith("adm:m:grp:") for cb in callbacks)
+
 ```
-.
-## \ProjectF\field-service\tests\test_admin_services.py
+
+---
+
+#### `field-service/tests/test_admin_services.py`
+
+**Strok:** 829  
+**Razmer:** 25.54 KB
+
 ```python
 from __future__ import annotations
 
@@ -54821,9 +42840,16 @@ async def test_get_city_timezone_uses_city_value(async_session) -> None:
     orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
     tz_value = await orders_service.get_city_timezone(city.id)
     assert tz_value == "Asia/Yekaterinburg"
+
 ```
-.
-## \ProjectF\field-service\tests\test_business_logic_edge_cases.py
+
+---
+
+#### `field-service/tests/test_business_logic_edge_cases.py`
+
+**Strok:** 831  
+**Razmer:** 26.51 KB
+
 ```python
 """
 Тесты граничных случаев и специальных сценариев.
@@ -55655,9 +43681,16 @@ async def test_distribution_metrics_creation(async_session):
         assert metric.district_id == district.id
         assert metric.category == m.OrderCategory.ELECTRICS.value
         assert metric.candidates_count >= 1
+
 ```
-.
-## \ProjectF\field-service\tests\test_commission_service.py
+
+---
+
+#### `field-service/tests/test_commission_service.py`
+
+**Strok:** 200  
+**Razmer:** 5.80 KB
+
 ```python
 from __future__ import annotations
 
@@ -55858,9 +43891,78 @@ async def _seed_owner_staff(session) -> None:
         )
     )
     await session.flush()
+
 ```
-.
-## \ProjectF\field-service\tests\test_distribution_metrics.py
+
+---
+
+#### `field-service/tests/test_dist_log_format.py`
+
+**Strok:** 52  
+**Razmer:** 1.36 KB
+
+```python
+from types import SimpleNamespace
+
+from field_service.services.distribution_worker import (
+    fmt_rank_item,
+    log_decision_offer,
+    log_tick_header,
+)
+
+
+def test_log_tick_header_contains_required_keys() -> None:
+    row = SimpleNamespace(
+        id=123,
+        city_id=1,
+        district_id=None,
+        category="ELECTRICS",
+        status="SEARCHING",
+    )
+    header = log_tick_header(row, 1, 2, 120, 3)
+
+    assert header.startswith("[dist] order=123 city=1")
+    assert "district=-" in header
+    assert "cat=ELECTRICS" in header
+    assert "type=NORMAL" in header
+    assert "round=1/2" in header
+    assert "sla=120s" in header
+    assert "candidates=3" in header
+
+
+def test_fmt_rank_item_and_decision_format() -> None:
+    item = fmt_rank_item(
+        {
+            "mid": 10,
+            "car": True,
+            "avg_week": 5,
+            "rating": 4.2,
+            "rnd": 0.33,
+            "shift": False,
+        }
+    )
+    # Minimal shape checks
+    assert "mid=10" in item
+    assert "shift=off" in item
+    assert "car=1" in item
+    assert "avg_week=5" in item
+    assert "rating=4.2" in item
+    assert "rnd(0.33)" in item
+
+    # Decision string should contain mid and an ISO timestamp
+    decision = log_decision_offer(10, __import__("datetime").datetime.now(__import__("datetime").timezone.utc))
+    assert decision.startswith("decision=offer mid=10 until=")
+
+
+```
+
+---
+
+#### `field-service/tests/test_distribution_metrics.py`
+
+**Strok:** 392  
+**Razmer:** 12.19 KB
+
 ```python
 """
 Тесты для метрик распределения заказов (STEP 4.1).
@@ -56253,9 +44355,16 @@ async def test_metrics_with_preferred_master(session, clean_db):
     
     assert metric.preferred_master_used is True
     assert metric.order_type == m.OrderType.GUARANTEE
+
 ```
-.
-## \ProjectF\field-service\tests\test_distribution_scheduler.py
+
+---
+
+#### `field-service/tests/test_distribution_scheduler.py`
+
+**Strok:** 266  
+**Razmer:** 8.56 KB
+
 ```python
 # tests/test_distribution_scheduler.py
 # CR-2025-10-03-010: Migrated from distribution_worker to distribution_scheduler
@@ -56522,64 +44631,16 @@ async def test_distribution_config_loads_from_settings(async_session):
     assert cfg.sla_seconds == 180
     assert cfg.rounds == 3
     assert cfg.to_admin_after_min == 15
-```
-.
-## \ProjectF\field-service\tests\test_dist_log_format.py
-```python
-from types import SimpleNamespace
-
-from field_service.services.distribution_worker import (
-    fmt_rank_item,
-    log_decision_offer,
-    log_tick_header,
-)
-
-
-def test_log_tick_header_contains_required_keys() -> None:
-    row = SimpleNamespace(
-        id=123,
-        city_id=1,
-        district_id=None,
-        category="ELECTRICS",
-        status="SEARCHING",
-    )
-    header = log_tick_header(row, 1, 2, 120, 3)
-
-    assert header.startswith("[dist] order=123 city=1")
-    assert "district=-" in header
-    assert "cat=ELECTRICS" in header
-    assert "type=NORMAL" in header
-    assert "round=1/2" in header
-    assert "sla=120s" in header
-    assert "candidates=3" in header
-
-
-def test_fmt_rank_item_and_decision_format() -> None:
-    item = fmt_rank_item(
-        {
-            "mid": 10,
-            "car": True,
-            "avg_week": 5,
-            "rating": 4.2,
-            "rnd": 0.33,
-            "shift": False,
-        }
-    )
-    # Minimal shape checks
-    assert "mid=10" in item
-    assert "shift=off" in item
-    assert "car=1" in item
-    assert "avg_week=5" in item
-    assert "rating=4.2" in item
-    assert "rnd(0.33)" in item
-
-    # Decision string should contain mid and an ISO timestamp
-    decision = log_decision_offer(10, __import__("datetime").datetime.now(__import__("datetime").timezone.utc))
-    assert decision.startswith("decision=offer mid=10 until=")
 
 ```
-.
-## \ProjectF\field-service\tests\test_e2e_escalation_debug.py
+
+---
+
+#### `field-service/tests/test_e2e_escalation_debug.py`
+
+**Strok:** 185  
+**Razmer:** 6.85 KB
+
 ```python
 """
 DEBUG тест для диагностики проблемы с эскалацией к админу
@@ -56765,9 +44826,16 @@ async def test_debug_admin_escalation(
     else:
         print(f"\n✅ Эскалация к админу ПРОИЗОШЛА!")
         print(f"   Timestamp: {order.dist_escalated_admin_at}")
+
 ```
-.
-## \ProjectF\field-service\tests\test_e2e_escalation_notifications.py
+
+---
+
+#### `field-service/tests/test_e2e_escalation_notifications.py`
+
+**Strok:** 716  
+**Razmer:** 30.00 KB
+
 ```python
 """
 E2E тесты для Шага 1.4: Проверка остановки повторных уведомлений эскалации
@@ -57484,9 +45552,16 @@ class TestEscalationFullCycle:
 
 if __name__ == "__main__":
     print("Для запуска тестов используйте: pytest tests/test_e2e_escalation_notifications.py -v")
+
 ```
-.
-## \ProjectF\field-service\tests\test_e2e_escalation_notifications_fixed.py
+
+---
+
+#### `field-service/tests/test_e2e_escalation_notifications_fixed.py`
+
+**Strok:** 346  
+**Razmer:** 15.11 KB
+
 ```python
 """
 E2E тесты для Шага 1.4: Проверка остановки повторных уведомлений эскалации
@@ -57833,9 +45908,16 @@ class TestEscalationNotifications:
 
 if __name__ == "__main__":
     print("Для запуска тестов используйте: pytest tests/test_e2e_escalation_notifications.py -v")
+
 ```
-.
-## \ProjectF\field-service\tests\test_e2e_fixes_step1.py
+
+---
+
+#### `field-service/tests/test_e2e_fixes_step1.py`
+
+**Strok:** 468  
+**Razmer:** 16.70 KB
+
 ```python
 """
 E2E тесты для критических исправлений Этапа 1 (1.1, 1.2, 1.3)
@@ -58304,9 +46386,16 @@ def test_summary():
     print("\n[INFO] Regression tests passed")
     print("\n[NOTE] For full e2e testing use PostgreSQL database")
     print("="*70 + "\n")
+
 ```
-.
-## \ProjectF\field-service\tests\test_e2e_step_1_4_escalation_notifications.py
+
+---
+
+#### `field-service/tests/test_e2e_step_1_4_escalation_notifications.py`
+
+**Strok:** 319  
+**Razmer:** 11.34 KB
+
 ```python
 # -*- coding: utf-8 -*-
 """
@@ -58626,9 +46715,16 @@ async def test_no_candidates_escalation_notification(
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
+
 ```
-.
-## \ProjectF\field-service\tests\test_export_service.py
+
+---
+
+#### `field-service/tests/test_export_service.py`
+
+**Strok:** 459  
+**Razmer:** 14.18 KB
+
 ```python
 from __future__ import annotations
 
@@ -59088,721 +47184,16 @@ async def test_export_referral_rewards(async_session):
     assert row_map["level"] == reward.level
     assert row_map["amount"] == pytest.approx(250.00)
 
+
 ```
-.
-## \ProjectF\field-service\tests\test_fixes_stage_1.py
-```python
-# -*- coding: utf-8 -*-
-"""
-E2E тесты для проверки исправлений Stage 1.1-1.3
 
-Fix 1.1: Race Condition при параллельном принятии офферов
-Fix 1.2: DEFERRED заказы - разрешение принятия в нерабочее время
-Fix 1.3: Гарантийные заказы - fallback при недоступном preferred мастере
-"""
+---
 
-import asyncio
-import pytest
-import pytest_asyncio
-from datetime import datetime, timedelta
-from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock
+#### `field-service/tests/test_fix_1_3_comprehensive.py`
 
-from sqlalchemy import select, insert, update
-from sqlalchemy.ext.asyncio import AsyncSession
+**Strok:** 866  
+**Razmer:** 30.04 KB
 
-from field_service.db import models as m
-from field_service.bots.master_bot.handlers import orders
-from field_service.services import distribution_scheduler as ds
-
-
-# ============================================================================
-# FIXTURES
-# ============================================================================
-
-@pytest_asyncio.fixture
-async def sample_city(async_session: AsyncSession) -> m.cities:
-    """Создание тестового города"""
-    city = m.cities(
-        id=1,
-        name="Тестовый город",
-        timezone="Europe/Moscow",
-    )
-    async_session.add(city)
-    await async_session.commit()
-    await async_session.refresh(city)
-    return city
-
-
-@pytest_asyncio.fixture
-async def sample_district(async_session: AsyncSession, sample_city) -> m.districts:
-    """Создание тестового района"""
-    district = m.districts(
-        id=1,
-        city_id=sample_city.id,
-        name="Центральный район",
-    )
-    async_session.add(district)
-    await async_session.commit()
-    await async_session.refresh(district)
-    return district
-
-
-@pytest_asyncio.fixture
-async def sample_skill(async_session: AsyncSession) -> m.skills:
-    """Создание тестового навыка"""
-    skill = m.skills(
-        id=1,
-        code="ELEC",
-        name="Электрика",
-        is_active=True,
-    )
-    async_session.add(skill)
-    await async_session.commit()
-    await async_session.refresh(skill)
-    return skill
-
-
-@pytest_asyncio.fixture
-async def master1(async_session: AsyncSession, sample_city, sample_district, sample_skill) -> m.masters:
-    """Создание первого мастера"""
-    master = m.masters(
-        id=101,
-        tg_user_id=1001,
-        full_name="Мастер Первый",
-        phone="+79001111111",
-        city_id=sample_city.id,
-        is_active=True,
-        is_blocked=False,
-        verified=True,
-        is_on_shift=True,
-        has_vehicle=True,
-        rating=Decimal("4.8"),
-    )
-    async_session.add(master)
-    await async_session.flush()
-    
-    # Добавляем район
-    async_session.add(m.master_districts(master_id=master.id, district_id=sample_district.id))
-    
-    # Добавляем навык
-    async_session.add(m.master_skills(master_id=master.id, skill_id=sample_skill.id))
-    
-    await async_session.commit()
-    await async_session.refresh(master)
-    return master
-
-
-@pytest_asyncio.fixture
-async def master2(async_session: AsyncSession, sample_city, sample_district, sample_skill) -> m.masters:
-    """Создание второго мастера"""
-    master = m.masters(
-        id=102,
-        tg_user_id=1002,
-        full_name="Мастер Второй",
-        phone="+79002222222",
-        city_id=sample_city.id,
-        is_active=True,
-        is_blocked=False,
-        verified=True,
-        is_on_shift=True,
-        has_vehicle=False,
-        rating=Decimal("4.5"),
-    )
-    async_session.add(master)
-    await async_session.flush()
-    
-    # Добавляем район
-    async_session.add(m.master_districts(master_id=master.id, district_id=sample_district.id))
-    
-    # Добавляем навык
-    async_session.add(m.master_skills(master_id=master.id, skill_id=sample_skill.id))
-    
-    await async_session.commit()
-    await async_session.refresh(master)
-    return master
-
-
-@pytest_asyncio.fixture
-async def master3_preferred_unavailable(async_session: AsyncSession, sample_city, sample_district, sample_skill) -> m.masters:
-    """Создание третьего мастера (preferred, но недоступен)"""
-    master = m.masters(
-        id=103,
-        tg_user_id=1003,
-        full_name="Мастер Третий (Preferred)",
-        phone="+79003333333",
-        city_id=sample_city.id,
-        is_active=True,
-        is_blocked=False,
-        verified=True,
-        is_on_shift=False,  # ❌ НЕ на смене
-        has_vehicle=True,
-        rating=Decimal("5.0"),
-    )
-    async_session.add(master)
-    await async_session.flush()
-    
-    # Добавляем район
-    async_session.add(m.master_districts(master_id=master.id, district_id=sample_district.id))
-    
-    # Добавляем навык
-    async_session.add(m.master_skills(master_id=master.id, skill_id=sample_skill.id))
-    
-    await async_session.commit()
-    await async_session.refresh(master)
-    return master
-
-
-@pytest_asyncio.fixture
-async def sample_order(async_session: AsyncSession, sample_city, sample_district) -> m.orders:
-    """Создание тестового заказа"""
-    order = m.orders(
-        id=1,
-        city_id=sample_city.id,
-        district_id=sample_district.id,
-        category=m.OrderCategory.ELECTRICS,
-        type=m.OrderType.NORMAL,
-        status=m.OrderStatus.SEARCHING,
-        client_name="Тестовый клиент",
-        client_phone="+79009999999",
-        house="10",
-        timeslot_start_utc=datetime.utcnow() + timedelta(hours=2),
-        timeslot_end_utc=datetime.utcnow() + timedelta(hours=4),
-        version=1,
-    )
-    async_session.add(order)
-    await async_session.commit()
-    await async_session.refresh(order)
-    return order
-
-
-# ============================================================================
-# FIX 1.1: RACE CONDITION TESTS
-# ============================================================================
-
-@pytest.mark.asyncio
-async def test_race_condition_two_masters_accept_simultaneously(
-    async_session: AsyncSession,
-    sample_order: m.orders,
-    master1: m.masters,
-    master2: m.masters,
-):
-    """
-    Тест Fix 1.1: Два мастера одновременно принимают заказ
-    
-    Ожидаемое поведение:
-    - Первый мастер успешно принимает заказ
-    - Второй мастер получает ошибку "Заказ уже взят"
-    - В БД только один assigned_master_id
-    """
-    # Создаём офферы для обоих мастеров
-    async_session.add_all([
-        m.offers(
-            order_id=sample_order.id,
-            master_id=master1.id,
-            round_number=1,
-            state=m.OfferState.SENT,
-            sent_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(seconds=120),
-        ),
-        m.offers(
-            order_id=sample_order.id,
-            master_id=master2.id,
-            round_number=1,
-            state=m.OfferState.SENT,
-            sent_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(seconds=120),
-        ),
-    ])
-    await async_session.commit()
-    
-    # Мокируем callback для обоих мастеров
-    callback1 = MagicMock()
-    callback1.data = f"m:new:acc:{sample_order.id}:1"
-    callback1.from_user.id = master1.tg_user_id
-    
-    callback2 = MagicMock()
-    callback2.data = f"m:new:acc:{sample_order.id}:1"
-    callback2.from_user.id = master2.tg_user_id
-    
-    # Мокируем функции уведомлений
-    mock_answer = AsyncMock()
-    mock_render = AsyncMock()
-    
-    import field_service.bots.master_bot.handlers.orders as orders_module
-    original_answer = orders_module.safe_answer_callback
-    original_render = orders_module._render_offers
-    
-    orders_module.safe_answer_callback = mock_answer
-    orders_module._render_offers = mock_render
-    
-    try:
-        # Запускаем оба принятия параллельно
-        results = await asyncio.gather(
-            orders.offer_accept(callback1, async_session, master1),
-            orders.offer_accept(callback2, async_session, master2),
-            return_exceptions=True,
-        )
-        
-        # Проверяем результат в БД
-        await async_session.commit()
-        order_result = await async_session.get(m.orders, sample_order.id)
-        
-        # ✅ Проверка 1: Заказ назначен только одному мастеру
-        assert order_result.assigned_master_id is not None
-        assert order_result.assigned_master_id in [master1.id, master2.id]
-        assert order_result.status == m.OrderStatus.ASSIGNED
-        
-        # ✅ Проверка 2: Один оффер ACCEPTED, другой CANCELED
-        offers_result = await async_session.execute(
-            select(m.offers).where(m.offers.order_id == sample_order.id)
-        )
-        offers_list = list(offers_result.scalars().all())
-        
-        accepted_count = sum(1 for o in offers_list if o.state == m.OfferState.ACCEPTED)
-        canceled_count = sum(1 for o in offers_list if o.state == m.OfferState.CANCELED)
-        
-        assert accepted_count == 1, "Должен быть ровно 1 принятый оффер"
-        assert canceled_count == 1, "Должен быть ровно 1 отменённый оффер"
-        
-        # ✅ Проверка 3: Версия заказа увеличилась
-        assert order_result.version == 2
-        
-        print("✅ FIX 1.1 TEST PASSED: Race condition prevented!")
-        
-    finally:
-        # Восстанавливаем оригинальные функции
-        orders_module.safe_answer_callback = original_answer
-        orders_module._render_offers = original_render
-
-
-@pytest.mark.asyncio
-async def test_race_condition_with_for_update_skip_locked(
-    async_session: AsyncSession,
-    sample_order: m.orders,
-    master1: m.masters,
-):
-    """
-    Тест Fix 1.1: Проверка работы FOR UPDATE SKIP LOCKED
-    
-    Ожидаемое поведение:
-    - Заблокированная строка пропускается (skip_locked=True)
-    - Второй запрос возвращает None вместо ожидания
-    """
-    # Начинаем транзакцию с блокировкой
-    from sqlalchemy import text
-    
-    # Первая сессия блокирует заказ
-    async with async_session.begin():
-        locked_order = await async_session.execute(
-            select(m.orders)
-            .where(m.orders.id == sample_order.id)
-            .with_for_update()
-        )
-        locked_order.first()
-        
-        # Пытаемся получить заказ со SKIP LOCKED во второй сессии
-        # (симулируем второго мастера)
-        from field_service.db.session import SessionLocal
-        async with SessionLocal() as session2:
-            skipped_order = await session2.execute(
-                select(m.orders)
-                .where(m.orders.id == sample_order.id)
-                .with_for_update(skip_locked=True)
-            )
-            result = skipped_order.first()
-            
-            # ✅ Проверка: Заблокированная строка пропущена
-            assert result is None, "SKIP LOCKED должен вернуть None для заблокированной строки"
-    
-    print("✅ FIX 1.1 TEST PASSED: FOR UPDATE SKIP LOCKED works correctly!")
-
-
-# ============================================================================
-# FIX 1.2: DEFERRED ORDERS TESTS
-# ============================================================================
-
-@pytest.mark.asyncio
-async def test_deferred_order_can_be_accepted(
-    async_session: AsyncSession,
-    sample_order: m.orders,
-    master1: m.masters,
-):
-    """
-    Тест Fix 1.2: Мастер может принять DEFERRED заказ
-    
-    Ожидаемое поведение:
-    - Заказ в статусе DEFERRED
-    - Мастер успешно принимает оффер
-    - Статус меняется DEFERRED → ASSIGNED
-    """
-    # Устанавливаем статус DEFERRED
-    sample_order.status = m.OrderStatus.DEFERRED
-    await async_session.commit()
-    
-    # Создаём оффер
-    async_session.add(
-        m.offers(
-            order_id=sample_order.id,
-            master_id=master1.id,
-            round_number=1,
-            state=m.OfferState.SENT,
-            sent_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(seconds=120),
-        )
-    )
-    await async_session.commit()
-    
-    # Мокируем callback
-    callback = MagicMock()
-    callback.data = f"m:new:acc:{sample_order.id}:1"
-    callback.from_user.id = master1.tg_user_id
-    
-    # Мокируем функции
-    mock_answer = AsyncMock()
-    mock_render = AsyncMock()
-    
-    import field_service.bots.master_bot.handlers.orders as orders_module
-    original_answer = orders_module.safe_answer_callback
-    original_render = orders_module._render_offers
-    
-    orders_module.safe_answer_callback = mock_answer
-    orders_module._render_offers = mock_render
-    
-    try:
-        # Принимаем оффер
-        await orders.offer_accept(callback, async_session, master1)
-        
-        # Проверяем результат
-        await async_session.commit()
-        order_result = await async_session.get(m.orders, sample_order.id)
-        
-        # ✅ Проверка 1: Заказ принят
-        assert order_result.assigned_master_id == master1.id
-        
-        # ✅ Проверка 2: Статус изменился DEFERRED → ASSIGNED
-        assert order_result.status == m.OrderStatus.ASSIGNED
-        
-        # ✅ Проверка 3: Оффер в состоянии ACCEPTED
-        offer_result = await async_session.execute(
-            select(m.offers).where(
-                m.offers.order_id == sample_order.id,
-                m.offers.master_id == master1.id
-            )
-        )
-        offer = offer_result.scalar_one()
-        assert offer.state == m.OfferState.ACCEPTED
-        
-        print("✅ FIX 1.2 TEST PASSED: DEFERRED order accepted successfully!")
-        
-    finally:
-        orders_module.safe_answer_callback = original_answer
-        orders_module._render_offers = original_render
-
-
-@pytest.mark.asyncio
-async def test_deferred_orders_included_in_distribution(
-    async_session: AsyncSession,
-    sample_city: m.cities,
-    sample_district: m.districts,
-):
-    """
-    Тест Fix 1.2: DEFERRED заказы с офферами включаются в распределение
-    
-    Ожидаемое поведение:
-    - DEFERRED заказ с активным оффером попадает в выборку
-    - DEFERRED заказ без оффера НЕ попадает в выборку
-    """
-    # Создаём два DEFERRED заказа
-    order_with_offer = m.orders(
-        id=100,
-        city_id=sample_city.id,
-        district_id=sample_district.id,
-        category=m.OrderCategory.ELECTRICS,
-        type=m.OrderType.NORMAL,
-        status=m.OrderStatus.DEFERRED,  # ✅ DEFERRED
-        client_name="Клиент 1",
-        client_phone="+79001111111",
-        house="10",
-        version=1,
-    )
-    
-    order_without_offer = m.orders(
-        id=101,
-        city_id=sample_city.id,
-        district_id=sample_district.id,
-        category=m.OrderCategory.ELECTRICS,
-        type=m.OrderType.NORMAL,
-        status=m.OrderStatus.DEFERRED,  # ✅ DEFERRED
-        client_name="Клиент 2",
-        client_phone="+79002222222",
-        house="20",
-        version=1,
-    )
-    
-    async_session.add_all([order_with_offer, order_without_offer])
-    await async_session.flush()
-    
-    # Добавляем оффер для первого заказа
-    async_session.add(
-        m.offers(
-            order_id=order_with_offer.id,
-            master_id=101,
-            round_number=1,
-            state=m.OfferState.SENT,  # ✅ Активный оффер
-            sent_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(seconds=120),
-        )
-    )
-    await async_session.commit()
-    
-    # Получаем заказы для распределения
-    orders_for_dist = await ds._fetch_orders_for_distribution(async_session)
-    
-    order_ids = [o.id for o in orders_for_dist]
-    
-    # ✅ Проверка: DEFERRED с оффером включён
-    assert order_with_offer.id in order_ids, \
-        "DEFERRED заказ с активным оффером должен быть в распределении"
-    
-    # ✅ Проверка: DEFERRED без оффера НЕ включён
-    assert order_without_offer.id not in order_ids, \
-        "DEFERRED заказ без оффера НЕ должен быть в распределении"
-    
-    print("✅ FIX 1.2 TEST PASSED: DEFERRED orders correctly filtered in distribution!")
-
-
-# ============================================================================
-# FIX 1.3: GUARANTEE ORDERS TESTS
-# ============================================================================
-
-@pytest.mark.asyncio
-async def test_guarantee_order_fallback_when_preferred_unavailable(
-    async_session: AsyncSession,
-    sample_city: m.cities,
-    sample_district: m.districts,
-    sample_skill: m.skills,
-    master1: m.masters,
-    master3_preferred_unavailable: m.masters,
-):
-    """
-    Тест Fix 1.3: Гарантийный заказ - fallback при недоступном preferred мастере
-    
-    Ожидаемое поведение:
-    - Preferred мастер не на смене (unavailable)
-    - Система ищет альтернативных мастеров
-    - Оффер отправляется доступному мастеру
-    - НЕТ эскалации к логисту
-    """
-    # Создаём гарантийный заказ с preferred мастером
-    guarantee_order = m.orders(
-        id=200,
-        city_id=sample_city.id,
-        district_id=sample_district.id,
-        category=m.OrderCategory.ELECTRICS,
-        type=m.OrderType.GUARANTEE,  # ✅ Гарантийный
-        status=m.OrderStatus.GUARANTEE,
-        preferred_master_id=master3_preferred_unavailable.id,  # ✅ Preferred (недоступен)
-        client_name="Гарантийный клиент",
-        client_phone="+79003333333",
-        house="30",
-        version=1,
-    )
-    async_session.add(guarantee_order)
-    await async_session.commit()
-    
-    # Получаем кандидатов с preferred
-    skill_code = "ELEC"
-    
-    # Первая попытка: с preferred
-    ranked_with_preferred = await ds._candidates(
-        async_session,
-        oid=guarantee_order.id,
-        city_id=sample_city.id,
-        district_id=sample_district.id,
-        skill_code=skill_code,
-        preferred_mid=master3_preferred_unavailable.id,
-        fallback_limit=5,
-    )
-    
-    # ✅ Проверка 1: Preferred недоступен, список пуст
-    assert len(ranked_with_preferred) == 0, \
-        "Preferred мастер не на смене, должен быть отфильтрован"
-    
-    # Вторая попытка: БЕЗ preferred (fallback)
-    ranked_without_preferred = await ds._candidates(
-        async_session,
-        oid=guarantee_order.id,
-        city_id=sample_city.id,
-        district_id=sample_district.id,
-        skill_code=skill_code,
-        preferred_mid=None,  # ✅ Fallback
-        fallback_limit=5,
-    )
-    
-    # ✅ Проверка 2: Найден альтернативный мастер
-    assert len(ranked_without_preferred) > 0, \
-        "Должны быть найдены альтернативные мастера"
-    
-    assert master1.id in [c['mid'] for c in ranked_without_preferred], \
-        "master1 (доступный) должен быть в списке кандидатов"
-    
-    print("✅ FIX 1.3 TEST PASSED: Guarantee order fallback works correctly!")
-
-
-@pytest.mark.asyncio
-async def test_preferred_master_diagnostics(
-    async_session: AsyncSession,
-    sample_district: m.districts,
-    master3_preferred_unavailable: m.masters,
-):
-    """
-    Тест Fix 1.3: Диагностика preferred мастера
-    
-    Ожидаемое поведение:
-    - Функция диагностики определяет причины недоступности
-    - Возвращает детальную информацию
-    """
-    # Проверяем диагностику
-    diag = await ds._check_preferred_master_availability(
-        async_session,
-        master_id=master3_preferred_unavailable.id,
-        order_id=1,
-        district_id=sample_district.id,
-        skill_code="ELEC",
-    )
-    
-    # ✅ Проверка 1: Мастер недоступен
-    assert diag["available"] is False, "Preferred мастер должен быть недоступен"
-    
-    # ✅ Проверка 2: Причина - not_on_shift
-    assert "not_on_shift" in diag["reasons"], \
-        "Причина недоступности: not_on_shift"
-    
-    print("✅ FIX 1.3 TEST PASSED: Preferred master diagnostics working!")
-
-
-# ============================================================================
-# INTEGRATION TEST: ALL FIXES TOGETHER
-# ============================================================================
-
-@pytest.mark.asyncio
-async def test_all_fixes_integration(
-    async_session: AsyncSession,
-    sample_city: m.cities,
-    sample_district: m.districts,
-    sample_skill: m.skills,
-    master1: m.masters,
-    master2: m.masters,
-    master3_preferred_unavailable: m.masters,
-):
-    """
-    Интеграционный тест: Все исправления вместе
-    
-    Сценарий:
-    1. Создаём DEFERRED гарантийный заказ с preferred мастером
-    2. Preferred мастер недоступен
-    3. Два других мастера пытаются принять одновременно
-    
-    Ожидание:
-    - Заказ можно принять несмотря на DEFERRED
-    - Fallback находит альтернативных мастеров
-    - Race condition предотвращён
-    """
-    # Создаём DEFERRED гарантийный заказ
-    complex_order = m.orders(
-        id=300,
-        city_id=sample_city.id,
-        district_id=sample_district.id,
-        category=m.OrderCategory.ELECTRICS,
-        type=m.OrderType.GUARANTEE,
-        status=m.OrderStatus.DEFERRED,  # ✅ DEFERRED
-        preferred_master_id=master3_preferred_unavailable.id,  # ✅ Preferred unavailable
-        client_name="Комплексный клиент",
-        client_phone="+79004444444",
-        house="40",
-        version=1,
-    )
-    async_session.add(complex_order)
-    await async_session.flush()
-    
-    # Создаём офферы для обоих доступных мастеров
-    async_session.add_all([
-        m.offers(
-            order_id=complex_order.id,
-            master_id=master1.id,
-            round_number=1,
-            state=m.OfferState.SENT,
-            sent_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(seconds=120),
-        ),
-        m.offers(
-            order_id=complex_order.id,
-            master_id=master2.id,
-            round_number=1,
-            state=m.OfferState.SENT,
-            sent_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(seconds=120),
-        ),
-    ])
-    await async_session.commit()
-    
-    # Мокируем callbacks
-    callback1 = MagicMock()
-    callback1.data = f"m:new:acc:{complex_order.id}:1"
-    callback1.from_user.id = master1.tg_user_id
-    
-    callback2 = MagicMock()
-    callback2.data = f"m:new:acc:{complex_order.id}:1"
-    callback2.from_user.id = master2.tg_user_id
-    
-    # Мокируем функции
-    mock_answer = AsyncMock()
-    mock_render = AsyncMock()
-    
-    import field_service.bots.master_bot.handlers.orders as orders_module
-    original_answer = orders_module.safe_answer_callback
-    original_render = orders_module._render_offers
-    
-    orders_module.safe_answer_callback = mock_answer
-    orders_module._render_offers = mock_render
-    
-    try:
-        # Параллельное принятие
-        await asyncio.gather(
-            orders.offer_accept(callback1, async_session, master1),
-            orders.offer_accept(callback2, async_session, master2),
-            return_exceptions=True,
-        )
-        
-        # Проверяем результат
-        await async_session.commit()
-        order_result = await async_session.get(m.orders, complex_order.id)
-        
-        # ✅ Fix 1.2: DEFERRED заказ принят
-        assert order_result.status == m.OrderStatus.ASSIGNED, \
-            "DEFERRED заказ должен стать ASSIGNED"
-        
-        # ✅ Fix 1.1: Только один мастер получил заказ
-        assert order_result.assigned_master_id is not None
-        assert order_result.assigned_master_id in [master1.id, master2.id]
-        
-        # ✅ Fix 1.3: Preferred НЕ получил заказ (недоступен)
-        assert order_result.assigned_master_id != master3_preferred_unavailable.id, \
-            "Preferred (недоступный) мастер НЕ должен получить заказ"
-        
-        print("✅ INTEGRATION TEST PASSED: All fixes working together!")
-        
-    finally:
-        orders_module.safe_answer_callback = original_answer
-        orders_module._render_offers = original_render
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "-s"])
-```
-.
-## \ProjectF\field-service\tests\test_fix_1_3_comprehensive.py
 ```python
 # -*- coding: utf-8 -*-
 """
@@ -60669,9 +48060,735 @@ async def test_full_distribution_cycle_with_preferred(
 if __name__ == "__main__":
     print("Запустите тесты через pytest:")
     print("pytest tests/test_fix_1_3_comprehensive.py -v -s")
+
 ```
-.
-## \ProjectF\field-service\tests\test_fsm_timeout.py
+
+---
+
+#### `field-service/tests/test_fixes_stage_1.py`
+
+**Strok:** 709  
+**Razmer:** 25.67 KB
+
+```python
+# -*- coding: utf-8 -*-
+"""
+E2E тесты для проверки исправлений Stage 1.1-1.3
+
+Fix 1.1: Race Condition при параллельном принятии офферов
+Fix 1.2: DEFERRED заказы - разрешение принятия в нерабочее время
+Fix 1.3: Гарантийные заказы - fallback при недоступном preferred мастере
+"""
+
+import asyncio
+import pytest
+import pytest_asyncio
+from datetime import datetime, timedelta
+from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock
+
+from sqlalchemy import select, insert, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from field_service.db import models as m
+from field_service.bots.master_bot.handlers import orders
+from field_service.services import distribution_scheduler as ds
+
+
+# ============================================================================
+# FIXTURES
+# ============================================================================
+
+@pytest_asyncio.fixture
+async def sample_city(async_session: AsyncSession) -> m.cities:
+    """Создание тестового города"""
+    city = m.cities(
+        id=1,
+        name="Тестовый город",
+        timezone="Europe/Moscow",
+    )
+    async_session.add(city)
+    await async_session.commit()
+    await async_session.refresh(city)
+    return city
+
+
+@pytest_asyncio.fixture
+async def sample_district(async_session: AsyncSession, sample_city) -> m.districts:
+    """Создание тестового района"""
+    district = m.districts(
+        id=1,
+        city_id=sample_city.id,
+        name="Центральный район",
+    )
+    async_session.add(district)
+    await async_session.commit()
+    await async_session.refresh(district)
+    return district
+
+
+@pytest_asyncio.fixture
+async def sample_skill(async_session: AsyncSession) -> m.skills:
+    """Создание тестового навыка"""
+    skill = m.skills(
+        id=1,
+        code="ELEC",
+        name="Электрика",
+        is_active=True,
+    )
+    async_session.add(skill)
+    await async_session.commit()
+    await async_session.refresh(skill)
+    return skill
+
+
+@pytest_asyncio.fixture
+async def master1(async_session: AsyncSession, sample_city, sample_district, sample_skill) -> m.masters:
+    """Создание первого мастера"""
+    master = m.masters(
+        id=101,
+        tg_user_id=1001,
+        full_name="Мастер Первый",
+        phone="+79001111111",
+        city_id=sample_city.id,
+        is_active=True,
+        is_blocked=False,
+        verified=True,
+        is_on_shift=True,
+        has_vehicle=True,
+        rating=Decimal("4.8"),
+    )
+    async_session.add(master)
+    await async_session.flush()
+    
+    # Добавляем район
+    async_session.add(m.master_districts(master_id=master.id, district_id=sample_district.id))
+    
+    # Добавляем навык
+    async_session.add(m.master_skills(master_id=master.id, skill_id=sample_skill.id))
+    
+    await async_session.commit()
+    await async_session.refresh(master)
+    return master
+
+
+@pytest_asyncio.fixture
+async def master2(async_session: AsyncSession, sample_city, sample_district, sample_skill) -> m.masters:
+    """Создание второго мастера"""
+    master = m.masters(
+        id=102,
+        tg_user_id=1002,
+        full_name="Мастер Второй",
+        phone="+79002222222",
+        city_id=sample_city.id,
+        is_active=True,
+        is_blocked=False,
+        verified=True,
+        is_on_shift=True,
+        has_vehicle=False,
+        rating=Decimal("4.5"),
+    )
+    async_session.add(master)
+    await async_session.flush()
+    
+    # Добавляем район
+    async_session.add(m.master_districts(master_id=master.id, district_id=sample_district.id))
+    
+    # Добавляем навык
+    async_session.add(m.master_skills(master_id=master.id, skill_id=sample_skill.id))
+    
+    await async_session.commit()
+    await async_session.refresh(master)
+    return master
+
+
+@pytest_asyncio.fixture
+async def master3_preferred_unavailable(async_session: AsyncSession, sample_city, sample_district, sample_skill) -> m.masters:
+    """Создание третьего мастера (preferred, но недоступен)"""
+    master = m.masters(
+        id=103,
+        tg_user_id=1003,
+        full_name="Мастер Третий (Preferred)",
+        phone="+79003333333",
+        city_id=sample_city.id,
+        is_active=True,
+        is_blocked=False,
+        verified=True,
+        is_on_shift=False,  # ❌ НЕ на смене
+        has_vehicle=True,
+        rating=Decimal("5.0"),
+    )
+    async_session.add(master)
+    await async_session.flush()
+    
+    # Добавляем район
+    async_session.add(m.master_districts(master_id=master.id, district_id=sample_district.id))
+    
+    # Добавляем навык
+    async_session.add(m.master_skills(master_id=master.id, skill_id=sample_skill.id))
+    
+    await async_session.commit()
+    await async_session.refresh(master)
+    return master
+
+
+@pytest_asyncio.fixture
+async def sample_order(async_session: AsyncSession, sample_city, sample_district) -> m.orders:
+    """Создание тестового заказа"""
+    order = m.orders(
+        id=1,
+        city_id=sample_city.id,
+        district_id=sample_district.id,
+        category=m.OrderCategory.ELECTRICS,
+        type=m.OrderType.NORMAL,
+        status=m.OrderStatus.SEARCHING,
+        client_name="Тестовый клиент",
+        client_phone="+79009999999",
+        house="10",
+        timeslot_start_utc=datetime.utcnow() + timedelta(hours=2),
+        timeslot_end_utc=datetime.utcnow() + timedelta(hours=4),
+        version=1,
+    )
+    async_session.add(order)
+    await async_session.commit()
+    await async_session.refresh(order)
+    return order
+
+
+# ============================================================================
+# FIX 1.1: RACE CONDITION TESTS
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_race_condition_two_masters_accept_simultaneously(
+    async_session: AsyncSession,
+    sample_order: m.orders,
+    master1: m.masters,
+    master2: m.masters,
+):
+    """
+    Тест Fix 1.1: Два мастера одновременно принимают заказ
+    
+    Ожидаемое поведение:
+    - Первый мастер успешно принимает заказ
+    - Второй мастер получает ошибку "Заказ уже взят"
+    - В БД только один assigned_master_id
+    """
+    # Создаём офферы для обоих мастеров
+    async_session.add_all([
+        m.offers(
+            order_id=sample_order.id,
+            master_id=master1.id,
+            round_number=1,
+            state=m.OfferState.SENT,
+            sent_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(seconds=120),
+        ),
+        m.offers(
+            order_id=sample_order.id,
+            master_id=master2.id,
+            round_number=1,
+            state=m.OfferState.SENT,
+            sent_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(seconds=120),
+        ),
+    ])
+    await async_session.commit()
+    
+    # Мокируем callback для обоих мастеров
+    callback1 = MagicMock()
+    callback1.data = f"m:new:acc:{sample_order.id}:1"
+    callback1.from_user.id = master1.tg_user_id
+    
+    callback2 = MagicMock()
+    callback2.data = f"m:new:acc:{sample_order.id}:1"
+    callback2.from_user.id = master2.tg_user_id
+    
+    # Мокируем функции уведомлений
+    mock_answer = AsyncMock()
+    mock_render = AsyncMock()
+    
+    import field_service.bots.master_bot.handlers.orders as orders_module
+    original_answer = orders_module.safe_answer_callback
+    original_render = orders_module._render_offers
+    
+    orders_module.safe_answer_callback = mock_answer
+    orders_module._render_offers = mock_render
+    
+    try:
+        # Запускаем оба принятия параллельно
+        results = await asyncio.gather(
+            orders.offer_accept(callback1, async_session, master1),
+            orders.offer_accept(callback2, async_session, master2),
+            return_exceptions=True,
+        )
+        
+        # Проверяем результат в БД
+        await async_session.commit()
+        order_result = await async_session.get(m.orders, sample_order.id)
+        
+        # ✅ Проверка 1: Заказ назначен только одному мастеру
+        assert order_result.assigned_master_id is not None
+        assert order_result.assigned_master_id in [master1.id, master2.id]
+        assert order_result.status == m.OrderStatus.ASSIGNED
+        
+        # ✅ Проверка 2: Один оффер ACCEPTED, другой CANCELED
+        offers_result = await async_session.execute(
+            select(m.offers).where(m.offers.order_id == sample_order.id)
+        )
+        offers_list = list(offers_result.scalars().all())
+        
+        accepted_count = sum(1 for o in offers_list if o.state == m.OfferState.ACCEPTED)
+        canceled_count = sum(1 for o in offers_list if o.state == m.OfferState.CANCELED)
+        
+        assert accepted_count == 1, "Должен быть ровно 1 принятый оффер"
+        assert canceled_count == 1, "Должен быть ровно 1 отменённый оффер"
+        
+        # ✅ Проверка 3: Версия заказа увеличилась
+        assert order_result.version == 2
+        
+        print("✅ FIX 1.1 TEST PASSED: Race condition prevented!")
+        
+    finally:
+        # Восстанавливаем оригинальные функции
+        orders_module.safe_answer_callback = original_answer
+        orders_module._render_offers = original_render
+
+
+@pytest.mark.asyncio
+async def test_race_condition_with_for_update_skip_locked(
+    async_session: AsyncSession,
+    sample_order: m.orders,
+    master1: m.masters,
+):
+    """
+    Тест Fix 1.1: Проверка работы FOR UPDATE SKIP LOCKED
+    
+    Ожидаемое поведение:
+    - Заблокированная строка пропускается (skip_locked=True)
+    - Второй запрос возвращает None вместо ожидания
+    """
+    # Начинаем транзакцию с блокировкой
+    from sqlalchemy import text
+    
+    # Первая сессия блокирует заказ
+    async with async_session.begin():
+        locked_order = await async_session.execute(
+            select(m.orders)
+            .where(m.orders.id == sample_order.id)
+            .with_for_update()
+        )
+        locked_order.first()
+        
+        # Пытаемся получить заказ со SKIP LOCKED во второй сессии
+        # (симулируем второго мастера)
+        from field_service.db.session import SessionLocal
+        async with SessionLocal() as session2:
+            skipped_order = await session2.execute(
+                select(m.orders)
+                .where(m.orders.id == sample_order.id)
+                .with_for_update(skip_locked=True)
+            )
+            result = skipped_order.first()
+            
+            # ✅ Проверка: Заблокированная строка пропущена
+            assert result is None, "SKIP LOCKED должен вернуть None для заблокированной строки"
+    
+    print("✅ FIX 1.1 TEST PASSED: FOR UPDATE SKIP LOCKED works correctly!")
+
+
+# ============================================================================
+# FIX 1.2: DEFERRED ORDERS TESTS
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_deferred_order_can_be_accepted(
+    async_session: AsyncSession,
+    sample_order: m.orders,
+    master1: m.masters,
+):
+    """
+    Тест Fix 1.2: Мастер может принять DEFERRED заказ
+    
+    Ожидаемое поведение:
+    - Заказ в статусе DEFERRED
+    - Мастер успешно принимает оффер
+    - Статус меняется DEFERRED → ASSIGNED
+    """
+    # Устанавливаем статус DEFERRED
+    sample_order.status = m.OrderStatus.DEFERRED
+    await async_session.commit()
+    
+    # Создаём оффер
+    async_session.add(
+        m.offers(
+            order_id=sample_order.id,
+            master_id=master1.id,
+            round_number=1,
+            state=m.OfferState.SENT,
+            sent_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(seconds=120),
+        )
+    )
+    await async_session.commit()
+    
+    # Мокируем callback
+    callback = MagicMock()
+    callback.data = f"m:new:acc:{sample_order.id}:1"
+    callback.from_user.id = master1.tg_user_id
+    
+    # Мокируем функции
+    mock_answer = AsyncMock()
+    mock_render = AsyncMock()
+    
+    import field_service.bots.master_bot.handlers.orders as orders_module
+    original_answer = orders_module.safe_answer_callback
+    original_render = orders_module._render_offers
+    
+    orders_module.safe_answer_callback = mock_answer
+    orders_module._render_offers = mock_render
+    
+    try:
+        # Принимаем оффер
+        await orders.offer_accept(callback, async_session, master1)
+        
+        # Проверяем результат
+        await async_session.commit()
+        order_result = await async_session.get(m.orders, sample_order.id)
+        
+        # ✅ Проверка 1: Заказ принят
+        assert order_result.assigned_master_id == master1.id
+        
+        # ✅ Проверка 2: Статус изменился DEFERRED → ASSIGNED
+        assert order_result.status == m.OrderStatus.ASSIGNED
+        
+        # ✅ Проверка 3: Оффер в состоянии ACCEPTED
+        offer_result = await async_session.execute(
+            select(m.offers).where(
+                m.offers.order_id == sample_order.id,
+                m.offers.master_id == master1.id
+            )
+        )
+        offer = offer_result.scalar_one()
+        assert offer.state == m.OfferState.ACCEPTED
+        
+        print("✅ FIX 1.2 TEST PASSED: DEFERRED order accepted successfully!")
+        
+    finally:
+        orders_module.safe_answer_callback = original_answer
+        orders_module._render_offers = original_render
+
+
+@pytest.mark.asyncio
+async def test_deferred_orders_included_in_distribution(
+    async_session: AsyncSession,
+    sample_city: m.cities,
+    sample_district: m.districts,
+):
+    """
+    Тест Fix 1.2: DEFERRED заказы с офферами включаются в распределение
+    
+    Ожидаемое поведение:
+    - DEFERRED заказ с активным оффером попадает в выборку
+    - DEFERRED заказ без оффера НЕ попадает в выборку
+    """
+    # Создаём два DEFERRED заказа
+    order_with_offer = m.orders(
+        id=100,
+        city_id=sample_city.id,
+        district_id=sample_district.id,
+        category=m.OrderCategory.ELECTRICS,
+        type=m.OrderType.NORMAL,
+        status=m.OrderStatus.DEFERRED,  # ✅ DEFERRED
+        client_name="Клиент 1",
+        client_phone="+79001111111",
+        house="10",
+        version=1,
+    )
+    
+    order_without_offer = m.orders(
+        id=101,
+        city_id=sample_city.id,
+        district_id=sample_district.id,
+        category=m.OrderCategory.ELECTRICS,
+        type=m.OrderType.NORMAL,
+        status=m.OrderStatus.DEFERRED,  # ✅ DEFERRED
+        client_name="Клиент 2",
+        client_phone="+79002222222",
+        house="20",
+        version=1,
+    )
+    
+    async_session.add_all([order_with_offer, order_without_offer])
+    await async_session.flush()
+    
+    # Добавляем оффер для первого заказа
+    async_session.add(
+        m.offers(
+            order_id=order_with_offer.id,
+            master_id=101,
+            round_number=1,
+            state=m.OfferState.SENT,  # ✅ Активный оффер
+            sent_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(seconds=120),
+        )
+    )
+    await async_session.commit()
+    
+    # Получаем заказы для распределения
+    orders_for_dist = await ds._fetch_orders_for_distribution(async_session)
+    
+    order_ids = [o.id for o in orders_for_dist]
+    
+    # ✅ Проверка: DEFERRED с оффером включён
+    assert order_with_offer.id in order_ids, \
+        "DEFERRED заказ с активным оффером должен быть в распределении"
+    
+    # ✅ Проверка: DEFERRED без оффера НЕ включён
+    assert order_without_offer.id not in order_ids, \
+        "DEFERRED заказ без оффера НЕ должен быть в распределении"
+    
+    print("✅ FIX 1.2 TEST PASSED: DEFERRED orders correctly filtered in distribution!")
+
+
+# ============================================================================
+# FIX 1.3: GUARANTEE ORDERS TESTS
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_guarantee_order_fallback_when_preferred_unavailable(
+    async_session: AsyncSession,
+    sample_city: m.cities,
+    sample_district: m.districts,
+    sample_skill: m.skills,
+    master1: m.masters,
+    master3_preferred_unavailable: m.masters,
+):
+    """
+    Тест Fix 1.3: Гарантийный заказ - fallback при недоступном preferred мастере
+    
+    Ожидаемое поведение:
+    - Preferred мастер не на смене (unavailable)
+    - Система ищет альтернативных мастеров
+    - Оффер отправляется доступному мастеру
+    - НЕТ эскалации к логисту
+    """
+    # Создаём гарантийный заказ с preferred мастером
+    guarantee_order = m.orders(
+        id=200,
+        city_id=sample_city.id,
+        district_id=sample_district.id,
+        category=m.OrderCategory.ELECTRICS,
+        type=m.OrderType.GUARANTEE,  # ✅ Гарантийный
+        status=m.OrderStatus.GUARANTEE,
+        preferred_master_id=master3_preferred_unavailable.id,  # ✅ Preferred (недоступен)
+        client_name="Гарантийный клиент",
+        client_phone="+79003333333",
+        house="30",
+        version=1,
+    )
+    async_session.add(guarantee_order)
+    await async_session.commit()
+    
+    # Получаем кандидатов с preferred
+    skill_code = "ELEC"
+    
+    # Первая попытка: с preferred
+    ranked_with_preferred = await ds._candidates(
+        async_session,
+        oid=guarantee_order.id,
+        city_id=sample_city.id,
+        district_id=sample_district.id,
+        skill_code=skill_code,
+        preferred_mid=master3_preferred_unavailable.id,
+        fallback_limit=5,
+    )
+    
+    # ✅ Проверка 1: Preferred недоступен, список пуст
+    assert len(ranked_with_preferred) == 0, \
+        "Preferred мастер не на смене, должен быть отфильтрован"
+    
+    # Вторая попытка: БЕЗ preferred (fallback)
+    ranked_without_preferred = await ds._candidates(
+        async_session,
+        oid=guarantee_order.id,
+        city_id=sample_city.id,
+        district_id=sample_district.id,
+        skill_code=skill_code,
+        preferred_mid=None,  # ✅ Fallback
+        fallback_limit=5,
+    )
+    
+    # ✅ Проверка 2: Найден альтернативный мастер
+    assert len(ranked_without_preferred) > 0, \
+        "Должны быть найдены альтернативные мастера"
+    
+    assert master1.id in [c['mid'] for c in ranked_without_preferred], \
+        "master1 (доступный) должен быть в списке кандидатов"
+    
+    print("✅ FIX 1.3 TEST PASSED: Guarantee order fallback works correctly!")
+
+
+@pytest.mark.asyncio
+async def test_preferred_master_diagnostics(
+    async_session: AsyncSession,
+    sample_district: m.districts,
+    master3_preferred_unavailable: m.masters,
+):
+    """
+    Тест Fix 1.3: Диагностика preferred мастера
+    
+    Ожидаемое поведение:
+    - Функция диагностики определяет причины недоступности
+    - Возвращает детальную информацию
+    """
+    # Проверяем диагностику
+    diag = await ds._check_preferred_master_availability(
+        async_session,
+        master_id=master3_preferred_unavailable.id,
+        order_id=1,
+        district_id=sample_district.id,
+        skill_code="ELEC",
+    )
+    
+    # ✅ Проверка 1: Мастер недоступен
+    assert diag["available"] is False, "Preferred мастер должен быть недоступен"
+    
+    # ✅ Проверка 2: Причина - not_on_shift
+    assert "not_on_shift" in diag["reasons"], \
+        "Причина недоступности: not_on_shift"
+    
+    print("✅ FIX 1.3 TEST PASSED: Preferred master diagnostics working!")
+
+
+# ============================================================================
+# INTEGRATION TEST: ALL FIXES TOGETHER
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_all_fixes_integration(
+    async_session: AsyncSession,
+    sample_city: m.cities,
+    sample_district: m.districts,
+    sample_skill: m.skills,
+    master1: m.masters,
+    master2: m.masters,
+    master3_preferred_unavailable: m.masters,
+):
+    """
+    Интеграционный тест: Все исправления вместе
+    
+    Сценарий:
+    1. Создаём DEFERRED гарантийный заказ с preferred мастером
+    2. Preferred мастер недоступен
+    3. Два других мастера пытаются принять одновременно
+    
+    Ожидание:
+    - Заказ можно принять несмотря на DEFERRED
+    - Fallback находит альтернативных мастеров
+    - Race condition предотвращён
+    """
+    # Создаём DEFERRED гарантийный заказ
+    complex_order = m.orders(
+        id=300,
+        city_id=sample_city.id,
+        district_id=sample_district.id,
+        category=m.OrderCategory.ELECTRICS,
+        type=m.OrderType.GUARANTEE,
+        status=m.OrderStatus.DEFERRED,  # ✅ DEFERRED
+        preferred_master_id=master3_preferred_unavailable.id,  # ✅ Preferred unavailable
+        client_name="Комплексный клиент",
+        client_phone="+79004444444",
+        house="40",
+        version=1,
+    )
+    async_session.add(complex_order)
+    await async_session.flush()
+    
+    # Создаём офферы для обоих доступных мастеров
+    async_session.add_all([
+        m.offers(
+            order_id=complex_order.id,
+            master_id=master1.id,
+            round_number=1,
+            state=m.OfferState.SENT,
+            sent_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(seconds=120),
+        ),
+        m.offers(
+            order_id=complex_order.id,
+            master_id=master2.id,
+            round_number=1,
+            state=m.OfferState.SENT,
+            sent_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(seconds=120),
+        ),
+    ])
+    await async_session.commit()
+    
+    # Мокируем callbacks
+    callback1 = MagicMock()
+    callback1.data = f"m:new:acc:{complex_order.id}:1"
+    callback1.from_user.id = master1.tg_user_id
+    
+    callback2 = MagicMock()
+    callback2.data = f"m:new:acc:{complex_order.id}:1"
+    callback2.from_user.id = master2.tg_user_id
+    
+    # Мокируем функции
+    mock_answer = AsyncMock()
+    mock_render = AsyncMock()
+    
+    import field_service.bots.master_bot.handlers.orders as orders_module
+    original_answer = orders_module.safe_answer_callback
+    original_render = orders_module._render_offers
+    
+    orders_module.safe_answer_callback = mock_answer
+    orders_module._render_offers = mock_render
+    
+    try:
+        # Параллельное принятие
+        await asyncio.gather(
+            orders.offer_accept(callback1, async_session, master1),
+            orders.offer_accept(callback2, async_session, master2),
+            return_exceptions=True,
+        )
+        
+        # Проверяем результат
+        await async_session.commit()
+        order_result = await async_session.get(m.orders, complex_order.id)
+        
+        # ✅ Fix 1.2: DEFERRED заказ принят
+        assert order_result.status == m.OrderStatus.ASSIGNED, \
+            "DEFERRED заказ должен стать ASSIGNED"
+        
+        # ✅ Fix 1.1: Только один мастер получил заказ
+        assert order_result.assigned_master_id is not None
+        assert order_result.assigned_master_id in [master1.id, master2.id]
+        
+        # ✅ Fix 1.3: Preferred НЕ получил заказ (недоступен)
+        assert order_result.assigned_master_id != master3_preferred_unavailable.id, \
+            "Preferred (недоступный) мастер НЕ должен получить заказ"
+        
+        print("✅ INTEGRATION TEST PASSED: All fixes working together!")
+        
+    finally:
+        orders_module.safe_answer_callback = original_answer
+        orders_module._render_offers = original_render
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "-s"])
+
+```
+
+---
+
+#### `field-service/tests/test_fsm_timeout.py`
+
+**Strok:** 76  
+**Razmer:** 1.97 KB
+
 ```python
 from __future__ import annotations
 
@@ -60748,9 +48865,16 @@ async def test_fsm_timeout_resets_on_activity():
     await asyncio.sleep(0.05)
     assert counter == 1
     assert await state.get_state() is None
+
 ```
-.
-## \ProjectF\field-service\tests\test_full_business_logic.py
+
+---
+
+#### `field-service/tests/test_full_business_logic.py`
+
+**Strok:** 880  
+**Razmer:** 28.82 KB
+
 ```python
 """
 Полноценные интеграционные тесты бизнес-логики.
@@ -61631,9 +49755,16 @@ async def test_master_on_break_cannot_receive_offers(async_session):
     async_session.expire_all()
     await async_session.refresh(order)
     assert order.dist_escalated_logist_at is not None
+
 ```
-.
-## \ProjectF\field-service\tests\test_heartbeat.py
+
+---
+
+#### `field-service/tests/test_heartbeat.py`
+
+**Strok:** 41  
+**Razmer:** 0.95 KB
+
 ```python
 ﻿import asyncio
 from contextlib import suppress
@@ -61675,9 +49806,16 @@ async def test_run_heartbeat_sends_messages(monkeypatch):
     assert bot.calls
     assert bot.calls[0][0] == 42
     assert bot.calls[0][1] == "heartbeat: admin alive"
+
 ```
-.
-## \ProjectF\field-service\tests\test_load_race_condition.py
+
+---
+
+#### `field-service/tests/test_load_race_condition.py`
+
+**Strok:** 559  
+**Razmer:** 19.58 KB
+
 ```python
 # -*- coding: utf-8 -*-
 """
@@ -62237,9 +50375,16 @@ if __name__ == "__main__":
     print("pytest tests/test_load_race_condition.py -v -s")
     print("\nДля стресс-тестов:")
     print("pytest tests/test_load_race_condition.py -v -s -m slow")
+
 ```
-.
-## \ProjectF\field-service\tests\test_logging_utils.py
+
+---
+
+#### `field-service/tests/test_logging_utils.py`
+
+**Strok:** 38  
+**Razmer:** 0.93 KB
+
 ```python
 ﻿import pytest
 
@@ -62278,9 +50423,16 @@ async def test_send_alert_appends_exception_details():
     _, text, _ = bot.calls[0]
     assert "RuntimeError: boom" in text
     assert "Traceback:" in text
+
 ```
-.
-## \ProjectF\field-service\tests\test_master_finance.py
+
+---
+
+#### `field-service/tests/test_master_finance.py`
+
+**Strok:** 22  
+**Razmer:** 0.64 KB
+
 ```python
 ﻿from field_service.bots.master_bot.finance import format_pay_snapshot
 
@@ -62303,9 +50455,16 @@ def test_format_pay_snapshot_renders_fields() -> None:
     assert "****4321" in text
     assert "Ivanov" in text
     assert "Commission #12" in text
+
 ```
-.
-## \ProjectF\field-service\tests\test_master_offer_callbacks.py
+
+---
+
+#### `field-service/tests/test_master_offer_callbacks.py`
+
+**Strok:** 136  
+**Razmer:** 4.10 KB
+
 ```python
 import pytest
 from types import SimpleNamespace
@@ -62442,9 +50601,16 @@ async def test_active_close_start_fallback_to_master(monkeypatch):
     assert state.data == {'close_order_id': 2, 'close_order_amount': None}
     safe_send.assert_awaited_once_with(bot, 777, orders.CLOSE_AMOUNT_PROMPT)
     safe_answer.assert_awaited()
+
 ```
-.
-## \ProjectF\field-service\tests\test_master_start_cancel.py
+
+---
+
+#### `field-service/tests/test_master_start_cancel.py`
+
+**Strok:** 35  
+**Razmer:** 0.73 KB
+
 ```python
 from __future__ import annotations
 
@@ -62480,9 +50646,16 @@ async def test_master_cancel_clears_state(monkeypatch):
 
     assert state.cleared is True
     assert called.flag is True
+
 ```
-.
-## \ProjectF\field-service\tests\test_master_statistics.py
+
+---
+
+#### `field-service/tests/test_master_statistics.py`
+
+**Strok:** 329  
+**Razmer:** 10.76 KB
+
 ```python
 """
 P1-17: Тесты для статистики мастера.
@@ -62812,9 +50985,16 @@ async def test_statistics_formatting_response_time(
     
     assert avg_minutes is not None
     assert float(avg_minutes) < 60  # Должно быть меньше часа
+
 ```
-.
-## \ProjectF\field-service\tests\test_offer_accept_cache_bug.py
+
+---
+
+#### `field-service/tests/test_offer_accept_cache_bug.py`
+
+**Strok:** 184  
+**Razmer:** 7.09 KB
+
 ```python
 """
 Тест для бага: после принятия заказа оффер остаётся в списке "Новые заявки"
@@ -62999,9 +51179,16 @@ async def test_offer_disappears_after_accept(session: AsyncSession) -> None:
     assert order_row[1] == master.id, "Заказ должен быть назначен мастеру"
     
     _log.info("=== TEST SUCCESS: offer_disappears_after_accept ===")
+
 ```
-.
-## \ProjectF\field-service\tests\test_orders_model_compat.py
+
+---
+
+#### `field-service/tests/test_orders_model_compat.py`
+
+**Strok:** 67  
+**Razmer:** 2.18 KB
+
 ```python
 ﻿from __future__ import annotations
 
@@ -63069,9 +51256,16 @@ async def test_total_sum_defaults(async_session) -> None:
     assert stored.timeslot_start_utc is None
     assert stored.timeslot_end_utc is None
     assert stored.no_district is False
+
 ```
-.
-## \ProjectF\field-service\tests\test_owner_requisites.py
+
+---
+
+#### `field-service/tests/test_owner_requisites.py`
+
+**Strok:** 149  
+**Razmer:** 4.63 KB
+
 ```python
 from __future__ import annotations
 
@@ -63221,9 +51415,16 @@ async def test_wait_pay_recipients(async_session) -> None:
     recipient = recipients[0]
     assert recipient.master_id == master_with_chat.id
     assert recipient.tg_user_id == master_with_chat.tg_user_id
+
 ```
-.
-## \ProjectF\field-service\tests\test_p1_10_push_offer_notification.py
+
+---
+
+#### `field-service/tests/test_p1_10_push_offer_notification.py`
+
+**Strok:** 203  
+**Razmer:** 7.59 KB
+
 ```python
 """
 P1-10: Тест push-уведомлений о новых офферах
@@ -63427,9 +51628,16 @@ async def test_notification_without_district(session):
     
     assert data["district"] == "не указан", "Для заказа без района должно быть 'не указан'"
     print(f"✅ Уведомление без района: {data}")
+
 ```
-.
-## \ProjectF\field-service\tests\test_p1_15_finance_grouped.py
+
+---
+
+#### `field-service/tests/test_p1_15_finance_grouped.py`
+
+**Strok:** 305  
+**Razmer:** 11.75 KB
+
 ```python
 """
 P1-15: Тест группировки комиссий по периодам.
@@ -63735,9 +51943,16 @@ def test_finance_segment_keyboard_toggle_grouped() -> None:
     
     # Должна быть кнопка "Обычный список"
     assert 'adm:f:aw:1' in callbacks_grouped, "Должна быть кнопка 'Обычный список'"
+
 ```
-.
-## \ProjectF\field-service\tests\test_p1_16_break_reminder.py
+
+---
+
+#### `field-service/tests/test_p1_16_break_reminder.py`
+
+**Strok:** 174  
+**Razmer:** 6.86 KB
+
 ```python
 """
 Тест P1-16: Напоминание об окончании перерыва
@@ -63912,9 +52127,16 @@ async def test_break_duration_constant():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
+
 ```
-.
-## \ProjectF\field-service\tests\test_p1_9_history_orders.py
+
+---
+
+#### `field-service/tests/test_p1_9_history_orders.py`
+
+**Strok:** 416  
+**Razmer:** 14.51 KB
+
 ```python
 """
 Тесты для P1-9: История заказов мастера.
@@ -64331,9 +52553,16 @@ async def test_active_orders_not_in_history(
     
     assert len(history_orders) == 1, "В истории должен быть только 1 завершенный заказ"
     assert history_orders[0].status == m.OrderStatus.CLOSED
+
 ```
-.
-## \ProjectF\field-service\tests\test_retry_action.py
+
+---
+
+#### `field-service/tests/test_retry_action.py`
+
+**Strok:** 444  
+**Razmer:** 14.09 KB
+
 ```python
 """
 Тесты для P1-13: Retry функциональность при ошибках
@@ -64778,9 +53007,16 @@ async def test_retry_context_increments_attempts(state):
     ctx = await load_retry_context(state)
     assert ctx.attempt == 3
     assert ctx.can_retry() is False  # Достигнут лимит
+
 ```
-.
-## \ProjectF\field-service\tests\test_single_instance.py
+
+---
+
+#### `field-service/tests/test_single_instance.py`
+
+**Strok:** 45  
+**Razmer:** 1.24 KB
+
 ```python
 ﻿import pytest
 from aiohttp import ClientResponseError, RequestInfo
@@ -64826,9 +53062,16 @@ async def test_poll_with_single_instance_guard_logs_and_exits():
     assert bot.calls
     assert bot.calls[0][0] == 555
     assert bot.calls[0][1] == "409 Conflict: another instance running → exit"
+
 ```
-.
-## \ProjectF\field-service\tests\test_smoke.py
+
+---
+
+#### `field-service/tests/test_smoke.py`
+
+**Strok:** 230  
+**Razmer:** 6.96 KB
+
 ```python
 from __future__ import annotations
 
@@ -65059,9 +53302,16 @@ async def test_commission_creation_and_overdue_block(async_session) -> None:
     ).scalar_one()
     assert updated_master.is_blocked is True
     assert updated_master.blocked_reason == "commission_overdue"
+
 ```
-.
-## \ProjectF\field-service\tests\test_staff_access.py
+
+---
+
+#### `field-service/tests/test_staff_access.py`
+
+**Strok:** 541  
+**Razmer:** 16.51 KB
+
 ```python
 from __future__ import annotations
 
@@ -65603,9 +53853,16 @@ async def test_manual_candidates_respects_city_scope(async_session) -> None:
     )
     assert masters == []
     assert has_next is False
+
 ```
-.
-## \ProjectF\field-service\tests\test_step_2_logical_improvements.py
+
+---
+
+#### `field-service/tests/test_step_2_logical_improvements.py`
+
+**Strok:** 552  
+**Razmer:** 19.18 KB
+
 ```python
 """
 ✅ ТЕСТЫ ДЛЯ ЭТАПА 2: ЛОГИЧЕСКИЕ УЛУЧШЕНИЯ
@@ -66158,9 +54415,16 @@ async def test_step_2_integration_all_improvements(
     assert order_normal.dist_escalated_logist_at is None, "Обычный заказ НЕ эскалирован"
     
     print("✅ Все улучшения ЭТАПА 2 работают вместе!")
+
 ```
-.
-## \ProjectF\field-service\tests\test_step_3_optimizations.py
+
+---
+
+#### `field-service/tests/test_step_3_optimizations.py`
+
+**Strok:** 524  
+**Razmer:** 18.72 KB
+
 ```python
 """
 ✅ STEP 3: Тесты для оптимизаций распределения заказов
@@ -66685,9 +54949,16 @@ async def test_all_optimizations_integration(session: AsyncSession):
     assert ds._CONFIG_CACHE is not None
     
     print("✅ Все оптимизации работают корректно вместе")
+
 ```
-.
-## \ProjectF\field-service\tests\test_structured_logging.py
+
+---
+
+#### `field-service/tests/test_structured_logging.py`
+
+**Strok:** 243  
+**Razmer:** 6.74 KB
+
 ```python
 """
 Tests for structured logging system.
@@ -66931,9 +55202,16 @@ def test_timestamp_format(log_capture):
     # Verify parseable
     parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
     assert parsed.tzinfo is not None
+
 ```
-.
-## \ProjectF\field-service\tests\test_time_service_boundaries.py
+
+---
+
+#### `field-service/tests/test_time_service_boundaries.py`
+
+**Strok:** 56  
+**Razmer:** 1.74 KB
+
 ```python
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
@@ -66990,71 +55268,274 @@ def test_compute_slot_deferred_tomorrow_10_13_uses_city_tz() -> None:
     expected_local = datetime.combine(slot.slot_date, time(10, 0), tzinfo=tz)
     assert slot.start_utc == expected_local.astimezone(timezone.utc)
 
+
 ```
-.
-## \ProjectF\field-service\tests\test_watchdogs_overdue.py
+
+---
+
+#### `field-service/tests/test_watchdog_expired_breaks.py`
+
+**Strok:** 248  
+**Razmer:** 8.34 KB
+
 ```python
-﻿import asyncio
-
+"""
+Тесты для watchdog_expired_breaks и гибких перерывов
+"""
 import pytest
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import select, text
 
-from field_service.services import watchdogs
-from field_service.services.commission_service import CommissionOverdueEvent
+from field_service.db import models as m
+from field_service.services.watchdogs import watchdog_expired_breaks
 
-
-class DummyBot:
-    def __init__(self) -> None:
-        self.calls: list[tuple[int, str, dict]] = []
-
-    async def send_message(self, chat_id, text, **kwargs):
-        self.calls.append((chat_id, text, kwargs))
-        return True
+UTC = timezone.utc
 
 
-class DummySession:
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
-
-    async def commit(self):
-        return None
+async def _get_db_now(session):
+    """Получить текущее время БД для синхронизации."""
+    row = await session.execute(text("SELECT NOW()"))
+    return row.scalar()
 
 
 @pytest.mark.asyncio
-async def test_watchdog_triggers_alert(monkeypatch):
-    bot = DummyBot()
-
-    event = CommissionOverdueEvent(
-        commission_id=5,
-        order_id=12,
-        master_id=77,
-        master_full_name="Иван Петров",
+async def test_watchdog_expired_breaks_basic(session, clean_db):
+    """
+    Тест базовой функциональности watchdog_expired_breaks:
+    - Мастер на перерыве с истёкшим временем должен быть снят со смены
+    - shift_status = SHIFT_OFF
+    - is_on_shift = False
+    - break_until = None
+    """
+    db_now = await _get_db_now(session)
+    
+    # Создаём город
+    city = m.cities(name="Москва", timezone="Europe/Moscow")
+    session.add(city)
+    await session.commit()
+    
+    # Создаём мастера на перерыве с истёкшим временем
+    master = m.masters(
+        tg_user_id=12345,
+        full_name="Тестовый Мастер",
+        phone="+79001234567",
+        city_id=city.id,
+        verified=True,
+        moderation_status=m.ModerationStatus.APPROVED,
+        shift_status=m.ShiftStatus.BREAK,
+        is_on_shift=False,
+        break_until=db_now - timedelta(minutes=5),  # Перерыв закончился 5 минут назад
     )
-
-    async def fake_apply(session, now):
-        return [event]
-
-    monkeypatch.setattr(watchdogs, "SessionLocal", lambda: DummySession())
-    monkeypatch.setattr(watchdogs, "apply_overdue_commissions", fake_apply)
-    monkeypatch.setattr(watchdogs.live_log, "push", lambda *args, **kwargs: None)
-
-    await watchdogs.watchdog_commissions_overdue(
-        bot,
-        alerts_chat_id=999,
-        interval_seconds=0,
-        iterations=1,
+    session.add(master)
+    await session.commit()
+    
+    master_id = master.id
+    
+    # Запускаем watchdog (1 итерация)
+    await watchdog_expired_breaks(interval_seconds=60, iterations=1)
+    
+    # Проверяем что мастер снят со смены
+    session.expire_all()
+    result = await session.execute(
+        select(m.masters).where(m.masters.id == master_id)
     )
+    updated_master = result.scalar_one()
+    
+    assert updated_master.shift_status == m.ShiftStatus.SHIFT_OFF
+    assert updated_master.is_on_shift is False
+    assert updated_master.break_until is None
 
-    assert bot.calls
-    chat_id, text, payload = bot.calls[0]
-    assert chat_id == 999
-    assert "🚫 Просрочка комиссии #5" in text
-    assert payload["reply_markup"].inline_keyboard[0][0].callback_data == "adm:f:cm:5"
+
+@pytest.mark.asyncio
+async def test_watchdog_expired_breaks_not_expired(session, clean_db):
+    """
+    Тест что watchdog НЕ снимает мастеров с активным перерывом.
+    """
+    db_now = await _get_db_now(session)
+    
+    # Создаём город
+    city = m.cities(name="Москва", timezone="Europe/Moscow")
+    session.add(city)
+    await session.commit()
+    
+    # Создаём мастера на перерыве с НЕ истёкшим временем
+    master = m.masters(
+        tg_user_id=12345,
+        full_name="Тестовый Мастер",
+        phone="+79001234567",
+        city_id=city.id,
+        verified=True,
+        moderation_status=m.ModerationStatus.APPROVED,
+        shift_status=m.ShiftStatus.BREAK,
+        is_on_shift=False,
+        break_until=db_now + timedelta(minutes=30),  # Перерыв ещё не закончился
+    )
+    session.add(master)
+    await session.commit()
+    
+    master_id = master.id
+    
+    # Запускаем watchdog (1 итерация)
+    await watchdog_expired_breaks(interval_seconds=60, iterations=1)
+    
+    # Проверяем что мастер остался на перерыве
+    session.expire_all()
+    result = await session.execute(
+        select(m.masters).where(m.masters.id == master_id)
+    )
+    updated_master = result.scalar_one()
+    
+    assert updated_master.shift_status == m.ShiftStatus.BREAK
+    assert updated_master.is_on_shift is False
+    assert updated_master.break_until is not None
+
+
+@pytest.mark.asyncio
+async def test_watchdog_expired_breaks_multiple_masters(session, clean_db):
+    """
+    Тест что watchdog обрабатывает нескольких мастеров одновременно.
+    """
+    db_now = await _get_db_now(session)
+    
+    # Создаём город
+    city = m.cities(name="Москва", timezone="Europe/Moscow")
+    session.add(city)
+    await session.commit()
+    
+    # Создаём 3 мастеров:
+    # 1. С истёкшим перерывом
+    # 2. С активным перерывом
+    # 3. Не на перерыве
+    master1 = m.masters(
+        tg_user_id=11111,
+        full_name="Мастер 1",
+        phone="+79001111111",
+        city_id=city.id,
+        verified=True,
+        moderation_status=m.ModerationStatus.APPROVED,
+        shift_status=m.ShiftStatus.BREAK,
+        is_on_shift=False,
+        break_until=db_now - timedelta(minutes=10),  # Истёк
+    )
+    
+    master2 = m.masters(
+        tg_user_id=22222,
+        full_name="Мастер 2",
+        phone="+79002222222",
+        city_id=city.id,
+        verified=True,
+        moderation_status=m.ModerationStatus.APPROVED,
+        shift_status=m.ShiftStatus.BREAK,
+        is_on_shift=False,
+        break_until=db_now + timedelta(minutes=20),  # Активный
+    )
+    
+    master3 = m.masters(
+        tg_user_id=33333,
+        full_name="Мастер 3",
+        phone="+79003333333",
+        city_id=city.id,
+        verified=True,
+        moderation_status=m.ModerationStatus.APPROVED,
+        shift_status=m.ShiftStatus.SHIFT_ON,
+        is_on_shift=True,
+        break_until=None,  # Не на перерыве
+    )
+    
+    session.add_all([master1, master2, master3])
+    await session.commit()
+    
+    master1_id = master1.id
+    master2_id = master2.id
+    master3_id = master3.id
+    
+    # Запускаем watchdog (1 итерация)
+    await watchdog_expired_breaks(interval_seconds=60, iterations=1)
+    
+    # Проверяем результаты
+    session.expire_all()
+    
+    # Мастер 1 должен быть снят со смены
+    result1 = await session.execute(
+        select(m.masters).where(m.masters.id == master1_id)
+    )
+    updated_master1 = result1.scalar_one()
+    assert updated_master1.shift_status == m.ShiftStatus.SHIFT_OFF
+    assert updated_master1.is_on_shift is False
+    assert updated_master1.break_until is None
+    
+    # Мастер 2 должен остаться на перерыве
+    result2 = await session.execute(
+        select(m.masters).where(m.masters.id == master2_id)
+    )
+    updated_master2 = result2.scalar_one()
+    assert updated_master2.shift_status == m.ShiftStatus.BREAK
+    assert updated_master2.is_on_shift is False
+    assert updated_master2.break_until is not None
+    
+    # Мастер 3 должен остаться на смене
+    result3 = await session.execute(
+        select(m.masters).where(m.masters.id == master3_id)
+    )
+    updated_master3 = result3.scalar_one()
+    assert updated_master3.shift_status == m.ShiftStatus.SHIFT_ON
+    assert updated_master3.is_on_shift is True
+    assert updated_master3.break_until is None
+
+
+@pytest.mark.asyncio
+async def test_watchdog_expired_breaks_edge_case_exactly_now(session, clean_db):
+    """
+    Тест граничного случая: break_until ровно равен NOW().
+    Должен быть обработан как истёкший.
+    """
+    db_now = await _get_db_now(session)
+    
+    # Создаём город
+    city = m.cities(name="Москва", timezone="Europe/Moscow")
+    session.add(city)
+    await session.commit()
+    
+    # Создаём мастера с break_until = NOW()
+    master = m.masters(
+        tg_user_id=12345,
+        full_name="Тестовый Мастер",
+        phone="+79001234567",
+        city_id=city.id,
+        verified=True,
+        moderation_status=m.ModerationStatus.APPROVED,
+        shift_status=m.ShiftStatus.BREAK,
+        is_on_shift=False,
+        break_until=db_now,  # Ровно сейчас
+    )
+    session.add(master)
+    await session.commit()
+    
+    master_id = master.id
+    
+    # Запускаем watchdog (1 итерация)
+    await watchdog_expired_breaks(interval_seconds=60, iterations=1)
+    
+    # Проверяем что мастер снят со смены
+    session.expire_all()
+    result = await session.execute(
+        select(m.masters).where(m.masters.id == master_id)
+    )
+    updated_master = result.scalar_one()
+    
+    assert updated_master.shift_status == m.ShiftStatus.SHIFT_OFF
+    assert updated_master.is_on_shift is False
+    assert updated_master.break_until is None
+
 ```
-.
-## \ProjectF\field-service\tests\test_watchdog_expired_offers.py
+
+---
+
+#### `field-service/tests/test_watchdog_expired_offers.py`
+
+**Strok:** 266  
+**Razmer:** 8.89 KB
+
 ```python
 """
 Тесты для watchdog_expired_offers - автоматическое истечение офферов.
@@ -67321,9 +55802,85 @@ async def test_watchdog_ignores_declined_offers(session, sample_order, sample_ma
     await session.refresh(declined_offer)
     
     assert declined_offer.state == m.OfferState.DECLINED
+
 ```
-.
-## \ProjectF\field-service\tools\check_no_mojibake.py
+
+---
+
+#### `field-service/tests/test_watchdogs_overdue.py`
+
+**Strok:** 59  
+**Razmer:** 1.50 KB
+
+```python
+﻿import asyncio
+
+import pytest
+
+from field_service.services import watchdogs
+from field_service.services.commission_service import CommissionOverdueEvent
+
+
+class DummyBot:
+    def __init__(self) -> None:
+        self.calls: list[tuple[int, str, dict]] = []
+
+    async def send_message(self, chat_id, text, **kwargs):
+        self.calls.append((chat_id, text, kwargs))
+        return True
+
+
+class DummySession:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def commit(self):
+        return None
+
+
+@pytest.mark.asyncio
+async def test_watchdog_triggers_alert(monkeypatch):
+    bot = DummyBot()
+
+    event = CommissionOverdueEvent(
+        commission_id=5,
+        order_id=12,
+        master_id=77,
+        master_full_name="Иван Петров",
+    )
+
+    async def fake_apply(session, now):
+        return [event]
+
+    monkeypatch.setattr(watchdogs, "SessionLocal", lambda: DummySession())
+    monkeypatch.setattr(watchdogs, "apply_overdue_commissions", fake_apply)
+    monkeypatch.setattr(watchdogs.live_log, "push", lambda *args, **kwargs: None)
+
+    await watchdogs.watchdog_commissions_overdue(
+        bot,
+        alerts_chat_id=999,
+        interval_seconds=0,
+        iterations=1,
+    )
+
+    assert bot.calls
+    chat_id, text, payload = bot.calls[0]
+    assert chat_id == 999
+    assert "🚫 Просрочка комиссии #5" in text
+    assert payload["reply_markup"].inline_keyboard[0][0].callback_data == "adm:f:cm:5"
+
+```
+
+---
+
+#### `field-service/tools/check_no_mojibake.py`
+
+**Strok:** 39  
+**Razmer:** 0.83 KB
+
 ```python
 #!/usr/bin/env python3
 from __future__ import annotations
@@ -67363,9 +55920,16 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
 ```
-.
-## \ProjectF\field-service\tools\collect_code.py
+
+---
+
+#### `field-service/tools/collect_code.py`
+
+**Strok:** 317  
+**Razmer:** 10.12 KB
+
 ```python
 #!/usr/bin/env python3
 """
@@ -67683,9 +56247,16 @@ def main() -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
 ```
-.
-## \ProjectF\field-service\tools\fix_mojibake_in_repo.py
+
+---
+
+#### `field-service/tools/fix_mojibake_in_repo.py`
+
+**Strok:** 54  
+**Razmer:** 1.56 KB
+
 ```python
 from __future__ import annotations
 
@@ -67740,9 +56311,16 @@ def main(root: str) -> int:
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "."))
 
+
 ```
-.
-## \ProjectF\field-service\tools\fix_mojibake_per_line.py
+
+---
+
+#### `field-service/tools/fix_mojibake_per_line.py`
+
+**Strok:** 51  
+**Razmer:** 1.19 KB
+
 ```python
 from __future__ import annotations
 
@@ -67794,9 +56372,16 @@ def main(argv: list[str]) -> int:
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
 
+
 ```
-.
-## \ProjectF\field-service\tools\load_geo_catalog.py
+
+---
+
+#### `field-service/tools/load_geo_catalog.py`
+
+**Strok:** 320  
+**Razmer:** 12.41 KB
+
 ```python
 #!/usr/bin/env python
 """Utility to import geo dictionaries with RapidFuzz-based dedupe.
@@ -68117,9 +56702,16 @@ async def _main() -> None:
 if __name__ == "__main__":
     asyncio.run(_main())
 
+
 ```
-.
-## \ProjectF\field-service\tools\patch_strings.py
+
+---
+
+#### `field-service/tools/patch_strings.py`
+
+**Strok:** 32  
+**Razmer:** 1.28 KB
+
 ```python
 from __future__ import annotations
 
@@ -68152,9 +56744,16 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+
 ```
-.
-## \ProjectF\field-service\tools\tools\collect_code.py
+
+---
+
+##### `field-service/tools/tools/collect_code.py`
+
+**Strok:** 317  
+**Razmer:** 10.12 KB
+
 ```python
 #!/usr/bin/env python3
 """
@@ -68472,9 +57071,16 @@ def main() -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
 ```
-.
-## \ProjectF\tests\e2e\conftest.py
+
+---
+
+#### `tests/e2e/conftest.py`
+
+**Strok:** 472  
+**Razmer:** 14.83 KB
+
 ```python
 """
 CONFTEST: Фикстуры и моки для E2E тестов
@@ -68947,9 +57553,16 @@ async def cleanup_after_test():
     """Автоматическая очистка после каждого теста"""
     yield
     # Очистка выполняется в фикстурах через reset()
+
 ```
-.
-## \ProjectF\tests\e2e\coverage_analyzer.py
+
+---
+
+#### `tests/e2e/coverage_analyzer.py`
+
+**Strok:** 291  
+**Razmer:** 11.21 KB
+
 ```python
 """
 COVERAGE ANALYZER: Анализ покрытия E2E тестами
@@ -69241,9 +57854,16 @@ if __name__ == "__main__":
 ║                                                                       ║
 ╚═══════════════════════════════════════════════════════════════════════╝
 """)
+
 ```
-.
-## \ProjectF\tests\e2e\quick_start.py
+
+---
+
+#### `tests/e2e/quick_start.py`
+
+**Strok:** 72  
+**Razmer:** 4.62 KB
+
 ```python
 """
 QUICK START: Запуск E2E тестов за 2 минуты
@@ -69316,9 +57936,16 @@ if __name__ == "__main__":
 ║                                                                       ║
 ╚═══════════════════════════════════════════════════════════════════════╝
 """)
+
 ```
-.
-## \ProjectF\tests\e2e\run_all_tests.py
+
+---
+
+#### `tests/e2e/run_all_tests.py`
+
+**Strok:** 301  
+**Razmer:** 10.66 KB
+
 ```python
 """
 RUNNER: Запуск всех E2E тестов с визуализацией
@@ -69620,9 +58247,16 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 ```
-.
-## \ProjectF\tests\e2e\test_additional_scenarios.py
+
+---
+
+#### `tests/e2e/test_additional_scenarios.py`
+
+**Strok:** 652  
+**Razmer:** 28.14 KB
+
 ```python
 """
 ADDITIONAL SCENARIOS: Дополнительные критичные сценарии (5-8)
@@ -70275,9 +58909,16 @@ async def test_scenario_8_master_overdue(bot_master, db):
     log.success("✅ СЦЕНАРИЙ 8 ЗАВЕРШЁН")
     
     return log.logs
+
 ```
-.
-## \ProjectF\tests\e2e\test_order_lifecycle_all_scenarios.py
+
+---
+
+#### `tests/e2e/test_order_lifecycle_all_scenarios.py`
+
+**Strok:** 832  
+**Razmer:** 36.81 KB
+
 ```python
 """
 COMPREHENSIVE E2E TEST: Все возможные сценарии жизненного цикла заказа
@@ -71110,9 +59751,33 @@ async def test_scenario_4_master_cancels_after_accepting(bot_master, bot_client,
 # ... и т.д.
 
 # Всего можно описать 20-30 сценариев для полного покрытия
+
 ```
-.
-## \ProjectF\tests\telegram_ui\auth_interactive.py
+
+---
+
+#### `tests/telegram_ui/__init__.py`
+
+**Strok:** 7  
+**Razmer:** 0.14 KB
+
+```python
+"""
+Telegram UI Testing Module
+Автоматизированное тестирование Telegram-ботов
+"""
+
+__version__ = "1.0.0"
+
+```
+
+---
+
+#### `tests/telegram_ui/auth_interactive.py`
+
+**Strok:** 94  
+**Razmer:** 2.51 KB
+
 ```python
 """
 Improved authorization script with detailed output
@@ -71207,9 +59872,16 @@ if __name__ == "__main__":
     else:
         print("\nAuthorization failed. Please try again.")
         sys.exit(1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\auth_string_session.py
+
+---
+
+#### `tests/telegram_ui/auth_string_session.py`
+
+**Strok:** 74  
+**Razmer:** 1.91 KB
+
 ```python
 """
 Export session to string
@@ -71284,9 +59956,16 @@ async def authorize_and_export():
 if __name__ == "__main__":
     result = asyncio.run(authorize_and_export())
     sys.exit(0 if result else 1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\bot_client.py
+
+---
+
+#### `tests/telegram_ui/bot_client.py`
+
+**Strok:** 200  
+**Razmer:** 7.69 KB
+
 ```python
 """
 Helper-класс для работы с Telegram-ботами в тестах
@@ -71487,9 +60166,16 @@ class BotTestClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Context manager support"""
         await self.stop()
+
 ```
-.
-## \ProjectF\tests\telegram_ui\check_session_advanced.py
+
+---
+
+#### `tests/telegram_ui/check_session_advanced.py`
+
+**Strok:** 72  
+**Razmer:** 2.25 KB
+
 ```python
 """
 Advanced session check with multiple connection attempts
@@ -71562,9 +60248,16 @@ async def test_session_advanced():
 if __name__ == "__main__":
     result = asyncio.run(test_session_advanced())
     sys.exit(0 if result else 1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\check_session_simple.py
+
+---
+
+#### `tests/telegram_ui/check_session_simple.py`
+
+**Strok:** 57  
+**Razmer:** 1.66 KB
+
 ```python
 """
 Simple session check without emojis
@@ -71622,9 +60315,16 @@ async def test_session():
 if __name__ == "__main__":
     result = asyncio.run(test_session())
     sys.exit(0 if result else 1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\config.py
+
+---
+
+#### `tests/telegram_ui/config.py`
+
+**Strok:** 90  
+**Razmer:** 3.63 KB
+
 ```python
 """
 Telegram UI Testing Configuration
@@ -71715,9 +60415,16 @@ if __name__ == "__main__":
         print("OK - Configuration valid!")
     except ValueError as e:
         print(f"ERROR: {e}")
+
 ```
-.
-## \ProjectF\tests\telegram_ui\conftest.py
+
+---
+
+#### `tests/telegram_ui/conftest.py`
+
+**Strok:** 188  
+**Razmer:** 5.20 KB
+
 ```python
 """
 Pytest конфигурация для E2E тестов через Telethon
@@ -71906,9 +60613,16 @@ def configure_asyncio():
     """Настройка asyncio для pytest"""
     # Уже настроено в pytest.ini: asyncio_mode = auto
     pass
+
 ```
-.
-## \ProjectF\tests\telegram_ui\create_verified_session.py
+
+---
+
+#### `tests/telegram_ui/create_verified_session.py`
+
+**Strok:** 93  
+**Razmer:** 2.70 KB
+
 ```python
 """
 Create and verify StringSession
@@ -72002,9 +60716,16 @@ if __name__ == "__main__":
     else:
         print("\nFAILED to create session")
         exit(1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\diagnose_session.py
+
+---
+
+#### `tests/telegram_ui/diagnose_session.py`
+
+**Strok:** 69  
+**Razmer:** 2.24 KB
+
 ```python
 """
 Диагностика проблемы с сессией
@@ -72074,9 +60795,16 @@ async def test_session():
 
 if __name__ == "__main__":
     asyncio.run(test_session())
+
 ```
-.
-## \ProjectF\tests\telegram_ui\direct_test.py
+
+---
+
+#### `tests/telegram_ui/direct_test.py`
+
+**Strok:** 79  
+**Razmer:** 2.46 KB
+
 ```python
 """
 Прямой тест подключения к боту БЕЗ класса-обёртки
@@ -72156,9 +60884,619 @@ async def direct_test():
 
 if __name__ == "__main__":
     asyncio.run(direct_test())
+
 ```
-.
-## \ProjectF\tests\telegram_ui\mock_telegram.py
+
+---
+
+##### `tests/telegram_ui/helpers/__init__.py`
+
+**Strok:** 48  
+**Razmer:** 0.87 KB
+
+```python
+"""
+Helper функции для E2E тестирования
+"""
+from .master_helpers import (
+    create_master_via_onboarding,
+    change_master_status,
+    accept_offer,
+    decline_offer,
+    start_work,
+    complete_work,
+)
+
+from .order_helpers import (
+    create_order_via_admin,
+    wait_for_offer,
+    get_order_status,
+    cancel_order,
+)
+
+from .admin_helpers import (
+    assign_order_manually,
+    moderate_master,
+    approve_master,
+    decline_master,
+)
+
+__all__ = [
+    # Master helpers
+    'create_master_via_onboarding',
+    'change_master_status',
+    'accept_offer',
+    'decline_offer',
+    'start_work',
+    'complete_work',
+    
+    # Order helpers
+    'create_order_via_admin',
+    'wait_for_offer',
+    'get_order_status',
+    'cancel_order',
+    
+    # Admin helpers
+    'assign_order_manually',
+    'moderate_master',
+    'approve_master',
+    'decline_master',
+]
+
+```
+
+---
+
+##### `tests/telegram_ui/helpers/admin_helpers.py`
+
+**Strok:** 144  
+**Razmer:** 4.68 KB
+
+```python
+"""
+Helper функции для админских действий
+"""
+import asyncio
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+
+from tests.telegram_ui.bot_client import BotTestClient
+from tests.telegram_ui.config import ADMIN_BOT_USERNAME
+
+
+async def assign_order_manually(
+    client: BotTestClient,
+    order_id: int,
+    master_id: int,
+) -> None:
+    """
+    Вручную назначить заказ на мастера через админ-бота
+    
+    Args:
+        client: Telethon клиент
+        order_id: ID заказа
+        master_id: ID мастера
+    """
+    # Открываем очередь заказов
+    await client.click_button("📋 Очередь заказов", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # TODO: Найти заказ по ID
+    # Пока упрощенно - нажимаем первый заказ
+    
+    # Открываем карточку заказа
+    msg = await client.get_last_message(ADMIN_BOT_USERNAME)
+    # Нажимаем на первый заказ в списке
+    # (здесь нужна более точная логика поиска)
+    
+    # Нажимаем "Назначить мастера"
+    await client.click_button("👤 Назначить мастера", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # TODO: Выбрать конкретного мастера из списка
+    # Пока упрощенно - нажимаем первого доступного
+    msg = await client.get_last_message(ADMIN_BOT_USERNAME)
+    if msg and msg.reply_markup:
+        buttons = msg.reply_markup.rows[0].buttons
+        if buttons:
+            await client.click_button(buttons[0].text, ADMIN_BOT_USERNAME)
+    
+    await asyncio.sleep(1)
+    
+    # Подтверждаем назначение
+    await client.click_button("✅ Подтвердить", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+
+
+async def moderate_master(
+    client: BotTestClient,
+    master_id: int,
+    action: str = "approve",  # "approve" или "decline"
+    reason: Optional[str] = None,
+) -> None:
+    """
+    Модерировать заявку мастера
+    
+    Args:
+        client: Telethon клиент
+        master_id: ID мастера
+        action: "approve" для одобрения, "decline" для отклонения
+        reason: Причина отклонения (только для decline)
+    """
+    # Открываем модерацию
+    await client.click_button("👥 Модерация", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # TODO: Найти заявку конкретного мастера
+    # Пока упрощенно - работаем с первой заявкой
+    
+    if action == "approve":
+        await client.click_button("✅ Одобрить", ADMIN_BOT_USERNAME)
+        await asyncio.sleep(1)
+    elif action == "decline":
+        await client.click_button("❌ Отклонить", ADMIN_BOT_USERNAME)
+        await asyncio.sleep(0.5)
+        
+        # Вводим причину
+        if reason:
+            await client.send_command(ADMIN_BOT_USERNAME, reason)
+            await asyncio.sleep(1)
+    else:
+        raise ValueError(f"Unknown action: {action}")
+
+
+async def approve_master(
+    client: BotTestClient,
+    master_id: int,
+) -> None:
+    """
+    Одобрить заявку мастера
+    
+    Args:
+        client: Telethon клиент
+        master_id: ID мастера
+    """
+    await moderate_master(client, master_id, action="approve")
+
+
+async def decline_master(
+    client: BotTestClient,
+    master_id: int,
+    reason: str = "Не прошел проверку",
+) -> None:
+    """
+    Отклонить заявку мастера
+    
+    Args:
+        client: Telethon клиент
+        master_id: ID мастера
+        reason: Причина отклонения
+    """
+    await moderate_master(client, master_id, action="decline", reason=reason)
+
+
+async def finalize_order(
+    client: BotTestClient,
+    order_id: int,
+) -> None:
+    """
+    Финализировать заказ (перевести из MASTER_COMPLETED в CLOSED)
+    
+    Args:
+        client: Telethon клиент
+        order_id: ID заказа
+    """
+    # Открываем очередь заказов
+    await client.click_button("📋 Очередь заказов", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # TODO: Найти заказ по ID
+    
+    # Нажимаем "Подтвердить выполнение"
+    await client.click_button("✅ Подтвердить выполнение", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+
+```
+
+---
+
+##### `tests/telegram_ui/helpers/master_helpers.py`
+
+**Strok:** 176  
+**Razmer:** 5.15 KB
+
+```python
+"""
+Helper функции для работы с мастерами через мастер-бот
+"""
+import asyncio
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text, select
+
+from tests.telegram_ui.bot_client import BotTestClient
+from tests.telegram_ui.config import MASTER_BOT_USERNAME
+
+
+async def create_master_via_onboarding(
+    client: BotTestClient,
+    session: AsyncSession,
+    *,
+    city: str = "Москва",
+    district: str = "ЦАО",
+    phone: str = "+79991234567",
+    auto_approve: bool = True
+) -> int:
+    """
+    Создать мастера через онбординг в мастер-боте
+    
+    Args:
+        client: Telethon клиент
+        session: БД сессия
+        city: Город мастера
+        district: Округ мастера
+        phone: Телефон мастера
+        auto_approve: Автоматически одобрить через БД
+    
+    Returns:
+        master_id: ID созданного мастера
+    """
+    # Начинаем онбординг
+    msg = await client.send_command(MASTER_BOT_USERNAME, "/start")
+    await asyncio.sleep(1)
+    
+    # Выбираем город
+    msg = await client.click_button(city, MASTER_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # Выбираем округ
+    msg = await client.click_button(district, MASTER_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # Отправляем телефон
+    msg = await client.send_command(MASTER_BOT_USERNAME, phone)
+    await asyncio.sleep(2)
+    
+    # Получаем telegram_id текущего пользователя
+    me = await client.client.get_me()
+    telegram_id = me.id
+    
+    # Ждем создания мастера в БД
+    await asyncio.sleep(1)
+    
+    # Находим созданного мастера
+    result = await session.execute(
+        text("SELECT id FROM masters WHERE telegram_id = :tg_id ORDER BY id DESC LIMIT 1"),
+        {"tg_id": telegram_id}
+    )
+    master = result.first()
+    
+    if not master:
+        raise ValueError(f"Master not created for telegram_id={telegram_id}")
+    
+    master_id = master.id
+    
+    # Автоматически одобряем если нужно
+    if auto_approve:
+        await session.execute(
+            text("UPDATE masters SET is_approved = true WHERE id = :id"),
+            {"id": master_id}
+        )
+        await session.commit()
+        
+        # Перезапускаем бота чтобы увидеть главное меню
+        await client.send_command(MASTER_BOT_USERNAME, "/start")
+        await asyncio.sleep(1)
+    
+    return master_id
+
+
+async def change_master_status(
+    client: BotTestClient,
+    status: str,
+) -> None:
+    """
+    Изменить статус мастера (Работаю/Перерыв/Оффлайн)
+    
+    Args:
+        client: Telethon клиент
+        status: "working" | "break" | "offline"
+    """
+    button_map = {
+        "working": "🟢 Начать работу",
+        "break": "🟡 На перерыв",
+        "offline": "🔴 Закончить работу",
+    }
+    
+    if status not in button_map:
+        raise ValueError(f"Unknown status: {status}. Use: working, break, offline")
+    
+    button_text = button_map[status]
+    await client.click_button(button_text, MASTER_BOT_USERNAME)
+    await asyncio.sleep(1)
+
+
+async def accept_offer(
+    client: BotTestClient,
+    order_id: int,
+) -> None:
+    """
+    Принять оффер по заказу
+    
+    Args:
+        client: Telethon клиент
+        order_id: ID заказа
+    """
+    # Ищем сообщение с оффером
+    # TODO: Нужно найти последнее сообщение с кнопками и нажать "Принять"
+    await client.click_button("✅ Принять заказ", MASTER_BOT_USERNAME)
+    await asyncio.sleep(1)
+
+
+async def decline_offer(
+    client: BotTestClient,
+    order_id: int,
+) -> None:
+    """
+    Отклонить оффер по заказу
+    
+    Args:
+        client: Telethon клиент
+        order_id: ID заказа
+    """
+    # Нажимаем "Отклонить"
+    await client.click_button("❌ Отклонить", MASTER_BOT_USERNAME)
+    await asyncio.sleep(0.5)
+    
+    # Подтверждаем отклонение
+    await client.click_button("Да, отклонить", MASTER_BOT_USERNAME)
+    await asyncio.sleep(1)
+
+
+async def start_work(
+    client: BotTestClient,
+    order_id: int,
+) -> None:
+    """
+    Начать работу по заказу (Приехал на объект)
+    
+    Args:
+        client: Telethon клиент
+        order_id: ID заказа
+    """
+    await client.click_button("🚗 Приехал на объект", MASTER_BOT_USERNAME)
+    await asyncio.sleep(1)
+
+
+async def complete_work(
+    client: BotTestClient,
+    order_id: int,
+) -> None:
+    """
+    Завершить работу по заказу
+    
+    Args:
+        client: Telethon клиент
+        order_id: ID заказа
+    """
+    await client.click_button("✅ Завершить заказ", MASTER_BOT_USERNAME)
+    await asyncio.sleep(1)
+
+```
+
+---
+
+##### `tests/telegram_ui/helpers/order_helpers.py`
+
+**Strok:** 195  
+**Razmer:** 5.75 KB
+
+```python
+"""
+Helper функции для работы с заказами
+"""
+import asyncio
+from typing import Optional, Dict, Any
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+
+from tests.telegram_ui.bot_client import BotTestClient
+from tests.telegram_ui.config import ADMIN_BOT_USERNAME
+
+
+async def create_order_via_admin(
+    client: BotTestClient,
+    session: AsyncSession,
+    *,
+    service: str = "Ремонт iPhone",
+    city: str = "Москва",
+    district: str = "ЦАО",
+    address: str = "ул. Тверская, 1",
+    client_phone: str = "+79991234567",
+    cost: int = 3000,
+    slot: str = "nearest",  # "nearest" или "12:00-14:00"
+) -> int:
+    """
+    Создать заказ через админ-бота
+    
+    Args:
+        client: Telethon клиент
+        session: БД сессия
+        service: Название услуги
+        city: Город
+        district: Район
+        address: Адрес клиента
+        client_phone: Телефон клиента
+        cost: Стоимость заказа
+        slot: Временной слот
+    
+    Returns:
+        order_id: ID созданного заказа
+    """
+    # Открываем админ-бот
+    await client.send_command(ADMIN_BOT_USERNAME, "/start")
+    await asyncio.sleep(1)
+    
+    # Нажимаем "Новый заказ"
+    await client.click_button("➕ Новый заказ", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # Выбираем город
+    await client.click_button(city, ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # Выбираем район
+    await client.click_button(district, ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # Вводим адрес
+    await client.send_command(ADMIN_BOT_USERNAME, address)
+    await asyncio.sleep(1)
+    
+    # Выбираем услугу
+    await client.click_button(service, ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # Вводим стоимость
+    await client.send_command(ADMIN_BOT_USERNAME, str(cost))
+    await asyncio.sleep(1)
+    
+    # Вводим телефон клиента
+    await client.send_command(ADMIN_BOT_USERNAME, client_phone)
+    await asyncio.sleep(1)
+    
+    # Выбираем слот
+    if slot == "nearest":
+        # Нажимаем на ближайший доступный слот (первая кнопка)
+        msg = await client.get_last_message(ADMIN_BOT_USERNAME)
+        if msg and msg.reply_markup:
+            buttons = msg.reply_markup.rows[0].buttons
+            if buttons:
+                await client.click_button(buttons[0].text, ADMIN_BOT_USERNAME)
+    else:
+        await client.click_button(slot, ADMIN_BOT_USERNAME)
+    
+    await asyncio.sleep(2)
+    
+    # Находим созданный заказ в БД (последний созданный)
+    result = await session.execute(
+        text("SELECT id FROM orders ORDER BY id DESC LIMIT 1")
+    )
+    order = result.first()
+    
+    if not order:
+        raise ValueError("Order not created")
+    
+    return order.id
+
+
+async def wait_for_offer(
+    session: AsyncSession,
+    order_id: int,
+    master_id: int,
+    timeout: int = 30,
+) -> bool:
+    """
+    Ожидать появления оффера для мастера
+    
+    Args:
+        session: БД сессия
+        order_id: ID заказа
+        master_id: ID мастера
+        timeout: Таймаут ожидания в секундах
+    
+    Returns:
+        True если оффер появился, False если таймаут
+    """
+    for _ in range(timeout):
+        result = await session.execute(
+            text("""
+                SELECT id FROM offers 
+                WHERE order_id = :order_id 
+                AND master_id = :master_id
+                LIMIT 1
+            """),
+            {"order_id": order_id, "master_id": master_id}
+        )
+        offer = result.first()
+        
+        if offer:
+            return True
+        
+        await asyncio.sleep(1)
+    
+    return False
+
+
+async def get_order_status(
+    session: AsyncSession,
+    order_id: int,
+) -> str:
+    """
+    Получить текущий статус заказа
+    
+    Args:
+        session: БД сессия
+        order_id: ID заказа
+    
+    Returns:
+        Статус заказа (NEW, IN_QUEUE, ASSIGNED, STARTED, etc.)
+    """
+    result = await session.execute(
+        text("SELECT status FROM orders WHERE id = :id"),
+        {"id": order_id}
+    )
+    row = result.first()
+    
+    if not row:
+        raise ValueError(f"Order {order_id} not found")
+    
+    return row.status
+
+
+async def cancel_order(
+    client: BotTestClient,
+    order_id: int,
+    reason: str = "Клиент отказался",
+) -> None:
+    """
+    Отменить заказ через админ-бота
+    
+    Args:
+        client: Telethon клиент
+        order_id: ID заказа
+        reason: Причина отмены
+    """
+    # Открываем очередь заказов
+    await client.click_button("📋 Очередь заказов", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+    
+    # TODO: Найти конкретный заказ и открыть его карточку
+    # Пока просто нажимаем первый заказ
+    # В реальности нужно искать по ID
+    
+    # Нажимаем "Отменить заказ"
+    await client.click_button("❌ Отменить заказ", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(0.5)
+    
+    # Вводим причину
+    await client.send_command(ADMIN_BOT_USERNAME, reason)
+    await asyncio.sleep(1)
+    
+    # Подтверждаем
+    await client.click_button("Да, отменить", ADMIN_BOT_USERNAME)
+    await asyncio.sleep(1)
+
+```
+
+---
+
+#### `tests/telegram_ui/mock_telegram.py`
+
+**Strok:** 259  
+**Razmer:** 9.40 KB
+
 ```python
 """
 Mock-версия Telegram бота для безопасного тестирования
@@ -72418,9 +61756,16 @@ def create_test_chat_id() -> int:
     """Генерация тестового chat_id"""
     import random
     return random.randint(100000, 999999)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\quick_bot_test.py
+
+---
+
+#### `tests/telegram_ui/quick_bot_test.py`
+
+**Strok:** 52  
+**Razmer:** 1.49 KB
+
 ```python
 """
 Quick test - send /start to admin bot
@@ -72473,9 +61818,16 @@ async def test_admin_bot():
 if __name__ == "__main__":
     result = asyncio.run(test_admin_bot())
     sys.exit(0 if result else 1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\run_tests.py
+
+---
+
+#### `tests/telegram_ui/run_tests.py`
+
+**Strok:** 44  
+**Razmer:** 1.03 KB
+
 ```python
 """
 Быстрый запуск UI тестов
@@ -72520,9 +61872,16 @@ if __name__ == "__main__":
     test_file = sys.argv[1] if len(sys.argv) > 1 else None
     exit_code = run_tests(test_file)
     sys.exit(exit_code)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\setup_client.py
+
+---
+
+#### `tests/telegram_ui/setup_client.py`
+
+**Strok:** 93  
+**Razmer:** 3.31 KB
+
 ```python
 """
 Скрипт первичной авторизации в Telegram
@@ -72616,9 +61975,16 @@ async def setup_telegram_client():
 if __name__ == "__main__":
     success = asyncio.run(setup_telegram_client())
     sys.exit(0 if success else 1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\test_auth.py
+
+---
+
+#### `tests/telegram_ui/test_auth.py`
+
+**Strok:** 45  
+**Razmer:** 1.10 KB
+
 ```python
 """
 Minimal session test
@@ -72664,9 +62030,16 @@ async def test():
 if __name__ == "__main__":
     result = asyncio.run(test())
     sys.exit(0 if result else 1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\test_connection.py
+
+---
+
+#### `tests/telegram_ui/test_connection.py`
+
+**Strok:** 48  
+**Razmer:** 1.29 KB
+
 ```python
 """
 Test StringSession connection
@@ -72715,9 +62088,16 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         exit(1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\test_lifecycle_p0.py
+
+---
+
+#### `tests/telegram_ui/test_lifecycle_p0.py`
+
+**Strok:** 199  
+**Razmer:** 7.51 KB
+
 ```python
 """
 P0 тесты жизненного цикла заказа
@@ -72917,9 +62297,16 @@ async def test_tp001_full_order_cycle(
     print(f"✓ История статусов полная: {' → '.join(statuses)}")
     
     print("\n✅ TP-001: PASSED - Полный цикл заказа выполнен успешно")
+
 ```
-.
-## \ProjectF\tests\telegram_ui\test_master_onboarding.py
+
+---
+
+#### `tests/telegram_ui/test_master_onboarding.py`
+
+**Strok:** 95  
+**Razmer:** 3.99 KB
+
 ```python
 """
 Тест онбординга мастера
@@ -73015,9 +62402,16 @@ async def test_master_full_onboarding():
 if __name__ == "__main__":
     # Можно запустить напрямую для быстрого тестирования
     asyncio.run(test_master_start_command())
+
 ```
-.
-## \ProjectF\tests\telegram_ui\test_mock_examples.py
+
+---
+
+#### `tests/telegram_ui/test_mock_examples.py`
+
+**Strok:** 207  
+**Razmer:** 6.31 KB
+
 ```python
 """
 Примеры тестов с использованием Mock Telegram Bot
@@ -73225,9 +62619,16 @@ if __name__ == "__main__":
         print("="*60)
     
     asyncio.run(main())
+
 ```
-.
-## \ProjectF\tests\telegram_ui\test_quick_check.py
+
+---
+
+#### `tests/telegram_ui/test_quick_check.py`
+
+**Strok:** 111  
+**Razmer:** 4.74 KB
+
 ```python
 """
 Быстрая проверка работоспособности Telegram UI Testing
@@ -73339,9 +62740,16 @@ if __name__ == "__main__":
     print(f"Мастер-бот: {'✅ OK' if success1 else '❌ FAIL'}")
     print(f"Админ-бот: {'✅ OK' if success2 else '❌ FAIL'}")
     print("="*60)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\test_string_direct.py
+
+---
+
+#### `tests/telegram_ui/test_string_direct.py`
+
+**Strok:** 44  
+**Razmer:** 1.46 KB
+
 ```python
 """
 Direct StringSession test
@@ -73386,594 +62794,16 @@ async def test():
 if __name__ == "__main__":
     result = asyncio.run(test())
     exit(0 if result else 1)
+
 ```
-.
-## \ProjectF\tests\telegram_ui\__init__.py
-```python
-"""
-Telegram UI Testing Module
-Автоматизированное тестирование Telegram-ботов
-"""
 
-__version__ = "1.0.0"
-```
-.
-## \ProjectF\tests\telegram_ui\helpers\admin_helpers.py
-```python
-"""
-Helper функции для админских действий
-"""
-import asyncio
-from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+---
 
-from tests.telegram_ui.bot_client import BotTestClient
-from tests.telegram_ui.config import ADMIN_BOT_USERNAME
+### `tools/_bulk_fix_handlers.py`
 
+**Strok:** 35  
+**Razmer:** 2.64 KB
 
-async def assign_order_manually(
-    client: BotTestClient,
-    order_id: int,
-    master_id: int,
-) -> None:
-    """
-    Вручную назначить заказ на мастера через админ-бота
-    
-    Args:
-        client: Telethon клиент
-        order_id: ID заказа
-        master_id: ID мастера
-    """
-    # Открываем очередь заказов
-    await client.click_button("📋 Очередь заказов", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # TODO: Найти заказ по ID
-    # Пока упрощенно - нажимаем первый заказ
-    
-    # Открываем карточку заказа
-    msg = await client.get_last_message(ADMIN_BOT_USERNAME)
-    # Нажимаем на первый заказ в списке
-    # (здесь нужна более точная логика поиска)
-    
-    # Нажимаем "Назначить мастера"
-    await client.click_button("👤 Назначить мастера", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # TODO: Выбрать конкретного мастера из списка
-    # Пока упрощенно - нажимаем первого доступного
-    msg = await client.get_last_message(ADMIN_BOT_USERNAME)
-    if msg and msg.reply_markup:
-        buttons = msg.reply_markup.rows[0].buttons
-        if buttons:
-            await client.click_button(buttons[0].text, ADMIN_BOT_USERNAME)
-    
-    await asyncio.sleep(1)
-    
-    # Подтверждаем назначение
-    await client.click_button("✅ Подтвердить", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-
-
-async def moderate_master(
-    client: BotTestClient,
-    master_id: int,
-    action: str = "approve",  # "approve" или "decline"
-    reason: Optional[str] = None,
-) -> None:
-    """
-    Модерировать заявку мастера
-    
-    Args:
-        client: Telethon клиент
-        master_id: ID мастера
-        action: "approve" для одобрения, "decline" для отклонения
-        reason: Причина отклонения (только для decline)
-    """
-    # Открываем модерацию
-    await client.click_button("👥 Модерация", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # TODO: Найти заявку конкретного мастера
-    # Пока упрощенно - работаем с первой заявкой
-    
-    if action == "approve":
-        await client.click_button("✅ Одобрить", ADMIN_BOT_USERNAME)
-        await asyncio.sleep(1)
-    elif action == "decline":
-        await client.click_button("❌ Отклонить", ADMIN_BOT_USERNAME)
-        await asyncio.sleep(0.5)
-        
-        # Вводим причину
-        if reason:
-            await client.send_command(ADMIN_BOT_USERNAME, reason)
-            await asyncio.sleep(1)
-    else:
-        raise ValueError(f"Unknown action: {action}")
-
-
-async def approve_master(
-    client: BotTestClient,
-    master_id: int,
-) -> None:
-    """
-    Одобрить заявку мастера
-    
-    Args:
-        client: Telethon клиент
-        master_id: ID мастера
-    """
-    await moderate_master(client, master_id, action="approve")
-
-
-async def decline_master(
-    client: BotTestClient,
-    master_id: int,
-    reason: str = "Не прошел проверку",
-) -> None:
-    """
-    Отклонить заявку мастера
-    
-    Args:
-        client: Telethon клиент
-        master_id: ID мастера
-        reason: Причина отклонения
-    """
-    await moderate_master(client, master_id, action="decline", reason=reason)
-
-
-async def finalize_order(
-    client: BotTestClient,
-    order_id: int,
-) -> None:
-    """
-    Финализировать заказ (перевести из MASTER_COMPLETED в CLOSED)
-    
-    Args:
-        client: Telethon клиент
-        order_id: ID заказа
-    """
-    # Открываем очередь заказов
-    await client.click_button("📋 Очередь заказов", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # TODO: Найти заказ по ID
-    
-    # Нажимаем "Подтвердить выполнение"
-    await client.click_button("✅ Подтвердить выполнение", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-```
-.
-## \ProjectF\tests\telegram_ui\helpers\master_helpers.py
-```python
-"""
-Helper функции для работы с мастерами через мастер-бот
-"""
-import asyncio
-from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text, select
-
-from tests.telegram_ui.bot_client import BotTestClient
-from tests.telegram_ui.config import MASTER_BOT_USERNAME
-
-
-async def create_master_via_onboarding(
-    client: BotTestClient,
-    session: AsyncSession,
-    *,
-    city: str = "Москва",
-    district: str = "ЦАО",
-    phone: str = "+79991234567",
-    auto_approve: bool = True
-) -> int:
-    """
-    Создать мастера через онбординг в мастер-боте
-    
-    Args:
-        client: Telethon клиент
-        session: БД сессия
-        city: Город мастера
-        district: Округ мастера
-        phone: Телефон мастера
-        auto_approve: Автоматически одобрить через БД
-    
-    Returns:
-        master_id: ID созданного мастера
-    """
-    # Начинаем онбординг
-    msg = await client.send_command(MASTER_BOT_USERNAME, "/start")
-    await asyncio.sleep(1)
-    
-    # Выбираем город
-    msg = await client.click_button(city, MASTER_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # Выбираем округ
-    msg = await client.click_button(district, MASTER_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # Отправляем телефон
-    msg = await client.send_command(MASTER_BOT_USERNAME, phone)
-    await asyncio.sleep(2)
-    
-    # Получаем telegram_id текущего пользователя
-    me = await client.client.get_me()
-    telegram_id = me.id
-    
-    # Ждем создания мастера в БД
-    await asyncio.sleep(1)
-    
-    # Находим созданного мастера
-    result = await session.execute(
-        text("SELECT id FROM masters WHERE telegram_id = :tg_id ORDER BY id DESC LIMIT 1"),
-        {"tg_id": telegram_id}
-    )
-    master = result.first()
-    
-    if not master:
-        raise ValueError(f"Master not created for telegram_id={telegram_id}")
-    
-    master_id = master.id
-    
-    # Автоматически одобряем если нужно
-    if auto_approve:
-        await session.execute(
-            text("UPDATE masters SET is_approved = true WHERE id = :id"),
-            {"id": master_id}
-        )
-        await session.commit()
-        
-        # Перезапускаем бота чтобы увидеть главное меню
-        await client.send_command(MASTER_BOT_USERNAME, "/start")
-        await asyncio.sleep(1)
-    
-    return master_id
-
-
-async def change_master_status(
-    client: BotTestClient,
-    status: str,
-) -> None:
-    """
-    Изменить статус мастера (Работаю/Перерыв/Оффлайн)
-    
-    Args:
-        client: Telethon клиент
-        status: "working" | "break" | "offline"
-    """
-    button_map = {
-        "working": "🟢 Начать работу",
-        "break": "🟡 На перерыв",
-        "offline": "🔴 Закончить работу",
-    }
-    
-    if status not in button_map:
-        raise ValueError(f"Unknown status: {status}. Use: working, break, offline")
-    
-    button_text = button_map[status]
-    await client.click_button(button_text, MASTER_BOT_USERNAME)
-    await asyncio.sleep(1)
-
-
-async def accept_offer(
-    client: BotTestClient,
-    order_id: int,
-) -> None:
-    """
-    Принять оффер по заказу
-    
-    Args:
-        client: Telethon клиент
-        order_id: ID заказа
-    """
-    # Ищем сообщение с оффером
-    # TODO: Нужно найти последнее сообщение с кнопками и нажать "Принять"
-    await client.click_button("✅ Принять заказ", MASTER_BOT_USERNAME)
-    await asyncio.sleep(1)
-
-
-async def decline_offer(
-    client: BotTestClient,
-    order_id: int,
-) -> None:
-    """
-    Отклонить оффер по заказу
-    
-    Args:
-        client: Telethon клиент
-        order_id: ID заказа
-    """
-    # Нажимаем "Отклонить"
-    await client.click_button("❌ Отклонить", MASTER_BOT_USERNAME)
-    await asyncio.sleep(0.5)
-    
-    # Подтверждаем отклонение
-    await client.click_button("Да, отклонить", MASTER_BOT_USERNAME)
-    await asyncio.sleep(1)
-
-
-async def start_work(
-    client: BotTestClient,
-    order_id: int,
-) -> None:
-    """
-    Начать работу по заказу (Приехал на объект)
-    
-    Args:
-        client: Telethon клиент
-        order_id: ID заказа
-    """
-    await client.click_button("🚗 Приехал на объект", MASTER_BOT_USERNAME)
-    await asyncio.sleep(1)
-
-
-async def complete_work(
-    client: BotTestClient,
-    order_id: int,
-) -> None:
-    """
-    Завершить работу по заказу
-    
-    Args:
-        client: Telethon клиент
-        order_id: ID заказа
-    """
-    await client.click_button("✅ Завершить заказ", MASTER_BOT_USERNAME)
-    await asyncio.sleep(1)
-```
-.
-## \ProjectF\tests\telegram_ui\helpers\order_helpers.py
-```python
-"""
-Helper функции для работы с заказами
-"""
-import asyncio
-from typing import Optional, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-
-from tests.telegram_ui.bot_client import BotTestClient
-from tests.telegram_ui.config import ADMIN_BOT_USERNAME
-
-
-async def create_order_via_admin(
-    client: BotTestClient,
-    session: AsyncSession,
-    *,
-    service: str = "Ремонт iPhone",
-    city: str = "Москва",
-    district: str = "ЦАО",
-    address: str = "ул. Тверская, 1",
-    client_phone: str = "+79991234567",
-    cost: int = 3000,
-    slot: str = "nearest",  # "nearest" или "12:00-14:00"
-) -> int:
-    """
-    Создать заказ через админ-бота
-    
-    Args:
-        client: Telethon клиент
-        session: БД сессия
-        service: Название услуги
-        city: Город
-        district: Район
-        address: Адрес клиента
-        client_phone: Телефон клиента
-        cost: Стоимость заказа
-        slot: Временной слот
-    
-    Returns:
-        order_id: ID созданного заказа
-    """
-    # Открываем админ-бот
-    await client.send_command(ADMIN_BOT_USERNAME, "/start")
-    await asyncio.sleep(1)
-    
-    # Нажимаем "Новый заказ"
-    await client.click_button("➕ Новый заказ", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # Выбираем город
-    await client.click_button(city, ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # Выбираем район
-    await client.click_button(district, ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # Вводим адрес
-    await client.send_command(ADMIN_BOT_USERNAME, address)
-    await asyncio.sleep(1)
-    
-    # Выбираем услугу
-    await client.click_button(service, ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # Вводим стоимость
-    await client.send_command(ADMIN_BOT_USERNAME, str(cost))
-    await asyncio.sleep(1)
-    
-    # Вводим телефон клиента
-    await client.send_command(ADMIN_BOT_USERNAME, client_phone)
-    await asyncio.sleep(1)
-    
-    # Выбираем слот
-    if slot == "nearest":
-        # Нажимаем на ближайший доступный слот (первая кнопка)
-        msg = await client.get_last_message(ADMIN_BOT_USERNAME)
-        if msg and msg.reply_markup:
-            buttons = msg.reply_markup.rows[0].buttons
-            if buttons:
-                await client.click_button(buttons[0].text, ADMIN_BOT_USERNAME)
-    else:
-        await client.click_button(slot, ADMIN_BOT_USERNAME)
-    
-    await asyncio.sleep(2)
-    
-    # Находим созданный заказ в БД (последний созданный)
-    result = await session.execute(
-        text("SELECT id FROM orders ORDER BY id DESC LIMIT 1")
-    )
-    order = result.first()
-    
-    if not order:
-        raise ValueError("Order not created")
-    
-    return order.id
-
-
-async def wait_for_offer(
-    session: AsyncSession,
-    order_id: int,
-    master_id: int,
-    timeout: int = 30,
-) -> bool:
-    """
-    Ожидать появления оффера для мастера
-    
-    Args:
-        session: БД сессия
-        order_id: ID заказа
-        master_id: ID мастера
-        timeout: Таймаут ожидания в секундах
-    
-    Returns:
-        True если оффер появился, False если таймаут
-    """
-    for _ in range(timeout):
-        result = await session.execute(
-            text("""
-                SELECT id FROM offers 
-                WHERE order_id = :order_id 
-                AND master_id = :master_id
-                LIMIT 1
-            """),
-            {"order_id": order_id, "master_id": master_id}
-        )
-        offer = result.first()
-        
-        if offer:
-            return True
-        
-        await asyncio.sleep(1)
-    
-    return False
-
-
-async def get_order_status(
-    session: AsyncSession,
-    order_id: int,
-) -> str:
-    """
-    Получить текущий статус заказа
-    
-    Args:
-        session: БД сессия
-        order_id: ID заказа
-    
-    Returns:
-        Статус заказа (NEW, IN_QUEUE, ASSIGNED, STARTED, etc.)
-    """
-    result = await session.execute(
-        text("SELECT status FROM orders WHERE id = :id"),
-        {"id": order_id}
-    )
-    row = result.first()
-    
-    if not row:
-        raise ValueError(f"Order {order_id} not found")
-    
-    return row.status
-
-
-async def cancel_order(
-    client: BotTestClient,
-    order_id: int,
-    reason: str = "Клиент отказался",
-) -> None:
-    """
-    Отменить заказ через админ-бота
-    
-    Args:
-        client: Telethon клиент
-        order_id: ID заказа
-        reason: Причина отмены
-    """
-    # Открываем очередь заказов
-    await client.click_button("📋 Очередь заказов", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-    
-    # TODO: Найти конкретный заказ и открыть его карточку
-    # Пока просто нажимаем первый заказ
-    # В реальности нужно искать по ID
-    
-    # Нажимаем "Отменить заказ"
-    await client.click_button("❌ Отменить заказ", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(0.5)
-    
-    # Вводим причину
-    await client.send_command(ADMIN_BOT_USERNAME, reason)
-    await asyncio.sleep(1)
-    
-    # Подтверждаем
-    await client.click_button("Да, отменить", ADMIN_BOT_USERNAME)
-    await asyncio.sleep(1)
-```
-.
-## \ProjectF\tests\telegram_ui\helpers\__init__.py
-```python
-"""
-Helper функции для E2E тестирования
-"""
-from .master_helpers import (
-    create_master_via_onboarding,
-    change_master_status,
-    accept_offer,
-    decline_offer,
-    start_work,
-    complete_work,
-)
-
-from .order_helpers import (
-    create_order_via_admin,
-    wait_for_offer,
-    get_order_status,
-    cancel_order,
-)
-
-from .admin_helpers import (
-    assign_order_manually,
-    moderate_master,
-    approve_master,
-    decline_master,
-)
-
-__all__ = [
-    # Master helpers
-    'create_master_via_onboarding',
-    'change_master_status',
-    'accept_offer',
-    'decline_offer',
-    'start_work',
-    'complete_work',
-    
-    # Order helpers
-    'create_order_via_admin',
-    'wait_for_offer',
-    'get_order_status',
-    'cancel_order',
-    
-    # Admin helpers
-    'assign_order_manually',
-    'moderate_master',
-    'approve_master',
-    'decline_master',
-]
-```
-.
-## \ProjectF\tools\_bulk_fix_handlers.py
 ```python
 ﻿from pathlib import Path
 import re
@@ -74009,9 +62839,16 @@ s=re.sub(r'ASAP.*19:30.*13\?', 'ASAP позже 19:30. Выбрать завтр
 
 p.write_text(s, encoding='utf-8')
 print('done')
+
 ```
-.
-## \ProjectF\tools\_fix_handlers_encoding.py
+
+---
+
+### `tools/_fix_handlers_encoding.py`
+
+**Strok:** 12  
+**Razmer:** 0.40 KB
+
 ```python
 ﻿from pathlib import Path
 p = Path('field-service/field_service/bots/admin_bot/handlers.py')
@@ -74024,4 +62861,18 @@ if fixed != raw:
     print('rewritten')
 else:
     print('nochange')
+
 ```
+
+---
+
+
+---
+
+## Itogovaya statistika
+
+- **Vsego failov:** 260
+- **Vsego strok koda:** 59,969
+- **Obshiy razmer:** 2.07 MB
+- **Sredniy razmer faila:** 8.17 KB
+- **Srednee strok v faile:** 230
