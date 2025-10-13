@@ -2,18 +2,16 @@
 Тест P1-16: Напоминание об окончании перерыва
 
 Проверяет внутреннюю логику планировщика напоминаний.
-ПРИМЕЧАНИЕ: Тесты проверяют логику без использования notifications_outbox,
-так как эта таблица не создаётся в тестовой БД (требует миграции).
+ПРИМЕЧАНИЕ: Тесты используют тестовую БД PostgreSQL, включая notifications_outbox,
+что позволяет проверять постановку уведомлений в очередь.
 """
 import pytest
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 
 from field_service.db import models as m
-from field_service.services.break_reminder_scheduler import (
-    _reminded_master_ids,
-    REMINDER_MINUTES_BEFORE,
-)
+from field_service.services import break_reminder_scheduler as scheduler
 
 
 @pytest.fixture
@@ -69,12 +67,12 @@ async def master_on_long_break(session, sample_master):
 @pytest.mark.asyncio
 async def test_break_reminder_logic_check(session, master_on_break):
     """Тест: Проверяем логику определения кандидатов на напоминание."""
-    _reminded_master_ids.clear()
+    scheduler._reminded_master_breaks.clear()
     
     # Получаем текущее время БД
     db_now_row = await session.execute(text("SELECT NOW()"))
     db_now = db_now_row.scalar()
-    reminder_threshold = db_now + timedelta(minutes=REMINDER_MINUTES_BEFORE)
+    reminder_threshold = db_now + timedelta(minutes=scheduler.REMINDER_MINUTES_BEFORE)
     
     # Проверяем что мастер подходит под критерии напоминания
     result = await session.execute(
@@ -96,12 +94,12 @@ async def test_break_reminder_logic_check(session, master_on_break):
 @pytest.mark.asyncio
 async def test_break_reminder_not_sent_for_long_break(session, master_on_long_break):
     """Тест: Напоминание НЕ отправляется если до окончания перерыва > 10 минут."""
-    _reminded_master_ids.clear()
+    scheduler._reminded_master_breaks.clear()
     
     # Получаем текущее время БД
     db_now_row = await session.execute(text("SELECT NOW()"))
     db_now = db_now_row.scalar()
-    reminder_threshold = db_now + timedelta(minutes=REMINDER_MINUTES_BEFORE)
+    reminder_threshold = db_now + timedelta(minutes=scheduler.REMINDER_MINUTES_BEFORE)
     
     # Проверяем что мастер НЕ подходит под критерии напоминания
     result = await session.execute(
@@ -122,51 +120,115 @@ async def test_break_reminder_not_sent_for_long_break(session, master_on_long_br
 
 @pytest.mark.asyncio
 async def test_deduplicate_reminders(session, master_on_break):
-    """Тест: Дедупликация напоминаний через _reminded_master_ids."""
-    _reminded_master_ids.clear()
-    
+    """Тест: Дедупликация напоминаний через _reminded_master_breaks."""
+    scheduler._reminded_master_breaks.clear()
+
     # Первый раз - мастер не в наборе
-    assert master_on_break.id not in _reminded_master_ids
-    
+    assert master_on_break.id not in scheduler._reminded_master_breaks
+
     # Добавляем в набор (имитируем отправку)
-    _reminded_master_ids.add(master_on_break.id)
-    
+    scheduler._reminded_master_breaks[master_on_break.id] = master_on_break.break_until
+
     # Второй раз - мастер уже в наборе, повторная отправка не должна произойти
-    assert master_on_break.id in _reminded_master_ids, "Мастер должен быть в наборе после добавления"
+    assert master_on_break.id in scheduler._reminded_master_breaks
+    assert (
+        scheduler._reminded_master_breaks[master_on_break.id] == master_on_break.break_until
+    )
 
 
 @pytest.mark.asyncio
 async def test_cleanup_reminded_set(session, master_on_break):
     """Тест: Логика очистки набора напоминаний."""
-    from field_service.services.break_reminder_scheduler import _cleanup_reminded_set
-    
-    _reminded_master_ids.clear()
-    
+    scheduler._reminded_master_breaks.clear()
+
     # Добавляем мастера в набор напоминаний
-    _reminded_master_ids.add(master_on_break.id)
-    assert master_on_break.id in _reminded_master_ids
-    
+    scheduler._reminded_master_breaks[master_on_break.id] = master_on_break.break_until
+    assert master_on_break.id in scheduler._reminded_master_breaks
+
     # Завершаем перерыв (переводим мастера на смену)
     master_on_break.shift_status = m.ShiftStatus.SHIFT_ON
     master_on_break.is_on_shift = True
     master_on_break.break_until = None
     await session.commit()
-    
+
     # Очищаем кэш и обновляем объект
     session.expire_all()
     await session.refresh(master_on_break)
-    
+
     # Запускаем очистку с передачей сессии
-    await _cleanup_reminded_set(session=session)
-    
+    await scheduler._cleanup_reminded_set(session=session)
+
     # Проверяем что мастер удалён из набора
-    assert master_on_break.id not in _reminded_master_ids, "Мастер должен быть удалён из набора после окончания перерыва"
+    assert (
+        master_on_break.id not in scheduler._reminded_master_breaks
+    ), "Мастер должен быть удалён из набора после окончания перерыва"
+
+
+@pytest.mark.asyncio
+async def test_reminder_requeued_after_break_extension(
+    session, master_on_break, monkeypatch
+):
+    """Тест: Повторное напоминание ставится после продления перерыва."""
+    scheduler._reminded_master_breaks.clear()
+
+    @asynccontextmanager
+    async def _session_override():
+        yield session
+
+    monkeypatch.setattr(scheduler, "SessionLocal", lambda: _session_override())
+
+    # Устанавливаем перерыв так, чтобы он подходил под критерии напоминания
+    master_on_break.shift_status = m.ShiftStatus.BREAK
+    master_on_break.is_on_shift = False
+    master_on_break.break_until = datetime.now(timezone.utc) + timedelta(
+        minutes=scheduler.REMINDER_MINUTES_BEFORE - 1
+    )
+    await session.commit()
+    await session.refresh(master_on_break)
+
+    notifications_count = await session.scalar(
+        select(func.count()).select_from(m.notifications_outbox)
+    )
+    assert notifications_count == 0
+
+    await scheduler._check_breaks_once()
+
+    notifications_count = await session.scalar(
+        select(func.count()).select_from(m.notifications_outbox)
+    )
+    assert notifications_count == 1
+    assert master_on_break.id in scheduler._reminded_master_breaks
+
+    # Продлеваем перерыв и убеждаемся, что запись в кэше очищается
+    master_on_break.break_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+    await session.commit()
+    await session.refresh(master_on_break)
+
+    await scheduler._cleanup_reminded_set(session=session)
+    assert master_on_break.id not in scheduler._reminded_master_breaks
+
+    # Снова сокращаем перерыв, чтобы он подходил для напоминания
+    master_on_break.break_until = datetime.now(timezone.utc) + timedelta(
+        minutes=scheduler.REMINDER_MINUTES_BEFORE - 1
+    )
+    await session.commit()
+    await session.refresh(master_on_break)
+
+    await scheduler._check_breaks_once()
+
+    notifications_count = await session.scalar(
+        select(func.count()).select_from(m.notifications_outbox)
+    )
+    assert notifications_count == 2
+    assert master_on_break.id in scheduler._reminded_master_breaks
 
 
 @pytest.mark.asyncio
 async def test_break_duration_constant():
     """Тест: Проверяем константы."""
-    assert REMINDER_MINUTES_BEFORE == 10, "Напоминание должно отправляться за 10 минут"
+    assert (
+        scheduler.REMINDER_MINUTES_BEFORE == 10
+    ), "Напоминание должно отправляться за 10 минут"
 
 
 if __name__ == "__main__":
