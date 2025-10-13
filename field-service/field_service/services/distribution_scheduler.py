@@ -5,11 +5,11 @@ import logging
 import random
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta, timezone
-from typing import Optional
+from typing import Iterable, Optional
 from zoneinfo import ZoneInfo
 
 from aiogram import Bot
-from sqlalchemy import insert, select, text, update
+from sqlalchemy import insert, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.config import settings as env_settings
@@ -24,7 +24,12 @@ from field_service.infra.structured_logging import (
     DistributionEvent,
     log_distribution_event,
 )
-from field_service.services.push_notifications import notify_admin, notify_master, NotificationEvent
+from field_service.services.push_notifications import (
+    NOTIFICATION_TEMPLATES,
+    NotificationEvent,
+    notify_admin,
+    notify_master,
+)
 
 CATEGORY_TO_SKILL_CODE = {
     "ELECTRICS": "ELEC",
@@ -90,6 +95,7 @@ class OrderForDistribution:
     city_id: int
     city_name: str
     district_id: Optional[int]
+    district_name: Optional[str]
     preferred_master_id: Optional[int]
     status: str
     category: Optional[str]
@@ -100,6 +106,300 @@ class OrderForDistribution:
     escalation_logist_notified_at: Optional[datetime]
     escalation_admin_notified_at: Optional[datetime]
 
+
+@dataclass(slots=True)
+class CityDistributionContext:
+    """Prepared distribution context for a particular city."""
+
+    city_id: int
+    city_name: str
+    timezone: ZoneInfo
+    logist_chat_ids: tuple[int, ...]
+    admin_chat_ids: tuple[int, ...]
+
+
+def _build_city_contexts(
+    *,
+    cities: Iterable[tuple[int, str, Optional[str]]],
+    staff_rows: Iterable[tuple[int, m.StaffRole, Optional[int]]],
+    default_timezone: str,
+) -> dict[int, CityDistributionContext]:
+    """Prepare city distribution contexts from raw DB rows."""
+
+    tz_cache: dict[str, ZoneInfo] = {}
+    contexts: dict[int, dict[str, object]] = {}
+
+    for city_id, city_name, tz_name in cities:
+        tz_key = tz_name or default_timezone
+        tz = tz_cache.get(tz_key)
+        if tz is None:
+            tz = time_service.resolve_timezone(tz_key)
+            tz_cache[tz_key] = tz
+        contexts[int(city_id)] = {
+            "city_id": int(city_id),
+            "city_name": city_name,
+            "timezone": tz,
+            "logist_ids": set(),
+            "admin_ids": set(),
+        }
+
+    if not contexts:
+        return {}
+
+    global_admins: set[int] = set()
+    global_logists: set[int] = set()
+
+    for telegram_id, role, assigned_city_id in staff_rows:
+        if telegram_id is None:
+            continue
+        try:
+            role_value = m.StaffRole(role)
+        except (ValueError, TypeError):
+            continue
+
+        chat_id = int(telegram_id)
+        city_id = int(assigned_city_id) if assigned_city_id is not None else None
+
+        if role_value == m.StaffRole.LOGIST:
+            if city_id and city_id in contexts:
+                contexts[city_id]["logist_ids"].add(chat_id)
+            else:
+                global_logists.add(chat_id)
+        elif role_value in (m.StaffRole.CITY_ADMIN, m.StaffRole.GLOBAL_ADMIN):
+            if city_id and city_id in contexts:
+                contexts[city_id]["admin_ids"].add(chat_id)
+            if role_value == m.StaffRole.GLOBAL_ADMIN and city_id is None:
+                global_admins.add(chat_id)
+
+    for ctx in contexts.values():
+        logist_ids: set[int] = ctx["logist_ids"]  # type: ignore[assignment]
+        admin_ids: set[int] = ctx["admin_ids"]  # type: ignore[assignment]
+        admin_ids.update(global_admins)
+        logist_ids.update(global_logists)
+        # Админы должны видеть эскалации логистов в своём городе
+        logist_ids.update(admin_ids)
+
+    return {
+        city_id: CityDistributionContext(
+            city_id=data["city_id"],
+            city_name=data["city_name"],
+            timezone=data["timezone"],
+            logist_chat_ids=tuple(sorted(data["logist_ids"])),
+            admin_chat_ids=tuple(sorted(data["admin_ids"])),
+        )
+        for city_id, data in contexts.items()
+    }
+
+
+async def _fetch_city_contexts(
+    session: AsyncSession,
+    city_ids: set[int],
+) -> dict[int, CityDistributionContext]:
+    """Fetch city distribution context (timezone and staff recipients)."""
+
+    if not city_ids:
+        return {}
+
+    city_rows = await session.execute(
+        select(m.cities.id, m.cities.name, m.cities.timezone).where(m.cities.id.in_(city_ids))
+    )
+    staff_rows = await session.execute(
+        select(
+            m.staff_users.telegram_id,
+            m.staff_users.role,
+            m.staff_cities.city_id,
+        )
+        .select_from(m.staff_users)
+        .outerjoin(m.staff_cities, m.staff_cities.staff_user_id == m.staff_users.id)
+        .where(
+            m.staff_users.is_active.is_(True),
+            m.staff_users.telegram_id.is_not(None),
+            m.staff_users.role.in_(
+                (
+                    m.StaffRole.LOGIST,
+                    m.StaffRole.CITY_ADMIN,
+                    m.StaffRole.GLOBAL_ADMIN,
+                )
+            ),
+            or_(
+                m.staff_cities.city_id.is_(None),
+                m.staff_cities.city_id.in_(city_ids),
+            ),
+        )
+    )
+
+    city_records = city_rows.all()
+    staff_records = staff_rows.all()
+
+    return _build_city_contexts(
+        cities=[(int(rec.id), str(rec.name), rec.timezone) for rec in city_records],
+        staff_rows=[(rec.telegram_id, rec.role, rec.city_id) for rec in staff_records],
+        default_timezone=env_settings.timezone,
+    )
+
+
+def _compose_staff_escalation_message(
+    event: NotificationEvent,
+    *,
+    order_id: int,
+    city: str,
+    district: str,
+    timeslot: str,
+    category: str,
+    reason: Optional[str] = None,
+) -> str:
+    template = NOTIFICATION_TEMPLATES.get(event)
+    if template:
+        try:
+            return template.format(
+                order_id=order_id,
+                city=city,
+                district=district,
+                timeslot=timeslot,
+                category=category,
+                reason=reason or "",
+            )
+        except KeyError:
+            pass
+
+    if event == NotificationEvent.ESCALATION_ADMIN:
+        prefix = "🚨 <b>Критическая эскалация заказа</b>"
+        suffix = "Заказ не распределён после логиста. Требуется вмешательство администратора."
+    else:
+        prefix = "⚠️ <b>Эскалация заказа</b>"
+        suffix = "Заказ не удалось распределить автоматически. Требуется проверка логиста."
+
+    lines = [
+        prefix,
+        "",
+        f"ID заказа: #{order_id}",
+        f"Город: {city}",
+        f"Район: {district}",
+    ]
+    if timeslot:
+        lines.append(f"Слот: {timeslot}")
+    if category:
+        lines.append(f"Категория: {category}")
+    if reason:
+        lines.append("")
+        lines.append(f"Причина: {reason}")
+    lines.append("")
+    lines.append(suffix)
+    return "\n".join(lines)
+
+
+async def _notify_city_staff(
+    bot: Bot | None,
+    chat_ids: Iterable[int],
+    *,
+    text: str,
+) -> None:
+    if bot is None:
+        return
+
+    delivered: set[int] = set()
+    for chat_id in chat_ids:
+        if chat_id in delivered:
+            continue
+        delivered.add(chat_id)
+        try:
+            await bot.send_message(chat_id, text, parse_mode="HTML")
+        except Exception:
+            logger.warning("[dist] failed to notify staff chat=%s", chat_id, exc_info=True)
+
+
+async def _notify_logist_escalation(
+    session: AsyncSession,
+    order: OrderForDistribution,
+    *,
+    bot: Bot | None,
+    alerts_chat_id: Optional[int],
+    city_ctx: Optional[CityDistributionContext],
+    message: str,
+    reason: str,
+) -> None:
+    if order.escalation_logist_notified_at is not None:
+        return
+
+    notified_at = await _mark_logist_notification_sent(session, order.id)
+    order.escalation_logist_notified_at = notified_at
+    logger.info("[dist] order=%s logist_notification_sent_at=%s", order.id, notified_at.isoformat())
+
+    order_data = {}
+    if city_ctx is not None:
+        order_data = await _get_order_notification_data(
+            session,
+            order.id,
+            timezone=city_ctx.timezone,
+        )
+
+    await _report(bot, message)
+    if bot and alerts_chat_id:
+        await notify_admin(
+            bot,
+            alerts_chat_id,
+            event=NotificationEvent.ESCALATION_LOGIST,
+            order_id=order.id,
+        )
+
+    if city_ctx and city_ctx.logist_chat_ids:
+        text = _compose_staff_escalation_message(
+            NotificationEvent.ESCALATION_LOGIST,
+            order_id=order.id,
+            city=order_data.get("city") or city_ctx.city_name,
+            district=order_data.get("district") or (order.district_name or "не указан"),
+            timeslot=order_data.get("timeslot") or "не указано",
+            category=order_data.get("category") or "не указано",
+            reason=reason,
+        )
+        await _notify_city_staff(bot, city_ctx.logist_chat_ids, text=text)
+
+
+async def _notify_admin_escalation(
+    session: AsyncSession,
+    order: OrderForDistribution,
+    *,
+    bot: Bot | None,
+    alerts_chat_id: Optional[int],
+    city_ctx: Optional[CityDistributionContext],
+    message: str,
+    reason: str,
+) -> None:
+    if order.escalation_admin_notified_at is not None:
+        return
+
+    notified_at = await _mark_admin_notification_sent(session, order.id)
+    order.escalation_admin_notified_at = notified_at
+    logger.info("[dist] order=%s admin_notification_sent_at=%s", order.id, notified_at.isoformat())
+
+    order_data = {}
+    if city_ctx is not None:
+        order_data = await _get_order_notification_data(
+            session,
+            order.id,
+            timezone=city_ctx.timezone,
+        )
+
+    await _report(bot, message)
+    if bot and alerts_chat_id:
+        await notify_admin(
+            bot,
+            alerts_chat_id,
+            event=NotificationEvent.ESCALATION_ADMIN,
+            order_id=order.id,
+        )
+
+    if city_ctx and city_ctx.admin_chat_ids:
+        text = _compose_staff_escalation_message(
+            NotificationEvent.ESCALATION_ADMIN,
+            order_id=order.id,
+            city=order_data.get("city") or city_ctx.city_name,
+            district=order_data.get("district") or (order.district_name or "не указан"),
+            timeslot=order_data.get("timeslot") or "не указано",
+            category=order_data.get("category") or "не указано",
+            reason=reason,
+        )
+        await _notify_city_staff(bot, city_ctx.admin_chat_ids, text=text)
 
 async def _load_config() -> DistConfig:
     """
@@ -152,7 +452,10 @@ async def _db_now(session: AsyncSession):
 
 
 async def _get_order_notification_data(
-    session: AsyncSession, order_id: int
+    session: AsyncSession,
+    order_id: int,
+    *,
+    timezone: ZoneInfo | None = None,
 ) -> dict:
     """Получить данные заказа для push-уведомления мастера."""
     from typing import Any
@@ -182,7 +485,7 @@ async def _get_order_notification_data(
         start = row["timeslot_start_utc"]
         end = row["timeslot_end_utc"]
         # Преобразуем в локальное время
-        tz = time_service.resolve_timezone("Europe/Moscow")  # TODO: использовать timezone города
+        tz = timezone or time_service.resolve_timezone(env_settings.timezone)
         start_local = start.astimezone(tz)
         end_local = end.astimezone(tz)
         timeslot = f"{start_local.strftime('%H:%M')}-{end_local.strftime('%H:%M')}"
@@ -217,6 +520,7 @@ async def _fetch_orders_for_distribution(
                o.city_id,
                c.name AS city_name,
                o.district_id,
+               d.name AS district_name,
                o.preferred_master_id,
                o.status,
                o.category,
@@ -226,8 +530,9 @@ async def _fetch_orders_for_distribution(
                o.dist_escalated_admin_at,
                o.escalation_logist_notified_at,
                o.escalation_admin_notified_at
-          FROM orders o
+         FROM orders o
           JOIN cities c ON c.id = o.city_id
+          LEFT JOIN districts d ON d.id = o.district_id
          WHERE o.status IN ('SEARCHING','GUARANTEE')
            AND o.assigned_master_id IS NULL
          ORDER BY
@@ -255,6 +560,7 @@ async def _fetch_orders_for_distribution(
                 city_id=int(row["city_id"]),
                 city_name=str(row["city_name"]),
                 district_id=row["district_id"],
+                district_name=row.get("district_name"),
                 preferred_master_id=row["preferred_master_id"],
                 status=str(row["status"]),
                 category=row["category"],
@@ -958,14 +1264,20 @@ async def _tick_once_impl(
 
 
     orders = await _fetch_orders_for_distribution(session)
-    
+
     # ✅ STEP 4.2: Structured logging - orders fetched
     log_distribution_event(
         DistributionEvent.ORDER_FETCHED,
         details={"orders_count": len(orders)},
     )
 
+    city_contexts = await _fetch_city_contexts(
+        session,
+        {order.city_id for order in orders},
+    )
+
     for order in orders:
+        city_ctx = city_contexts.get(order.city_id)
         # ✅ STEP 1.4: Эскалация к админу - проверяем что уведомление ещё не отправлено
         if (
             order.escalated_logist_at is not None
@@ -977,12 +1289,7 @@ async def _tick_once_impl(
                 admin_message = f"[dist] order={order.id} escalate=admin"
                 logger.warning(admin_message)
                 _dist_log(admin_message, level="WARN")
-                
-                # ✅ КРИТИЧНО: Отмечаем уведомление ПЕРЕД отправкой (независимо от бота)
-                notified_at = await _mark_admin_notification_sent(session, order.id)
-                order.escalation_admin_notified_at = notified_at
-                logger.info("[dist] order=%s admin_notification_sent_at=%s", order.id, notified_at.isoformat())
-                
+
                 # ✅ STEP 4.2: Structured logging - escalation to admin
                 log_distribution_event(
                     DistributionEvent.ESCALATION_ADMIN,
@@ -993,15 +1300,16 @@ async def _tick_once_impl(
                     notification_type="escalation_admin_notified",
                     level="WARNING",
                 )
-                
-                await _report(bot, admin_message)
-                if bot and alerts_chat_id:
-                    await notify_admin(
-                        bot,
-                        alerts_chat_id,
-                        event=NotificationEvent.ESCALATION_ADMIN,
-                        order_id=order.id,
-                    )
+
+                await _notify_admin_escalation(
+                    session,
+                    order,
+                    bot=bot,
+                    alerts_chat_id=alerts_chat_id,
+                    city_ctx=city_ctx,
+                    message=admin_message,
+                    reason="истёк SLA после логиста",
+                )
 
         # ✅ STEP 2.2: Заказы без района теперь НЕ эскалируются сразу
         # Вместо этого пытаемся найти мастеров по городу
@@ -1052,11 +1360,6 @@ async def _tick_once_impl(
             await _escalate_logist(order.id)
             # ✅ Отправляем уведомление только если эскалация только что произошла И уведомление ещё не отправлялось
             if newly_marked and order.escalation_logist_notified_at is None:
-                # ✅ КРИТИЧНО: Отмечаем уведомление ПЕРЕД отправкой (независимо от бота)
-                notified_at = await _mark_logist_notification_sent(session, order.id)
-                order.escalation_logist_notified_at = notified_at
-                logger.info("[dist] order=%s logist_notification_sent_at=%s", order.id, notified_at.isoformat())
-                
                 # ✅ STEP 4.2: Structured logging - escalation to logist (rounds exhausted)
                 log_distribution_event(
                     DistributionEvent.ESCALATION_LOGIST,
@@ -1069,15 +1372,16 @@ async def _tick_once_impl(
                     notification_type="escalation_logist_notified",
                     level="WARNING",
                 )
-                
-                await _report(bot, message)
-                if bot and alerts_chat_id:
-                    await notify_admin(
-                        bot,
-                        alerts_chat_id,
-                        event=NotificationEvent.ESCALATION_LOGIST,
-                        order_id=order.id,
-                    )
+
+                await _notify_logist_escalation(
+                    session,
+                    order,
+                    bot=bot,
+                    alerts_chat_id=alerts_chat_id,
+                    city_ctx=city_ctx,
+                    message=message,
+                    reason=f"исчерпаны раунды (#{current_round})",
+                )
             continue
 
         # ✅ STEP 1.4: Эскалация к логисту при отсутствии категории
@@ -1096,11 +1400,6 @@ async def _tick_once_impl(
             await _escalate_logist(order.id)
             # ✅ Отправляем уведомление только если эскалация только что произошла И уведомление ещё не отправлялось
             if newly_marked and order.escalation_logist_notified_at is None:
-                # ✅ КРИТИЧНО: Отмечаем уведомление ПЕРЕД отправкой (независимо от бота)
-                notified_at = await _mark_logist_notification_sent(session, order.id)
-                order.escalation_logist_notified_at = notified_at
-                logger.info("[dist] order=%s logist_notification_sent_at=%s", order.id, notified_at.isoformat())
-                
                 # ✅ STEP 4.2: Structured logging - escalation to logist (no category)
                 log_distribution_event(
                     DistributionEvent.ESCALATION_LOGIST,
@@ -1113,15 +1412,16 @@ async def _tick_once_impl(
                     notification_type="escalation_logist_notified",
                     level="WARNING",
                 )
-                
-                await _report(bot, message)
-                if bot and alerts_chat_id:
-                    await notify_admin(
-                        bot,
-                        alerts_chat_id,
-                        event=NotificationEvent.ESCALATION_LOGIST,
-                        order_id=order.id,
-                    )
+
+                await _notify_logist_escalation(
+                    session,
+                    order,
+                    bot=bot,
+                    alerts_chat_id=alerts_chat_id,
+                    city_ctx=city_ctx,
+                    message=message,
+                    reason="не указана категория",
+                )
             continue
 
         status_value = str(order.status) if order.status is not None else ""
@@ -1197,11 +1497,6 @@ async def _tick_once_impl(
             await _escalate_logist(order.id)
             # ✅ Отправляем уведомление только если эскалация только что произошла И уведомление ещё не отправлялось
             if newly_marked and order.escalation_logist_notified_at is None:
-                # ✅ КРИТИЧНО: Отмечаем уведомление ПЕРЕД отправкой (независимо от бота)
-                notified_at = await _mark_logist_notification_sent(session, order.id)
-                order.escalation_logist_notified_at = notified_at
-                logger.info("[dist] order=%s logist_notification_sent_at=%s", order.id, notified_at.isoformat())
-                
                 # ✅ STEP 4.2: Structured logging - escalation to logist (no candidates)
                 log_distribution_event(
                     DistributionEvent.ESCALATION_LOGIST,
@@ -1215,15 +1510,21 @@ async def _tick_once_impl(
                     notification_type="escalation_logist_notified",
                     level="WARNING",
                 )
-                
-                await _report(bot, message)
-                if bot and alerts_chat_id:
-                    await notify_admin(
-                        bot,
-                        alerts_chat_id,
-                        event=NotificationEvent.ESCALATION_LOGIST,
-                        order_id=order.id,
-                    )
+
+                reason = (
+                    "мастеров не найдено"
+                    if search_scope == "citywide"
+                    else f"мастеров не найдено ({search_scope})"
+                )
+                await _notify_logist_escalation(
+                    session,
+                    order,
+                    bot=bot,
+                    alerts_chat_id=alerts_chat_id,
+                    city_ctx=city_ctx,
+                    message=message,
+                    reason=reason,
+                )
             continue
 
         # ✅ STEP 4.2: Structured logging - candidates found
@@ -1278,7 +1579,11 @@ async def _tick_once_impl(
             
             # ✅ P1-10: Отправить push-уведомление мастеру о новом оффере
             try:
-                order_data = await _get_order_notification_data(session, order.id)
+                order_data = await _get_order_notification_data(
+                    session,
+                    order.id,
+                    timezone=city_ctx.timezone if city_ctx else None,
+                )
                 if order_data:
                     await notify_master(
                         session,
