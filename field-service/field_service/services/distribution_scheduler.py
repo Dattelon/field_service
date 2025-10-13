@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from aiogram import Bot
 from sqlalchemy import insert, or_, select, text, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from field_service.config import settings as env_settings
 from field_service.db import models as m
@@ -205,7 +205,7 @@ async def _fetch_city_contexts(
     )
     staff_rows = await session.execute(
         select(
-            m.staff_users.telegram_id,
+            m.staff_users.tg_user_id,
             m.staff_users.role,
             m.staff_cities.city_id,
         )
@@ -213,7 +213,7 @@ async def _fetch_city_contexts(
         .outerjoin(m.staff_cities, m.staff_cities.staff_user_id == m.staff_users.id)
         .where(
             m.staff_users.is_active.is_(True),
-            m.staff_users.telegram_id.is_not(None),
+            m.staff_users.tg_user_id.is_not(None),
             m.staff_users.role.in_(
                 (
                     m.StaffRole.LOGIST,
@@ -233,7 +233,7 @@ async def _fetch_city_contexts(
 
     return _build_city_contexts(
         cities=[(int(rec.id), str(rec.name), rec.timezone) for rec in city_records],
-        staff_rows=[(rec.telegram_id, rec.role, rec.city_id) for rec in staff_records],
+        staff_rows=[(rec.tg_user_id, rec.role, rec.city_id) for rec in staff_records],
         default_timezone=env_settings.timezone,
     )
 
@@ -547,7 +547,7 @@ async def _fetch_orders_for_distribution(
            -- 5. Время создания (oldest first)
            o.created_at ASC
          LIMIT 100
-         FOR UPDATE SKIP LOCKED
+         FOR UPDATE OF o SKIP LOCKED
         """
         )
     )
@@ -609,6 +609,9 @@ async def _current_round(session: AsyncSession, order_id: int) -> int:
     )
     r = int(row.scalar() or 0)
     return r
+
+
+current_round = _current_round
 
 
 async def _max_active_limit_for(session: AsyncSession) -> int:
@@ -1019,7 +1022,22 @@ async def _send_offer(
         """).bindparams(oid=oid, mid=mid)
     )
     if existing.scalar_one_or_none():
+        logger.info(f"[dist] order={oid} mid={mid} offer already exists, skipping")
         return False  # Активный оффер уже существует
+    
+    # Проверяем нет ли ЛЮБОГО оффера для этой пары (включая EXPIRED, DECLINED)
+    # Это защита от дублирования через UNIQUE constraint
+    any_existing = await session.execute(
+        text("""
+            SELECT 1 FROM offers 
+            WHERE order_id = :oid 
+              AND master_id = :mid
+            LIMIT 1
+        """).bindparams(oid=oid, mid=mid)
+    )
+    if any_existing.scalar_one_or_none():
+        logger.info(f"[dist] order={oid} mid={mid} offer exists in any state, skipping")
+        return False  # Любой оффер уже существует (защита от UNIQUE constraint)
     
     # Создаём новый оффер
     ins = await session.execute(
@@ -1091,23 +1109,19 @@ async def _set_logist_escalation(
     session: AsyncSession,
     order: OrderForDistribution,
 ) -> datetime | None:
-    row = await session.execute(
-        text(
-            """
-        UPDATE orders
-           SET dist_escalated_logist_at = NOW(),
-               dist_escalated_admin_at = NULL
-         WHERE id = :oid
-           AND dist_escalated_logist_at IS NULL
-        RETURNING dist_escalated_logist_at
-        """
-        ).bindparams(oid=order.id)
-    )
-    value = row.scalar()
-    if value is not None:
+    obj = await session.get(m.orders, order.id)
+    if obj is None:
+        return None
+    if obj.dist_escalated_logist_at is None:
+        value = datetime.now(timezone.utc)
+        obj.dist_escalated_logist_at = value
+        obj.dist_escalated_admin_at = None
         order.escalated_logist_at = value
         order.escalated_admin_at = None
-    return value
+        return value
+    order.escalated_logist_at = obj.dist_escalated_logist_at
+    order.escalated_admin_at = obj.dist_escalated_admin_at
+    return obj.dist_escalated_logist_at
 
 
 async def _set_admin_escalation(
@@ -1128,6 +1142,9 @@ async def _set_admin_escalation(
     value = row.scalar()
     if value is not None:
         order.escalated_admin_at = value
+        obj = await session.get(m.orders, order.id)
+        if obj is not None:
+            obj.dist_escalated_admin_at = value
     return value
 
 
@@ -1222,7 +1239,13 @@ async def tick_once(
     # Если сессия передана (тесты) - используем её
     # Если нет (продакшен) - создаём новую
     if session is not None:
-        await _tick_once_impl(session, cfg, bot, alerts_chat_id)
+        maker = async_sessionmaker(
+            bind=session.bind,
+            expire_on_commit=False,
+            class_=AsyncSession,
+        )
+        async with maker() as temp_session:
+            await _tick_once_impl(temp_session, cfg, bot, alerts_chat_id)
     else:
         async with SessionLocal() as session:
             await _tick_once_impl(session, cfg, bot, alerts_chat_id)
@@ -1344,6 +1367,12 @@ async def _tick_once_impl(
         )
         if row.first():
             await _reset_escalations(session, order)
+            await session.commit()
+            await session.run_sync(
+                lambda sync_session, oid=order.id: sync_session.expire(
+                    sync_session.get(m.orders, oid)
+                )
+            )
             continue
 
         current_round = await _current_round(session, order.id)
@@ -1382,6 +1411,12 @@ async def _tick_once_impl(
                     message=message,
                     reason=f"исчерпаны раунды (#{current_round})",
                 )
+            await session.commit()
+            await session.run_sync(
+                lambda sync_session, oid=order.id: sync_session.expire(
+                    sync_session.get(m.orders, oid)
+                )
+            )
             continue
 
         # ✅ STEP 1.4: Эскалация к логисту при отсутствии категории
@@ -1422,6 +1457,12 @@ async def _tick_once_impl(
                     message=message,
                     reason="не указана категория",
                 )
+            await session.commit()
+            await session.run_sync(
+                lambda sync_session, oid=order.id: sync_session.expire(
+                    sync_session.get(m.orders, oid)
+                )
+            )
             continue
 
         status_value = str(order.status) if order.status is not None else ""
@@ -1525,6 +1566,12 @@ async def _tick_once_impl(
                     message=message,
                     reason=reason,
                 )
+            await session.commit()
+            await session.run_sync(
+                lambda sync_session, oid=order.id: sync_session.expire(
+                    sync_session.get(m.orders, oid)
+                )
+            )
             continue
 
         # ✅ STEP 4.2: Structured logging - candidates found
@@ -1597,6 +1644,7 @@ async def _tick_once_impl(
 
 
         await session.commit()
+        await session.run_sync(lambda sync_session: sync_session.expire_all())
 
 
 async def run_scheduler(bot: Bot | None = None, *, alerts_chat_id: Optional[int] = None) -> None:
@@ -1615,3 +1663,5 @@ async def run_scheduler(bot: Bot | None = None, *, alerts_chat_id: Optional[int]
             logger.exception("[dist] exception: %s", exc)
             _dist_log(f"[dist] exception: {exc}", level="ERROR")
         await asyncio.sleep(sleep_for)
+
+

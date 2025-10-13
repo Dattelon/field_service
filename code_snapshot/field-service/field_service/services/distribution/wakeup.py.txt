@@ -54,15 +54,13 @@ async def run(
     now_utc = now_utc.astimezone(UTC)
     
     # ✅ Предзагружаем все города и их таймзоны одним запросом
+    city_timezones: dict[int, ZoneInfo] = {}
     if hasattr(m.cities, "timezone"):
-        city_tz_stmt = select(m.cities.id, m.cities.timezone)
-        city_tz_rows = await session.execute(city_tz_stmt)
-        city_timezones = {
-            int(city_id): time_service.resolve_timezone(str(tz)) if tz else time_service.resolve_timezone()
-            for city_id, tz in city_tz_rows
-        }
-    else:
-        city_timezones = {}
+        city_ids_stmt = select(m.cities.id)
+        city_rows = await session.execute(city_ids_stmt)
+        city_ids = {int(city_id) for (city_id,) in city_rows}
+        for city_id in city_ids:
+            city_timezones[city_id] = await _resolve_city_timezone(session, city_id)
     
     stmt = (
         select(
@@ -129,7 +127,7 @@ async def run(
                 context={
                     "action": "auto_wakeup",
                     "reason": "working_hours_started",
-                    "target_time_local": target_local,
+                    "target_time_local": target_local.isoformat(),
                     "system": "distribution_scheduler"
                 }
             )

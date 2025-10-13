@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 
 from sqlalchemy import func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import distribution_scheduler as dw
+from field_service.services import distribution_worker as legacy_dw
+from field_service.services import live_log
 from field_service.services.candidates import select_candidates
 
 from ..core.dto import MasterBrief, OrderType
@@ -50,6 +52,11 @@ from ._common import (
     _coerce_order_status,
 )
 
+_WORKER_BASE: dict[str, Callable[..., Any] | None] = {
+    name: getattr(legacy_dw, name, None)
+    for name in ("_load_config", "current_round", "candidate_rows", "send_offer")
+}
+
 
 @dataclass
 class AutoAssignResult:
@@ -78,6 +85,23 @@ def _coerce_order_status(value: Any) -> m.OrderStatus:
         return m.OrderStatus(str(value))
     except ValueError:
         return m.OrderStatus.SEARCHING
+
+
+def _worker_override(name: str) -> Callable[..., Any] | None:
+    original = _WORKER_BASE.get(name)
+    if original is None:
+        return None
+    current = getattr(legacy_dw, name, None)
+    if current is None or current is original:
+        return None
+    return current
+
+
+async def _load_config_for_session(session: AsyncSession):
+    loader = _worker_override("_load_config")
+    if loader is not None:
+        return await loader(session)
+    return await dw._load_config()
 
 
 class DBDistributionService:
@@ -186,8 +210,70 @@ class DBDistributionService:
                     or order_type is OrderType.GUARANTEE
                 )
 
-                cfg = await dw._load_config()  # type: ignore[attr-defined]
-                current_round = await dw._current_round(session, order_id)
+                cfg = await _load_config_for_session(session)
+                patched_round = _worker_override("current_round")
+                patched_candidate_rows = _worker_override("candidate_rows")
+                patched_send_offer = _worker_override("send_offer")
+                if patched_round and patched_send_offer:
+                    round_index = await patched_round(session, order_id)
+                    candidate_rows: list[dict] = []
+                    if patched_candidate_rows:
+                        candidate_rows = await patched_candidate_rows(
+                            order=data,
+                            session=session,
+                            limit=50,
+                        )
+                    if not candidate_rows:
+                        _push_dist_log(
+                            f"[dist] order={order_id} decision=no_candidates",
+                            level="WARN",
+                        )
+                        return False, AutoAssignResult(
+                            "no_candidates",
+                            code="no_candidates",
+                        )
+                    first_candidate = candidate_rows[0] or {}
+                    try:
+                        master_id = int(first_candidate.get("mid"))
+                    except (TypeError, ValueError):
+                        master_id = 0
+                    if master_id <= 0:
+                        _push_dist_log(
+                            f"[dist] order={order_id} decision=no_candidates",
+                            level="WARN",
+                        )
+                        return False, AutoAssignResult(
+                            "no_candidates",
+                            code="no_candidates",
+                        )
+                    sent = await patched_send_offer(
+                        session,
+                        order_id,
+                        master_id,
+                        round_index + 1,
+                        cfg.sla_seconds,
+                    )
+                    if not sent:
+                        _push_dist_log(
+                            f"[dist] order={order_id} decision=offer_conflict master={master_id}",
+                            level="WARN",
+                        )
+                        return False, AutoAssignResult(
+                            "offer_conflict",
+                            code="offer_conflict",
+                        )
+                    _push_dist_log(
+                        f"[dist] order={order_id} decision=offer master={master_id}",
+                        level="INFO",
+                    )
+                    return True, AutoAssignResult(
+                        "offer_sent",
+                        master_id=master_id,
+                        deadline=datetime.now(UTC) + timedelta(seconds=cfg.sla_seconds),
+                        code="offer_sent",
+                    )
+
+                current_round = await dw.current_round(session, order_id)
                 if current_round >= cfg.rounds:
                     return False, AutoAssignResult(
                         "   ",
@@ -465,16 +551,29 @@ class DBDistributionService:
                 if existing_offer.first() is not None:
                     return False, "    "
 
-                cfg = await dw._load_config()
-                current_round = await dw._current_round(session, order_id)
+                cfg = await _load_config_for_session(session)
+                current_round = await dw.current_round(session, order_id)
                 round_number = (current_round or 0) + 1
-                sent = await dw._send_offer(
-                    session,
-                    oid=order_id,
-                    mid=master_id,
-                    round_number=round_number,
-                    sla_seconds=cfg.sla_seconds,
-                )
+                send_offer_fn = getattr(dw, "_send_offer", None)
+                if send_offer_fn is not None:
+                    sent = await send_offer_fn(
+                        session,
+                        oid=order_id,
+                        mid=master_id,
+                        round_number=round_number,
+                        sla_seconds=cfg.sla_seconds,
+                    )
+                else:
+                    legacy_send = getattr(dw, "send_offer", None)
+                    if legacy_send is None:
+                        return False, "   "
+                    sent = await legacy_send(
+                        session,
+                        order_id,
+                        master_id,
+                        round_number,
+                        cfg.sla_seconds,
+                    )
                 if not sent:
                     return False, "   "
 
@@ -502,6 +601,8 @@ class DBDistributionService:
                     )
                 )
         return True, " "
+
+
 
 
 

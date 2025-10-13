@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Field Service Control Bot
+Управление ботами на продакшн сервере через Telegram
+"""
+
 import os
 import asyncio
 import logging

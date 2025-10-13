@@ -1,9 +1,9 @@
 ﻿from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import FrozenSet, Mapping, Optional, Sequence, Tuple
+from typing import Any, FrozenSet, Mapping, Optional, Sequence, Tuple
 
 from field_service.db import OrderCategory
 from field_service.db.models import OrderStatus, OrderType, StaffRole
@@ -149,9 +149,9 @@ class OrderStatusHistoryItem:
     changed_by_staff_id: Optional[int]
     changed_by_master_id: Optional[int]
     changed_at_local: str
-    actor_type: str
+    actor_type: str = "SYSTEM"
     actor_name: Optional[str] = None  # Имя админа/мастера для отображения
-    context: Mapping[str, any] = None  # Дополнительные детали
+    context: Mapping[str, Any] = field(default_factory=dict)  # Дополнительные детали
 
 
 @dataclass(frozen=True)

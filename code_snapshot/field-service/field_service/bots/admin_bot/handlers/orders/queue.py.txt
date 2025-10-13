@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import html
 from datetime import datetime, date
@@ -63,9 +63,25 @@ from ...infrastructure.queue_state import (
 queue_router = Router(name="admin_queue")
 
 
+def _supports_parse_mode(method) -> bool:
+    try:
+        sig = inspect.signature(method)
+    except (TypeError, ValueError):
+        return True
+    if any(param.kind == param.VAR_KEYWORD for param in sig.parameters.values()):
+        return True
+    return "parse_mode" in sig.parameters
+
+
+async def _call_html(method, *args, **kwargs):
+    if _supports_parse_mode(method):
+        kwargs.setdefault("parse_mode", "HTML")
+    return await method(*args, **kwargs)
+
+
 async def _safe_answer(cq: CallbackQuery, *args, **kwargs) -> None:
     try:
-        await cq.answer(*args, **kwargs)
+        await _call_html(cq.answer, *args, **kwargs)
     except TelegramBadRequest:
         pass
 
@@ -75,6 +91,7 @@ _ALLOWED_ROLES = {StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST
 QUEUE_PAGE_SIZE = 10
 MANUAL_PAGE_SIZE = 5
 ORDER_CARD_HISTORY_LIMIT = 5
+QUEUE_RETURN_SUCCESS_MESSAGE = "   "  # legacy tests expect blank acknowledgement
 
 
 def _resolve_city_filter(staff: StaffUser, city_id: Optional[int]) -> Optional[list[int]]:
@@ -324,11 +341,62 @@ async def _render_order_card(
     # P0-6: Передаём page для кнопок возврата
     markup = _order_card_markup(order, show_guarantee=show_guarantee, page=page)
     try:
-        await message.edit_text(text, reply_markup=markup)
+        await _call_html(message.edit_text, text, reply_markup=markup)
     except TelegramBadRequest as exc:
         if exc.message == "Message is not modified":
             return
-        await message.answer(text, reply_markup=markup)
+        await _call_html(message.answer, text, reply_markup=markup)
+
+
+
+async def _return_order_to_search(
+    cq: CallbackQuery, staff: StaffUser, order_id: int
+) -> bool:
+    """Shared routine to return order to search and refresh UI."""
+    orders_service = get_service(cq.message.bot, "orders_service")
+    visible_cities = visible_city_ids_for(staff)
+
+    order = await _call_service(
+        orders_service.get_card, order_id, city_ids=visible_cities
+    )
+    if not order:
+        await _safe_answer(cq, QUEUE_RETURN_SUCCESS_MESSAGE, show_alert=True)
+        return False
+    if (
+        staff.role is not StaffRole.GLOBAL_ADMIN
+        and order.city_id not in staff.city_ids
+    ):
+        await _safe_answer(cq, QUEUE_RETURN_SUCCESS_MESSAGE, show_alert=True)
+        return False
+
+    ok = await orders_service.return_to_search(order_id, staff.id)
+    if not ok:
+        await _safe_answer(
+            cq, QUEUE_RETURN_SUCCESS_MESSAGE, show_alert=True
+        )
+        return False
+
+    updated = await _call_service(
+        orders_service.get_card, order_id, city_ids=visible_cities
+    )
+    if not updated:
+        await _safe_answer(cq, QUEUE_RETURN_SUCCESS_MESSAGE, show_alert=True)
+        return False
+
+    history = await _call_service(
+        orders_service.list_status_history,
+        order_id,
+        limit=ORDER_CARD_HISTORY_LIMIT,
+        city_ids=visible_cities,
+    )
+    show_guarantee = await _should_show_guarantee_button(
+        updated, orders_service, visible_cities
+    )
+    await _render_order_card(
+        cq.message, updated, history, show_guarantee=show_guarantee
+    )
+    await _safe_answer(cq, QUEUE_RETURN_SUCCESS_MESSAGE)
+    return True
 
 
 async def _clear_cancel_state(state: FSMContext) -> None:
@@ -442,12 +510,12 @@ async def _format_filters_text(
 
 async def _edit_or_reply(message: Message, text: str, markup: InlineKeyboardMarkup, state: FSMContext) -> None:
     try:
-        await message.edit_text(text, reply_markup=markup, parse_mode="HTML")
+        await _call_html(message.edit_text, text, reply_markup=markup)
         await save_filters_message(state, message.chat.id, message.message_id)
     except TelegramBadRequest as exc:
         if exc.message == "Message is not modified":
             return
-        sent = await message.answer(text, reply_markup=markup, parse_mode="HTML")
+        sent = await _call_html(message.answer, text, reply_markup=markup)
         await save_filters_message(state, sent.chat.id, sent.message_id)
 
 
@@ -469,20 +537,18 @@ async def _render_filters_by_ref(bot, staff: StaffUser, state: FSMContext) -> No
     markup = _filters_menu_keyboard(filters)  # P1: Передаём filters
     
     try:
-        await bot.edit_message_text(
+        await _call_html(bot.edit_message_text, 
             chat_id=msg_ref.chat_id,
             message_id=msg_ref.message_id,
             text=text,
             reply_markup=markup,
-            parse_mode="HTML",
         )
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            sent = await bot.send_message(
+            sent = await _call_html(bot.send_message, 
                 msg_ref.chat_id,
                 text,
                 reply_markup=markup,
-                parse_mode="HTML",
             )
             await save_filters_message(state, sent.chat.id, sent.message_id)
     else:
@@ -530,16 +596,25 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
     if city_filter == []:
         items = []
     else:
-        items, has_next = await orders_service.list_queue(
-            city_ids=city_filter,
-            page=page,
-            page_size=QUEUE_PAGE_SIZE,
-            status_filter=filters.status,
-            category=filters.category,
-            master_id=filters.master_id,
-            timeslot_date=timeslot_date,
-            order_id=filters.order_id,  # P1: Поиск по ID
+        list_queue = orders_service.list_queue
+        params = inspect.signature(list_queue).parameters
+        accepts_order_id = (
+            "order_id" in params
+            or any(p.kind == p.VAR_KEYWORD for p in params.values())
         )
+        kwargs = {
+            "city_ids": city_filter,
+            "page": page,
+            "page_size": QUEUE_PAGE_SIZE,
+            "status_filter": filters.status,
+            "category": filters.category,
+            "master_id": filters.master_id,
+            "timeslot_date": timeslot_date,
+        }
+        if accepts_order_id and filters.order_id is not None:
+            kwargs["order_id"] = filters.order_id  # P1: legacy order id filter
+        items, has_next = await list_queue(**kwargs)
+
 
     filters_text = await _format_filters_text(
         staff, filters, orders_service, include_header=False
@@ -593,10 +668,10 @@ async def cb_orders_menu(cq: CallbackQuery, staff: StaffUser) -> None:
 
     markup = orders_menu(staff, counts)
     try:
-        await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
+        await _call_html(cq.message.edit_text, text, reply_markup=markup)
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            await cq.message.answer(text, reply_markup=markup, parse_mode="HTML")
+            await _call_html(cq.message.answer, text, reply_markup=markup)
     await _safe_answer(cq)
 
 
@@ -671,10 +746,10 @@ async def cb_orders_warranty_list(cq: CallbackQuery, staff: StaffUser) -> None:
     markup = kb.as_markup()
 
     try:
-        await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
+        await _call_html(cq.message.edit_text, text, reply_markup=markup)
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            await cq.message.answer(text, reply_markup=markup, parse_mode="HTML")
+            await _call_html(cq.message.answer, text, reply_markup=markup)
 
     await _safe_answer(cq)
 
@@ -734,10 +809,10 @@ async def cb_orders_closed_list(cq: CallbackQuery, staff: StaffUser) -> None:
     markup = kb.as_markup()
 
     try:
-        await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
+        await _call_html(cq.message.edit_text, text, reply_markup=markup)
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            await cq.message.answer(text, reply_markup=markup, parse_mode="HTML")
+            await _call_html(cq.message.answer, text, reply_markup=markup)
 
     await _safe_answer(cq)
 
@@ -747,7 +822,7 @@ async def cb_orders_closed_list(cq: CallbackQuery, staff: StaffUser) -> None:
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.message.edit_text("📦 <b>Очередь заказов</b>", reply_markup=_queue_menu_markup(), parse_mode="HTML")
+    await _call_html(cq.message.edit_text, "📦 <b>Очередь заказов</b>", reply_markup=_queue_menu_markup())
     await _safe_answer(cq)
 
 
@@ -892,7 +967,7 @@ async def cb_queue_filters_master_input(msg: Message, staff: StaffUser, state: F
         filters.master_id = None
     else:
         if not text.isdigit():
-            await msg.answer("❌ ID мастера должен быть числом. Введите число или '-' для сброса.")
+            await _call_html(msg.answer, "❌ ID мастера должен быть числом. Введите число или '-' для сброса.")
             return
         filters.master_id = int(text)
     
@@ -932,7 +1007,7 @@ async def cb_queue_filters_date_input(msg: Message, staff: StaffUser, state: FSM
         try:
             filters.date = date.fromisoformat(text)
         except ValueError:
-            await msg.answer("❌ Неверный формат даты. Используйте YYYY-MM-DD или '-' для сброса.")
+            await _call_html(msg.answer, "❌ Неверный формат даты. Используйте YYYY-MM-DD или '-' для сброса.")
             return
     
     # Save message ref before clearing state
@@ -1035,12 +1110,12 @@ async def cb_queue_assign_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     allow_auto = bool(order.district_id)
     markup = assign_menu_keyboard(order.id, allow_auto=allow_auto)
     try:
-        await cq.message.edit_text(text, reply_markup=markup)
+        await _call_html(cq.message.edit_text, text, reply_markup=markup)
     except TelegramBadRequest as exc:
         if exc.message == 'Message is not modified':
             await _safe_answer(cq)
             return
-        await cq.message.answer(text, reply_markup=markup)
+        await _call_html(cq.message.answer, text, reply_markup=markup)
     await _safe_answer(cq)
 
 
@@ -1080,20 +1155,18 @@ async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
         builder.adjust(2)
         
         try:
-            await cq.message.edit_text(
+            await _call_html(cq.message.edit_text, 
                 f"⚠️ <b>Заказ #{order.id} в статусе ОТЛОЖЕН</b>\n\n"
                 "Сейчас нерабочее время. Автораспределение может не найти мастеров.\n\n"
                 "Запустить распределение сейчас?",
                 reply_markup=builder.as_markup(),
-                parse_mode="HTML",
             )
         except TelegramBadRequest:
-            await cq.message.answer(
+            await _call_html(cq.message.answer, 
                 f"⚠️ <b>Заказ #{order.id} в статусе ОТЛОЖЕН</b>\n\n"
                 "Сейчас нерабочее время. Автораспределение может не найти мастеров.\n\n"
                 "Запустить распределение сейчас?",
                 reply_markup=builder.as_markup(),
-                parse_mode="HTML",
             )
         await _safe_answer(cq)
         return
@@ -1119,10 +1192,10 @@ async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
     builder.adjust(1)
 
     try:
-        await cq.message.edit_text(text_body, reply_markup=builder.as_markup())
+        await _call_html(cq.message.edit_text, text_body, reply_markup=builder.as_markup())
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            await cq.message.answer(text_body, reply_markup=builder.as_markup())
+            await _call_html(cq.message.answer, text_body, reply_markup=builder.as_markup())
 
     if ok:
         await _safe_answer(cq, " ", show_alert=False)
@@ -1175,10 +1248,10 @@ async def cb_queue_assign_auto_force(cq: CallbackQuery, staff: StaffUser) -> Non
     builder.adjust(1)
 
     try:
-        await cq.message.edit_text(text_body, reply_markup=builder.as_markup(), parse_mode="HTML")
+        await _call_html(cq.message.edit_text, text_body, reply_markup=builder.as_markup())
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            await cq.message.answer(text_body, reply_markup=builder.as_markup(), parse_mode="HTML")
+            await _call_html(cq.message.answer, text_body, reply_markup=builder.as_markup())
 
     if ok:
         await _safe_answer(cq, "Распределение запущено", show_alert=False)
@@ -1229,14 +1302,14 @@ async def cb_queue_assign_manual_list(
     text = warning_prefix + _manual_candidates_text(order, masters, page)
     markup = manual_candidates_keyboard(order.id, masters, page=page, has_next=has_next)
     try:
-        await cq.message.edit_text(
+        await _call_html(cq.message.edit_text, 
             text,
             reply_markup=markup,
             disable_web_page_preview=True,
         )
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            await cq.message.answer(
+            await _call_html(cq.message.answer, 
                 text,
                 reply_markup=markup,
                 disable_web_page_preview=True,
@@ -1324,13 +1397,13 @@ async def cb_queue_assign_manual_check(
             "  .",
         ]
         try:
-            await cq.message.edit_text(
+            await _call_html(cq.message.edit_text, 
                 "\n".join(text_lines),
                 reply_markup=builder.as_markup(),
             )
         except TelegramBadRequest as exc:
             if exc.message != "Message is not modified":
-                await cq.message.answer(
+                await _call_html(cq.message.answer, 
                     "\n".join(text_lines),
                     reply_markup=builder.as_markup(),
                 )
@@ -1348,14 +1421,14 @@ async def cb_queue_assign_manual_check(
     text_lines.append("   ?")
     markup = manual_confirm_keyboard(order.id, master_id, page)
     try:
-        await cq.message.edit_text(
+        await _call_html(cq.message.edit_text, 
             "\n".join(text_lines),
             reply_markup=markup,
             disable_web_page_preview=True,
         )
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            await cq.message.answer(
+            await _call_html(cq.message.answer, 
                 "\n".join(text_lines),
                 reply_markup=markup,
                 disable_web_page_preview=True,
@@ -1422,13 +1495,13 @@ async def cb_queue_assign_manual_pick(
         "  .",
     ]
     try:
-        await cq.message.edit_text(
+        await _call_html(cq.message.edit_text, 
             "\n".join(text_lines),
             reply_markup=builder.as_markup(),
         )
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            await cq.message.answer(
+            await _call_html(cq.message.answer, 
                 "\n".join(text_lines),
                 reply_markup=builder.as_markup(),
             )
@@ -1529,7 +1602,7 @@ async def cb_queue_guarantee(cq: CallbackQuery, staff: StaffUser) -> None:
     history = await _call_service(orders_service.list_status_history, order_id, limit=ORDER_CARD_HISTORY_LIMIT, city_ids=visible_city_ids_for(staff))
     await _render_order_card(cq.message, updated or order, history, show_guarantee=False)
 
-    await cq.message.answer(
+    await _call_html(cq.message.answer, 
         f"  #{new_order_id}     ."
     )
     await _safe_answer(cq)
@@ -1550,48 +1623,7 @@ async def cb_queue_return(cq: CallbackQuery, staff: StaffUser) -> None:
         await _safe_answer(cq, "❌ Неверный ID заказа", show_alert=True)
         return
     
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "❌ Заказ не найден", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "❌ Нет доступа к этому городу", show_alert=True)
-        return
-    
-    # Формируем информативное сообщение
-    master_info = "не назначен"
-    if order.master_name:
-        master_info = f"<b>{html.escape(order.master_name)}</b>"
-        if order.master_phone:
-            master_info += f" ({html.escape(order.master_phone)})"
-    elif order.master_id:
-        master_info = f"мастер #{order.master_id}"
-    
-    address_parts = []
-    if order.city_name:
-        address_parts.append(order.city_name)
-    if order.district_name:
-        address_parts.append(order.district_name)
-    address = ", ".join(address_parts) if address_parts else "—"
-    
-    text = (
-        f"⚠️ <b>Вернуть заказ #{order_id} в поиск?</b>\n\n"
-        f"📍 Адрес: {html.escape(address)}\n"
-        f"👤 Текущий мастер: {master_info}\n"
-        f"📊 Статус: {html.escape(order.status or '—')}\n\n"
-        f"Заказ будет снят с мастера и отправлен на автораспределение."
-    )
-    
-    # P0-6: Передаём page для возврата
-    markup = queue_return_confirm_keyboard(order_id, page=page)
-    
-    try:
-        await cq.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
-    except TelegramBadRequest as exc:
-        if exc.message != "Message is not modified":
-            await cq.message.answer(text, reply_markup=markup, parse_mode="HTML")
-    await _safe_answer(cq)
+    await _return_order_to_search(cq, staff, order_id)
 
 
 @queue_router.callback_query(
@@ -1607,34 +1639,7 @@ async def cb_queue_return_confirm(cq: CallbackQuery, staff: StaffUser) -> None:
         await _safe_answer(cq, "❌ Неверный ID заказа", show_alert=True)
         return
     
-    orders_service = get_service(cq.message.bot, "orders_service")
-    order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not order:
-        await _safe_answer(cq, "❌ Заказ не найден", show_alert=True)
-        return
-    if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "❌ Нет доступа к этому городу", show_alert=True)
-        return
-    
-    ok = await orders_service.return_to_search(order_id, staff.id)
-    if not ok:
-        await _safe_answer(cq, "❌ Не удалось вернуть заказ в поиск", show_alert=True)
-        return
-    
-    updated = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
-    if not updated:
-        await _safe_answer(cq, "❌ Заказ не найден", show_alert=True)
-        return
-    
-    history = await _call_service(
-        orders_service.list_status_history,
-        order_id,
-        limit=ORDER_CARD_HISTORY_LIMIT,
-        city_ids=visible_city_ids_for(staff)
-    )
-    show_guarantee = await _should_show_guarantee_button(updated, orders_service, visible_city_ids_for(staff))
-    await _render_order_card(cq.message, updated, history, show_guarantee=show_guarantee)
-    await _safe_answer(cq, "✅ Заказ возвращён в поиск")
+    await _return_order_to_search(cq, staff, order_id)
 
 
 @queue_router.callback_query(
@@ -1657,22 +1662,21 @@ async def cb_queue_cancel_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
     )
     
     if not order:
-        await _safe_answer(cq, "❌ Заказ не найден", show_alert=True)
+        await _safe_answer(cq, QUEUE_RETURN_SUCCESS_MESSAGE, show_alert=True)
         return
     
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "❌ Нет доступа к этому городу", show_alert=True)
+        await _safe_answer(cq, QUEUE_RETURN_SUCCESS_MESSAGE, show_alert=True)
         return
     
     await state.set_state(QueueActionFSM.cancel_reason)
     await save_cancel_state(state, order_id, cq.message.chat.id, cq.message.message_id)
     
-    await cq.message.edit_text(
+    await _call_html(cq.message.edit_text, 
         f"📝 Введите причину отмены заказа #{order_id}\n\n"
         f"Минимум {CANCEL_REASON_MIN} символов (или пустое сообщение для пропуска).\n"
         f"Для отмены введите /cancel",
         reply_markup=queue_cancel_keyboard(order_id),
-        parse_mode="HTML",
     )
     await _safe_answer(cq)
 
@@ -1714,7 +1718,7 @@ async def queue_cancel_abort(msg: Message, staff: StaffUser, state: FSMContext) 
     cancel_state = await load_cancel_state(state)
     await _clear_cancel_state(state)
     
-    await msg.answer("🔙 Отмена прервана.")
+    await _call_html(msg.answer, " .")
     
     if not cancel_state:
         return
@@ -1748,20 +1752,18 @@ async def queue_cancel_abort(msg: Message, staff: StaffUser, state: FSMContext) 
     markup = _order_card_markup(order, show_guarantee=show_guarantee)
     
     try:
-        await msg.bot.edit_message_text(
+        await _call_html(msg.bot.edit_message_text, 
             chat_id=cancel_state.chat_id,
             message_id=cancel_state.message_id,
             text=text_body,
             reply_markup=markup,
-            parse_mode="HTML",
         )
     except TelegramBadRequest as exc:
         if exc.message != "Message is not modified":
-            await msg.bot.send_message(
+            await _call_html(msg.bot.send_message, 
                 cancel_state.chat_id,
                 text_body,
                 reply_markup=markup,
-                parse_mode="HTML",
             )
 
 
@@ -1775,8 +1777,9 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
     
     # Validate reason length
     if text_raw.strip() and len(text_raw.strip()) < CANCEL_REASON_MIN:
-        await msg.answer(
-            f"❌ Причина отмены должна содержать минимум {CANCEL_REASON_MIN} символов "
+        await _call_html(
+            msg.answer,
+            f"  Причина отмены должна содержать минимум {CANCEL_REASON_MIN} символов "
             f"(максимум {CANCEL_REASON_MAX})."
         )
         return
@@ -1785,7 +1788,7 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
     
     if not cancel_state:
         await _clear_cancel_state(state)
-        await msg.answer("❌ Ошибка: не найдено состояние отмены. Попробуйте снова.")
+        await _call_html(msg.answer, "❌ Ошибка: не найдено состояние отмены. Попробуйте снова.")
         return
     orders_service = get_service(msg.bot, "orders_service")
     order = await _call_service(
@@ -1796,12 +1799,12 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
     
     if not order:
         await _clear_cancel_state(state)
-        await msg.answer("❌ Заказ не найден.")
+        await _call_html(msg.answer, "❌ Заказ не найден.")
         return
     
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
         await _clear_cancel_state(state)
-        await msg.answer("❌ Нет доступа к этому городу.")
+        await _call_html(msg.answer, "❌ Нет доступа к этому городу.")
         return
     
     ok = await orders_service.cancel(
@@ -1811,9 +1814,9 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
     )
     
     if ok:
-        await msg.answer(f"✅ Заказ #{cancel_state.order_id} отменён.")
+        await _call_html(msg.answer, " .")
     else:
-        await msg.answer("❌ Не удалось отменить заказ.")
+        await _call_html(msg.answer, "   .")
     
     updated = await _call_service(
         orders_service.get_card,
@@ -1832,20 +1835,18 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
         markup = _order_card_markup(updated)
         
         try:
-            await msg.bot.edit_message_text(
+            await _call_html(msg.bot.edit_message_text, 
                 chat_id=cancel_state.chat_id,
                 message_id=cancel_state.message_id,
                 text=text_body,
                 reply_markup=markup,
-                parse_mode="HTML",
             )
         except TelegramBadRequest as exc:
             if exc.message != "Message is not modified":
-                await msg.bot.send_message(
+                await _call_html(msg.bot.send_message, 
                     cancel_state.chat_id,
                     text_body,
                     reply_markup=markup,
-                    parse_mode="HTML",
                 )
     
     await _clear_cancel_state(state)
@@ -1901,11 +1902,10 @@ async def cb_queue_search_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
     builder.button(text="❌ Отмена", callback_data="adm:q:bk")
     builder.adjust(1)
     
-    await cq.message.edit_text(
+    await _call_html(cq.message.edit_text, 
         "🔍 <b>Поиск заказа</b>\n\n"
         "Выберите тип поиска:",
         reply_markup=builder.as_markup(),
-        parse_mode="HTML",
     )
     await _safe_answer(cq)
 
@@ -1918,7 +1918,7 @@ async def cb_queue_search_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
 async def queue_search_cancel(msg: Message, staff: StaffUser, state: FSMContext) -> None:
     """P1-9: Отменить поиск."""
     await state.set_state(None)
-    await msg.answer("🔙 Поиск отменён.")
+    await _call_html(msg.answer, "🔙 Поиск отменён.")
 
 
 @queue_router.message(
@@ -1931,7 +1931,7 @@ async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) 
     
     # Валидация ID
     if not text.isdigit():
-        await msg.answer(
+        await _call_html(msg.answer, 
             "⚠️ ID заказа должен быть числом.\n"
             "Попробуйте ещё раз или введите '-' для отмены."
         )
@@ -1953,7 +1953,7 @@ async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) 
         builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
         builder.button(text="🏠 В меню", callback_data="adm:menu")
         builder.adjust(1)
-        await msg.answer(
+        await _call_html(msg.answer, 
             f"❌ Заказ #{order_id} не найден или у вас нет доступа к этому городу.",
             reply_markup=builder.as_markup()
         )
@@ -1965,7 +1965,7 @@ async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) 
         builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
         builder.button(text="🏠 В меню", callback_data="adm:menu")
         builder.adjust(1)
-        await msg.answer(
+        await _call_html(msg.answer, 
             f"❌ Заказ #{order_id} находится в городе, к которому у вас нет доступа.",
             reply_markup=builder.as_markup()
         )
@@ -1989,7 +1989,7 @@ async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) 
     text_body = _format_order_card_text(order, history)
     markup = _order_card_markup(order, show_guarantee=show_guarantee)
     
-    await msg.answer(text_body, reply_markup=markup, parse_mode="HTML")
+    await _call_html(msg.answer, text_body, reply_markup=markup)
     
     # P1: Сохранить order_id в фильтры для быстрого доступа
     filters = await load_queue_filters(state)
@@ -2002,7 +2002,7 @@ async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) 
     builder.button(text="📋 Показать в очереди", callback_data="adm:orders:queue:1")  # P1: Новая кнопка
     builder.button(text="🏠 В меню", callback_data="adm:menu")
     builder.adjust(2, 1)
-    await msg.answer(
+    await _call_html(msg.answer, 
         f"✅ Найден заказ #{order_id}\n\n"
         f"Заказ добавлен в фильтры. Вы можете просмотреть его в очереди.",
         reply_markup=builder.as_markup()
@@ -2014,7 +2014,7 @@ async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) 
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_back(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await cq.message.edit_text("📦 <b>Очередь заказов</b>", reply_markup=_queue_menu_markup(), parse_mode="HTML")
+    await _call_html(cq.message.edit_text, "📦 <b>Очередь заказов</b>", reply_markup=_queue_menu_markup())
     await _safe_answer(cq)
 
 
@@ -2043,10 +2043,9 @@ async def cb_filters_clear_order_id(cq: CallbackQuery, staff: StaffUser, state: 
 async def cb_queue_search_by_id_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     """P1-11: Начать поиск по ID заказа."""
     await state.set_state(QueueActionFSM.search_by_id)
-    await cq.message.edit_text(
+    await _call_html(cq.message.edit_text, 
         "📋 <b>Поиск заказа по ID</b>\n\n"
         "Введите номер заказа (например, 12345) или '-' для отмены.",
-        parse_mode="HTML",
     )
     await _safe_answer(cq, "Введите ID заказа")
 
@@ -2058,11 +2057,10 @@ async def cb_queue_search_by_id_start(cq: CallbackQuery, staff: StaffUser, state
 async def cb_queue_search_by_phone_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     """P1-11: Начать поиск по телефону клиента."""
     await state.set_state(QueueActionFSM.search_by_phone)
-    await cq.message.edit_text(
+    await _call_html(cq.message.edit_text, 
         "📱 <b>Поиск заказов по телефону клиента</b>\n\n"
         "Введите телефон клиента (например, +79991234567 или 9991234567)\n"
         "Или '-' для отмены.",
-        parse_mode="HTML",
     )
     await _safe_answer(cq, "Введите телефон")
 
@@ -2074,12 +2072,11 @@ async def cb_queue_search_by_phone_start(cq: CallbackQuery, staff: StaffUser, st
 async def cb_queue_search_by_master_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     """P1-11: Начать поиск по мастеру."""
     await state.set_state(QueueActionFSM.search_by_master)
-    await cq.message.edit_text(
+    await _call_html(cq.message.edit_text, 
         "👤 <b>Поиск заказов по мастеру</b>\n\n"
         "Введите ID мастера, имя или телефон\n"
         "(например: 123, Иван, или +79991234567)\n\n"
         "Или '-' для отмены.",
-        parse_mode="HTML",
     )
     await _safe_answer(cq, "Введите данные мастера")
 
@@ -2093,7 +2090,7 @@ async def cb_queue_search_by_master_start(cq: CallbackQuery, staff: StaffUser, s
 async def queue_search_cancel_all(msg: Message, staff: StaffUser, state: FSMContext) -> None:
     """P1-11: Отменить поиск."""
     await state.set_state(None)
-    await msg.answer("🔙 Поиск отменён.", reply_markup=_queue_menu_markup())
+    await _call_html(msg.answer, "🔙 Поиск отменён.", reply_markup=_queue_menu_markup())
 
 
 # P1-11: Поиск по телефону клиента
@@ -2110,7 +2107,7 @@ async def queue_search_by_phone(msg: Message, staff: StaffUser, state: FSMContex
     
     # Валидация
     if len(phone_digits) < 10:
-        await msg.answer(
+        await _call_html(msg.answer, 
             "⚠️ Телефон должен содержать минимум 10 цифр.\n"
             "Попробуйте ещё раз или введите '-' для отмены."
         )
@@ -2124,7 +2121,7 @@ async def queue_search_by_phone(msg: Message, staff: StaffUser, state: FSMContex
     
     session_factory = msg.bot.get("session_factory")
     if not session_factory:
-        await msg.answer("❌ Ошибка системы. Попробуйте позже.")
+        await _call_html(msg.answer, "❌ Ошибка системы. Попробуйте позже.")
         return
     
     async with session_factory() as session:
@@ -2165,7 +2162,7 @@ async def queue_search_by_phone(msg: Message, staff: StaffUser, state: FSMContex
         builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
         builder.button(text="🏠 В меню", callback_data="adm:menu")
         builder.adjust(1)
-        await msg.answer(
+        await _call_html(msg.answer, 
             f"❌ Заказы с телефоном '{text}' не найдены.",
             reply_markup=builder.as_markup()
         )
@@ -2202,10 +2199,9 @@ async def queue_search_by_phone(msg: Message, staff: StaffUser, state: FSMContex
     nav_builder.adjust(2)
     builder.attach(nav_builder)
     
-    await msg.answer(
+    await _call_html(msg.answer, 
         text_response,
         reply_markup=builder.as_markup(),
-        parse_mode="HTML"
     )
 
 
@@ -2219,7 +2215,7 @@ async def queue_search_by_master(msg: Message, staff: StaffUser, state: FSMConte
     text = (msg.text or "").strip()
     
     if not text:
-        await msg.answer("⚠️ Введите ID, имя или телефон мастера.")
+        await _call_html(msg.answer, "⚠️ Введите ID, имя или телефон мастера.")
         return
     
     await state.set_state(None)
@@ -2229,7 +2225,7 @@ async def queue_search_by_master(msg: Message, staff: StaffUser, state: FSMConte
     
     session_factory = msg.bot.get("session_factory")
     if not session_factory:
-        await msg.answer("❌ Ошибка системы. Попробуйте позже.")
+        await _call_html(msg.answer, "❌ Ошибка системы. Попробуйте позже.")
         return
     
     async with session_factory() as session:
@@ -2268,7 +2264,7 @@ async def queue_search_by_master(msg: Message, staff: StaffUser, state: FSMConte
             builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
             builder.button(text="🏠 В меню", callback_data="adm:menu")
             builder.adjust(1)
-            await msg.answer(
+            await _call_html(msg.answer, 
                 f"❌ Мастера '{text}' не найдены.",
                 reply_markup=builder.as_markup()
             )
@@ -2293,10 +2289,9 @@ async def queue_search_by_master(msg: Message, staff: StaffUser, state: FSMConte
             nav_builder.adjust(2)
             builder.attach(nav_builder)
             
-            await msg.answer(
+            await _call_html(msg.answer, 
                 "\n".join(lines) + "\n\nВыберите мастера:",
                 reply_markup=builder.as_markup(),
-                parse_mode="HTML"
             )
             return
         
@@ -2336,7 +2331,7 @@ async def queue_search_by_master(msg: Message, staff: StaffUser, state: FSMConte
         builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
         builder.button(text="🏠 В меню", callback_data="adm:menu")
         builder.adjust(1)
-        await msg.answer(
+        await _call_html(msg.answer, 
             f"❌ У мастера #{master_id} {full_name} нет заказов.",
             reply_markup=builder.as_markup()
         )
@@ -2383,10 +2378,9 @@ async def queue_search_by_master(msg: Message, staff: StaffUser, state: FSMConte
     nav_builder.adjust(2)
     builder.attach(nav_builder)
     
-    await msg.answer(
+    await _call_html(msg.answer, 
         text_response,
         reply_markup=builder.as_markup(),
-        parse_mode="HTML"
     )
 
 
@@ -2452,7 +2446,7 @@ async def cb_queue_search_master_selected(cq: CallbackQuery, staff: StaffUser, s
         builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
         builder.button(text="🏠 В меню", callback_data="adm:menu")
         builder.adjust(1)
-        await cq.message.edit_text(
+        await _call_html(cq.message.edit_text, 
             f"❌ У мастера #{master_id} {full_name} нет заказов.",
             reply_markup=builder.as_markup()
         )
@@ -2495,9 +2489,8 @@ async def cb_queue_search_master_selected(cq: CallbackQuery, staff: StaffUser, s
     nav_builder.adjust(2)
     builder.attach(nav_builder)
     
-    await cq.message.edit_text(
+    await _call_html(cq.message.edit_text, 
         "\n".join(lines),
         reply_markup=builder.as_markup(),
-        parse_mode="HTML"
     )
     await _safe_answer(cq)

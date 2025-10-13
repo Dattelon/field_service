@@ -14,7 +14,12 @@ from rapidfuzz import fuzz, process
 from field_service.config import settings
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
-from field_service.services import time_service, guarantee_service, live_log
+from field_service.services import (
+    guarantee_service,
+    live_log,
+    operation_logger as oplog,
+    time_service,
+)
 from field_service.services.guarantee_service import GuaranteeError
 
 from ..core.dto import (
@@ -65,6 +70,25 @@ from field_service.data import cities as city_catalog
 from ..utils.normalizers import normalize_category, normalize_status
 
 
+def _session_tx_id(session: AsyncSession) -> Optional[str]:
+    """Best-effort identifier for the current SQLAlchemy transaction."""
+    try:
+        transaction = session.get_transaction()
+        if transaction is None:
+            return None
+        connection = getattr(transaction, "_connection", None)
+        if connection is None:
+            return None
+        raw = getattr(connection, "connection", None) or getattr(
+            connection,
+            "_dbapi_connection",
+            None,
+        )
+        return str(raw or connection)
+    except Exception:
+        return None
+
+
 class DBOrdersService:
     def __init__(self, session_factory=SessionLocal) -> None:
             self._session_factory = session_factory
@@ -90,8 +114,6 @@ class DBOrdersService:
             self, *, query: Optional[str] = None, limit: int = 20, city_ids: Optional[list[int]] = None
         ) -> list[CityRef]:
             matching = city_catalog.match_cities(query)
-            if limit is not None and limit > 0:
-                matching = matching[:limit]
             if not matching:
                 return []
             async with self._session_factory() as session:
@@ -104,11 +126,14 @@ class DBOrdersService:
                     stmt = stmt.where(m.cities.id.in_(city_ids))
                 rows = await session.execute(stmt)
                 fetched = {row.name: int(row.id) for row in rows}
-            return [
+            ordered = [
                 CityRef(id=fetched[name], name=name)
                 for name in matching
                 if name in fetched
             ]
+            if limit is not None and limit > 0:
+                return ordered[:limit]
+            return ordered
 
     async def get_city(self, city_id: int) -> Optional[CityRef]:
             async with self._session_factory() as session:
@@ -890,100 +915,136 @@ class DBOrdersService:
         return None, None, None, None, resolved_district
 
     async def create_order(self, data: NewOrderData) -> int:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    tz = await self._city_timezone(session, data.city_id)
-                    _, workday_end = await _workday_window()
-                    now_local = datetime.now(timezone.utc).astimezone(tz)
-                    current_time = now_local.timetz()
-                    if current_time.tzinfo is not None:
-                        current_time = current_time.replace(tzinfo=None)
-                    normalized_status = normalize_status(data.initial_status)
-                    initial_status = normalized_status or m.OrderStatus.SEARCHING
-                    status_provided = normalized_status is not None
-                    if not status_provided and current_time >= workday_end:
-                        initial_status = m.OrderStatus.DEFERRED
-                    (
-                        resolved_lat,
-                        resolved_lon,
-                        geocode_provider,
-                        geocode_confidence,
-                        resolved_district,
-                    ) = await self._resolve_order_coordinates(
-                        session,
-                        city_id=data.city_id,
-                        district_id=data.district_id,
-                        street_id=data.street_id,
-                        raw_lat=data.lat,
-                        raw_lon=data.lon,
-                    )
-                    no_district_flag = bool(data.no_district or resolved_district is None)
-                    order = m.orders(
-                        city_id=data.city_id,
-                        district_id=resolved_district,
-                        street_id=data.street_id,
-                        house=data.house,
-                        apartment=data.apartment,
-                        address_comment=data.address_comment,
-                        client_name=data.client_name,
-                        client_phone=data.client_phone,
-                        category=data.category,
-                        description=data.description,
-                        type=_map_order_type_to_db(data.order_type),
-                        timeslot_start_utc=data.timeslot_start_utc,
-                        timeslot_end_utc=data.timeslot_end_utc,
-                        lat=resolved_lat,
-                        lon=resolved_lon,
-                        geocode_provider=geocode_provider,
-                        geocode_confidence=geocode_confidence,
-                        no_district=no_district_flag,
-                        preferred_master_id=data.preferred_master_id,
-                        guarantee_source_order_id=data.guarantee_source_order_id,
-                        company_payment=Decimal(data.company_payment or 0),
-                        total_sum=Decimal(data.total_sum or 0),
-                        created_by_staff_id=data.created_by_staff_id,
-                        status=initial_status,
-                    )
-                    session.add(order)
-                    await session.flush()
-                    if data.attachments:
-                        session.add_all(
-                            m.attachments(
-                                entity_type=m.AttachmentEntity.ORDER,
-                                entity_id=order.id,
-                                file_type=_attachment_type_from_string(att.file_type),
-                                file_id=att.file_id,
-                                file_unique_id=att.file_unique_id,
-                                file_name=att.file_name,
-                                mime_type=att.mime_type,
-                                caption=att.caption,
-                                uploaded_by_staff_id=data.created_by_staff_id,
+            request_id = oplog.generate_request_id()
+            normalized_initial_status = normalize_status(data.initial_status)
+            initial_status_hint = normalized_initial_status or data.initial_status or 'AUTO'
+            category_hint = (
+                data.category.value if hasattr(data.category, 'value') else data.category or 'UNKNOWN'
+            )
+            oplog.log_order_creation_start(
+                request_id=request_id,
+                staff_id=data.created_by_staff_id,
+                city_id=data.city_id,
+                category=category_hint,
+                initial_status=initial_status_hint,
+            )
+            try:
+                async with self._session_factory() as session:
+                    async with session.begin():
+                        tz = await self._city_timezone(session, data.city_id)
+                        _, workday_end = await _workday_window()
+                        now_local = datetime.now(timezone.utc).astimezone(tz)
+                        current_time = now_local.timetz()
+                        if current_time.tzinfo is not None:
+                            current_time = current_time.replace(tzinfo=None)
+                        initial_status = normalized_initial_status or m.OrderStatus.SEARCHING
+                        status_provided = normalized_initial_status is not None
+                        if not status_provided and current_time >= workday_end:
+                            initial_status = m.OrderStatus.DEFERRED
+                        (
+                            resolved_lat,
+                            resolved_lon,
+                            geocode_provider,
+                            geocode_confidence,
+                            resolved_district,
+                        ) = await self._resolve_order_coordinates(
+                            session,
+                            city_id=data.city_id,
+                            district_id=data.district_id,
+                            street_id=data.street_id,
+                            raw_lat=data.lat,
+                            raw_lon=data.lon,
+                        )
+                        no_district_flag = bool(data.no_district or resolved_district is None)
+                        created_staff_id = None
+                        if data.created_by_staff_id:
+                            staff_row = await session.get(m.staff_users, data.created_by_staff_id)
+                            created_staff_id = getattr(staff_row, "id", None)
+                        order = m.orders(
+                            city_id=data.city_id,
+                            district_id=resolved_district,
+                            street_id=data.street_id,
+                            house=data.house,
+                            apartment=data.apartment,
+                            address_comment=data.address_comment,
+                            client_name=data.client_name,
+                            client_phone=data.client_phone,
+                            category=data.category,
+                            description=data.description,
+                            type=_map_order_type_to_db(data.order_type),
+                            timeslot_start_utc=data.timeslot_start_utc,
+                            timeslot_end_utc=data.timeslot_end_utc,
+                            lat=resolved_lat,
+                            lon=resolved_lon,
+                            geocode_provider=geocode_provider,
+                            geocode_confidence=geocode_confidence,
+                            no_district=no_district_flag,
+                            preferred_master_id=data.preferred_master_id,
+                            guarantee_source_order_id=data.guarantee_source_order_id,
+                            company_payment=Decimal(data.company_payment or 0),
+                            total_sum=Decimal(data.total_sum or 0),
+                            created_by_staff_id=created_staff_id,
+                            status=initial_status,
+                        )
+                        session.add(order)
+                        await session.flush()
+                        if data.attachments:
+                            session.add_all(
+                                m.attachments(
+                                    entity_type=m.AttachmentEntity.ORDER,
+                                    entity_id=order.id,
+                                    file_type=_attachment_type_from_string(att.file_type),
+                                    file_id=att.file_id,
+                                    file_unique_id=att.file_unique_id,
+                                    file_name=att.file_name,
+                                    mime_type=att.mime_type,
+                                    caption=att.caption,
+                                    uploaded_by_staff_id=created_staff_id,
+                                )
+                                for att in data.attachments
                             )
-                            for att in data.attachments
+                        staff_info = (
+                            await _load_staff_access(session, data.created_by_staff_id)
+                            if data.created_by_staff_id
+                            else None
                         )
-                    # Получаем информацию о создателе заказа для контекста
-                    staff_info = await _load_staff_access(session, data.created_by_staff_id) if data.created_by_staff_id else None
-                    
-                    session.add(
-                        m.order_status_history(
+                        session.add(
+                            m.order_status_history(
+                                order_id=order.id,
+                                from_status=None,
+                                to_status=initial_status,
+                                reason='created_by_staff',
+                                changed_by_staff_id=created_staff_id,
+                                actor_type=m.ActorType.ADMIN,
+                                context={
+                                    'staff_id': data.created_by_staff_id,
+                                    'staff_name': staff_info.full_name if staff_info else None,
+                                    'action': 'order_creation',
+                                    'initial_status': getattr(initial_status, 'value', str(initial_status)),
+                                    'deferred_reason': 'outside_working_hours'
+                                    if initial_status == m.OrderStatus.DEFERRED
+                                    else None,
+                                    'has_preferred_master': data.preferred_master_id is not None,
+                                    'is_guarantee': data.order_type == OrderType.GUARANTEE,
+                                },
+                            )
+                        )
+                        tx_id = _session_tx_id(session)
+                        oplog.log_order_created(
+                            request_id=request_id,
                             order_id=order.id,
-                            from_status=None,
-                            to_status=initial_status,
-                            reason="created_by_staff",
-                            changed_by_staff_id=data.created_by_staff_id,
-                            actor_type=m.ActorType.ADMIN,
-                            context={
-                                "staff_id": data.created_by_staff_id,
-                                "staff_name": staff_info.full_name if staff_info else None,
-                                "action": "order_creation",
-                                "initial_status": initial_status.value,
-                                "deferred_reason": "outside_working_hours" if initial_status == m.OrderStatus.DEFERRED else None,
-                                "has_preferred_master": data.preferred_master_id is not None,
-                                "is_guarantee": data.order_type == OrderType.GUARANTEE
-                            }
+                            status=order.status,
+                            staff_id=data.created_by_staff_id,
+                            tx_id=tx_id,
                         )
-                    )
-                return order.id
+                        return order.id
+            except Exception as exc:
+                oplog.log_order_creation_error(
+                    request_id=request_id,
+                    error=str(exc),
+                    staff_id=data.created_by_staff_id,
+                )
+                raise
     async def has_active_guarantee(self, source_order_id: int, *, city_ids: Optional[Iterable[int]] = None) -> bool:
             async with self._session_factory() as session:
                 stmt = (
@@ -1166,122 +1227,158 @@ class DBOrdersService:
             return True
 
     async def assign_master(
-            self, order_id: int, master_id: int, by_staff_id: int
+            self, order_id: int, master_id: int, by_staff_id: int, *, request_id: Optional[str] = None, actor: str = 'ADMIN'
         ) -> bool:
+            tracking_id = request_id or oplog.generate_request_id()
             async with self._session_factory() as session:
-                async with session.begin():
-                    order_q = await session.execute(
-                        select(m.orders)
-                        .where(m.orders.id == order_id)
-                        .with_for_update()
-                    )
-                    order = order_q.scalar_one_or_none()
-                    if not order:
-                        return False
-                    staff = await _load_staff_access(session, by_staff_id or None)
-                    if not _staff_can_access_city(staff, order.city_id):
-                        return False
-                    master_q = await session.execute(
-                        select(m.masters).where(m.masters.id == master_id)
-                    )
-                    master = master_q.scalar_one_or_none()
-                    if not master:
-                        return False
-                    if master.city_id is not None and master.city_id != order.city_id:
-                        return False
-                    if order.district_id:
-                        md_q = await session.execute(
-                            select(m.master_districts)
-                            .where(
-                                (m.master_districts.master_id == master.id)
-                                & (m.master_districts.district_id == order.district_id)
-                            )
-                            .limit(1)
+                try:
+                    async with session.begin():
+                        order_q = await session.execute(
+                            select(m.orders)
+                            .where(m.orders.id == order_id)
+                            .with_for_update()
                         )
-                        if md_q.first() is None:
+                        order = order_q.scalar_one_or_none()
+                        if not order:
                             return False
-                    prev_status = order.status
-                    order.assigned_master_id = master.id
-                    order.status = m.OrderStatus.ASSIGNED
-                    order.updated_at = datetime.now(UTC)
-                    order.version = (order.version or 0) + 1
-                    order.cancel_reason = None
-                    
-                    # Получаем имя мастера для контекста
-                    master_name = f"{master.last_name} {master.first_name}".strip()
-                    
-                    session.add(
-                        m.order_status_history(
+                        staff = await _load_staff_access(session, by_staff_id or None)
+                        if not _staff_can_access_city(staff, order.city_id):
+                            return False
+                        master_q = await session.execute(
+                            select(m.masters).where(m.masters.id == master_id)
+                        )
+                        master = master_q.scalar_one_or_none()
+                        if not master:
+                            return False
+                        if master.city_id is not None and master.city_id != order.city_id:
+                            return False
+                        if order.district_id:
+                            md_q = await session.execute(
+                                select(m.master_districts)
+                                .where(
+                                    (m.master_districts.master_id == master.id)
+                                    & (m.master_districts.district_id == order.district_id)
+                                )
+                                .limit(1)
+                            )
+                            if md_q.first() is None:
+                                return False
+                        prev_status = order.status
+                        oplog.log_assign_attempt(
+                            request_id=tracking_id,
                             order_id=order.id,
-                            from_status=prev_status,
-                            to_status=m.OrderStatus.ASSIGNED,
-                            reason="manual_assign",
-                            changed_by_staff_id=staff.id if staff else None,
-                            actor_type=m.ActorType.ADMIN,
-                            context={
-                                "staff_id": staff.id if staff else None,
-                                "staff_name": staff.full_name if staff else None,
-                                "master_id": master.id,
-                                "master_name": master_name,
-                                "action": "manual_assignment",
-                                "method": "admin_override"
-                            }
+                            old_status=prev_status,
+                            new_status=m.OrderStatus.ASSIGNED,
+                            master_id=master.id,
+                            staff_id=by_staff_id,
+                            actor=actor,
                         )
-                    )
-                    
-                    # ✅ STEP 4.1: Запись метрик для ручного назначения админом
-                    try:
-                        # Получаем статистику офферов для этого заказа
-                        offer_stats = await session.execute(
-                            select(
-                                func.max(m.offers.round_number).label("max_round"),
-                                func.count(func.distinct(m.offers.master_id)).label("total_candidates")
-                            ).where(m.offers.order_id == order.id)
-                        )
-                        stats_row = offer_stats.first()
-                        
-                        now_utc = datetime.now(UTC)
-                        time_to_assign = int((now_utc - order.created_at).total_seconds()) if order.created_at else None
-                        
+                        order.assigned_master_id = master.id
+                        order.status = m.OrderStatus.ASSIGNED
+                        order.updated_at = datetime.now(UTC)
+                        order.version = (order.version or 0) + 1
+                        order.cancel_reason = None
+
+                        master_name = f"{master.last_name} {master.first_name}".strip()
+
                         session.add(
-                            m.distribution_metrics(
+                            m.order_status_history(
                                 order_id=order.id,
-                                master_id=master.id,
-                                round_number=stats_row.max_round if stats_row and stats_row.max_round else 0,
-                                candidates_count=stats_row.total_candidates if stats_row and stats_row.total_candidates else 0,
-                                time_to_assign_seconds=time_to_assign,
-                                preferred_master_used=(master.id == order.preferred_master_id),
-                                was_escalated_to_logist=(order.dist_escalated_logist_at is not None),
-                                was_escalated_to_admin=(order.dist_escalated_admin_at is not None),
-                                city_id=order.city_id,
-                                district_id=order.district_id,
-                                category=order.category,
-                                order_type=order.type,
-                                metadata_json={
-                                    "assigned_via": "admin_manual",
-                                    "from_status": prev_status.value if hasattr(prev_status, 'value') else str(prev_status),
-                                    "staff_id": staff.id if staff else None,
-                                }
+                                from_status=prev_status,
+                                to_status=m.OrderStatus.ASSIGNED,
+                                reason='manual_assign',
+                                changed_by_staff_id=staff.id if staff else None,
+                                actor_type=m.ActorType.ADMIN,
+                                context={
+                                    'staff_id': staff.id if staff else None,
+                                    'staff_name': staff.full_name if staff else None,
+                                    'master_id': master.id,
+                                    'master_name': master_name,
+                                    'action': 'manual_assignment',
+                                    'method': 'admin_override',
+                                },
                             )
                         )
-                    except Exception:
-                        # Метрики не должны ломать процесс назначения
-                        pass
-                    
-                    await session.execute(
-                        update(m.offers)
-                        .where(
-                            (m.offers.order_id == order.id)
-                            & (
-                                m.offers.state.in_(
-                                    [m.OfferState.SENT, m.OfferState.VIEWED]
+
+                        try:
+                            offer_stats = await session.execute(
+                                select(
+                                    func.max(m.offers.round_number).label('max_round'),
+                                    func.count(func.distinct(m.offers.master_id)).label('total_candidates')
+                                ).where(m.offers.order_id == order.id)
+                            )
+                            stats_row = offer_stats.first()
+
+                            now_utc = datetime.now(UTC)
+                            time_to_assign = (
+                                int((now_utc - order.created_at).total_seconds())
+                                if order.created_at
+                                else None
+                            )
+
+                            session.add(
+                                m.distribution_metrics(
+                                    order_id=order.id,
+                                    master_id=master.id,
+                                    round_number=stats_row.max_round if stats_row and stats_row.max_round else 0,
+                                    candidates_count=stats_row.total_candidates if stats_row and stats_row.total_candidates else 0,
+                                    time_to_assign_seconds=time_to_assign,
+                                    preferred_master_used=(master.id == order.preferred_master_id),
+                                    was_escalated_to_logist=(order.dist_escalated_logist_at is not None),
+                                    was_escalated_to_admin=(order.dist_escalated_admin_at is not None),
+                                    city_id=order.city_id,
+                                    district_id=order.district_id,
+                                    category=order.category,
+                                    order_type=order.type,
+                                    metadata_json={
+                                        'assigned_via': 'admin_manual',
+                                        'from_status': prev_status.value if hasattr(prev_status, 'value') else str(prev_status),
+                                        'staff_id': staff.id if staff else None,
+                                    },
                                 )
                             )
-                        )
-                        .values(state=m.OfferState.CANCELED, responded_at=func.now())
-                    )
-            return True
+                        except Exception:
+                            pass
 
+                        offer_result = await session.execute(
+                            update(m.offers)
+                            .where(
+                                (m.offers.order_id == order.id)
+                                & (
+                                    m.offers.state.in_(
+                                        [m.OfferState.SENT, m.OfferState.VIEWED]
+                                    )
+                                )
+                            )
+                            .values(state=m.OfferState.CANCELED, responded_at=func.now())
+                        )
+                        rows_affected = int(getattr(offer_result, 'rowcount', 0) or 0)
+                        oplog.log_assign_sql_result(
+                            request_id=tracking_id,
+                            order_id=order.id,
+                            operation='cancel_offers',
+                            rows_affected=rows_affected,
+                        )
+                        tx_id = _session_tx_id(session)
+                        oplog.log_assign_success(
+                            request_id=tracking_id,
+                            order_id=order.id,
+                            master_id=master.id,
+                            old_status=prev_status,
+                            new_status=order.status,
+                            staff_id=by_staff_id,
+                            tx_id=tx_id,
+                        )
+                        return True
+                except Exception as exc:
+                    oplog.log_assign_error(
+                        request_id=tracking_id,
+                        order_id=order_id,
+                        error=str(exc),
+                        staff_id=by_staff_id,
+                        callback_data=None,
+                    )
+                    raise
     async def activate_deferred_order(self, order_id: int, staff_id: int) -> bool:
         """
         Перевести DEFERRED заказ в SEARCHING (активировать поиск мастера).
@@ -1733,3 +1830,9 @@ class DBOrdersService:
             page=page,
             page_size=page_size,
         )
+
+
+
+
+
+

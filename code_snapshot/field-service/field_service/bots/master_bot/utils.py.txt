@@ -31,6 +31,88 @@ async def delete_message_silent(bot: Bot, chat_id: int, message_id: int) -> None
         pass
 
 
+async def remember_close_prompt(state: FSMContext, message: Message | None) -> None:
+    if message is None:
+        return
+
+    data = await state.get_data()
+    prompt_ids = list(data.get("close_prompt_msg_ids") or [])
+    prompt_ids.append(int(message.message_id))
+
+    update_payload: dict[str, object] = {"close_prompt_msg_ids": prompt_ids}
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
+    if chat_id is not None:
+        update_payload["close_prompt_chat_id"] = int(chat_id)
+
+    await state.update_data(**update_payload)
+
+
+async def cleanup_close_prompts(
+    state: FSMContext,
+    bot: Bot | None,
+    chat_id: int | None,
+) -> None:
+    data = await state.get_data()
+    prompt_ids = list(data.get("close_prompt_msg_ids") or [])
+    if not prompt_ids:
+        return
+
+    target_bot = bot or getattr(state, "bot", None)
+    target_chat_id = chat_id or data.get("close_prompt_chat_id")
+    if target_bot is None or target_chat_id is None:
+        return
+
+    chat_id_int = int(target_chat_id)
+    for message_id in prompt_ids:
+        await delete_message_silent(target_bot, chat_id_int, int(message_id))
+
+    await state.update_data(close_prompt_msg_ids=[], close_prompt_chat_id=None)
+
+
+async def remember_finance_prompt(state: FSMContext, message: Message | None) -> None:
+    if message is None:
+        return
+
+    data = await state.get_data()
+    upload = dict(data.get("fin_upload") or {})
+    temp_messages = list(upload.get("temp_messages") or [])
+    temp_messages.append(int(message.message_id))
+
+    upload["temp_messages"] = temp_messages
+
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
+    if chat_id is not None:
+        upload["chat_id"] = int(chat_id)
+
+    await state.update_data(fin_upload=upload)
+
+
+async def cleanup_finance_prompts(
+    state: FSMContext,
+    bot: Bot | None,
+    chat_id: int | None,
+) -> None:
+    data = await state.get_data()
+    upload = dict(data.get("fin_upload") or {})
+    temp_messages = list(upload.get("temp_messages") or [])
+    if not temp_messages:
+        return
+
+    target_bot = bot or getattr(state, "bot", None)
+    target_chat_id = chat_id or upload.get("chat_id")
+    if target_bot is None or target_chat_id is None:
+        return
+
+    chat_id_int = int(target_chat_id)
+    for message_id in temp_messages:
+        await delete_message_silent(target_bot, chat_id_int, int(message_id))
+
+    upload["temp_messages"] = []
+    await state.update_data(fin_upload=upload)
+
+
 async def push_step_message(
     source: Message | CallbackQuery,
     state: FSMContext,

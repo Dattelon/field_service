@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncIterator
 
@@ -11,9 +12,50 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.orm.attributes import set_committed_value
+from sqlalchemy.pool import NullPool
 
 from field_service.db import models as m
 from field_service.db.base import metadata
+
+if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+
+class PatchedAsyncSession(AsyncSession):
+    """AsyncSession variant that preserves primary key attributes on expire_all."""
+
+    def expire_all(self) -> None:
+        snapshot: list[tuple[object, tuple, tuple]] = []
+        for obj in list(self.identity_map.values()):
+            state = sa.inspect(obj)
+            if state.identity is None:
+                continue
+            snapshot.append((obj, state.mapper.primary_key, state.identity))
+
+        super().expire_all()
+
+        for obj, pk_cols, identity in snapshot:
+            for column, value in zip(pk_cols, identity):
+                set_committed_value(obj, column.key, value)
+
+
+def _make_constraints_deferrable(sync_conn) -> None:
+    inspector = sa.inspect(sync_conn)
+    for table in TABLES:
+        table_name = table.name
+        schema = table.schema
+        for fk in inspector.get_foreign_keys(table_name, schema=schema):
+            constraint = fk.get("name")
+            if not constraint:
+                continue
+            qualified_table = f"{schema}.{table_name}" if schema else table_name
+            sync_conn.execute(
+                sa.text(
+                    f"ALTER TABLE {qualified_table} "
+                    f"ALTER CONSTRAINT {constraint} DEFERRABLE INITIALLY DEFERRED"
+                )
+            )
 
 
 # ✅ STEP 2: Используем PostgreSQL вместо SQLite для тестов
@@ -24,6 +66,9 @@ TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
     "postgresql+asyncpg://fs_user:fs_password@localhost:5439/field_service_test"
 )
+
+# Ensure application code that uses SessionLocal points to the test database.
+os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
 
 TABLES = [
     m.cities.__table__,
@@ -54,7 +99,7 @@ TABLES = [
 ]
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture()
 async def engine() -> AsyncIterator[AsyncEngine]:
     """
     ✅ Session-scoped engine для PostgreSQL.
@@ -64,9 +109,14 @@ async def engine() -> AsyncIterator[AsyncEngine]:
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
-        pool_size=10,
-        max_overflow=20,
-        pool_pre_ping=True,
+    )
+    from field_service.db import session as session_module
+    session_module.engine = engine
+    session_module.SessionLocal = async_sessionmaker(
+        bind=engine,
+        expire_on_commit=False,
+        autoflush=False,
+        class_=AsyncSession,
     )
     
     # Создаём все таблицы один раз
@@ -96,15 +146,22 @@ async def engine() -> AsyncIterator[AsyncEngine]:
         
         # Создаём остальные таблицы через metadata
         await conn.run_sync(metadata.create_all, tables=TABLES)
+        await conn.run_sync(_make_constraints_deferrable)
     
     yield engine
-    
-    # Очищаем после всех тестов
-    async with engine.begin() as conn:
-        await conn.execute(sa.text("DROP TABLE IF EXISTS staff_users CASCADE"))
-        await conn.run_sync(metadata.drop_all, tables=TABLES)
-    
-    await engine.dispose()
+
+    # �������������� ���?�?�>�� ������: �����?�?�?
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(sa.text("DROP TABLE IF EXISTS staff_users CASCADE"))
+            await conn.run_sync(metadata.drop_all, tables=TABLES)
+    except Exception:
+        pass
+
+    try:
+        await engine.dispose()
+    except Exception:
+        pass
 
 
 @pytest_asyncio.fixture()
@@ -117,7 +174,7 @@ async def async_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
     session_factory = async_sessionmaker(
         engine,
         expire_on_commit=False,
-        class_=AsyncSession
+        class_=PatchedAsyncSession
     )
     
     async with session_factory() as session:
@@ -181,6 +238,12 @@ async def _clean_database(session: AsyncSession) -> None:
 
 
 # ===== Алиасы для совместимости =====
+
+@pytest_asyncio.fixture()
+async def clean_db(async_session: AsyncSession):
+    """Compatibility fixture: async_session already resets the database state."""
+    yield
+
 
 @pytest_asyncio.fixture()
 async def session(async_session: AsyncSession) -> AsyncSession:
@@ -269,3 +332,20 @@ async def sample_master(
     await async_session.commit()
     await async_session.refresh(master)
     return master
+
+
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _patch_distribution_tick(async_session: AsyncSession, monkeypatch):
+    from field_service.services import distribution_scheduler
+
+    original_tick_once = distribution_scheduler.tick_once
+
+    async def tick_once_proxy(cfg, *, bot=None, alerts_chat_id=None, session=None):
+        if session is None:
+            session = async_session
+        return await original_tick_once(cfg, bot=bot, alerts_chat_id=alerts_chat_id, session=session)
+
+    monkeypatch.setattr(distribution_scheduler, "tick_once", tick_once_proxy)
+    yield

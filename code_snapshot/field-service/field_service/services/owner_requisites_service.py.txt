@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Dict
 
 from sqlalchemy import func, select, update
@@ -70,6 +71,11 @@ async def update_for_staff(session: AsyncSession, staff_id: int, payload: dict[s
 
 def ensure_schema(raw: Any) -> dict[str, Any]:
     base = dict(DEFAULT_REQUISITES)
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (TypeError, ValueError):
+            raw = {}
     if not isinstance(raw, dict):
         return base
     for key in base:

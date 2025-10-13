@@ -94,7 +94,8 @@ async def retry_execute(callback: CallbackQuery, state: FSMContext):
         from aiogram import Bot
 
         bot: Bot = callback.bot
-        dp = bot.get("dp")  # Dispatcher должен быть сохранён в bot["dp"]
+        # Исправлено: bot это не словарь в aiogram 3.x, используем workflow_data
+        dp = bot.workflow_data.get("dp") if hasattr(bot, "workflow_data") else None
 
         if dp:
             # Создаем новый Update с модифицированным callback

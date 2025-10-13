@@ -25,7 +25,7 @@ from sqlalchemy import (
     text,  # SQL text() helper
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from .base import Base, metadata
 from .pg_enums import OrderCategory
@@ -123,6 +123,7 @@ class StaffRole(str, enum.Enum):
     LOGIST = "LOGIST"
     # Backward-compat alias for legacy name
     ADMIN = GLOBAL_ADMIN
+    SUPER_ADMIN = GLOBAL_ADMIN
 
 
 # ===== Geo =====
@@ -293,6 +294,22 @@ class masters(Base):
     home_latitude: Mapped[Optional[float]] = mapped_column(Numeric(9, 6))
     home_longitude: Mapped[Optional[float]] = mapped_column(Numeric(9, 6))
 
+    @property
+    def telegram_id(self) -> Optional[int]:
+        return self.tg_user_id
+
+    @telegram_id.setter
+    def telegram_id(self, value: Optional[int]) -> None:
+        self.tg_user_id = value
+
+    @property
+    def phone_number(self) -> Optional[str]:
+        return self.phone
+
+    @phone_number.setter
+    def phone_number(self, value: Optional[str]) -> None:
+        self.phone = value
+
     __table_args__ = (
         Index("ix_masters__mod_shift", "moderation_status", "shift_status"),
         Index("ix_masters__onshift_verified", "is_on_shift", "verified"),
@@ -311,9 +328,11 @@ class staff_users(Base):
     tg_user_id: Mapped[Optional[int]] = mapped_column(
         BigInteger, unique=True, index=True
     )
+    telegram_id = synonym("tg_user_id")
     username: Mapped[Optional[str]] = mapped_column(String(64))
     full_name: Mapped[Optional[str]] = mapped_column(String(160))
     phone: Mapped[Optional[str]] = mapped_column(String(32))
+    phone_number = synonym("phone")
     role: Mapped[StaffRole] = mapped_column(
         Enum(StaffRole, name="staff_role"), nullable=False
     )
@@ -549,7 +568,6 @@ class order_status_history(Base):
 
     __table_args__ = (
         Index("ix_order_status_history__order_created_at", "order_id", "created_at"),
-        Index("ix_order_status_history__actor_type", "actor_type"),
     )
 
 
@@ -559,10 +577,14 @@ class order_status_history(Base):
 class offers(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     master_id: Mapped[int] = mapped_column(
-        ForeignKey("masters.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("masters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     round_number: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, default=1, server_default="1"
@@ -580,6 +602,9 @@ class offers(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+    order: Mapped["orders"] = relationship(lazy="raise_on_sql")
+    master: Mapped["masters"] = relationship(lazy="raise_on_sql")
 
     __table_args__ = (
         # Partial unique index: уникальность только для активных офферов
@@ -599,7 +624,6 @@ class offers(Base):
             unique=True,
             postgresql_where=text("state = 'ACCEPTED'"),
         ),
-        Index("ix_offers__expires_at", "expires_at"),  # Для watchdog
     )
 
 
@@ -911,16 +935,8 @@ class distribution_metrics(Base):
     __tablename__ = 'distribution_metrics'
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
-    )
-    master_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("masters.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True
-    )
+    order_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    master_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     
     # Метрики назначения
     assigned_at: Mapped[datetime] = mapped_column(

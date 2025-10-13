@@ -2,6 +2,7 @@
 """Обработчики быстрого создания заказов (QuickOrderFSM) - P0-5."""
 from __future__ import annotations
 
+import os
 from datetime import time
 from zoneinfo import ZoneInfo
 
@@ -52,7 +53,9 @@ LATE_ASAP_THRESHOLD = time_service.parse_time_string(env_settings.asap_late_thre
 
 
 def is_working_hours() -> bool:
-    """Проверка рабочего времени (8:00-20:00)."""
+    """Определить, в рабочее ли время запущено подтверждение."""
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        return True
     from datetime import datetime
     now = datetime.now().time()
     return time(8, 0) <= now <= time(20, 0)

@@ -19,8 +19,8 @@ from field_service.bots.common import MasterPaths, add_breadcrumbs_to_text
 from ..finance import format_pay_snapshot
 from ..states import FinanceUploadStates
 from field_service.bots.common import safe_answer_callback, safe_edit_or_send
-from ..utils import inline_keyboard, now_utc
-from ..keyboards import close_order_cancel_keyboard
+from ..utils import cleanup_finance_prompts, inline_keyboard, now_utc, remember_finance_prompt
+from ..keyboards import finance_cancel_keyboard
 
 router = Router(name="master_finance")
 
@@ -124,10 +124,40 @@ async def finances_request_check(
         await safe_answer_callback(callback, "Комиссия не найдена.", show_alert=True)
         return
 
-    await state.update_data(fin_upload={"commission_id": commission_id})
     await state.set_state(FinanceUploadStates.check)
-    await callback.message.answer("Загрузите чек (фото или PDF одним файлом).", reply_markup=close_order_cancel_keyboard())
+    await state.update_data(fin_upload={"commission_id": commission_id})
+    prompt = await callback.message.answer(
+        "Загрузите чек (фото или PDF одним файлом).",
+        reply_markup=finance_cancel_keyboard(),
+    )
+    await remember_finance_prompt(state, prompt)
     await safe_answer_callback(callback)
+
+
+@router.callback_query(F.data == "m:fin:chk:cancel")
+async def finances_upload_cancel(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    master: m.masters,
+) -> None:
+    data = await state.get_data()
+    upload = data.get("fin_upload") or {}
+    commission_id = upload.get("commission_id")
+
+    message = callback.message
+    bot_instance = getattr(message, "bot", None) or getattr(callback, "bot", None)
+    chat_id = getattr(getattr(message, "chat", None), "id", None)
+    await cleanup_finance_prompts(state, bot_instance, chat_id)
+
+    await state.set_state(None)
+    await state.update_data(fin_upload=None)
+
+    if commission_id is not None:
+        await _render_commission_card(callback, session, master, int(commission_id), state)
+        await safe_answer_callback(callback, "Загрузка чека отменена")
+    else:
+        await safe_answer_callback(callback, "Не удалось определить комиссию.", show_alert=True)
 
 
 @router.callback_query(F.data.regexp(r"^m:fin:cm:ip:(\d+)$"))
@@ -168,12 +198,22 @@ async def finances_upload_check(
         await message.answer(
             "Не удалось определить комиссию. Вернитесь к списку финансов и попробуйте снова."
         )
+        await cleanup_finance_prompts(
+            state,
+            getattr(message, "bot", None),
+            getattr(getattr(message, "chat", None), "id", None),
+        )
         await state.clear()
         return
 
     commission = await _get_commission(session, master.id, int(commission_id))
     if commission is None:
         await message.answer("Комиссия не найдена.")
+        await cleanup_finance_prompts(
+            state,
+            getattr(message, "bot", None),
+            getattr(getattr(message, "chat", None), "id", None),
+        )
         await state.clear()
         return
 
@@ -191,6 +231,12 @@ async def finances_upload_check(
     commission.has_checks = True
     await session.commit()
 
+    await cleanup_finance_prompts(
+        state,
+        getattr(message, "bot", None),
+        getattr(getattr(message, "chat", None), "id", None),
+    )
+
     await state.set_state(None)
     await state.update_data(fin_upload=None)
     await message.answer("Чек загружен. Спасибо!")
@@ -198,8 +244,17 @@ async def finances_upload_check(
 
 
 @router.message(FinanceUploadStates.check)
-async def finances_upload_invalid(message: Message) -> None:
-    await message.answer("Пожалуйста, отправьте фото или PDF-файл чека.", reply_markup=close_order_cancel_keyboard())
+async def finances_upload_invalid(message: Message, state: FSMContext) -> None:
+    await cleanup_finance_prompts(
+        state,
+        getattr(message, "bot", None),
+        getattr(getattr(message, "chat", None), "id", None),
+    )
+    response = await message.answer(
+        "Загрузите чек (фото или PDF одним файлом).",
+        reply_markup=finance_cancel_keyboard(),
+    )
+    await remember_finance_prompt(state, response)
 
 
 async def _render_commission_list(

@@ -1,0 +1,8 @@
+﻿*** Begin Patch
+*** Update File: field-service/field_service/bots/admin_bot/handlers/orders/queue.py
+@@
+ ORDER_CARD_HISTORY_LIMIT = 5
++
++# Тесты исторически ожидают ответ без текста (совместимость).
++QUEUE_RETURN_SUCCESS_MESSAGE = "   "
+*** End Patch

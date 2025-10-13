@@ -483,12 +483,18 @@ class DBFinanceService:
                             version=order_row.version + 1,
                         )
                     )
+                    history_staff_id = by_staff_id
+                    if history_staff_id:
+                        exists = await session.get(m.staff_users, history_staff_id)
+                        if not exists:
+                            history_staff_id = None
+
                     await session.execute(
                         insert(m.order_status_history).values(
                             order_id=order_row.id,
                             from_status=order_row.status,
                             to_status=m.OrderStatus.CLOSED,
-                            changed_by_staff_id=by_staff_id,
+                            changed_by_staff_id=history_staff_id,
                             reason='commission_paid',
                             actor_type=m.ActorType.ADMIN,
                         )
@@ -538,5 +544,4 @@ class DBFinanceService:
                     )
                 )
         return True
-
 

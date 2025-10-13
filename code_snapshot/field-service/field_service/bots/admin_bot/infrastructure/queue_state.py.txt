@@ -176,9 +176,15 @@ async def load_cancel_state(state: FSMContext) -> Optional[CancelOrderState]:
     """Загрузить state отмены заказа."""
     data = await state.get_data()
     stored = data.get(_QUEUE_CANCEL_KEY)
-    if not stored:
+    if stored:
+        return CancelOrderState.from_dict(stored)
+    # legacy fallback
+    order_id = data.get("order_id")
+    chat_id = data.get("chat_id")
+    message_id = data.get("message_id")
+    if order_id is None or chat_id is None or message_id is None:
         return None
-    return CancelOrderState.from_dict(stored)
+    return CancelOrderState(order_id=order_id, chat_id=chat_id, message_id=message_id)
 
 
 async def save_cancel_state(
@@ -194,6 +200,14 @@ async def save_cancel_state(
         message_id=message_id
     )
     await state.update_data({_QUEUE_CANCEL_KEY: cancel_state.to_dict()})
+    # legacy compatibility keys
+    await state.update_data(
+        {
+            "order_id": order_id,
+            "chat_id": chat_id,
+            "message_id": message_id,
+        }
+    )
 
 
 async def clear_cancel_state(state: FSMContext) -> None:
@@ -205,4 +219,8 @@ async def clear_cancel_state(state: FSMContext) -> None:
     data = await state.get_data()
     if _QUEUE_CANCEL_KEY in data:
         data.pop(_QUEUE_CANCEL_KEY)
-        await state.set_data(data)
+    # remove legacy keys if present
+    data.pop("order_id", None)
+    data.pop("chat_id", None)
+    data.pop("message_id", None)
+    await state.set_data(data)
