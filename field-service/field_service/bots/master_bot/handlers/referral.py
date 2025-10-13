@@ -8,7 +8,12 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from field_service.bots.common import safe_answer_callback, safe_edit_or_send
+from field_service.bots.common import (
+    MasterPaths,
+    add_breadcrumbs_to_text,
+    safe_answer_callback,
+    safe_edit_or_send,
+)
 from field_service.db import models as m
 from field_service.services import settings_service
 
@@ -164,7 +169,9 @@ async def _render_referrals(
     ])
     
     markup = inline_keyboard(buttons)
-    await safe_edit_or_send(event, "\n".join(lines), markup)
+    text = "\n".join(lines)
+    text = add_breadcrumbs_to_text(text, MasterPaths.REFERRAL)
+    await safe_edit_or_send(event, text, markup)
 
 
 async def _render_support(event: Message | CallbackQuery, session: AsyncSession) -> None:
@@ -180,5 +187,7 @@ async def _render_support(event: Message | CallbackQuery, session: AsyncSession)
         lines.append("FAQ: ссылка пока недоступна")
 
     markup = inline_keyboard([[InlineKeyboardButton(text='⬅️ В главное меню', callback_data='m:menu')]])
-    await safe_edit_or_send(event, "\n".join(lines), markup)
+    text = "\n".join(lines)
+    text = add_breadcrumbs_to_text(text, MasterPaths.KNOWLEDGE)
+    await safe_edit_or_send(event, text, markup)
 

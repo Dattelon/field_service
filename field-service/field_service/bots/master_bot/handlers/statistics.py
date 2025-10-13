@@ -16,7 +16,12 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from field_service.bots.common import safe_answer_callback, safe_edit_or_send
+from field_service.bots.common import (
+    MasterPaths,
+    add_breadcrumbs_to_text,
+    safe_answer_callback,
+    safe_edit_or_send,
+)
 from field_service.db import models as m
 
 from ..utils import escape_html, inline_keyboard
@@ -115,7 +120,8 @@ async def handle_statistics(
         lines.append("🏆 Вы профессионал! Продолжайте в том же духе!")
 
     text = "\n".join(lines)
-    
+    text = add_breadcrumbs_to_text(text, MasterPaths.STATISTICS)
+
     keyboard = inline_keyboard([
         [InlineKeyboardButton(text="🏠 Меню", callback_data="m:menu")]
     ])
