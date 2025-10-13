@@ -86,6 +86,10 @@ def _nav_row(back_callback: str, menu_callback: str = "m:menu") -> list[InlineKe
     ]
 
 
+def menu_row(menu_callback: str = "m:menu") -> list[InlineKeyboardButton]:
+    return [InlineKeyboardButton(text=NAV_MENU, callback_data=menu_callback)]
+
+
 def _parse_offer_callback_payload(data: str, action: str) -> tuple[int, int]:
     parts = data.split(":")
     if len(parts) < 4 or parts[0] != "m" or parts[1] != "new" or parts[2] != action:
@@ -946,7 +950,7 @@ async def _render_offers(
         keyboard = inline_keyboard(
             [
                 [InlineKeyboardButton(text=OFFERS_REFRESH_BUTTON, callback_data="m:new")],
-                _nav_row("m:menu"),
+                menu_row(),
             ]
         )
         await safe_edit_or_send(event, OFFERS_EMPTY, keyboard)
@@ -998,7 +1002,7 @@ async def _render_offers(
         if nav_row:
             keyboard_rows.append(nav_row)
 
-    keyboard_rows.append(_nav_row("m:menu"))
+    keyboard_rows.append(menu_row())
 
     keyboard = inline_keyboard(keyboard_rows)
     
@@ -1096,7 +1100,7 @@ async def _render_active_order(
                 event,
                 NO_ACTIVE_ORDERS,
                 inline_keyboard([
-                    _nav_row("m:menu")
+                    menu_row()
                 ]),
             )
             return
@@ -1146,7 +1150,7 @@ async def _render_active_order(
             )
             lines.append("")  # Пустая строка между заказами
         
-        keyboard_rows.append(_nav_row("m:menu"))
+        keyboard_rows.append(menu_row())
         keyboard = inline_keyboard(keyboard_rows)
         
         # P1-23: Add breadcrumbs navigation
