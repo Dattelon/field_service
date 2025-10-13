@@ -22,7 +22,8 @@ UTC = timezone.utc
 REMINDER_MINUTES_BEFORE = 10
 
 # ID уведомления для дедупликации (чтобы не отправлять дважды одному мастеру)
-_reminded_master_ids: set[int] = set()
+# Храним время окончания перерыва, чтобы отслеживать продление
+_reminded_master_breaks: dict[int, datetime] = {}
 
 
 async def _check_breaks_once() -> None:
@@ -49,8 +50,13 @@ async def _check_breaks_once() -> None:
         
         # Отправляем напоминания только тем, кому ещё не отправляли
         for master_id, tg_user_id, break_until in masters:
-            if master_id in _reminded_master_ids:
-                continue  # Уже отправляли напоминание
+            stored_break_until = _reminded_master_breaks.get(master_id)
+            if stored_break_until is not None:
+                if stored_break_until != break_until:
+                    # Перерыв был изменён, сбрасываем отметку и продолжаем
+                    _reminded_master_breaks.pop(master_id, None)
+                else:
+                    continue  # Уже отправляли напоминание для того же перерыва
             
             if not tg_user_id:
                 continue  # Нет Telegram ID
@@ -79,8 +85,8 @@ async def _check_breaks_once() -> None:
                 )
             )
             
-            # Помечаем, что отправили напоминание
-            _reminded_master_ids.add(master_id)
+            # Помечаем, что отправили напоминание для конкретного времени окончания
+            _reminded_master_breaks[master_id] = break_until
             
             live_log.push(
                 "break_reminder",
@@ -112,28 +118,42 @@ async def _cleanup_impl(session: AsyncSession) -> None:
     """Внутренняя реализация очистки."""
     now = datetime.now(UTC)
     
-    # Находим всех мастеров из _reminded_master_ids
-    if not _reminded_master_ids:
+    # Находим всех мастеров из _reminded_master_breaks
+    if not _reminded_master_breaks:
         return
-    
+
+    tracked_ids = list(_reminded_master_breaks)
+
     result = await session.execute(
-        select(m.masters.id)
-        .where(
-            m.masters.id.in_(_reminded_master_ids),
-            # Перерыв закончился или мастер уже не на перерыве
-            (m.masters.break_until.is_(None)) | (m.masters.break_until < now)
-        )
+        select(
+            m.masters.id,
+            m.masters.break_until,
+            m.masters.shift_status,
+        ).where(m.masters.id.in_(tracked_ids))
     )
-    
-    finished_master_ids = {row[0] for row in result.all()}
-    
-    # Удаляем из набора
-    _reminded_master_ids.difference_update(finished_master_ids)
-    
-    if finished_master_ids:
+
+    removed_count = 0
+
+    for master_id, break_until, shift_status in result.all():
+        stored_break_until = _reminded_master_breaks.get(master_id)
+
+        should_remove = False
+
+        if shift_status != m.ShiftStatus.BREAK:
+            should_remove = True
+        elif break_until is None or break_until <= now:
+            should_remove = True
+        elif stored_break_until is not None and break_until != stored_break_until:
+            should_remove = True
+
+        if should_remove and master_id in _reminded_master_breaks:
+            _reminded_master_breaks.pop(master_id, None)
+            removed_count += 1
+
+    if removed_count:
         live_log.push(
             "break_reminder",
-            f"Cleaned up {len(finished_master_ids)} finished breaks from reminder set",
+            f"Cleaned up {removed_count} entries from reminder cache",
             level="DEBUG"
         )
 
