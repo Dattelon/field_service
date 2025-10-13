@@ -310,7 +310,7 @@ async def _render_commission_list(
             first_commission = current[0]
             snapshot_text = format_pay_snapshot(first_commission.pay_to_snapshot)
             if snapshot_text:
-                lines.append(snapshot_text)
+                lines.extend(snapshot_text.splitlines())
             else:
                 lines.append("⚠️ Реквизиты пока не заполнены администратором.")
             lines.append("")
@@ -445,7 +445,7 @@ async def _render_commission_card(
         
         snapshot_text = format_pay_snapshot(commission.pay_to_snapshot)
         if snapshot_text:
-            lines.append(snapshot_text)
+            lines.extend(snapshot_text.splitlines())
         else:
             lines.append("⚠️ Реквизиты пока не заполнены администратором.")
             lines.append("Обратитесь к администратору для уточнения реквизитов.")
