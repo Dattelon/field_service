@@ -24,7 +24,7 @@ from field_service.bots.common import (
 )
 from field_service.db import models as m
 
-from ..utils import escape_html, inline_keyboard
+from ..utils import clear_step_messages, escape_html, inline_keyboard
 
 router = Router(name="master_statistics")
 
@@ -37,6 +37,14 @@ async def handle_statistics(
     session: AsyncSession,
 ) -> None:
     """Показать статистику мастера."""
+    message = callback.message
+    bot_instance = getattr(message, "bot", None) or getattr(callback, "bot", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
+    if chat_id is None and getattr(callback, "from_user", None) is not None:
+        chat_id = getattr(callback.from_user, "id", None)
+    if bot_instance and chat_id is not None:
+        await clear_step_messages(bot_instance, state, chat_id)
     await state.clear()
 
     # 1. Всего выполнено заказов (CLOSED)

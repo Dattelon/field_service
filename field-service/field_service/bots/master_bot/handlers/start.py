@@ -72,16 +72,21 @@ async def handle_start(message: Message, state: FSMContext, master: m.masters) -
     import logging
     logger = logging.getLogger(__name__)
     logger.info(f"handle_start: START uid={message.from_user.id if message.from_user else 'None'} master_id={master.id if master else 'None'}")
+    bot_instance = getattr(message, "bot", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
     await cleanup_close_prompts(
         state,
-        getattr(message, "bot", None),
-        getattr(getattr(message, "chat", None), "id", None),
+        bot_instance,
+        chat_id,
     )
     await cleanup_finance_prompts(
         state,
-        getattr(message, "bot", None),
-        getattr(getattr(message, "chat", None), "id", None),
+        bot_instance,
+        chat_id,
     )
+    if bot_instance and chat_id is not None:
+        await clear_step_messages(bot_instance, state, chat_id)
     await state.clear()
     logger.info(f"handle_start: calling _render_start")
     try:
@@ -93,19 +98,22 @@ async def handle_start(message: Message, state: FSMContext, master: m.masters) -
 
 @router.message(Command("cancel"))
 async def handle_cancel(message: Message, state: FSMContext, master: m.masters) -> None:
+    bot_instance = getattr(message, "bot", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
     await cleanup_close_prompts(
         state,
-        getattr(message, "bot", None),
-        getattr(getattr(message, "chat", None), "id", None),
+        bot_instance,
+        chat_id,
     )
     await cleanup_finance_prompts(
         state,
-        getattr(message, "bot", None),
-        getattr(getattr(message, "chat", None), "id", None),
+        bot_instance,
+        chat_id,
     )
+    if bot_instance and chat_id is not None:
+        await clear_step_messages(bot_instance, state, chat_id)
     await state.clear()
-    if message.bot and message.chat:
-        await clear_step_messages(message.bot, state, message.chat.id)
     await _render_start(message, master)
 
 
@@ -114,9 +122,14 @@ async def handle_cancel_callback(callback: CallbackQuery, state: FSMContext, mas
     """Обработчик для кнопки ❌ Отменить - возвращает в главное меню из любого FSM-состояния."""
     message = callback.message
     bot_instance = getattr(message, "bot", None) or getattr(callback, "bot", None)
-    chat_id = getattr(getattr(message, "chat", None), "id", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
+    if chat_id is None and getattr(callback, "from_user", None) is not None:
+        chat_id = getattr(callback.from_user, "id", None)
     await cleanup_close_prompts(state, bot_instance, chat_id)
     await cleanup_finance_prompts(state, bot_instance, chat_id)
+    if bot_instance and chat_id is not None:
+        await clear_step_messages(bot_instance, state, chat_id)
     await state.clear()
 
     # Подготовка контента меню
@@ -153,8 +166,6 @@ async def handle_cancel_callback(callback: CallbackQuery, state: FSMContext, mas
     lines.append(escape_html(text))
 
     # Удаляем старое сообщение и отправляем новое
-    if callback.bot and callback.from_user:
-        await clear_step_messages(callback.bot, state, callback.from_user.id)
     await safe_delete_and_send(callback, "\n".join(lines), keyboard)
     await safe_answer_callback(callback, "✅ Действие отменено")
 
@@ -170,6 +181,8 @@ async def handle_menu(callback: CallbackQuery, state: FSMContext, master: m.mast
         chat_id = getattr(callback.from_user, "id", None)
     await cleanup_close_prompts(state, bot_instance, chat_id)
     await cleanup_finance_prompts(state, bot_instance, chat_id)
+    if bot_instance and chat_id is not None:
+        await clear_step_messages(bot_instance, state, chat_id)
     await state.clear()
 
     # Подготовка контента меню
@@ -206,8 +219,6 @@ async def handle_menu(callback: CallbackQuery, state: FSMContext, master: m.mast
     lines.append(escape_html(text))
 
     # Удаляем старое сообщение и отправляем новое
-    if callback.bot and callback.from_user:
-        await clear_step_messages(callback.bot, state, callback.from_user.id)
     await safe_delete_and_send(callback, "\n".join(lines), keyboard)
     await safe_answer_callback(callback)
 
