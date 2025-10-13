@@ -19,7 +19,7 @@ from field_service.bots.common import MasterPaths, add_breadcrumbs_to_text
 from ..finance import format_pay_snapshot
 from ..states import FinanceUploadStates
 from field_service.bots.common import safe_answer_callback, safe_edit_or_send
-from ..utils import delete_message_silent, inline_keyboard, now_utc
+from ..utils import cleanup_finance_prompts, inline_keyboard, now_utc, remember_finance_prompt
 from ..keyboards import finance_cancel_keyboard
 
 router = Router(name="master_finance")
@@ -46,26 +46,6 @@ ORDER_TYPE_LABELS: dict[m.OrderType, str] = {
     m.OrderType.NORMAL: "Обычный заказ",
     m.OrderType.GUARANTEE: "Гарантийный визит",
 }
-
-
-async def _remember_finance_upload_message(state: FSMContext, message: Message) -> None:
-    data = await state.get_data()
-    upload = dict(data.get("fin_upload") or {})
-    temp_messages = list(upload.get("temp_messages") or [])
-    temp_messages.append(message.message_id)
-    upload["temp_messages"] = temp_messages
-    await state.update_data(fin_upload=upload)
-
-
-async def _cleanup_finance_upload(state: FSMContext, bot, chat_id: int | None) -> None:
-    if bot is None or chat_id is None:
-        return
-
-    data = await state.get_data()
-    upload = data.get("fin_upload") or {}
-    temp_messages = upload.get("temp_messages") or []
-    for message_id in temp_messages:
-        await delete_message_silent(bot, chat_id, int(message_id))
 
 
 @router.callback_query(F.data == "m:fin")
@@ -150,7 +130,7 @@ async def finances_request_check(
         "Загрузите чек (фото или PDF одним файлом).",
         reply_markup=finance_cancel_keyboard(),
     )
-    await _remember_finance_upload_message(state, prompt)
+    await remember_finance_prompt(state, prompt)
     await safe_answer_callback(callback)
 
 
@@ -166,8 +146,9 @@ async def finances_upload_cancel(
     commission_id = upload.get("commission_id")
 
     message = callback.message
-    if message and message.bot:
-        await _cleanup_finance_upload(state, message.bot, message.chat.id if message.chat else None)
+    bot_instance = getattr(message, "bot", None) or getattr(callback, "bot", None)
+    chat_id = getattr(getattr(message, "chat", None), "id", None)
+    await cleanup_finance_prompts(state, bot_instance, chat_id)
 
     await state.set_state(None)
     await state.update_data(fin_upload=None)
@@ -217,12 +198,22 @@ async def finances_upload_check(
         await message.answer(
             "Не удалось определить комиссию. Вернитесь к списку финансов и попробуйте снова."
         )
+        await cleanup_finance_prompts(
+            state,
+            getattr(message, "bot", None),
+            getattr(getattr(message, "chat", None), "id", None),
+        )
         await state.clear()
         return
 
     commission = await _get_commission(session, master.id, int(commission_id))
     if commission is None:
         await message.answer("Комиссия не найдена.")
+        await cleanup_finance_prompts(
+            state,
+            getattr(message, "bot", None),
+            getattr(getattr(message, "chat", None), "id", None),
+        )
         await state.clear()
         return
 
@@ -240,8 +231,11 @@ async def finances_upload_check(
     commission.has_checks = True
     await session.commit()
 
-    if message.bot and message.chat:
-        await _cleanup_finance_upload(state, message.bot, message.chat.id)
+    await cleanup_finance_prompts(
+        state,
+        getattr(message, "bot", None),
+        getattr(getattr(message, "chat", None), "id", None),
+    )
 
     await state.set_state(None)
     await state.update_data(fin_upload=None)
@@ -251,11 +245,16 @@ async def finances_upload_check(
 
 @router.message(FinanceUploadStates.check)
 async def finances_upload_invalid(message: Message, state: FSMContext) -> None:
+    await cleanup_finance_prompts(
+        state,
+        getattr(message, "bot", None),
+        getattr(getattr(message, "chat", None), "id", None),
+    )
     response = await message.answer(
         "Загрузите чек (фото или PDF одним файлом).",
         reply_markup=finance_cancel_keyboard(),
     )
-    await _remember_finance_upload_message(state, response)
+    await remember_finance_prompt(state, response)
 
 
 async def _render_commission_list(

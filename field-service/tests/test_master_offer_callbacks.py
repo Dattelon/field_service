@@ -91,7 +91,10 @@ async def test_active_close_start_without_message(monkeypatch):
 
     assert state.state == CloseOrderStates.amount
     assert state.data == {'close_order_id': 1, 'close_order_amount': None}
-    safe_send.assert_awaited_once_with(callback.bot, 501, orders.CLOSE_AMOUNT_PROMPT)
+    safe_send.assert_awaited_once()
+    args, kwargs = safe_send.await_args
+    assert args == (callback.bot, 501, orders.CLOSE_AMOUNT_PROMPT)
+    assert "reply_markup" in kwargs
     safe_answer.assert_awaited()
 
 
@@ -131,5 +134,8 @@ async def test_active_close_start_fallback_to_master(monkeypatch):
 
     assert state.state == CloseOrderStates.amount
     assert state.data == {'close_order_id': 2, 'close_order_amount': None}
-    safe_send.assert_awaited_once_with(bot, 777, orders.CLOSE_AMOUNT_PROMPT)
+    safe_send.assert_awaited_once()
+    args, kwargs = safe_send.await_args
+    assert args == (bot, 777, orders.CLOSE_AMOUNT_PROMPT)
+    assert "reply_markup" in kwargs
     safe_answer.assert_awaited()

@@ -60,7 +60,14 @@ from ..texts import (
     offer_line,
     OFFER_NOT_FOUND,
 )
-from ..utils import escape_html, inline_keyboard, normalize_money, now_utc
+from ..utils import (
+    cleanup_close_prompts,
+    escape_html,
+    inline_keyboard,
+    normalize_money,
+    now_utc,
+    remember_close_prompt,
+)
 from ..keyboards import close_order_cancel_keyboard
 
 router = Router(name="master_orders")
@@ -628,7 +635,13 @@ async def active_set_working(
     await _render_active_order(callback, session, master, order_id=order_id)
 
 
-async def _send_close_prompt(bot: Bot | None, master: m.masters, callback: CallbackQuery, text: str, reply_markup: InlineKeyboardMarkup | None = None) -> None:
+async def _send_close_prompt(
+    bot: Bot | None,
+    master: m.masters,
+    callback: CallbackQuery,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> Message | None:
     """Send the next-step prompt reliably regardless of callback message availability.
 
     In some environments callback.message may be present but lack a bound bot instance,
@@ -638,8 +651,7 @@ async def _send_close_prompt(bot: Bot | None, master: m.masters, callback: Callb
     # First try the simplest path: answer directly to the source message if possible.
     try:
         if getattr(callback, "message", None) is not None:
-            await callback.message.answer(text, reply_markup=reply_markup)
-            return
+            return await callback.message.answer(text, reply_markup=reply_markup)
     except Exception:
         pass  # Fallback to explicit send
 
@@ -656,7 +668,7 @@ async def _send_close_prompt(bot: Bot | None, master: m.masters, callback: Callb
             "active_close_start: no target chat for callback id=%s",
             getattr(callback, "id", None),
         )
-        return
+        return None
 
     # Resolve bot instance: prefer injected bot, then callback.bot, then message.bot
     bot_instance = bot or getattr(callback, "bot", None)
@@ -667,9 +679,9 @@ async def _send_close_prompt(bot: Bot | None, master: m.masters, callback: Callb
             "_send_close_prompt: no bot instance for callback id=%s",
             getattr(callback, "id", None),
         )
-        return
+        return None
 
-    await safe_send_message(bot_instance, target_id, text, reply_markup=reply_markup)
+    return await safe_send_message(bot_instance, target_id, text, reply_markup=reply_markup)
 
 
 @router.callback_query(F.data.regexp(r"^m:act:cls:(\d+)$"))
@@ -707,7 +719,14 @@ async def active_close_start(
     if bot_instance is None and callback.message is not None:
         bot_instance = callback.message.bot
 
-    if order.type == m.OrderType.GUARANTEE:  # FIX: use .type not .order_type
+    chat_id = None
+    if getattr(callback, "message", None) is not None and getattr(callback.message, "chat", None) is not None:
+        chat_id = getattr(callback.message.chat, "id", None)
+
+    await cleanup_close_prompts(state, bot_instance, chat_id)
+
+    order_type = getattr(order, "type", getattr(order, "order_type", None))
+    if order_type == m.OrderType.GUARANTEE:
         await state.update_data(close_order_amount=str(Decimal("0")))
         await state.set_state(CloseOrderStates.act)
         prompt_text = CLOSE_ACT_PROMPT
@@ -726,7 +745,14 @@ async def active_close_start(
         state_snapshot,
     )
 
-    await _send_close_prompt(bot_instance, master, callback, prompt_text, reply_markup=close_order_cancel_keyboard())
+    prompt_message = await _send_close_prompt(
+        bot_instance,
+        master,
+        callback,
+        prompt_text,
+        reply_markup=close_order_cancel_keyboard(),
+    )
+    await remember_close_prompt(state, prompt_message)
     await safe_answer_callback(callback)
 
 
@@ -743,7 +769,12 @@ async def active_close_cancel(
     # Получаем order_id перед очисткой state
     data = await state.get_data()
     order_id = data.get("close_order_id")
-    
+
+    message = callback.message
+    bot_instance = getattr(message, "bot", None) or getattr(callback, "bot", None)
+    chat_id = getattr(getattr(message, "chat", None), "id", None)
+    await cleanup_close_prompts(state, bot_instance, chat_id)
+
     # Очищаем FSM state
     await state.clear()
     
@@ -761,13 +792,26 @@ async def active_close_cancel(
 @router.message(CloseOrderStates.amount)
 async def active_close_amount(message: Message, state: FSMContext) -> None:
     amount = normalize_money(message.text or "")
+    bot_instance = getattr(message, "bot", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
     if amount is None:
-        await message.answer(CLOSE_AMOUNT_ERROR, reply_markup=close_order_cancel_keyboard())
+        await cleanup_close_prompts(state, bot_instance, chat_id)
+        prompt = await message.answer(
+            CLOSE_AMOUNT_ERROR,
+            reply_markup=close_order_cancel_keyboard(),
+        )
+        await remember_close_prompt(state, prompt)
         return
     _log.info("active_close_amount: uid=%s amount=%s", getattr(getattr(message, "from_user", None), "id", None), amount)
     await state.update_data(close_order_amount=str(amount))
+    await cleanup_close_prompts(state, bot_instance, chat_id)
     await state.set_state(CloseOrderStates.act)
-    await message.answer(CLOSE_ACT_PROMPT, reply_markup=close_order_cancel_keyboard())
+    prompt = await message.answer(
+        CLOSE_ACT_PROMPT,
+        reply_markup=close_order_cancel_keyboard(),
+    )
+    await remember_close_prompt(state, prompt)
 
 
 @router.message(
@@ -784,6 +828,10 @@ async def active_close_act(
     order_id = int(data.get("close_order_id"))
     amount = Decimal(str(data.get("close_order_amount", "0")))
 
+    bot_instance = getattr(message, "bot", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
+
     _log.info(
         "active_close_act: uid=%s order_id=%s amount=%s content_type=%s",
         getattr(getattr(message, "from_user", None), "id", None),
@@ -795,10 +843,12 @@ async def active_close_act(
     order = await session.get(m.orders, order_id)
     if order is None or order.assigned_master_id != master.id:
         await message.answer(ALERT_CLOSE_NOT_FOUND)
+        await cleanup_close_prompts(state, bot_instance, chat_id)
         await state.clear()
         return
     if order.status != m.OrderStatus.WORKING:
         await message.answer(ALERT_CLOSE_STATUS)
+        await cleanup_close_prompts(state, bot_instance, chat_id)
         await state.clear()
         return
 
@@ -816,7 +866,8 @@ async def active_close_act(
         )
     )
 
-    is_guarantee = order.type == m.OrderType.GUARANTEE  # FIX: use .type not .order_type
+    order_type = getattr(order, "type", getattr(order, "order_type", None))
+    is_guarantee = order_type == m.OrderType.GUARANTEE
     order.updated_at = now_utc()
     order.version = (order.version or 0) + 1
 
@@ -856,6 +907,7 @@ async def active_close_act(
         await CommissionService(session).create_for_order(order_id)
 
     await session.commit()
+    await cleanup_close_prompts(state, bot_instance, chat_id)
     await state.clear()
 
     # Возврат в главное меню с информативным сообщением
@@ -870,8 +922,16 @@ async def active_close_act(
 
 
 @router.message(CloseOrderStates.act)
-async def active_close_act_invalid(message: Message) -> None:
-    await message.answer(CLOSE_DOCUMENT_ERROR, reply_markup=close_order_cancel_keyboard())
+async def active_close_act_invalid(message: Message, state: FSMContext) -> None:
+    bot_instance = getattr(message, "bot", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
+    await cleanup_close_prompts(state, bot_instance, chat_id)
+    prompt = await message.answer(
+        CLOSE_DOCUMENT_ERROR,
+        reply_markup=close_order_cancel_keyboard(),
+    )
+    await remember_close_prompt(state, prompt)
 
 
 async def _render_offers(
