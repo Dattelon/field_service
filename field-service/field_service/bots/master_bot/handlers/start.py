@@ -12,6 +12,7 @@ from field_service.bots.common import (
     safe_edit_or_send,
 )
 from field_service.db import models as m
+from field_service.services import time_service
 
 from ..keyboards import main_menu_keyboard, start_onboarding_keyboard
 from ..texts import START_APPROVED, START_BLOCKED, START_NOT_APPROVED
@@ -32,16 +33,23 @@ _STATUS_TITLES = {
 }
 
 
-def _format_break_time_left(break_until: datetime) -> str:
+def _format_break_time_left(break_until: datetime | None) -> str:
     """
     Форматирует оставшееся время перерыва в человеко-читаемый вид.
     
     Args:
-        break_until: Время окончания перерыва (UTC)
+        break_until: Время окончания перерыва (UTC) или None
     
     Returns:
         Строка вида "⏰ Перерыв до 14:30 (осталось 45 мин)"
     """
+    if break_until is None:
+        return "⏰ Перерыв закончился"
+
+    if break_until.tzinfo is None:
+        break_until = break_until.replace(tzinfo=timezone.utc)
+
+    tz = time_service.resolve_timezone()
     now = now_utc()
     
     # Если перерыв уже закончился
@@ -56,7 +64,7 @@ def _format_break_time_left(break_until: datetime) -> str:
     minutes = (total_seconds % 3600) // 60
     
     # Форматируем время окончания перерыва (локальное время)
-    break_time_str = break_until.strftime("%H:%M")
+    break_time_str = break_until.astimezone(tz).strftime("%H:%M")
     
     # Форматируем оставшееся время
     if hours > 0:
