@@ -160,7 +160,7 @@ async def _render_referrals(
             f"Получай заказы и зарабатывай вместе со мной!"
         )
         encoded_share_text = quote(share_text)
-        share_url = f"https://t.me/share/url?text={encoded_share_text}&url={encoded_share_text}"
+        share_url = f"https://t.me/share/url?text={encoded_share_text}"
         buttons.append([
             InlineKeyboardButton(text='📤 Поделиться кодом', url=share_url)
         ])
