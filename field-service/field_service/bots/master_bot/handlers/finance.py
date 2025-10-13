@@ -486,7 +486,7 @@ async def _render_commission_card(
     ])
 
     # P1-23: Add breadcrumbs navigation
-    text_without_breadcrumbs = "\n".join([line for line in lines if line])
+    text_without_breadcrumbs = "\n".join(lines).strip("\n")
     breadcrumb_path = MasterPaths.commission_card(commission.id)
     text = add_breadcrumbs_to_text(text_without_breadcrumbs, breadcrumb_path)
 
