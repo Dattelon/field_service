@@ -15,7 +15,7 @@ from field_service.db import models as m
 
 from ..keyboards import main_menu_keyboard, start_onboarding_keyboard
 from ..texts import START_APPROVED, START_BLOCKED, START_NOT_APPROVED
-from ..utils import escape_html, now_utc
+from ..utils import clear_step_messages, escape_html, now_utc
 
 router = Router(name="master_start")
 
@@ -78,6 +78,8 @@ async def handle_start(message: Message, state: FSMContext, master: m.masters) -
 @router.message(Command("cancel"))
 async def handle_cancel(message: Message, state: FSMContext, master: m.masters) -> None:
     await state.clear()
+    if message.bot and message.chat:
+        await clear_step_messages(message.bot, state, message.chat.id)
     await _render_start(message, master)
 
 
@@ -118,8 +120,10 @@ async def handle_cancel_callback(callback: CallbackQuery, state: FSMContext, mas
         lines.append("")
     
     lines.append(escape_html(text))
-    
+
     # Удаляем старое сообщение и отправляем новое
+    if callback.bot and callback.from_user:
+        await clear_step_messages(callback.bot, state, callback.from_user.id)
     await safe_delete_and_send(callback, "\n".join(lines), keyboard)
     await safe_answer_callback(callback, "✅ Действие отменено")
 
@@ -161,8 +165,10 @@ async def handle_menu(callback: CallbackQuery, state: FSMContext, master: m.mast
         lines.append("")
     
     lines.append(escape_html(text))
-    
+
     # Удаляем старое сообщение и отправляем новое
+    if callback.bot and callback.from_user:
+        await clear_step_messages(callback.bot, state, callback.from_user.id)
     await safe_delete_and_send(callback, "\n".join(lines), keyboard)
     await safe_answer_callback(callback)
 
