@@ -862,6 +862,13 @@ class notifications_outbox(Base):
         DateTime(timezone=True), server_default=func.now(), index=True
     )
     processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+    last_error: Mapped[Optional[str]] = mapped_column(Text)
 
 
 # P1-01: Autoclose queue
