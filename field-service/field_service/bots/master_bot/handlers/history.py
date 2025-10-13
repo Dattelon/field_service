@@ -26,7 +26,7 @@ from ..texts import (
     history_order_line,
     history_order_card,
 )
-from ..utils import escape_html, inline_keyboard
+from ..utils import clear_step_messages, escape_html, inline_keyboard
 
 router = Router(name="master_history")
 _log = logging.getLogger("master_bot.history")
@@ -56,6 +56,14 @@ async def history_root(
     state: FSMContext,
 ) -> None:
     """Показать историю заказов (главная страница)."""
+    message = callback.message
+    bot_instance = getattr(message, "bot", None) or getattr(callback, "bot", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
+    if chat_id is None and getattr(callback, "from_user", None) is not None:
+        chat_id = getattr(callback.from_user, "id", None)
+    if bot_instance and chat_id is not None:
+        await clear_step_messages(bot_instance, state, chat_id)
     await state.clear()
     _log.info("history_root: master_id=%s", master.id)
     await _render_history(callback, session, master, page=1, filter_status=None)

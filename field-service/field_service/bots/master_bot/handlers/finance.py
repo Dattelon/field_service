@@ -19,7 +19,13 @@ from field_service.bots.common import MasterPaths, add_breadcrumbs_to_text
 from ..finance import format_pay_snapshot
 from ..states import FinanceUploadStates
 from field_service.bots.common import safe_answer_callback, safe_edit_or_send
-from ..utils import cleanup_finance_prompts, inline_keyboard, now_utc, remember_finance_prompt
+from ..utils import (
+    cleanup_finance_prompts,
+    clear_step_messages,
+    inline_keyboard,
+    now_utc,
+    remember_finance_prompt,
+)
 from ..keyboards import finance_cancel_keyboard
 
 router = Router(name="master_finance")
@@ -194,15 +200,20 @@ async def finances_upload_check(
     data = await state.get_data()
     upload = data.get("fin_upload") or {}
     commission_id = upload.get("commission_id")
+    bot_instance = getattr(message, "bot", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
     if commission_id is None:
         await message.answer(
             "Не удалось определить комиссию. Вернитесь к списку финансов и попробуйте снова."
         )
         await cleanup_finance_prompts(
             state,
-            getattr(message, "bot", None),
-            getattr(getattr(message, "chat", None), "id", None),
+            bot_instance,
+            chat_id,
         )
+        if bot_instance and chat_id is not None:
+            await clear_step_messages(bot_instance, state, chat_id)
         await state.clear()
         return
 
@@ -211,9 +222,11 @@ async def finances_upload_check(
         await message.answer("Комиссия не найдена.")
         await cleanup_finance_prompts(
             state,
-            getattr(message, "bot", None),
-            getattr(getattr(message, "chat", None), "id", None),
+            bot_instance,
+            chat_id,
         )
+        if bot_instance and chat_id is not None:
+            await clear_step_messages(bot_instance, state, chat_id)
         await state.clear()
         return
 
@@ -233,8 +246,8 @@ async def finances_upload_check(
 
     await cleanup_finance_prompts(
         state,
-        getattr(message, "bot", None),
-        getattr(getattr(message, "chat", None), "id", None),
+        bot_instance,
+        chat_id,
     )
 
     await state.set_state(None)
