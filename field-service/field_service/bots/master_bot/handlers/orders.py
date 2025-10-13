@@ -441,8 +441,8 @@ async def offer_accept(
                     city_id=order_row.city_id,
                     district_id=order_row.district_id,
                     # ✅ BUGFIX: Конвертируем Enum в строку для VARCHAR колонок
-                    category=order_row.category.value if hasattr(order_row.category, 'value') else str(order_row.category),
-                    order_type=order_row.type.value if hasattr(order_row.type, 'value') else str(order_row.type),
+                    category=order_row.category,  # BUGFIX: Pass enum directly, not string
+                    order_type=order_row.type,  # BUGFIX: Pass enum directly, not string
                     metadata_json={
                         "accepted_via": "master_bot",
                         "from_status": current_status.value if hasattr(current_status, 'value') else str(current_status),
@@ -465,12 +465,23 @@ async def offer_accept(
     
     # ✅ BUGFIX: Сбрасываем кэш SQLAlchemy после commit
     # Без этого _render_offers будет читать устаревшие данные из кэша
-    session.expire_all()
-    _log.info("offer_accept: session cache expired for order=%s", order_id)
+    # BUGFIX: SQLAlchemy automatically refreshes data after commit
+    # No need for expire_all() - it breaks async context
 
-    await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=True)
+    _log.info("offer_accept: about to call safe_answer_callback for order=%s", order_id)
+    try:
+        await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=True)
+        _log.info("offer_accept: safe_answer_callback completed for order=%s", order_id)
+    except Exception as callback_err:
+        _log.error("offer_accept: safe_answer_callback FAILED for order=%s: %s", order_id, callback_err, exc_info=True)
+    
+    _log.info("offer_accept: about to call _render_active_order for order=%s", order_id)
     # Переход к карточке принятого заказа вместо списка предложений
-    await _render_active_order(callback, session, master, order_id=order_id)
+    try:
+        await _render_active_order(callback, session, master, order_id=order_id)
+        _log.info("offer_accept: _render_active_order completed for order=%s", order_id)
+    except Exception as render_err:
+        _log.error("offer_accept: _render_active_order FAILED for order=%s: %s", order_id, render_err, exc_info=True)
 
 
 # P0-1: Промежуточный шаг - показываем диалог подтверждения
@@ -1013,9 +1024,12 @@ async def _render_active_order(
     Если order_id=None - показывает список всех активных заказов.
     Если order_id передан - показывает карточку конкретного заказа.
     """
+    _log.info("_render_active_order START: master=%s order_id=%s", master.id, order_id)
     if order_id is None:
         # Показываем список всех активных заказов
+        _log.info("_render_active_order: loading all active orders for master=%s", master.id)
         active_orders = await _load_active_orders(session, master.id)
+        _log.info("_render_active_order: found %d active orders", len(active_orders))
         
         if not active_orders:
             await safe_edit_or_send(
@@ -1088,8 +1102,11 @@ async def _render_active_order(
         return
     
     # Показываем карточку конкретного заказа
+    _log.info("_render_active_order: loading specific order=%s for master=%s", order_id, master.id)
     row = await _load_active_order(session, master.id, order_id)
+    _log.info("_render_active_order: order loaded, found=%s", row is not None)
     if row is None:
+        _log.warning("_render_active_order: order=%s not found or not active for master=%s", order_id, master.id)
         await safe_edit_or_send(
             event,
             "❌ Заказ не найден или уже не активен.",
@@ -1157,8 +1174,10 @@ async def _render_active_order(
     breadcrumb_path = MasterPaths.active_order_card(order.id)
     text = add_breadcrumbs_to_text(text_without_breadcrumbs, breadcrumb_path)
     
+    _log.info("_render_active_order: sending card for order=%s to master=%s", order_id, master.id)
     try:
         await safe_edit_or_send(event, text, keyboard)
+        _log.info("_render_active_order: card sent successfully for order=%s", order_id)
     except Exception as exc:
         _log.exception("render_active failed: %s", exc)
         if isinstance(event, CallbackQuery) and event.message is not None:
