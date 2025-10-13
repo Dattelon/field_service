@@ -704,7 +704,11 @@ async def onboarding_edit_city(callback: CallbackQuery, state: FSMContext) -> No
     await state.update_data(is_editing=True)
     await state.set_state(OnboardingStates.city)
     text = _add_progress_to_text("Напишите название города: можно начать вводить и увидеть подсказки.", OnboardingStates.city)
-    await callback.message.answer(text)
+    await push_step_message(
+        callback,
+        state,
+        text,
+    )
     await callback.answer()
 
 
