@@ -15,7 +15,13 @@ from field_service.db import models as m
 
 from ..keyboards import main_menu_keyboard, start_onboarding_keyboard
 from ..texts import START_APPROVED, START_BLOCKED, START_NOT_APPROVED
-from ..utils import clear_step_messages, escape_html, now_utc
+from ..utils import (
+    cleanup_close_prompts,
+    cleanup_finance_prompts,
+    clear_step_messages,
+    escape_html,
+    now_utc,
+)
 
 router = Router(name="master_start")
 
@@ -66,6 +72,16 @@ async def handle_start(message: Message, state: FSMContext, master: m.masters) -
     import logging
     logger = logging.getLogger(__name__)
     logger.info(f"handle_start: START uid={message.from_user.id if message.from_user else 'None'} master_id={master.id if master else 'None'}")
+    await cleanup_close_prompts(
+        state,
+        getattr(message, "bot", None),
+        getattr(getattr(message, "chat", None), "id", None),
+    )
+    await cleanup_finance_prompts(
+        state,
+        getattr(message, "bot", None),
+        getattr(getattr(message, "chat", None), "id", None),
+    )
     await state.clear()
     logger.info(f"handle_start: calling _render_start")
     try:
@@ -77,6 +93,16 @@ async def handle_start(message: Message, state: FSMContext, master: m.masters) -
 
 @router.message(Command("cancel"))
 async def handle_cancel(message: Message, state: FSMContext, master: m.masters) -> None:
+    await cleanup_close_prompts(
+        state,
+        getattr(message, "bot", None),
+        getattr(getattr(message, "chat", None), "id", None),
+    )
+    await cleanup_finance_prompts(
+        state,
+        getattr(message, "bot", None),
+        getattr(getattr(message, "chat", None), "id", None),
+    )
     await state.clear()
     if message.bot and message.chat:
         await clear_step_messages(message.bot, state, message.chat.id)
@@ -86,8 +112,13 @@ async def handle_cancel(message: Message, state: FSMContext, master: m.masters) 
 @router.callback_query(F.data == "m:cancel")
 async def handle_cancel_callback(callback: CallbackQuery, state: FSMContext, master: m.masters) -> None:
     """Обработчик для кнопки ❌ Отменить - возвращает в главное меню из любого FSM-состояния."""
+    message = callback.message
+    bot_instance = getattr(message, "bot", None) or getattr(callback, "bot", None)
+    chat_id = getattr(getattr(message, "chat", None), "id", None)
+    await cleanup_close_prompts(state, bot_instance, chat_id)
+    await cleanup_finance_prompts(state, bot_instance, chat_id)
     await state.clear()
-    
+
     # Подготовка контента меню
     moderation = getattr(master, "moderation_status", m.ModerationStatus.PENDING)
     verified = getattr(master, "verified", False)
@@ -131,8 +162,16 @@ async def handle_cancel_callback(callback: CallbackQuery, state: FSMContext, mas
 @router.callback_query(F.data == "m:menu")
 async def handle_menu(callback: CallbackQuery, state: FSMContext, master: m.masters) -> None:
     """Обработчик кнопки 🏠 Меню - удаляет текущее сообщение и показывает главное меню."""
+    message = callback.message
+    bot_instance = getattr(message, "bot", None) or getattr(callback, "bot", None)
+    chat = getattr(message, "chat", None)
+    chat_id = getattr(chat, "id", None)
+    if chat_id is None and getattr(callback, "from_user", None) is not None:
+        chat_id = getattr(callback.from_user, "id", None)
+    await cleanup_close_prompts(state, bot_instance, chat_id)
+    await cleanup_finance_prompts(state, bot_instance, chat_id)
     await state.clear()
-    
+
     # Подготовка контента меню
     moderation = getattr(master, "moderation_status", m.ModerationStatus.PENDING)
     verified = getattr(master, "verified", False)
