@@ -375,86 +375,74 @@ async def watchdog_expired_breaks(
 ) -> None:
     """
     BUGFIX 2025-10-10: Automatically end expired breaks and set masters to SHIFT_OFF.
-    
-    When break_until expires and master hasn't manually ended the break,
-    this watchdog automatically transitions them to SHIFT_OFF status.
+
+    Периодически проверяет мастеров на перерыве и переводит их в SHIFT_OFF,
+    если break_until истёк и перерыв не завершён вручную.
     """
-    from sqlalchemy import and_, update
-    
+    from sqlalchemy import text
+
     sleep_for = max(30, int(interval_seconds) if interval_seconds else 60)
     loops_done = 0
-    
+
     live_log.push(
         "watchdog",
         f"watchdog_expired_breaks started (interval={sleep_for}s)",
-        level="INFO"
+        level="INFO",
     )
-    
+
     while True:
         try:
-            now = datetime.now(UTC)
             async with SessionLocal() as session:
-                # Находим всех мастеров с истекшим перерывом
                 result = await session.execute(
-                    select(m.masters.id, m.masters.tg_user_id, m.masters.break_until)
-                    .where(
-                        and_(
-                            m.masters.shift_status == m.ShiftStatus.BREAK,
-                            m.masters.break_until.isnot(None),
-                            m.masters.break_until < now
-                        )
+                    text(
+                        """
+                        UPDATE masters
+                        SET
+                            shift_status = 'SHIFT_OFF',
+                            is_on_shift = false,
+                            break_until = NULL,
+                            updated_at = NOW()
+                        WHERE shift_status = 'BREAK'
+                          AND break_until IS NOT NULL
+                          AND break_until <= NOW()
+                        RETURNING id, tg_user_id, full_name
+                        """
                     )
                 )
-                
-                expired_breaks = result.all()
-                
-                if expired_breaks:
-                    # Обновляем статус всех мастеров с истекшими перерывами
-                    master_ids = [row.id for row in expired_breaks]
-                    
-                    await session.execute(
-                        update(m.masters)
-                        .where(m.masters.id.in_(master_ids))
-                        .values(
-                            shift_status=m.ShiftStatus.SHIFT_OFF,
-                            is_on_shift=False,
-                            break_until=None
-                        )
+                expired_breaks = result.fetchall()
+                await session.commit()
+
+            if expired_breaks:
+                live_log.push(
+                    "watchdog",
+                    f"expired_breaks_ended count={len(expired_breaks)}",
+                    level="INFO",
+                )
+
+                for master_id, tg_user_id, full_name in expired_breaks:
+                    logger.info(
+                        "break_expired_auto_ended master_id=%s name=%s",
+                        master_id,
+                        full_name or "???",
                     )
-                    
-                    await session.commit()
-                    
                     live_log.push(
                         "watchdog",
-                        f"expired_breaks_ended count={len(expired_breaks)}",
-                        level="INFO"
+                        f"break_expired master={master_id} auto_ended tg={tg_user_id}",
+                        level="INFO",
                     )
-                    
-                    for row in expired_breaks:
-                        logger.info(
-                            "break_expired_auto_ended master_id=%s tg_user_id=%s break_until=%s",
-                            row.id,
-                            row.tg_user_id,
-                            row.break_until
-                        )
-                        live_log.push(
-                            "watchdog",
-                            f"break_expired master={row.id} auto_ended",
-                            level="INFO"
-                        )
-                        
+
         except Exception as exc:
             logger.exception("watchdog_expired_breaks error")
             live_log.push(
                 "watchdog",
                 f"watchdog_expired_breaks error: {exc}",
-                level="ERROR"
+                level="ERROR",
             )
-        
+
         loops_done += 1
         if iterations is not None and loops_done >= iterations:
             break
-        
+
         await asyncio.sleep(sleep_for)
 
 
@@ -513,82 +501,6 @@ async def watchdog_expired_offers(
             live_log.push(
                 "watchdog",
                 f"watchdog_expired_offers error: {exc}",
-                level="ERROR"
-            )
-        
-        loops_done += 1
-        if iterations is not None and loops_done >= iterations:
-            break
-        
-        await asyncio.sleep(sleep_for)
-
-
-# ===== Expired Breaks Watchdog =====
-
-
-async def watchdog_expired_breaks(
-    interval_seconds: int = 60,
-    *,
-    iterations: int | None = None,
-) -> None:
-    """
-    Периодически проверяет и снимает со смены мастеров с истёкшим перерывом.
-    
-    После окончания перерыва (break_until) мастер автоматически снимается со смены:
-    - shift_status = SHIFT_OFF
-    - is_on_shift = False
-    - break_until = None
-    """
-    from sqlalchemy import text
-    
-    sleep_for = max(30, int(interval_seconds) if interval_seconds else 60)
-    loops_done = 0
-    
-    while True:
-        try:
-            now = datetime.now(UTC)
-            async with SessionLocal() as session:
-                # Находим всех мастеров на перерыве с истёкшим временем
-                result = await session.execute(
-                    text("""
-                        UPDATE masters
-                        SET 
-                            shift_status = 'SHIFT_OFF',
-                            is_on_shift = false,
-                            break_until = NULL,
-                            updated_at = NOW()
-                        WHERE shift_status = 'BREAK'
-                          AND break_until IS NOT NULL
-                          AND break_until <= NOW()
-                        RETURNING id, tg_user_id, full_name
-                    """)
-                )
-                expired_breaks = result.fetchall()
-                await session.commit()
-                
-                if expired_breaks:
-                    live_log.push(
-                        "watchdog",
-                        f"expired_breaks count={len(expired_breaks)}",
-                        level="INFO"
-                    )
-                    for master_id, tg_user_id, full_name in expired_breaks:
-                        logger.info(
-                            "break_expired master=%s name=%s",
-                            master_id,
-                            full_name or "???"
-                        )
-                        live_log.push(
-                            "watchdog",
-                            f"break_expired mid={master_id} tg={tg_user_id}",
-                            level="INFO"
-                        )
-                        
-        except Exception as exc:
-            logger.exception("watchdog_expired_breaks error")
-            live_log.push(
-                "watchdog",
-                f"watchdog_expired_breaks error: {exc}",
                 level="ERROR"
             )
         
