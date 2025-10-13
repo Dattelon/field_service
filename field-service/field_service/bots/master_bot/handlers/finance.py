@@ -350,7 +350,7 @@ async def _render_commission_list(
     buttons.append([InlineKeyboardButton(text="⬅️ В главное меню", callback_data="m:menu")])
     
     # P1-23: Add breadcrumbs navigation
-    text_without_breadcrumbs = "\n".join([line for line in lines if line])
+    text_without_breadcrumbs = "\n".join(lines).strip("\n")
     text = add_breadcrumbs_to_text(text_without_breadcrumbs, MasterPaths.FINANCE_COMMISSIONS)
     
     await safe_edit_or_send(event, text, inline_keyboard(buttons))
