@@ -1510,10 +1510,24 @@ async def copy_data_handler(
         await safe_answer_callback(callback, "Неизвестный тип данных", show_alert=True)
         return
     
-    # Отправляем данные через alert для быстрого копирования
+    # Отправляем данные: короткое уведомление в alert и подробности в отдельном сообщении
     message_text = format_copy_message(data_type, data)
-    await safe_answer_callback(callback, data, show_alert=True)
-    
+    await safe_answer_callback(callback, "📋 Данные отправлены", show_alert=True)
+
+    target_chat_id = None
+    if callback.message is not None:
+        target_chat_id = callback.message.chat.id
+    elif callback.from_user is not None:
+        target_chat_id = callback.from_user.id
+
+    if target_chat_id is not None:
+        await safe_send_message(
+            callback.bot,
+            target_chat_id,
+            message_text,
+            parse_mode="HTML",
+        )
+
     _log.info(
         "copy_data: uid=%s order_id=%s type=%s",
         _callback_uid(callback),
