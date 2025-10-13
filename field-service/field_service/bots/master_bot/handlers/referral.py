@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from urllib.parse import quote
 
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -153,7 +154,8 @@ async def _render_referrals(
             f"Используй мой реферальный код: {referral_code}\n\n"
             f"Получай заказы и зарабатывай вместе со мной!"
         )
-        share_url = f"https://t.me/share/url?url={share_text}"
+        encoded_share_text = quote(share_text)
+        share_url = f"https://t.me/share/url?text={encoded_share_text}&url={encoded_share_text}"
         buttons.append([
             InlineKeyboardButton(text='📤 Поделиться кодом', url=share_url)
         ])
