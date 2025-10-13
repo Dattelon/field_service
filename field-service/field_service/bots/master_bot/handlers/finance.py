@@ -19,8 +19,8 @@ from field_service.bots.common import MasterPaths, add_breadcrumbs_to_text
 from ..finance import format_pay_snapshot
 from ..states import FinanceUploadStates
 from field_service.bots.common import safe_answer_callback, safe_edit_or_send
-from ..utils import inline_keyboard, now_utc
-from ..keyboards import close_order_cancel_keyboard
+from ..utils import delete_message_silent, inline_keyboard, now_utc
+from ..keyboards import finance_cancel_keyboard
 
 router = Router(name="master_finance")
 
@@ -46,6 +46,26 @@ ORDER_TYPE_LABELS: dict[m.OrderType, str] = {
     m.OrderType.NORMAL: "Обычный заказ",
     m.OrderType.GUARANTEE: "Гарантийный визит",
 }
+
+
+async def _remember_finance_upload_message(state: FSMContext, message: Message) -> None:
+    data = await state.get_data()
+    upload = dict(data.get("fin_upload") or {})
+    temp_messages = list(upload.get("temp_messages") or [])
+    temp_messages.append(message.message_id)
+    upload["temp_messages"] = temp_messages
+    await state.update_data(fin_upload=upload)
+
+
+async def _cleanup_finance_upload(state: FSMContext, bot, chat_id: int | None) -> None:
+    if bot is None or chat_id is None:
+        return
+
+    data = await state.get_data()
+    upload = data.get("fin_upload") or {}
+    temp_messages = upload.get("temp_messages") or []
+    for message_id in temp_messages:
+        await delete_message_silent(bot, chat_id, int(message_id))
 
 
 @router.callback_query(F.data == "m:fin")
@@ -124,10 +144,39 @@ async def finances_request_check(
         await safe_answer_callback(callback, "Комиссия не найдена.", show_alert=True)
         return
 
-    await state.update_data(fin_upload={"commission_id": commission_id})
     await state.set_state(FinanceUploadStates.check)
-    await callback.message.answer("Загрузите чек (фото или PDF одним файлом).", reply_markup=close_order_cancel_keyboard())
+    await state.update_data(fin_upload={"commission_id": commission_id})
+    prompt = await callback.message.answer(
+        "Загрузите чек (фото или PDF одним файлом).",
+        reply_markup=finance_cancel_keyboard(),
+    )
+    await _remember_finance_upload_message(state, prompt)
     await safe_answer_callback(callback)
+
+
+@router.callback_query(F.data == "m:fin:chk:cancel")
+async def finances_upload_cancel(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    master: m.masters,
+) -> None:
+    data = await state.get_data()
+    upload = data.get("fin_upload") or {}
+    commission_id = upload.get("commission_id")
+
+    message = callback.message
+    if message and message.bot:
+        await _cleanup_finance_upload(state, message.bot, message.chat.id if message.chat else None)
+
+    await state.set_state(None)
+    await state.update_data(fin_upload=None)
+
+    if commission_id is not None:
+        await _render_commission_card(callback, session, master, int(commission_id), state)
+        await safe_answer_callback(callback, "Загрузка чека отменена")
+    else:
+        await safe_answer_callback(callback, "Не удалось определить комиссию.", show_alert=True)
 
 
 @router.callback_query(F.data.regexp(r"^m:fin:cm:ip:(\d+)$"))
@@ -191,6 +240,9 @@ async def finances_upload_check(
     commission.has_checks = True
     await session.commit()
 
+    if message.bot and message.chat:
+        await _cleanup_finance_upload(state, message.bot, message.chat.id)
+
     await state.set_state(None)
     await state.update_data(fin_upload=None)
     await message.answer("Чек загружен. Спасибо!")
@@ -198,8 +250,12 @@ async def finances_upload_check(
 
 
 @router.message(FinanceUploadStates.check)
-async def finances_upload_invalid(message: Message) -> None:
-    await message.answer("Пожалуйста, отправьте фото или PDF-файл чека.", reply_markup=close_order_cancel_keyboard())
+async def finances_upload_invalid(message: Message, state: FSMContext) -> None:
+    response = await message.answer(
+        "Загрузите чек (фото или PDF одним файлом).",
+        reply_markup=finance_cancel_keyboard(),
+    )
+    await _remember_finance_upload_message(state, response)
 
 
 async def _render_commission_list(

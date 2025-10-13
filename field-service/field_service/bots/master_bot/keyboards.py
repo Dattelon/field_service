@@ -288,6 +288,11 @@ def close_order_cancel_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard([cancel_button(callback_data="m:act:cls:cancel")])
 
 
+def finance_cancel_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура с кнопкой отмены для загрузки финансовых чеков."""
+    return inline_keyboard([cancel_button(callback_data="m:fin:chk:cancel")])
+
+
 
 # P1-16: Клавиатура выбора длительности перерыва
 def break_duration_keyboard(extend_mode: bool = False) -> InlineKeyboardMarkup:
