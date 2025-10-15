@@ -1,5 +1,5 @@
 # field_service/bots/admin_bot/handlers/orders.py
-"""Обработчики создания заказов (NewOrderFSM)."""
+"""   (NewOrderFSM)."""
 from __future__ import annotations
 
 import os
@@ -54,14 +54,14 @@ from ..common.helpers import (
 router = Router(name="admin_orders")
 
 
-# Константы для слотов
+#   
 WORKDAY_START_DEFAULT = time_service.parse_time_string(env_settings.workday_start, default=time(10, 0))
 WORKDAY_END_DEFAULT = time_service.parse_time_string(env_settings.workday_end, default=time(20, 0))
 LATE_ASAP_THRESHOLD = time_service.parse_time_string(env_settings.asap_late_threshold, default=time(19, 30))
 
 
 def is_working_hours() -> bool:
-    """Определить, в рабочее ли время запущено подтверждение."""
+    """,      ."""
     if os.getenv("PYTEST_CURRENT_TEST"):
         return True
     from datetime import datetime
@@ -73,9 +73,9 @@ SLOT_BUCKETS: tuple[tuple[str, time, time], ...] = tuple(
 )
 
 
-# Хелперы для слотов
+#   
 def _slot_options(now_local, *, workday_start, workday_end):
-    """Генерирует доступные слоты времени."""
+    """   ."""
     current = now_local.timetz()
     if current.tzinfo is not None:
         current = current.replace(tzinfo=None)
@@ -84,14 +84,14 @@ def _slot_options(now_local, *, workday_start, workday_end):
         options.append(("ASAP", "ASAP"))
         for bucket_key, start, end in SLOT_BUCKETS:
             if current < start:
-                options.append((f"TODAY:{bucket_key}", f"Сегодня {start:%H:%M}-{end:%H:%M}"))
+                options.append((f"TODAY:{bucket_key}", f" {start:%H:%M}-{end:%H:%M}"))
     for bucket_key, start, end in SLOT_BUCKETS:
-        options.append((f"TOM:{bucket_key}", f"Завтра {start:%H:%M}-{end:%H:%M}"))
+        options.append((f"TOM:{bucket_key}", f" {start:%H:%M}-{end:%H:%M}"))
     return options
 
 
 def _format_slot_display(choice, computation, *, tz):
-    """Форматирует выбранный слот для отображения."""
+    """    ."""
     if choice == "ASAP":
         return "ASAP"
     formatted = time_service.format_timeslot_local(
@@ -103,7 +103,7 @@ def _format_slot_display(choice, computation, *, tz):
 
 
 async def _resolve_workday_window():
-    """Получает окно рабочего дня из настроек."""
+    """     ."""
     try:
         from field_service.services import settings_service
         return await settings_service.get_working_window()
@@ -121,7 +121,7 @@ async def _finalize_slot_selection(
     workday_end,
     initial_status_override=None,
 ):
-    """Финализирует выбор слота и переходит к подтверждению."""
+    """      ."""
     computation = time_service.compute_slot(
         city_tz=tz,
         choice=slot_choice,
@@ -147,11 +147,11 @@ async def _finalize_slot_selection(
 
 
 async def _render_created_order_card(message, order_id, staff):
-    """Показывает карточку созданного заказа."""
+    """   ."""
     orders_service = _orders_service(message.bot)
     detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
     if not detail:
-        await message.answer(f"Заказ #{order_id} не найден.")
+        await message.answer(f" #{order_id}  .")
         return
     
     from ...ui.texts import format_order_card
@@ -170,11 +170,11 @@ async def _render_created_order_card(message, order_id, staff):
 
 
 # ============================================
-# СОЗДАНИЕ ЗАКАЗА - ГОРОД
+#   - 
 # ============================================
 
 async def _start_new_order(cq, staff, state):
-    """Начать создание нового заказа."""
+    """   ."""
     await state.clear()
     await state.update_data(staff_id=staff.id, attachments=[], order_type=OrderType.NORMAL.value)
     await state.set_state(NewOrderFSM.city)
@@ -183,9 +183,9 @@ async def _start_new_order(cq, staff, state):
 
 
 async def _render_city_step(message, state, page, staff, query=None):
-    """Рендерит шаг выбора города с фильтрацией по visible_city_ids."""
+    """       visible_city_ids."""
     orders_service = _orders_service(message.bot)
-    # RBAC: Получаем разрешённые города для CITY_ADMIN
+    # RBAC:     CITY_ADMIN
     city_ids = visible_city_ids_for(staff)
     limit = 80
     if query:
@@ -194,9 +194,9 @@ async def _render_city_step(message, state, page, staff, query=None):
         cities = await orders_service.list_cities(limit=limit, city_ids=city_ids)
     if not cities:
         try:
-            await message.edit_text("Города не найдены. Нажмите /cancel, чтобы отменить.")
+            await message.edit_text("  .  /cancel,  .")
         except TelegramBadRequest:
-            await message.answer("Города не найдены. Нажмите /cancel, чтобы отменить.")
+            await message.answer("  .  /cancel,  .")
         return
     per_page = 10
     total_pages = max(1, (len(cities) + per_page - 1) // per_page)
@@ -204,7 +204,7 @@ async def _render_city_step(message, state, page, staff, query=None):
     start = (page - 1) * per_page
     chunk = cities[start : start + per_page]
     keyboard = new_order_city_keyboard([(c.id, c.name) for c in chunk], page=page, total_pages=total_pages)
-    prompt = "Выберите город:"
+    prompt = " :"
     try:
         await message.edit_text(prompt, reply_markup=keyboard)
     except TelegramBadRequest:
@@ -219,13 +219,13 @@ async def _render_city_step(message, state, page, staff, query=None):
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
 async def cb_new_order_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Показать выбор режима создания заказа (P0-5)."""
+    """     (P0-5)."""
     await state.clear()
     from ...ui.keyboards import create_order_mode_keyboard
     await cq.message.edit_text(
-        "Выберите режим создания заказа:\n\n"
-        "⚡ <b>Быстрое создание</b> - только обязательные поля (5 шагов)\n"
-        "📝 <b>Полное создание</b> - все поля с адресом и деталями",
+        "   :\n\n"
+        " <b> </b> -    (5 )\n"
+        " <b> </b> -      ",
         reply_markup=create_order_mode_keyboard(),
     )
     await cq.answer()
@@ -236,7 +236,7 @@ async def cb_new_order_start(cq: CallbackQuery, staff: StaffUser, state: FSMCont
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
 async def cb_new_order_full_mode(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Начать полное создание заказа."""
+    """   ."""
     await _start_new_order(cq, staff, state)
 
 
@@ -246,10 +246,10 @@ async def cb_new_order_full_mode(cq: CallbackQuery, staff: StaffUser, state: FSM
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
 async def admin_cancel_command(message: Message, staff: StaffUser, state: FSMContext) -> None:
-    """Команда /cancel - отменить создание заказа."""
+    """ /cancel -   ."""
     await state.clear()
     from ...ui.keyboards import main_menu
-    await message.answer("Создание заявки отменено.", reply_markup=main_menu(staff))
+    await message.answer("  .", reply_markup=main_menu(staff))
 
 
 @router.callback_query(
@@ -257,16 +257,16 @@ async def admin_cancel_command(message: Message, staff: StaffUser, state: FSMCon
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
 async def cb_new_order_cancel(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Кнопка отмены создания заказа."""
+    """   ."""
     await state.clear()
     if cq.message:
         from ...ui.keyboards import main_menu
         try:
-            await cq.message.edit_text("Создание заявки отменено", reply_markup=main_menu(staff))
+            await cq.message.edit_text("  ", reply_markup=main_menu(staff))
         except TelegramBadRequest:
-            await cq.message.answer("Создание заявки отменено", reply_markup=main_menu(staff))
+            await cq.message.answer("  ", reply_markup=main_menu(staff))
     try:
-        await cq.answer("Отмена")
+        await cq.answer("")
     except TelegramBadRequest:
         pass
 
@@ -277,7 +277,7 @@ async def cb_new_order_cancel(cq: CallbackQuery, staff: StaffUser, state: FSMCon
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}),
 )
 async def cb_new_order_city_page(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Пагинация по городам."""
+    """  ."""
     page = int(cq.data.split(":")[3])
     data = await state.get_data()
     query = data.get("city_query")
@@ -288,9 +288,9 @@ async def cb_new_order_city_page(cq: CallbackQuery, staff: StaffUser, state: FSM
 
 @router.callback_query(F.data == "adm:new:city_search", StateFilter(NewOrderFSM.city))
 async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None:
-    """Поиск города по названию."""
+    """   ."""
     await state.set_state(NewOrderFSM.city)
-    prompt = "Введите название города (минимум 2 символа). Команда /cancel вернёт в меню."
+    prompt = "   ( 2 ).  /cancel   ."
     try:
         await cq.message.edit_text(prompt)
     except TelegramBadRequest:
@@ -302,22 +302,22 @@ async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None
 
 @router.message(StateFilter(NewOrderFSM.city))
 async def new_order_city_input(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    """Ввод названия города для поиска."""
+    """    ."""
     query = (msg.text or "").strip()
     if len(query) < 2:
-        await msg.answer("Минимум 2 символа. Попробуйте снова.")
+        await msg.answer(" 2 .  .")
         return
     await _render_city_step(msg, state, page=1, staff=staff, query=query)
 
 
 @router.callback_query(F.data.startswith("adm:new:city:"), StateFilter(NewOrderFSM.city))
 async def cb_new_order_city_pick(cq: CallbackQuery, state: FSMContext) -> None:
-    """Выбор города."""
+    """ ."""
     city_id = int(cq.data.split(":")[3])
     orders_service = _orders_service(cq.message.bot)
     city = await orders_service.get_city(city_id)
     if not city:
-        await cq.answer("Город не найден", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await state.update_data(city_id=city.id, city_name=city.name)
     await state.set_state(NewOrderFSM.district)
@@ -326,18 +326,18 @@ async def cb_new_order_city_pick(cq: CallbackQuery, state: FSMContext) -> None:
 
 
 # ============================================
-# СОЗДАНИЕ ЗАКАЗА - РАЙОН
+#   - 
 # ============================================
 
 async def _render_district_step(message, state, page):
-    """Рендерит шаг выбора района."""
+    """   ."""
     data = await state.get_data()
     city_id = data.get("city_id")
     orders_service = _orders_service(message.bot)
     districts, has_next = await orders_service.list_districts(city_id, page=page, page_size=5)
     buttons = [(d.id, d.name) for d in districts]
     keyboard = new_order_district_keyboard(buttons, page=page, has_next=has_next)
-    prompt = "Выберите район:"
+    prompt = " :"
     try:
         await message.edit_text(prompt, reply_markup=keyboard)
     except TelegramBadRequest:
@@ -349,7 +349,7 @@ async def _render_district_step(message, state, page):
 
 @router.callback_query(F.data.startswith("adm:new:district_page:"), StateFilter(NewOrderFSM.district))
 async def cb_new_order_district_page(cq: CallbackQuery, state: FSMContext) -> None:
-    """Пагинация по районам."""
+    """  ."""
     page = int(cq.data.split(":")[3])
     await state.set_state(NewOrderFSM.district)
     await _render_district_step(cq.message, state, page=page)
@@ -361,7 +361,7 @@ async def cb_new_order_district_page(cq: CallbackQuery, state: FSMContext) -> No
 
 @router.callback_query(F.data == "adm:new:city_back", StateFilter(NewOrderFSM.district))
 async def cb_new_order_city_back(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Вернуться к выбору города."""
+    """   ."""
     data = await state.get_data()
     await state.set_state(NewOrderFSM.city)
     await _render_city_step(
@@ -376,11 +376,11 @@ async def cb_new_order_city_back(cq: CallbackQuery, staff: StaffUser, state: FSM
 
 @router.callback_query(F.data == "adm:new:district:none", StateFilter(NewOrderFSM.district))
 async def cb_new_order_district_none(cq: CallbackQuery, state: FSMContext) -> None:
-    """Пропустить выбор района."""
+    """  ."""
     await state.update_data(district_id=None, district_name="")
     await state.set_state(NewOrderFSM.street_mode)
     await cq.message.edit_text(
-        "Выберите способ указать улицу:",
+        "   :",
         reply_markup=new_order_street_mode_keyboard(),
     )
     await cq.answer()
@@ -388,40 +388,40 @@ async def cb_new_order_district_none(cq: CallbackQuery, state: FSMContext) -> No
 
 @router.callback_query(F.data.startswith("adm:new:district:"), StateFilter(NewOrderFSM.district))
 async def cb_new_order_district_pick(cq: CallbackQuery, state: FSMContext) -> None:
-    """Выбор района."""
+    """ ."""
     district_id = int(cq.data.split(":")[3])
     orders_service = _orders_service(cq.message.bot)
     district = await orders_service.get_district(district_id)
     if not district:
-        await cq.answer("Район не найден", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await state.update_data(district_id=district.id, district_name=district.name)
     await state.set_state(NewOrderFSM.street_mode)
     await cq.message.edit_text(
-        "Выберите способ указать улицу:",
+        "   :",
         reply_markup=new_order_street_mode_keyboard(),
     )
     await cq.answer()
 
 
 # ============================================
-# СОЗДАНИЕ ЗАКАЗА - УЛИЦА
+#   - 
 # ============================================
 
 @router.callback_query(F.data == "adm:new:street:search", StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_search(cq: CallbackQuery, state: FSMContext) -> None:
-    """Поиск улицы."""
+    """ ."""
     await state.set_state(NewOrderFSM.street_search)
-    await cq.message.edit_text("Введите минимум 2 символа названия улицы для поиска.")
+    await cq.message.edit_text("  2     .")
     await cq.answer()
 
 
 @router.callback_query(F.data == "adm:new:street:manual", StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_manual(cq: CallbackQuery, state: FSMContext) -> None:
-    """Ручной ввод улицы."""
+    """  ."""
     await state.set_state(NewOrderFSM.street_manual)
     await cq.message.edit_text(
-        "Введите название улицы (до 250 символов).",
+        "   ( 250 ).",
         reply_markup=new_order_street_manual_keyboard(),
     )
     await cq.answer()
@@ -429,16 +429,16 @@ async def cb_new_order_street_manual(cq: CallbackQuery, state: FSMContext) -> No
 
 @router.callback_query(F.data == "adm:new:street:none", StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_none(cq: CallbackQuery, state: FSMContext) -> None:
-    """Пропустить улицу."""
+    """ ."""
     await state.update_data(street_id=None, street_name="", street_manual=None)
     await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("Укажите номер дома (до 10 символов, '-' если нет).")
+    await cq.message.edit_text("   ( 10 , '-'  ).")
     await cq.answer()
 
 
 @router.callback_query(F.data == "adm:new:district_back", StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_back(cq: CallbackQuery, state: FSMContext) -> None:
-    """Вернуться к выбору района."""
+    """   ."""
     await state.set_state(NewOrderFSM.district)
     page = (await state.get_data()).get("district_page", 1)
     await _render_district_step(cq.message, state, page=page)
@@ -447,32 +447,32 @@ async def cb_new_order_street_back(cq: CallbackQuery, state: FSMContext) -> None
 
 @router.message(StateFilter(NewOrderFSM.street_manual))
 async def new_order_street_manual_input(msg: Message, state: FSMContext) -> None:
-    """Ввод названия улицы вручную."""
+    """   ."""
     value = (msg.text or "").strip()
     if not (2 <= len(value) <= 250):
-        await msg.answer("Название улицы должно быть от 2 до 250 символов.")
+        await msg.answer("     2  250 .")
         return
     await state.update_data(street_id=None, street_name=value, street_manual=value)
     await state.set_state(NewOrderFSM.house)
-    await msg.answer("Укажите номер дома (до 10 символов, '-' если нет).")
+    await msg.answer("   ( 10 , '-'  ).")
 
 
 @router.message(StateFilter(NewOrderFSM.street_search))
 async def new_order_street_search_input(msg: Message, state: FSMContext) -> None:
-    """Поиск улицы по запросу."""
+    """   ."""
     query = (msg.text or "").strip()
     if len(query) < 2:
-        await msg.answer("Введите минимум 2 символа для поиска улицы.")
+        await msg.answer("  2    .")
         return
     data = await state.get_data()
     city_id = data.get("city_id")
     orders_service = _orders_service(msg.bot)
     streets = await orders_service.search_streets(city_id, query)
     if not streets:
-        await msg.answer("Не удалось найти улицу. Попробуйте другой запрос или введите её вручную.")
+        await msg.answer("   .       .")
         await state.set_state(NewOrderFSM.street_mode)
         await msg.answer(
-            "Выберите способ указать улицу:",
+            "   :",
             reply_markup=new_order_street_mode_keyboard(),
         )
         return
@@ -481,7 +481,7 @@ async def new_order_street_search_input(msg: Message, state: FSMContext) -> None
         for s in streets
     ]
     await msg.answer(
-        "Выберите улицу:",
+        " :",
         reply_markup=new_order_street_keyboard(buttons),
     )
     await state.set_state(NewOrderFSM.street_mode)
@@ -490,17 +490,17 @@ async def new_order_street_search_input(msg: Message, state: FSMContext) -> None
 
 @router.callback_query(F.data.startswith("adm:new:street:"), StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None:
-    """Выбор улицы из результатов поиска."""
+    """    ."""
     tail = cq.data.split(":")[3]
     if tail == "search_again":
         await state.set_state(NewOrderFSM.street_search)
-        await cq.message.edit_text("Введите минимум 2 символа названия улицы для поиска.")
+        await cq.message.edit_text("  2     .")
         await cq.answer()
         return
     if tail == "manual_back":
         await state.set_state(NewOrderFSM.street_mode)
         await cq.message.edit_text(
-            "Выберите способ указать улицу:",
+            "   :",
             reply_markup=new_order_street_mode_keyboard(),
         )
         await cq.answer()
@@ -508,7 +508,7 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
     if tail == "back":
         await state.set_state(NewOrderFSM.street_mode)
         await cq.message.edit_text(
-            "Выберите способ указать улицу:",
+            "   :",
             reply_markup=new_order_street_mode_keyboard(),
         )
         await cq.answer()
@@ -517,77 +517,77 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
     orders_service = _orders_service(cq.message.bot)
     street = await orders_service.get_street(street_id)
     if not street:
-        await cq.answer("Улица не найдена", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await state.update_data(street_id=street.id, street_name=street.name, street_manual=None)
     await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("Укажите номер дома (до 10 символов, '-' если нет).")
+    await cq.message.edit_text("   ( 10 , '-'  ).")
     await cq.answer()
 
 
 # ============================================
-# СОЗДАНИЕ ЗАКАЗА - АДРЕС
+#   - 
 # ============================================
 
 @router.message(StateFilter(NewOrderFSM.house))
 async def new_order_house(msg: Message, state: FSMContext) -> None:
-    """Ввод номера дома."""
+    """  ."""
     value = (msg.text or "").strip()
     if not (1 <= len(value) <= 10):
-        await msg.answer("Номер дома должен быть от 1 до 10 символов.")
+        await msg.answer("     1  10 .")
         return
     await state.update_data(house=value)
     await state.set_state(NewOrderFSM.apartment)
-    await msg.answer("Введите квартиру/офис (до 10 символов, '-' если нет).")
+    await msg.answer(" / ( 10 , '-'  ).")
 
 
 @router.message(StateFilter(NewOrderFSM.apartment))
 async def new_order_apartment(msg: Message, state: FSMContext) -> None:
-    """Ввод квартиры/офиса."""
+    """ /."""
     value = (msg.text or "").strip()
     if value == "-":
         value = ""
     if len(value) > 10:
-        await msg.answer("Максимальная длина квартиры/офиса 10 символов.")
+        await msg.answer("  / 10 .")
         return
     await state.update_data(apartment=value or None)
     await state.set_state(NewOrderFSM.address_comment)
-    await msg.answer("Добавьте комментарий к адресу (до 250 символов, '-' если пропустить).")
+    await msg.answer("    ( 250 , '-'  ).")
 
 
 @router.message(StateFilter(NewOrderFSM.address_comment))
 async def new_order_address_comment(msg: Message, state: FSMContext) -> None:
-    """Ввод комментария к адресу."""
+    """   ."""
     value = (msg.text or "").strip()
     if value == "-":
         value = ""
     await state.update_data(address_comment=value or None)
     await state.set_state(NewOrderFSM.client_name)
-    await msg.answer("Введите имя клиента (ФИО).")
+    await msg.answer("   ().")
 
 
 # ============================================
-# СОЗДАНИЕ ЗАКАЗА - КЛИЕНТ
+#   - 
 # ============================================
 
 @router.message(StateFilter(NewOrderFSM.client_name))
 async def new_order_client_name(msg: Message, state: FSMContext) -> None:
-    """Ввод имени клиента."""
+    """  ."""
     value = (msg.text or "").strip()
     if not _validate_name(value):
-        await msg.answer("Имя должно содержать только буквы и пробелы.")
+        await msg.answer("      .")
         return
     await state.update_data(client_name=value)
     await state.set_state(NewOrderFSM.client_phone)
-    await msg.answer("Укажите телефон клиента в формате +7XXXXXXXXXX.")
+    await msg.answer("     +7XXXXXXXXXX.")
 
 
 @router.message(StateFilter(NewOrderFSM.client_phone))
 async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
-    """Ввод телефона клиента."""
+    """  ."""
     raw = _normalize_phone(msg.text)
     if not _validate_phone(raw):
-        await msg.answer("Телефон должен быть в формате +7XXXXXXXXXX.")
+        await msg.answer("     +7XXXXXXXXXX.")
         return
     await state.update_data(client_phone=raw)
     await state.set_state(NewOrderFSM.category)
@@ -596,61 +596,61 @@ async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
     for category, label in CATEGORY_CHOICES:
         kb.button(text=label, callback_data=f"adm:new:cat:{category.value}")
     kb.adjust(2)
-    await msg.answer("Выберите категорию заявки:", reply_markup=kb.as_markup())
+    await msg.answer("  :", reply_markup=kb.as_markup())
 
 
 @router.callback_query(F.data.startswith("adm:new:cat:"), StateFilter(NewOrderFSM.category))
 async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
-    """Выбор категории заказа."""
+    """  ."""
     raw = cq.data.split(":")[3]
     category = normalize_category(raw)
     if category is None:
-        await cq.answer("Неизвестная категория.", show_alert=True)
+        await cq.answer(" .", show_alert=True)
         return
     await state.update_data(
         category=category,
         category_label=CATEGORY_LABELS.get(category, CATEGORY_LABELS_BY_VALUE.get(raw, raw)),
     )
     await state.set_state(NewOrderFSM.description)
-    await cq.message.edit_text("Опишите проблему (10-500 символов).")
+    await cq.message.edit_text("  (10-500 ).")
     await cq.answer()
 
 
 @router.message(StateFilter(NewOrderFSM.description))
 async def new_order_description(msg: Message, state: FSMContext) -> None:
-    """Ввод описания проблемы."""
+    """  ."""
     text_value = (msg.text or "").strip()
     if not (10 <= len(text_value) <= 500):
-        await msg.answer("Описание должно содержать от 10 до 500 символов.")
+        await msg.answer("    10  500 .")
         return
     await state.update_data(description=text_value)
     await state.set_state(NewOrderFSM.attachments)
     await msg.answer(
-        'Пришлите файлы или нажмите "Готово", чтобы продолжить.',
+        '    "",  .',
         reply_markup=new_order_attachments_keyboard(False),
     )
 
 
 # ============================================
-# СОЗДАНИЕ ЗАКАЗА - ВЛОЖЕНИЯ
+#   - 
 # ============================================
 
 @router.callback_query(F.data == "adm:new:att:add", StateFilter(NewOrderFSM.attachments))
 async def cb_new_order_att_add(cq: CallbackQuery, state: FSMContext) -> None:
-    """Добавить вложение."""
+    """ ."""
     await state.set_state(NewOrderFSM.attachments)
-    await cq.answer("Пришлите фото или документ одним сообщением.")
+    await cq.answer("     .")
 
 
 @router.callback_query(F.data == "adm:new:att:clear", StateFilter(NewOrderFSM.attachments))
 async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
-    """Очистить все вложения."""
+    """  ."""
     data = await state.get_data()
     data["attachments"] = []
     await state.update_data(**data)
     await state.set_state(NewOrderFSM.attachments)
     await cq.message.edit_text(
-        'Вложения удалены. Пришлите новые или нажмите "Готово".',
+        ' .     "".',
         reply_markup=new_order_attachments_keyboard(False),
     )
     await cq.answer()
@@ -658,10 +658,10 @@ async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
 
 @router.message(StateFilter(NewOrderFSM.attachments), F.photo)
 async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
-    """Прикрепить фото."""
+    """ ."""
     attachments = _attachments_from_state(await state.get_data())
     if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("Достигнут лимит вложений.")
+        await msg.answer("  .")
         return
     photo = msg.photo[-1]
     attachments.append(
@@ -676,17 +676,17 @@ async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
     )
     await state.update_data(attachments=attachments)
     await msg.answer(
-        f'Вложений добавлено: {len(attachments)}. Пришлите ещё или нажмите "Готово".',
+        f' : {len(attachments)}.     "".',
         reply_markup=new_order_attachments_keyboard(True),
     )
 
 
 @router.message(StateFilter(NewOrderFSM.attachments), F.document)
 async def new_order_attach_doc(msg: Message, state: FSMContext) -> None:
-    """Прикрепить документ."""
+    """ ."""
     attachments = _attachments_from_state(await state.get_data())
     if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("Достигнут лимит вложений.")
+        await msg.answer("  .")
         return
     doc = msg.document
     attachments.append(
@@ -701,31 +701,31 @@ async def new_order_attach_doc(msg: Message, state: FSMContext) -> None:
     )
     await state.update_data(attachments=attachments)
     await msg.answer(
-        f'Вложений добавлено: {len(attachments)}. Пришлите ещё или нажмите "Готово".',
+        f' : {len(attachments)}.     "".',
         reply_markup=new_order_attachments_keyboard(True),
     )
 
 
 @router.callback_query(F.data == "adm:new:att:done", StateFilter(NewOrderFSM.attachments))
 async def cb_new_order_att_done(cq: CallbackQuery, state: FSMContext) -> None:
-    """Завершить добавление вложений."""
+    """  ."""
     await state.set_state(NewOrderFSM.order_type)
     
     kb = InlineKeyboardBuilder()
-    kb.button(text="Стандартная", callback_data="adm:new:type:NORMAL")
-    kb.button(text="Гарантия", callback_data="adm:new:type:GUARANTEE")
+    kb.button(text="", callback_data="adm:new:type:NORMAL")
+    kb.button(text="", callback_data="adm:new:type:GUARANTEE")
     kb.adjust(2)
-    await cq.message.edit_text("Выберите тип заявки:", reply_markup=kb.as_markup())
+    await cq.message.edit_text("  :", reply_markup=kb.as_markup())
     await cq.answer()
 
 
 # ============================================
-# СОЗДАНИЕ ЗАКАЗА - ТИП И СЛОТ
+#   -   
 # ============================================
 
 @router.callback_query(F.data.startswith("adm:new:type:"), StateFilter(NewOrderFSM.order_type))
 async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
-    """Выбор типа заказа."""
+    """  ."""
     code = cq.data.split(":")[3]
     await state.update_data(
         order_type=code,
@@ -736,7 +736,7 @@ async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
+        await cq.answer("   .", show_alert=True)
         return
     tz = await _resolve_city_timezone(cq.message.bot, city_id)
     workday_start, workday_end = await _resolve_workday_window()
@@ -748,24 +748,24 @@ async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
         pending_asap=False,
     )
     keyboard = new_order_slot_keyboard(options)
-    await cq.message.edit_text("Выберите доступное время:", reply_markup=keyboard)
+    await cq.message.edit_text("  :", reply_markup=keyboard)
     await cq.answer()
 
 
 @router.callback_query(F.data.startswith("adm:new:slot:"), StateFilter(NewOrderFSM.slot))
 async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
-    """Выбор слота времени."""
+    """  ."""
     key = ":".join(cq.data.split(":")[3:])
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
+        await cq.answer("   .", show_alert=True)
         return
     await state.set_state(NewOrderFSM.slot)
     options = data.get("slot_options") or []
     valid_keys = {item[0] for item in options}
     if key not in valid_keys:
-        await cq.answer("Слот недоступен.", show_alert=True)
+        await cq.answer(" .", show_alert=True)
         return
     tz_value = data.get("city_timezone")
     if tz_value:
@@ -786,7 +786,7 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
             await state.update_data(pending_asap=True)
             await state.set_state(NewOrderFSM.slot)
             await cq.message.edit_text(
-                "Мастер может выехать только завтра с 10:00 до 13:00. Подтвердить перенос?",
+                "      10:00  13:00.  ?",
                 reply_markup=new_order_asap_late_keyboard(),
             )
             await cq.answer()
@@ -815,21 +815,21 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
         await state.update_data(slot_options=refreshed_options, pending_asap=False, initial_status=None)
         await state.set_state(NewOrderFSM.slot)
         await cq.message.edit_text(
-            "Слот недоступен. Выберите другое время:",
+            " .   :",
             reply_markup=new_order_slot_keyboard(refreshed_options),
         )
-        await cq.answer("Расписание обновлено, попробуйте снова.", show_alert=True)
+        await cq.answer(" ,  .", show_alert=True)
         return
     await cq.answer()
 
 
 @router.callback_query(F.data == "adm:new:slot:lateok", StateFilter(NewOrderFSM.slot))
 async def cb_new_order_slot_lateok(cq: CallbackQuery, state: FSMContext) -> None:
-    """Подтвердить перенос ASAP на завтра."""
+    """  ASAP  ."""
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
+        await cq.answer("   .", show_alert=True)
         return
     tz_value = data.get("city_timezone")
     if tz_value:
@@ -852,11 +852,11 @@ async def cb_new_order_slot_lateok(cq: CallbackQuery, state: FSMContext) -> None
 
 @router.callback_query(F.data == "adm:new:slot:reslot", StateFilter(NewOrderFSM.slot))
 async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None:
-    """Выбрать другой слот вместо ASAP."""
+    """    ASAP."""
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
+        await cq.answer("   .", show_alert=True)
         return
     await state.set_state(NewOrderFSM.slot)
     tz_value = data.get("city_timezone")
@@ -872,43 +872,43 @@ async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None
         workday_end=workday_end,
     )
     await state.update_data(slot_options=options, pending_asap=False, initial_status=None)
-    await cq.message.edit_text("Выберите доступное время:", reply_markup=new_order_slot_keyboard(options))
+    await cq.message.edit_text("  :", reply_markup=new_order_slot_keyboard(options))
     await cq.answer()
 
 
 # ============================================
-# СОЗДАНИЕ ЗАКАЗА - ПОДТВЕРЖДЕНИЕ
+#   - 
 # ============================================
 
 @router.callback_query(F.data == "adm:new:confirm", StateFilter(NewOrderFSM.confirm))
 async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: StaffUser | None = None) -> None:
-    """Подтвердить создание заказа."""
+    """  ."""
     if staff is None:
         from ..common.helpers import _staff_service
         staff_service = _staff_service(cq.message.bot)
         staff = await staff_service.get_by_tg_id(cq.from_user.id if cq.from_user else 0)
         if staff is None:
-            await cq.answer("Недостаточно прав", show_alert=True)
+            await cq.answer(" ", show_alert=True)
             return
     
-    # ⚠️ ПРОВЕРКА РАБОЧЕГО ВРЕМЕНИ
+    #    
     if not is_working_hours():
         from aiogram.types import InlineKeyboardButton
         from aiogram.utils.keyboard import InlineKeyboardBuilder
         
         kb = InlineKeyboardBuilder()
         kb.row(
-            InlineKeyboardButton(text="✅ Да, создать", callback_data="adm:new:force_confirm"),
-            InlineKeyboardButton(text="❌ Отменить", callback_data="adm:new:cancel"),
+            InlineKeyboardButton(text=" , ", callback_data="adm:new:force_confirm"),
+            InlineKeyboardButton(text=" ", callback_data="adm:new:cancel"),
         )
         
         await state.set_state(NewOrderFSM.confirm_deferred)
         await cq.message.edit_text(
-            "⚠️ <b>Сейчас нерабочее время (20:00–8:00)</b>\n\n"
-            "Заказ будет создан в статусе <b>ОТЛОЖЕН</b> и:\n"
-            "• Мастера его <b>не увидят</b>\n"
-            "• Распределение начнется в 8:00\n\n"
-            "Вы точно хотите создать заказ?",
+            " <b>   (20:008:00)</b>\n\n"
+            "     <b></b> :\n"
+            "   <b> </b>\n"
+            "    8:00\n\n"
+            "    ?",
             reply_markup=kb.as_markup(),
         )
         await cq.answer()
@@ -920,19 +920,19 @@ async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: Staf
         new_order = _build_new_order_data(data, staff)
     except KeyError:
         await state.clear()
-        await cq.answer("Не удалось собрать данные заявки. Попробуйте заново.", show_alert=True)
+        await cq.answer("    .  .", show_alert=True)
         return
     orders_service = _orders_service(cq.message.bot)
     order_id = await orders_service.create_order(new_order)
     detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
     await state.clear()
-    await cq.answer("Заявка создана")
+    await cq.answer(" ")
     if detail:
         allow_auto = detail.district_id is not None
-        prompt_parts = [f"Заявка #{detail.id} создана.", summary_text]
+        prompt_parts = [f" #{detail.id} .", summary_text]
         if not allow_auto:
-            prompt_parts.append("Автораспределение недоступно: не выбран район.")
-        prompt_parts.append("Выберите способ распределения:")
+            prompt_parts.append(" :   .")
+        prompt_parts.append("Выберите способ распределения.")
         prompt = "\n\n".join(prompt_parts)
         markup = assign_menu_keyboard(detail.id, allow_auto=allow_auto)
         try:
@@ -945,13 +945,13 @@ async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: Staf
 
 @router.callback_query(F.data == "adm:new:force_confirm", StateFilter(NewOrderFSM.confirm_deferred))
 async def cb_new_order_force_confirm(cq: CallbackQuery, state: FSMContext, staff: StaffUser | None = None) -> None:
-    """Принудительное создание заказа в нерабочее время."""
+    """     ."""
     if staff is None:
         from ..common.helpers import _staff_service
         staff_service = _staff_service(cq.message.bot)
         staff = await staff_service.get_by_tg_id(cq.from_user.id if cq.from_user else 0)
         if staff is None:
-            await cq.answer("Недостаточно прав", show_alert=True)
+            await cq.answer(" ", show_alert=True)
             return
     
     data = await state.get_data()
@@ -960,25 +960,25 @@ async def cb_new_order_force_confirm(cq: CallbackQuery, state: FSMContext, staff
         new_order = _build_new_order_data(data, staff)
     except KeyError:
         await state.clear()
-        await cq.answer("Не удалось собрать данные заявки. Попробуйте заново.", show_alert=True)
+        await cq.answer("    .  .", show_alert=True)
         return
     
     orders_service = _orders_service(cq.message.bot)
     order_id = await orders_service.create_order(new_order)
     detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
     await state.clear()
-    await cq.answer("Заявка создана (в статусе ОТЛОЖЕН)")
+    await cq.answer("  (  )")
     
     if detail:
         allow_auto = detail.district_id is not None
         prompt_parts = [
-            f"Заявка #{detail.id} создана в статусе <b>ОТЛОЖЕН</b>.",
+            f" #{detail.id}    <b></b>.",
             summary_text,
-            "⚠️ Распределение начнется автоматически в 8:00.",
+            "     8:00.",
         ]
         if not allow_auto:
-            prompt_parts.append("Автораспределение недоступно: не выбран район.")
-        prompt_parts.append("Выберите способ распределения:")
+            prompt_parts.append(" :   .")
+        prompt_parts.append("Выберите способ распределения.")
         prompt = "\n\n".join(prompt_parts)
         markup = assign_menu_keyboard(detail.id, allow_auto=allow_auto)
         try:

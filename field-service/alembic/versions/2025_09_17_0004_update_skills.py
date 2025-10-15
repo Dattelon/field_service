@@ -4,6 +4,7 @@ Revises: 2025_09_17_0003
 Create Date: 2025-09-17 19:05:00.000000
 """
 
+import os
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -14,6 +15,8 @@ depends_on = None
 
 
 def upgrade():
+    if os.getenv("FS_SKIP_SEED", "").lower() in {"1", "true", "yes"}:
+        return
     # Ensure exactly these categories are active with proper labels
     op.execute(
         """

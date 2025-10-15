@@ -6,9 +6,6 @@ from typing import Iterable, Mapping
 
 from field_service.db import models as m
 
-# P1-23: Breadcrumbs navigation
-from ..common import MasterPaths, add_breadcrumbs_to_text
-
 # Onboarding flow texts (missing constants used by handlers)
 ONBOARDING_ALREADY_VERIFIED = "Вы уже верифицированы."
 ONBOARDING_SENT = "Заявка отправлена на модерацию."
@@ -42,15 +39,13 @@ FSM_TIMEOUT_MESSAGE = "Сессия истекла. Нажмите /start"
 
 MAIN_MENU_BUTTONS = {
     "shift_on": "🟢 Включить смену",
-    "shift_break": "☕ Перерыв",
+    "shift_break": "☕ Перерыв 2 часа",
     "shift_break_end": "🟢 Включить смену",
     "shift_off": "🔴 Выключить смену",
     "new_orders": "🆕 Новые заказы",
-    "active_orders": "📦 Активные заказы",
-    "history": "📋 История заказов",  # P1-9
+    "active_order": "📦 Активный заказ",
     "finance": "💳 Финансы",
     "referral": "🎁 Реферальная программа",
-    "statistics": "📊 Моя статистика",  # P1-17
     "knowledge": "📚 База знаний",
     "start_onboarding": "Заполнить анкету",
 }
@@ -71,11 +66,8 @@ ORDER_STATUS_TITLES: Mapping[m.OrderStatus, str] = {
 SHIFT_MESSAGES = {
     "started": "Смена начата.",
     "finished": "Смена завершена.",
-    "break_choose": "☕ <b>Выберите длительность перерыва:</b>",
-    "break_started": "Перерыв на {duration} начат.",
+    "break_started": "Перерыв 2 часа начат.",
     "break_finished": "Вы вернулись на смену.",
-    "break_extend_choose": "☕ <b>На сколько продлить перерыв?</b>",
-    "break_extended": "Перерыв продлён на {duration}.",
     "inactive": "Смена не активна.",
     "not_break": "Сейчас не перерыв.",
     "blocked": "Смена недоступна: аккаунт заблокирован.",
@@ -127,11 +119,7 @@ def offer_card(
         f"🛠 Категория: {_escape(category)}",
         f"💬 Описание: {description_text}",
     ]
-    
-    # P1-23: Add breadcrumbs navigation
-    text = "\n".join(lines)
-    breadcrumb_path = MasterPaths.offer_card(order_id)
-    return add_breadcrumbs_to_text(text, breadcrumb_path)
+    return "\n".join(lines)
 
 
 @dataclass(slots=True)
@@ -165,15 +153,6 @@ class ActiveOrderCard:
         if self.category:
             lines.insert(3, f"🛠 Категория: {_escape(self.category)}")
         return lines
-    
-    def render(self) -> str:
-        """Render card with breadcrumbs navigation.
-        
-        P1-23: Added breadcrumbs support.
-        """
-        text = "\n".join(self.lines())
-        breadcrumb_path = MasterPaths.active_order_card(self.order_id)
-        return add_breadcrumbs_to_text(text, breadcrumb_path)
 
 
 ACTIVE_STATUS_ACTIONS: Mapping[m.OrderStatus, tuple[str, str]] = {
@@ -243,106 +222,3 @@ ALERT_ORDER_NOT_FOUND = "Заказ не найден."
 
 REFERRAL_EMPTY = "Пока нет начислений по реферальной программе."
 FINANCE_EMPTY = "Комиссии не найдены."
-
-
-# P1-9: История заказов мастера
-HISTORY_EMPTY = "📋 У вас пока нет завершенных заказов.\n\nВключайте смену и берите заявки — они появятся здесь после выполнения!"
-HISTORY_HEADER_TEMPLATE = "<b>📋 История заказов</b>\nСтраница {page}/{pages} • всего: {total}"
-HISTORY_STATS_TEMPLATE = (
-    "📊 <b>Ваша статистика:</b>\n"
-    "✅ Выполнено: {total_completed}\n"
-    "💰 Заработано: {total_earned:.2f} ₽\n"
-    "⭐️ Средняя оценка: {avg_rating}"
-)
-
-
-def history_order_line(
-    order_id: int,
-    status: str,
-    city: str,
-    district: str | None,
-    category: str,
-    timeslot: str | None,
-) -> str:
-    """Формирует строку для списка истории заказов."""
-    district_part = f", {_escape(district)}" if district else ""
-    slot = _escape(timeslot or "сегодня/ASAP")
-    status_emoji = "✅" if status == "Заказ закрыт" else "❌"
-    return f"{status_emoji} #{order_id} • {_escape(city)}{district_part} • {_escape(category)} • {slot}"
-
-
-def history_order_card(
-    *,
-    order_id: int,
-    status: str,
-    city: str,
-    district: str | None,
-    street: str | None,
-    house: str | None,
-    apartment: str | None,
-    address_comment: str | None,
-    category: str,
-    description: str | None,
-    timeslot: str | None,
-    client_name: str | None,
-    client_phone: str | None,
-    final_amount: float | None,
-    created_at,
-    closed_at,
-) -> str:
-    """Формирует карточку завершенного заказа."""
-    from datetime import datetime
-    
-    # Адрес
-    address_parts: list[str] = [_escape(city)]
-    if district:
-        address_parts.append(_escape(district))
-    if street:
-        address_parts.append(_escape(street))
-    if house:
-        address_parts.append(_escape(str(house)))
-    if apartment:
-        address_parts.append(f"кв. {_escape(str(apartment))}")
-    address = ", ".join(address_parts)
-    
-    if address_comment:
-        address += f"\n   💬 {_escape(address_comment)}"
-    
-    # Описание
-    description_text = _escape(description.strip() if description else "—")
-    
-    # Слот
-    slot = _escape(timeslot or "—")
-    
-    # Клиент
-    client = _escape(client_name or "—")
-    phone = _escape(client_phone or "—")
-    
-    # Сумма
-    amount_text = f"{final_amount:.2f} ₽" if final_amount else "—"
-    
-    # Даты
-    created_str = created_at.strftime("%d.%m.%Y %H:%M") if isinstance(created_at, datetime) else "—"
-    closed_str = closed_at.strftime("%d.%m.%Y %H:%M") if isinstance(closed_at, datetime) and closed_at else "—"
-    
-    # Эмодзи статуса
-    status_emoji = "✅" if status == "Заказ закрыт" else "❌"
-    
-    lines = [
-        f"<b>{status_emoji} Заказ #{order_id}</b>",
-        f"🔁 Статус: {_escape(status)}",
-        "",
-        f"📍 Адрес: {address}",
-        f"🗓 Слот: {slot}",
-        f"🛠 Категория: {_escape(category)}",
-        f"💬 Описание: {description_text}",
-        "",
-        f"👤 Клиент: {client}",
-        f"📞 Телефон: {phone}",
-        "",
-        f"💰 Сумма: {amount_text}",
-        f"📅 Создан: {created_str}",
-        f"🏁 Завершён: {closed_str}",
-    ]
-    
-    return "\n".join(lines)
