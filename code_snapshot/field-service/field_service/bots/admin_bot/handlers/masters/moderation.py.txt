@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from aiogram import F, Router
 from aiogram.filters import StateFilter
@@ -7,7 +7,7 @@ from aiogram.types import CallbackQuery, Message
 
 from ...core.dto import StaffRole, StaffUser
 from ...core.filters import StaffRoleFilter
-from ...core.states import ModerationBulkFSM  # P1-14: Для массовых операций
+from ...core.states import ModerationBulkFSM  # P1-14:   
 from ...utils import get_service
 from . import main as admin_masters
 from field_service.services.push_notifications import NotificationEvent
@@ -30,7 +30,7 @@ def _masters_service(bot):
 
 
 async def _get_selected_ids(state: FSMContext) -> set[int]:
-    """P1-14: Получить выбранные master_ids из state."""
+    """P1-14:   master_ids  state."""
     data = await state.get_data()
     return set(data.get("selected_master_ids", []))
 
@@ -44,7 +44,7 @@ async def _get_selected_ids(state: FSMContext) -> set[int]:
     StaffRoleFilter(MOD_VIEW_ROLES),
 )
 async def moderation_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    # Очищаем документы при возврате в список
+    #      
     if cq.message:
         await admin_masters._clear_document_messages(cq.bot, state, cq.message.chat.id)
     
@@ -64,7 +64,7 @@ async def moderation_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext
         except ValueError:
             page = 1
     
-    # P1-14: Получаем выбранные мастера
+    # P1-14:   
     selected_ids = await _get_selected_ids(state)
     
     text, markup, *_ = await admin_masters.render_master_list(
@@ -75,7 +75,7 @@ async def moderation_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext
         staff=staff,
         mode="moderation",
         prefix="adm:mod",
-        selected_ids=selected_ids,  # P1-14: Передаём выбранные
+        selected_ids=selected_ids,  # P1-14:  
     )
     if cq.message:
         await cq.message.edit_text(text, reply_markup=markup)
@@ -87,14 +87,14 @@ async def moderation_list(cq: CallbackQuery, staff: StaffUser, state: FSMContext
     StaffRoleFilter(MOD_VIEW_ROLES),
 )
 async def moderation_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    # Очищаем документы при открытии карточки
+    #     
     if cq.message:
         await admin_masters._clear_document_messages(cq.bot, state, cq.message.chat.id)
     
     try:
         action = admin_masters.parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     text, markup = await admin_masters.render_master_card(
         cq.bot,
@@ -119,7 +119,7 @@ async def moderation_approve(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         action = admin_masters.parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     master_id = action.master_id
     service = _masters_service(cq.bot)
@@ -134,7 +134,7 @@ async def moderation_approve(cq: CallbackQuery, staff: StaffUser) -> None:
         except Exception:
             pass
     if not await service.approve_master(master_id, by_id):
-        await cq.answer("Не удалось одобрить", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await admin_masters.notify_master_event(
         cq.bot,
@@ -144,7 +144,7 @@ async def moderation_approve(cq: CallbackQuery, staff: StaffUser) -> None:
     await admin_masters.notify_master(
         cq.bot,
         master_id,
-        "Анкета одобрена. Вам доступна смена.",
+        " .   .",
     )
     await admin_masters.refresh_card(
         cq,
@@ -156,7 +156,7 @@ async def moderation_approve(cq: CallbackQuery, staff: StaffUser) -> None:
         category=action.category,
         page=action.page,
     )
-    await cq.answer("Одобрено")
+    await cq.answer("")
 
 
 @router.callback_query(
@@ -167,7 +167,7 @@ async def moderation_reject(cq: CallbackQuery, state: FSMContext, staff: StaffUs
     try:
         action = admin_masters.parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     await state.set_state(admin_masters.RejectReasonState.waiting)
     await state.update_data(
@@ -182,7 +182,7 @@ async def moderation_reject(cq: CallbackQuery, state: FSMContext, staff: StaffUs
         mode=action.mode,
     )
     if cq.message:
-        await cq.message.answer("Укажите причину отклонения (1–200 символов).")
+        await cq.message.answer("   (1200 ).")
     await cq.answer()
 
 
@@ -200,11 +200,11 @@ async def moderation_docs(cq: CallbackQuery, staff: StaffUser, state: FSMContext
     StaffRoleFilter(MOD_MANAGE_ROLES),
 )
 async def disable_delete(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.answer("Удаление недоступно из модерации", show_alert=True)
+    await cq.answer("   ", show_alert=True)
 
 
 # ========================================
-# P1-14: Массовые операции модерации
+# P1-14:   
 # ========================================
 
 
@@ -213,10 +213,10 @@ async def disable_delete(cq: CallbackQuery, staff: StaffUser) -> None:
     StaffRoleFilter(MOD_VIEW_ROLES),
 )
 async def bulk_toggle_master(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """P1-14: Переключить выбор мастера (чекбокс)."""
+    """P1-14:    ()."""
     parts = cq.data.split(":")
     if len(parts) < 6:
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
     try:
@@ -224,25 +224,25 @@ async def bulk_toggle_master(cq: CallbackQuery, staff: StaffUser, state: FSMCont
         page = max(1, int(page_str))
         master_id = int(master_id_str)
     except (ValueError, IndexError):
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
-    # Получаем текущие выбранные
+    #   
     data = await state.get_data()
     selected = set(data.get("selected_master_ids", []))
     
-    # Переключаем
+    # 
     if master_id in selected:
         selected.remove(master_id)
-        action_text = "Снят"
+        action_text = ""
     else:
         selected.add(master_id)
-        action_text = "Выбран"
+        action_text = ""
     
-    # Сохраняем
+    # 
     await state.update_data(selected_master_ids=list(selected))
     
-    # Обновляем список
+    #  
     text, markup, *_ = await admin_masters.render_master_list(
         cq.bot,
         group,
@@ -263,23 +263,23 @@ async def bulk_toggle_master(cq: CallbackQuery, staff: StaffUser, state: FSMCont
     StaffRoleFilter(MOD_VIEW_ROLES),
 )
 async def bulk_clear_selection(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """P1-14: Сбросить выбор всех мастеров."""
+    """P1-14:    ."""
     parts = cq.data.split(":")
     if len(parts) < 6:
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
     try:
         _, _, _, _, group, category, page_str = parts[:7]
         page = max(1, int(page_str))
     except (ValueError, IndexError):
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
-    # Очищаем выбор
+    #  
     await state.update_data(selected_master_ids=[])
     
-    # Обновляем список
+    #  
     text, markup, *_ = await admin_masters.render_master_list(
         cq.bot,
         group,
@@ -292,7 +292,7 @@ async def bulk_clear_selection(cq: CallbackQuery, staff: StaffUser, state: FSMCo
     )
     if cq.message:
         await cq.message.edit_text(text, reply_markup=markup)
-    await cq.answer("Выбор сброшен")
+    await cq.answer(" ")
 
 
 @router.callback_query(
@@ -300,44 +300,44 @@ async def bulk_clear_selection(cq: CallbackQuery, staff: StaffUser, state: FSMCo
     StaffRoleFilter(MOD_MANAGE_ROLES),
 )
 async def bulk_approve_ask_confirm(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """P1-14: Запросить подтверждение для массового одобрения."""
+    """P1-14:     ."""
     parts = cq.data.split(":")
     if len(parts) < 6:
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
     try:
         _, _, _, _, group, category, page_str = parts[:7]
         page = max(1, int(page_str))
     except (ValueError, IndexError):
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
-    # Получаем выбранных
+    #  
     selected = await _get_selected_ids(state)
     if not selected:
-        await cq.answer("Не выбрано ни одного мастера", show_alert=True)
+        await cq.answer("    ", show_alert=True)
         return
     
-    # Показываем подтверждение
+    #  
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     
     kb = InlineKeyboardBuilder()
     kb.button(
-        text=f"✅ Да, одобрить ({len(selected)})",
+        text=f" ,  ({len(selected)})",
         callback_data=f"adm:mod:bulk:approve:confirm:{group}:{category}:{page}",
     )
     kb.button(
-        text="❌ Отмена",
+        text=" ",
         callback_data=f"adm:mod:list:{group}:{category}:{page}",
     )
     kb.adjust(1)
     
     if cq.message:
         await cq.message.edit_text(
-            f"⚠️ <b>Подтверждение массового одобрения</b>\n\n"
-            f"Вы уверены, что хотите одобрить <b>{len(selected)}</b> мастеров?\n\n"
-            f"Все они получат уведомление и доступ к смене.",
+            f" <b>  </b>\n\n"
+            f" ,    <b>{len(selected)}</b> ?\n\n"
+            f"       .",
             reply_markup=kb.as_markup(),
         )
     await cq.answer()
@@ -348,28 +348,28 @@ async def bulk_approve_ask_confirm(cq: CallbackQuery, staff: StaffUser, state: F
     StaffRoleFilter(MOD_MANAGE_ROLES),
 )
 async def bulk_approve_confirmed(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """P1-14: Массовое одобрение после подтверждения."""
+    """P1-14:    ."""
     parts = cq.data.split(":")
     if len(parts) < 7:
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
     try:
         _, _, _, _, _, group, category, page_str = parts[:8]
         page = max(1, int(page_str))
     except (ValueError, IndexError):
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
-    # Получаем выбранных
+    #  
     selected = await _get_selected_ids(state)
     if not selected:
-        await cq.answer("Не выбрано ни одного мастера", show_alert=True)
+        await cq.answer("    ", show_alert=True)
         return
     
-    # Показываем процесс
+    #  
     if cq.message:
-        await cq.message.edit_text(f"⏳ Одобряем {len(selected)} мастеров...")
+        await cq.message.edit_text(f"  {len(selected)} ...")
     
     service = _masters_service(cq.bot)
     by_id = staff.id
@@ -383,13 +383,13 @@ async def bulk_approve_confirmed(cq: CallbackQuery, staff: StaffUser, state: FSM
         except Exception:
             pass
     
-    # Одобряем всех выбранных
+    #   
     success_count = 0
     for master_id in selected:
         try:
             if await service.approve_master(master_id, by_id):
                 success_count += 1
-                # Отправляем уведомления
+                #  
                 await admin_masters.notify_master_event(
                     cq.bot,
                     master_id,
@@ -398,15 +398,15 @@ async def bulk_approve_confirmed(cq: CallbackQuery, staff: StaffUser, state: FSM
                 await admin_masters.notify_master(
                     cq.bot,
                     master_id,
-                    "Анкета одобрена. Вам доступна смена.",
+                    " .   .",
                 )
         except Exception:
             pass
     
-    # Очищаем выбор
+    #  
     await state.update_data(selected_master_ids=[])
     
-    # Обновляем список
+    #  
     text, markup, *_ = await admin_masters.render_master_list(
         cq.bot,
         group,
@@ -420,7 +420,7 @@ async def bulk_approve_confirmed(cq: CallbackQuery, staff: StaffUser, state: FSM
     if cq.message:
         await cq.message.edit_text(text, reply_markup=markup)
     
-    await cq.answer(f"✅ Одобрено: {success_count} из {len(selected)}", show_alert=True)
+    await cq.answer(f" : {success_count}  {len(selected)}", show_alert=True)
 
 
 @router.callback_query(
@@ -428,26 +428,26 @@ async def bulk_approve_confirmed(cq: CallbackQuery, staff: StaffUser, state: FSM
     StaffRoleFilter(MOD_MANAGE_ROLES),
 )
 async def bulk_reject_ask_reason(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """P1-14: Запросить причину для массового отклонения."""
+    """P1-14:     ."""
     parts = cq.data.split(":")
     if len(parts) < 6:
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
     try:
         _, _, _, _, group, category, page_str = parts[:7]
         page = max(1, int(page_str))
     except (ValueError, IndexError):
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
-    # Получаем выбранных
+    #  
     selected = await _get_selected_ids(state)
     if not selected:
-        await cq.answer("Не выбрано ни одного мастера", show_alert=True)
+        await cq.answer("    ", show_alert=True)
         return
     
-    # Переходим в FSM для причины
+    #   FSM  
     await state.set_state(ModerationBulkFSM.reject_reason)
     await state.update_data(
         bulk_group=group,
@@ -459,7 +459,7 @@ async def bulk_reject_ask_reason(cq: CallbackQuery, staff: StaffUser, state: FSM
     
     if cq.message:
         await cq.message.answer(
-            f"Укажите причину отклонения для {len(selected)} мастеров (1–200 символов):"
+            f"    {len(selected)}  (1200 ):"
         )
     await cq.answer()
 
@@ -469,16 +469,16 @@ async def bulk_reject_ask_reason(cq: CallbackQuery, staff: StaffUser, state: FSM
     StaffRoleFilter(MOD_MANAGE_ROLES),
 )
 async def bulk_reject_process(message: Message, staff: StaffUser, state: FSMContext) -> None:
-    """P1-14: Массовое отклонение с причиной."""
+    """P1-14:    ."""
     reason = (message.text or "").strip()
     if not 1 <= len(reason) <= 200:
-        await message.answer("Причина должна быть от 1 до 200 символов.")
+        await message.answer("    1  200 .")
         return
     
     data = await state.get_data()
     selected = set(data.get("selected_master_ids", []))
     if not selected:
-        await message.answer("Не выбрано ни одного мастера.")
+        await message.answer("    .")
         await state.clear()
         return
     
@@ -490,13 +490,13 @@ async def bulk_reject_process(message: Message, staff: StaffUser, state: FSMCont
     
     service = _masters_service(message.bot)
     
-    # Отклоняем всех выбранных
+    #   
     success_count = 0
     for master_id in selected:
         try:
             if await service.reject_master(master_id, reason=reason, by_staff_id=staff.id):
                 success_count += 1
-                # Отправляем уведомления
+                #  
                 await admin_masters.notify_master_event(
                     message.bot,
                     master_id,
@@ -506,18 +506,18 @@ async def bulk_reject_process(message: Message, staff: StaffUser, state: FSMCont
                 await admin_masters.notify_master(
                     message.bot,
                     master_id,
-                    f"Анкета отклонена. Причина: {reason}",
+                    f" . : {reason}",
                 )
         except Exception:
             pass
     
-    await message.answer(f"Отклонено: {success_count} из {len(selected)}")
+    await message.answer(f": {success_count}  {len(selected)}")
     
-    # Очищаем выбор и FSM
+    #    FSM
     await state.update_data(selected_master_ids=[])
     await state.clear()
     
-    # Обновляем оригинальное сообщение со списком
+    #     
     if origin_chat_id and origin_message_id:
         try:
             text, markup, *_ = await admin_masters.render_master_list(

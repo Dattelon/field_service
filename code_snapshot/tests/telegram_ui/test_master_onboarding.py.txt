@@ -9,6 +9,7 @@ from tests.telegram_ui.bot_client import BotTestClient
 from tests.telegram_ui.config import MASTER_BOT_USERNAME, TEST_CITY, TEST_DISTRICT
 
 
+@pytest.mark.telegram_ui
 @pytest.mark.asyncio
 async def test_master_start_command():
     """Тест: команда /start для нового мастера"""
@@ -24,6 +25,7 @@ async def test_master_start_command():
         client.assert_has_buttons([f"🏙 {TEST_CITY}"], message)
 
 
+@pytest.mark.telegram_ui
 @pytest.mark.asyncio
 async def test_master_select_city():
     """Тест: выбор города при онбординге"""
@@ -43,6 +45,7 @@ async def test_master_select_city():
             client.assert_has_buttons(["ЦАО", "САО", "ВАО"], message)
 
 
+@pytest.mark.telegram_ui
 @pytest.mark.asyncio
 async def test_master_select_district():
     """Тест: выбор района при онбординге"""
@@ -59,6 +62,7 @@ async def test_master_select_district():
         client.assert_text_in_message("телефон", message)
 
 
+@pytest.mark.telegram_ui
 @pytest.mark.asyncio
 async def test_master_full_onboarding():
     """Тест: полный процесс онбординга мастера"""

@@ -21,6 +21,7 @@ from test_order_lifecycle_all_scenarios import TestLogger
 
 @pytest.mark.e2e
 @pytest.mark.critical
+@pytest.mark.asyncio
 async def test_scenario_5_warranty_request(bot_client, bot_master, db):
     """
     СЦЕНАРИЙ 5: ГАРАНТИЙНАЯ ЗАЯВКА
@@ -205,6 +206,7 @@ async def test_scenario_5_warranty_request(bot_client, bot_master, db):
 # ============================================================================
 
 @pytest.mark.e2e
+@pytest.mark.asyncio
 async def test_scenario_6_master_no_show(bot_client, bot_master, bot_admin, db):
     """
     СЦЕНАРИЙ 6: МАСТЕР НЕ ПРИШЁЛ (NO-SHOW)
@@ -349,6 +351,7 @@ async def test_scenario_6_master_no_show(bot_client, bot_master, bot_admin, db):
 # ============================================================================
 
 @pytest.mark.e2e
+@pytest.mark.asyncio
 async def test_scenario_7_price_dispute(bot_client, bot_master, bot_admin, db):
     """
     СЦЕНАРИЙ 7: СПОР ПО СТОИМОСТИ РАБОТ
@@ -505,6 +508,7 @@ async def test_scenario_7_price_dispute(bot_client, bot_master, bot_admin, db):
 # ============================================================================
 
 @pytest.mark.e2e
+@pytest.mark.asyncio
 async def test_scenario_8_master_overdue(bot_master, db):
     """
     СЦЕНАРИЙ 8: ПРОСРОЧКА МАСТЕРА

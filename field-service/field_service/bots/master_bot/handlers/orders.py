@@ -158,7 +158,7 @@ async def offers_card(
         order_id, page = _parse_offer_callback_payload(callback.data, "card")
     except ValueError as exc:
         _log.warning("offers_card invalid callback: %s", exc)
-        await safe_answer_callback(callback, OFFER_NOT_FOUND, show_alert=True)
+        await safe_answer_callback(callback, OFFER_NOT_FOUND, show_alert=False)
         await _render_offers(callback, session, master, page=1)
         return
     _log.info("offers_card: uid=%s order_id=%s", _callback_uid(callback), order_id)
@@ -172,330 +172,84 @@ async def offer_accept(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
+    """
+    Обработчик принятия оффера мастером.
+    
+    Использует централизованный сервис OrdersService для атомарного принятия оффера.
+    """
     _log.info("offer_accept START: master=%s callback_data=%s", master.id, callback.data)
+    
+    # Шаг 1: Парсим callback_data
     try:
         order_id, page = _parse_offer_callback_payload(callback.data, "acc")
         _log.info("offer_accept: parsed order_id=%s page=%s", order_id, page)
     except ValueError as exc:
         _log.warning("offer_accept invalid callback: %s", exc)
-        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
+        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=False)
         await _render_offers(callback, session, master, page=1)
         return
 
+    # Шаг 2: Проверка блокировки мастера
     if master.is_blocked:
         _log.info("offer_accept: master=%s is BLOCKED, rejecting", master.id)
-        # P0-4: Показываем причину блокировки
         block_reason = getattr(master, 'blocked_reason', None)
         alert_text = alert_account_blocked(block_reason)
-        await safe_answer_callback(callback, alert_text, show_alert=True)
+        await safe_answer_callback(callback, alert_text, show_alert=False)
         return
 
+    # Шаг 3: Проверка лимита активных заказов
     limit = await _get_active_limit(session, master)
     active_orders = await _count_active_orders(session, master.id)
     _log.info("offer_accept: master=%s limit=%s active=%s", master.id, limit, active_orders)
+    
     if limit and active_orders >= limit:
         _log.info("offer_accept: master=%s LIMIT REACHED, rejecting", master.id)
-        await safe_answer_callback(callback, ALERT_LIMIT_REACHED, show_alert=True)
+        await safe_answer_callback(callback, ALERT_LIMIT_REACHED, show_alert=False)
         return
 
-    _log.info("offer_accept: acquiring lock on order=%s", order_id)
-    # ✅ FIX 1.1: Атомарная блокировка заказа с FOR UPDATE SKIP LOCKED
-    # Предотвращает Race Condition при параллельных запросах от разных мастеров
-    order_snapshot = await session.execute(
-        select(m.orders.status, m.orders.assigned_master_id, m.orders.version)
-        .where(m.orders.id == order_id)
-        .with_for_update(skip_locked=True)  # ✅ Атомарная блокировка
-        .limit(1)
-    )
-    row = order_snapshot.first()
+    # Шаг 4: Находим offer_id по order_id и master_id
+    offer_stmt = select(m.offers.id).where(
+        and_(
+            m.offers.order_id == order_id,
+            m.offers.master_id == master.id,
+            m.offers.state.in_((m.OfferState.SENT, m.OfferState.VIEWED)),
+        )
+    ).order_by(m.offers.id.desc()).limit(1)
     
-    # Если заказ уже заблокирован другим мастером - skip_locked вернёт None
-    if row is None:
-        _log.info(
-            "offer_accept: order=%s either not found or already locked by another master",
-            order_id
-        )
-        await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
-        await _render_offers(callback, session, master, page=page)
-        return
-
-    current_status: m.OrderStatus = row.status
-    assigned_master_id = row.assigned_master_id
-    current_version = row.version or 1
-    _log.info("offer_accept: order=%s status=%s assigned_master=%s", 
-             order_id, current_status, assigned_master_id)
-
-    # ✅ FIX 1.2: Разрешаем принятие DEFERRED заказов
-    # Если заказ в DEFERRED, разрешаем принять и автоматически переводим в ASSIGNED
-    allowed_statuses = {
-        m.OrderStatus.SEARCHING,
-        m.OrderStatus.GUARANTEE,
-        m.OrderStatus.CREATED,
-        m.OrderStatus.DEFERRED,  # ✅ Теперь мастер может принять заказ в DEFERRED
-    }
-
-    if assigned_master_id is not None or current_status not in allowed_statuses:
-        _log.info("offer_accept: order=%s ALREADY TAKEN or wrong status, rejecting", order_id)
-        await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
-        await _render_offers(callback, session, master, page=page)
-        return
-    
-    # Логируем если принимаем DEFERRED заказ
-    if current_status == m.OrderStatus.DEFERRED:
-        _log.info(
-            "offer_accept: accepting DEFERRED order=%s by master=%s, will auto-resume",
-            order_id, master.id
-        )
-
-    _log.info("offer_accept: checking offer for order=%s master=%s", order_id, master.id)
-    # ✅ BUGFIX: Проверяем что оффер существует и не истёк
-    # ВАЖНО: Берём самый свежий оффер (ORDER BY id DESC)
-    offer_check = await session.execute(
-        select(m.offers.state, m.offers.expires_at)
-        .where(
-            and_(
-                m.offers.order_id == order_id,
-                m.offers.master_id == master.id
-            )
-        )
-        .order_by(m.offers.id.desc())  # ✅ Берём самый свежий оффер
-        .limit(1)
-    )
-    offer_row = offer_check.first()
+    offer_result = await session.execute(offer_stmt)
+    offer_row = offer_result.first()
     
     if offer_row is None:
-        _log.warning("offer_accept: no offer found for order=%s master=%s", order_id, master.id)
-        await safe_answer_callback(callback, "⚠️ Оффер не найден", show_alert=True)
+        _log.warning("offer_accept: no active offer found for order=%s master=%s", order_id, master.id)
+        await safe_answer_callback(callback, "⚠️ Оффер не найден", show_alert=False)
         await _render_offers(callback, session, master, page=page)
         return
     
-    offer_state, expires_at = offer_row
-    _log.info("offer_accept: offer state=%s expires_at=%s", offer_state, expires_at)
+    offer_id = offer_row.id
+    _log.info("offer_accept: found offer_id=%s for order=%s master=%s", offer_id, order_id, master.id)
+
+    # Шаг 5: Используем централизованный сервис для принятия оффера
+    from field_service.services.orders_service import OrdersService
     
-    # Проверяем что оффер в статусе SENT или VIEWED
-    if offer_state not in (m.OfferState.SENT, m.OfferState.VIEWED):
-        if offer_state == m.OfferState.EXPIRED:
-            _log.info("offer_accept: offer expired for order=%s master=%s", order_id, master.id)
-            await safe_answer_callback(callback, "⏰ Время истекло. Заказ ушёл другим мастерам.", show_alert=True)
-        elif offer_state == m.OfferState.DECLINED:
-            _log.info("offer_accept: offer already declined for order=%s master=%s", order_id, master.id)
-            await safe_answer_callback(callback, "❌ Вы уже отклонили этот заказ", show_alert=True)
-        else:
-            _log.info("offer_accept: offer in wrong state=%s for order=%s master=%s", offer_state, order_id, master.id)
-            await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
-        await _render_offers(callback, session, master, page=page)
-        return
-    
-    # Проверяем что оффер не истёк по времени
-    now_utc = datetime.now(timezone.utc)
-    _log.info(
-        "offer_accept: time check: now_utc=%s expires_at=%s is_expired=%s",
-        now_utc.isoformat(),
-        expires_at.isoformat() if expires_at else None,
-        (expires_at < now_utc) if expires_at else False
+    orders_service = OrdersService(session)
+    success, error_message = await orders_service.accept_offer(
+        offer_id=offer_id,
+        master_id=master.id,
     )
-    if expires_at and expires_at < now_utc:
-        _log.info("offer_accept: offer expired by time for order=%s master=%s (expires_at=%s)", 
-                 order_id, master.id, expires_at.isoformat())
-        await safe_answer_callback(callback, "⏰ Время истекло. Заказ ушёл другим мастерам.", show_alert=True)
-        await _render_offers(callback, session, master, page=page)
-        return
-
-    _log.info("offer_accept: starting UPDATE orders for order=%s master=%s", order_id, master.id)
-    updated = await session.execute(
-        update(m.orders)
-        .where(
-            and_(
-                m.orders.id == order_id,
-                m.orders.assigned_master_id.is_(None),
-                m.orders.status == current_status,
-                m.orders.version == current_version,
-            )
-        )
-        .values(
-            assigned_master_id=master.id,
-            status=m.OrderStatus.ASSIGNED,
-            updated_at=func.now(),
-            version=current_version + 1,
-        )
-        .returning(m.orders.id)
-    )
-    _log.info("offer_accept: UPDATE orders completed for order=%s, checking result...", order_id)
     
-    if not updated.first():
-        _log.warning("offer_accept: UPDATE orders returned 0 rows for order=%s (already taken or status changed)", order_id)
-        await safe_answer_callback(callback, ALERT_ALREADY_TAKEN, show_alert=True)
-        await _render_offers(callback, session, master, page=page)
-        return
-
-    _log.info("offer_accept: UPDATE orders SUCCESS for order=%s, starting UPDATE offers...", order_id)
-    # Обновляем только активный оффер мастера (SENT/VIEWED → ACCEPTED)
-    # ВАЖНО: Добавляем проверку expires_at в WHERE чтобы избежать race condition с watchdog
-    offer_update_result = await session.execute(
-        update(m.offers)
-        .where(
-            and_(
-                m.offers.order_id == order_id,
-                m.offers.master_id == master.id,
-                m.offers.state.in_((m.OfferState.SENT, m.OfferState.VIEWED)),
-                # ✅ Атомарная проверка: оффер не должен быть истёкшим
-                or_(
-                    m.offers.expires_at.is_(None),
-                    m.offers.expires_at > func.now()
-                )
-            )
-        )
-        .values(state=m.OfferState.ACCEPTED, responded_at=func.now())
-        .returning(m.offers.id)
-    )
-    _log.info("offer_accept: UPDATE offers completed for order=%s master=%s, checking result...", order_id, master.id)
-    
-    # Если не удалось обновить - оффер истёк или уже обработан
-    offer_first = offer_update_result.first()
-    _log.info("offer_accept: UPDATE offers result for order=%s: %s", order_id, "SUCCESS" if offer_first else "FAILED")
-    if not offer_first:
-        _log.warning(
-            "offer_accept: failed to update offer to ACCEPTED for order=%s master=%s (likely expired or changed state)",
-            order_id, master.id
-        )
-        await safe_answer_callback(callback, "⏰ Время истекло. Заказ ушёл другим мастерам.", show_alert=True)
-        # Откатываем изменения в orders
-        await session.rollback()
+    if not success:
+        _log.warning("offer_accept: failed to accept offer_id=%s: %s", offer_id, error_message)
+        await safe_answer_callback(callback, error_message or "❌ Не удалось принять заказ", show_alert=False)
         await _render_offers(callback, session, master, page=page)
         return
     
-    _log.info("offer_accept: canceling other masters' offers for order=%s", order_id)
-    # Отменяем офферы других мастеров
-    await session.execute(
-        update(m.offers)
-        .where(
-            and_(
-                m.offers.order_id == order_id,
-                m.offers.master_id != master.id,
-                m.offers.state.in_((m.OfferState.SENT, m.OfferState.VIEWED)),
-            )
-        )
-        .values(state=m.OfferState.CANCELED, responded_at=func.now())
-    )
-    _log.info("offer_accept: other masters' offers canceled for order=%s, inserting status history", order_id)
-    
-    try:
-        await session.execute(
-            insert(m.order_status_history).values(
-                order_id=order_id,
-                from_status=current_status,
-                to_status=m.OrderStatus.ASSIGNED,
-                changed_by_master_id=master.id,
-                reason="accepted_by_master",
-                actor_type=m.ActorType.MASTER,
-                context={
-                    "master_id": master.id,
-                    "master_name": master.full_name or "",
-                    "action": "offer_accepted",
-                    "method": "manual_accept"
-                }
-            )
-        )
-        _log.info("offer_accept: status history inserted successfully for order=%s", order_id)
-    except Exception as history_err:
-        _log.exception("offer_accept: FAILED to insert status history for order=%s: %s", order_id, history_err)
-        await session.rollback()
-        await safe_answer_callback(callback, "❌ Ошибка при принятии заказа", show_alert=True)
-        await _render_offers(callback, session, master, page=page)
-        return
-    
-    # ✅ STEP 4.1: Запись метрик распределения (ДО commit, но ошибки игнорируются)
-    _log.info("offer_accept: starting distribution_metrics recording for order=%s", order_id)
-    try:
-        _log.info("offer_accept: fetching order info for metrics, order=%s", order_id)
-        # Получаем полную информацию о заказе для метрик
-        order_info = await session.execute(
-            select(
-                m.orders.city_id,
-                m.orders.district_id,
-                m.orders.category,
-                m.orders.type,
-                m.orders.preferred_master_id,
-                m.orders.dist_escalated_logist_at,
-                m.orders.dist_escalated_admin_at,
-                m.orders.created_at,
-            ).where(m.orders.id == order_id)
-        )
-        order_row = order_info.first()
-        _log.info("offer_accept: order info fetched, fetching offer stats for order=%s", order_id)
-        # Получаем раунд и количество кандидатов из offers
-        offer_stats = await session.execute(
-            select(
-                func.max(m.offers.round_number).label("max_round"),
-                func.count(func.distinct(m.offers.master_id)).label("total_candidates")
-            ).where(m.offers.order_id == order_id)
-        )
-        stats_row = offer_stats.first()
-        _log.info("offer_accept: offer stats fetched for order=%s, order_row=%s stats_row=%s", 
-                 order_id, order_row is not None, stats_row is not None)
-        
-        if order_row and stats_row:
-            now_utc = datetime.now(timezone.utc)
-            time_to_assign = int((now_utc - order_row.created_at).total_seconds()) if order_row.created_at else None
-            
-            _log.info("offer_accept: inserting distribution_metrics for order=%s", order_id)
-            await session.execute(
-                insert(m.distribution_metrics).values(
-                    order_id=order_id,
-                    master_id=master.id,
-                    round_number=stats_row.max_round or 1,
-                    candidates_count=stats_row.total_candidates or 1,
-                    time_to_assign_seconds=time_to_assign,
-                    preferred_master_used=(master.id == order_row.preferred_master_id),
-                    was_escalated_to_logist=(order_row.dist_escalated_logist_at is not None),
-                    was_escalated_to_admin=(order_row.dist_escalated_admin_at is not None),
-                    city_id=order_row.city_id,
-                    district_id=order_row.district_id,
-                    # ✅ BUGFIX: Конвертируем Enum в строку для VARCHAR колонок
-                    category=order_row.category,  # BUGFIX: Pass enum directly, not string
-                    order_type=order_row.type,  # BUGFIX: Pass enum directly, not string
-                    metadata_json={
-                        "accepted_via": "master_bot",
-                        "from_status": current_status.value if hasattr(current_status, 'value') else str(current_status),
-                    }
-                )
-            )
-            _log.info(
-                "distribution_metrics recorded: order=%s master=%s round=%s candidates=%s time=%ss",
-                order_id, master.id, stats_row.max_round, stats_row.total_candidates, time_to_assign
-            )
-    except Exception as metrics_err:
-        # Метрики не должны ломать основной процесс - просто логируем ошибку
-        _log.error("Failed to record distribution_metrics for order=%s: %s", order_id, metrics_err)
-        # НЕ делаем rollback - метрики опциональны, основные данные должны сохраниться
-    
-    # ✅ CRITICAL: Commit всех изменений (orders, offers, history, metrics)
-    _log.info("offer_accept: committing transaction for order=%s", order_id)
-    await session.commit()
-    _log.info("offer_accept: transaction committed successfully for order=%s", order_id)
-    
-    # ✅ BUGFIX: Сбрасываем кэш SQLAlchemy после commit
-    # Без этого _render_offers будет читать устаревшие данные из кэша
-    # BUGFIX: SQLAlchemy automatically refreshes data after commit
-    # No need for expire_all() - it breaks async context
-
-    _log.info("offer_accept: about to call safe_answer_callback for order=%s", order_id)
-    try:
-        await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=True)
-        _log.info("offer_accept: safe_answer_callback completed for order=%s", order_id)
-    except Exception as callback_err:
-        _log.error("offer_accept: safe_answer_callback FAILED for order=%s: %s", order_id, callback_err, exc_info=True)
-    
-    _log.info("offer_accept: about to call _render_active_order for order=%s", order_id)
-    # Переход к карточке принятого заказа вместо списка предложений
-    try:
-        await _render_active_order(callback, session, master, order_id=order_id)
-        _log.info("offer_accept: _render_active_order completed for order=%s", order_id)
-    except Exception as render_err:
-        _log.error("offer_accept: _render_active_order FAILED for order=%s: %s", order_id, render_err, exc_info=True)
+    # Шаг 6: Успешное принятие - показываем карточку принятого заказа
+    _log.info("offer_accept SUCCESS: order=%s assigned to master=%s", order_id, master.id)
+    await safe_answer_callback(callback, ALERT_ACCEPT_SUCCESS, show_alert=False)
+    await _render_active_order(callback, session, master, order_id=order_id)
 
 
-# P0-1: Промежуточный шаг - показываем диалог подтверждения
+
 @router.callback_query(F.data.regexp(r"^m:new:dec:(\d+)(?::(\d+))?$"))
 async def offer_decline_confirm(
     callback: CallbackQuery,
@@ -507,7 +261,7 @@ async def offer_decline_confirm(
         order_id, page = _parse_offer_callback_payload(callback.data, "dec")
     except ValueError as exc:
         _log.warning("offer_decline_confirm invalid callback: %s", exc)
-        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
+        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=False)
         await _render_offers(callback, session, master, page=1)
         return
     
@@ -546,7 +300,7 @@ async def offer_decline_execute(
         order_id, page = _parse_offer_callback_payload(callback.data, "dec_yes")
     except ValueError as exc:
         _log.warning("offer_decline_execute invalid callback: %s", exc)
-        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
+        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=False)
         await _render_offers(callback, session, master, page=1)
         return
 
@@ -560,7 +314,7 @@ async def offer_decline_execute(
     await session.commit()
 
     # Показываем уведомление об успехе
-    await safe_answer_callback(callback, ALERT_DECLINE_SUCCESS, show_alert=True)
+    await safe_answer_callback(callback, ALERT_DECLINE_SUCCESS, show_alert=False)
     
     # Возвращаем в главное меню
     from field_service.bots.common import safe_delete_and_send
@@ -610,7 +364,7 @@ async def active_set_enroute(
         reason="master_en_route",
     )
     if not changed:
-        await safe_answer_callback(callback, ALERT_EN_ROUTE_FAIL, show_alert=True)
+        await safe_answer_callback(callback, ALERT_EN_ROUTE_FAIL, show_alert=False)
         return
     await safe_answer_callback(callback, ALERT_EN_ROUTE_SUCCESS)
     await _render_active_order(callback, session, master, order_id=order_id)
@@ -633,7 +387,7 @@ async def active_set_working(
         reason="master_working",
     )
     if not changed:
-        await safe_answer_callback(callback, ALERT_WORKING_FAIL, show_alert=True)
+        await safe_answer_callback(callback, ALERT_WORKING_FAIL, show_alert=False)
         return
     await safe_answer_callback(callback, ALERT_WORKING_SUCCESS)
     await _render_active_order(callback, session, master, order_id=order_id)
@@ -703,18 +457,18 @@ async def active_close_start(
         order = await session.get(m.orders, order_id)
     except Exception as exc:
         _log.exception("active_close_start: FAILED to load order: %s", exc)
-        await safe_answer_callback(callback, "Ошибка загрузки заказа", show_alert=True)
+        await safe_answer_callback(callback, "Ошибка загрузки заказа", show_alert=False)
         return
     if order is None or order.assigned_master_id != master.id:
         _log.warning("active_close_start: order not found or not assigned to master")
-        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=True)
+        await safe_answer_callback(callback, ALERT_ORDER_NOT_FOUND, show_alert=False)
         return
     if order.status != m.OrderStatus.WORKING:
         _log.warning(
             "active_close_start: order status not WORKING, current=%s, sending alert",
             order.status,
         )
-        await safe_answer_callback(callback, ALERT_CLOSE_NOT_ALLOWED, show_alert=True)
+        await safe_answer_callback(callback, ALERT_CLOSE_NOT_ALLOWED, show_alert=False)
         return
 
     await state.update_data(close_order_id=order_id, close_order_amount=None)
@@ -1461,14 +1215,14 @@ async def copy_data_handler(
     """
     parts = callback.data.split(":")
     if len(parts) != 4:
-        await safe_answer_callback(callback, "Ошибка формата", show_alert=True)
+        await safe_answer_callback(callback, "Ошибка формата", show_alert=False)
         return
     
     data_type = parts[2]
     try:
         order_id = int(parts[3])
     except ValueError:
-        await safe_answer_callback(callback, "Неверный ID заказа", show_alert=True)
+        await safe_answer_callback(callback, "Неверный ID заказа", show_alert=False)
         return
     
     # Загружаем заказ из БД
@@ -1492,13 +1246,13 @@ async def copy_data_handler(
     row = (await session.execute(stmt)).first()
     
     if not row:
-        await safe_answer_callback(callback, "Заказ не найден", show_alert=True)
+        await safe_answer_callback(callback, "Заказ не найден", show_alert=False)
         return
     
     # Формируем данные для копирования
     if data_type == "cph":
         if not row.client_phone:
-            await safe_answer_callback(callback, "Телефон не указан", show_alert=True)
+            await safe_answer_callback(callback, "Телефон не указан", show_alert=False)
             return
         data = row.client_phone
     elif data_type == "addr":
@@ -1511,12 +1265,12 @@ async def copy_data_handler(
             address_parts.append(str(row.house))
         data = ", ".join(address_parts)
     else:
-        await safe_answer_callback(callback, "Неизвестный тип данных", show_alert=True)
+        await safe_answer_callback(callback, "Неизвестный тип данных", show_alert=False)
         return
     
     # Отправляем данные: короткое уведомление в alert и подробности в отдельном сообщении
     message_text = format_copy_message(data_type, data)
-    await safe_answer_callback(callback, "📋 Данные отправлены", show_alert=True)
+    await safe_answer_callback(callback, "📋 Данные отправлены", show_alert=False)
 
     target_chat_id = None
     if callback.message is not None:
@@ -1538,3 +1292,5 @@ async def copy_data_handler(
         order_id,
         data_type,
     )
+
+

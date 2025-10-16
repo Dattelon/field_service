@@ -170,6 +170,7 @@ class TestLogger:
 
 @pytest.mark.e2e
 @pytest.mark.critical
+@pytest.mark.asyncio
 async def test_scenario_1_happy_path(bot_client, bot_master, bot_admin, db):
     """
     СЦЕНАРИЙ 1: ПОЛНЫЙ УСПЕШНЫЙ ЦИКЛ
@@ -439,6 +440,7 @@ async def test_scenario_1_happy_path(bot_client, bot_master, bot_admin, db):
 # ============================================================================
 
 @pytest.mark.e2e
+@pytest.mark.asyncio
 async def test_scenario_2_two_rounds_escalation(bot_client, bot_master, bot_admin, db):
     """
     СЦЕНАРИЙ 2: АВТОРАСПРЕДЕЛЕНИЕ - 2 РАУНДА + ЭСКАЛАЦИЯ В АДМИН
@@ -610,6 +612,7 @@ async def test_scenario_2_two_rounds_escalation(bot_client, bot_master, bot_admi
 # ============================================================================
 
 @pytest.mark.e2e
+@pytest.mark.asyncio
 async def test_scenario_3_client_cancels_order(bot_client, bot_master, db):
     """
     СЦЕНАРИЙ 3: КЛИЕНТ ОТМЕНЯЕТ ЗАКАЗ
@@ -725,6 +728,7 @@ async def test_scenario_3_client_cancels_order(bot_client, bot_master, db):
 # ============================================================================
 
 @pytest.mark.e2e
+@pytest.mark.asyncio
 async def test_scenario_4_master_cancels_after_accepting(bot_master, bot_client, db):
     """
     СЦЕНАРИЙ 4: МАСТЕР ОТМЕНЯЕТ ЗАКАЗ ПОСЛЕ ПРИНЯТИЯ

@@ -1,7 +1,13 @@
 [pytest]
-pythonpath = .
-asyncio_mode = auto
+asyncio_mode = strict
+timeout = 90
+addopts = -ra
+filterwarnings =
+    ignore::DeprecationWarning
+env =
+    FS_SKIP_SEED=1
 markers =
-    slow: marks tests as slow (deselect with '-m "not slow"')
-    load: marks tests as load/stress tests
-    integration: marks tests as integration tests
+    telegram_ui: Tests requiring live Telegram UI/E2E environment
+plugins =
+    pytest_timeout
+    pytest_env

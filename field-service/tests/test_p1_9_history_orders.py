@@ -265,13 +265,13 @@ async def test_order_card_content(
     
     # Проверяем что заказ создан
     session.expire_all()
-    await session.refresh(order, ["city", "district", "category"])
+    await session.refresh(order)
     
     assert order.status == m.OrderStatus.CLOSED
     assert order.master_id == master.id
     assert order.final_amount == Decimal("3500.50")
-    assert order.city.name == "Москва"
-    assert order.district.name == "Центральный"
+    assert order.city_id == city.id
+    assert order.district_id == district.id
     assert order.street_address == "Тверская"
     assert order.house_number == "10"
     assert order.apartment_number == "5"

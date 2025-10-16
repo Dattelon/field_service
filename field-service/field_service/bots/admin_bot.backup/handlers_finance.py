@@ -33,44 +33,44 @@ async def _safe_answer(cq: CallbackQuery, text: str = "", show_alert: bool = Fal
             raise
 
 PAYMENT_METHOD_LABELS = {
-    "card": "💳 Карта",
-    "sbp": "СБП",
-    "cash": "Наличные",
+    "card": " ",
+    "sbp": "",
+    "cash": "",
 }
 
 _METHOD_ALIASES = {
-    # Карта
+    # 
     "card": "card",
-    "карта": "card",
-    "банковская карта": "card",
-    "банк карта": "card",
+    "": "card",
+    " ": "card",
+    " ": "card",
     "visa": "card",
     "mastercard": "card",
-    "мир": "card",
-    # СБП
+    "": "card",
+    # 
     "sbp": "sbp",
-    "сбп": "sbp",
-    "система быстрых платежей": "sbp",
+    "": "sbp",
+    "  ": "sbp",
     "qr": "sbp",
-    "кьюар": "sbp",
-    "кью-ар": "sbp",
-    # Наличные
+    "": "sbp",
+    "-": "sbp",
+    # 
     "cash": "cash",
-    "наличные": "cash",
-    "нал": "cash",
-    "наличными": "cash",
+    "": "cash",
+    "": "cash",
+    "": "cash",
 }
 
 _OWNER_FIELDS = {
-    "methods": "Способы оплаты",
-    "card_number": "Номер карты",
-    "card_holder": "Держатель карты",
-    "card_bank": "Банк карты",
-    "sbp_phone": "Телефон для СБП",
-    "sbp_bank": "Банк для СБП",
-    "sbp_qr_file_id": "QR-код СБП",
-    "other_text": "Дополнительная информация",
-    "comment_template": "Шаблон комментария",
+    "methods": " ",
+    "card_number": " ",
+    "card_holder": " ",
+    "card_bank": " ",
+    "sbp_phone": "  ",
+    "sbp_bank": "  ",
+    "sbp_qr_file_id": "QR- ",
+    "other_text": " ",
+    "comment_template": " ",
 }
 
 
@@ -100,7 +100,7 @@ async def _render_owner_snapshot(
         if "message is not modified" not in str(exc).lower():
             await bot_message.answer(text, reply_markup=markup)
     if notify_empty:
-        await bot_message.answer("Заполните реквизиты для приема платежей.")
+        await bot_message.answer("    .")
     return (bot_message.chat.id, bot_message.message_id)
 
 
@@ -109,10 +109,10 @@ def _format_snapshot_text(snapshot: dict[str, Any], *, for_staff: bool) -> str:
     methods = _format_methods(data.get("methods") or [])
     lines: list[str] = []
     if for_staff:
-        lines.append("<b>Реквизиты владельца</b>")
+        lines.append("<b> </b>")
     else:
-        lines.append("<b>Оплата комиссии</b>")
-    lines.append(f"Способы оплаты: {methods}")
+        lines.append("<b> </b>")
+    lines.append(f" : {methods}")
 
     card_block = _format_card_block(data)
     sbp_block = _format_sbp_block(data, include_qr=for_staff)
@@ -127,17 +127,17 @@ def _format_snapshot_text(snapshot: dict[str, Any], *, for_staff: bool) -> str:
         lines.extend(sbp_block)
     if other_text:
         lines.append("")
-        lines.append("<b>Дополнительно</b>")
+        lines.append("<b></b>")
         lines.append(html.escape(other_text))
     if comment_template:
         lines.append("")
-        lines.append("<b>Шаблон комментария</b>")
+        lines.append("<b> </b>")
         lines.append(html.escape(comment_template))
 
     if not for_staff:
         lines.append("")
         lines.append(
-            "Оплата по реквизитам выше. При прикреплении чека укажите комментарий к оплате."
+            "   .       ."
         )
 
     return "\n".join(lines)
@@ -160,13 +160,13 @@ def _format_card_block(data: dict[str, Any]) -> list[str]:
     card_bank = data.get("card_bank") or ""
     block: list[str] = []
     if card_number or card_holder or card_bank:
-        block.append("<b>Банковская карта</b>")
+        block.append("<b> </b>")
         if card_number:
-            block.append(f"Номер: {html.escape(card_number)}")
+            block.append(f": {html.escape(card_number)}")
         if card_holder:
-            block.append(f"Держатель: {html.escape(card_holder)}")
+            block.append(f": {html.escape(card_holder)}")
         if card_bank:
-            block.append(f"Банк: {html.escape(card_bank)}")
+            block.append(f": {html.escape(card_bank)}")
     return block
 
 
@@ -176,19 +176,19 @@ def _format_sbp_block(data: dict[str, Any], *, include_qr: bool) -> list[str]:
     qr = data.get("sbp_qr_file_id") or ""
     block: list[str] = []
     if phone or bank or (include_qr and qr):
-        block.append("<b>СБП</b>")
+        block.append("<b></b>")
         if phone:
-            block.append(f"Телефон: {html.escape(phone)}")
+            block.append(f": {html.escape(phone)}")
         if bank:
-            block.append(f"Банк: {html.escape(bank)}")
+            block.append(f": {html.escape(bank)}")
         if include_qr:
-            block.append("QR-код: " + ("прикреплён" if qr else "отсутствует"))
+            block.append("QR-: " + ("" if qr else ""))
     return block
 
 
 def _parse_methods_payload(text: str) -> list[str]:
     cleaned = text.strip()
-    if not cleaned or cleaned in {"-", "", "none", "нет"}:
+    if not cleaned or cleaned in {"-", "", "none", ""}:
         return []
     result: list[str] = []
     pieces = re.split(r"[\n;,]+", cleaned)
@@ -203,9 +203,9 @@ def _parse_methods_payload(text: str) -> list[str]:
                 if alias:
                     break
         if not alias:
-            raise ValueError(f"Неизвестный способ оплаты: {piece}")
+            raise ValueError(f"  : {piece}")
         if alias not in owner_requisites_service.ALLOWED_METHODS:
-            raise ValueError(f"Недопустимый способ оплаты: {piece}")
+            raise ValueError(f"  : {piece}")
         if alias not in result:
             result.append(alias)
     return result
@@ -214,7 +214,7 @@ def _parse_methods_payload(text: str) -> list[str]:
 def _extract_field_value(field: str, message: Message) -> Any:
     if field == "methods":
         if not message.text:
-            raise ValueError("Нужно прислать список способов оплаты.")
+            raise ValueError("    .")
         return _parse_methods_payload(message.text)
 
     if field == "sbp_qr_file_id":
@@ -399,7 +399,7 @@ async def on_owner_requisites_edit_cancel(
 
 
 # ============================================
-# P2-11: МАССОВОЕ ОДОБРЕНИЕ КОМИССИЙ
+# P2-11:   
 # ============================================
 
 @router.callback_query(
@@ -411,30 +411,30 @@ async def on_finance_bulk_approve_start(
     staff: StaffUser,
     state: FSMContext,
 ) -> None:
-    """Начать массовое одобрение комиссий."""
+    """   ."""
     if not cq.message:
         await _safe_answer(cq)
         return
     
     builder = InlineKeyboardBuilder()
-    builder.button(text="📅 За сегодня", callback_data="adm:f:bulk:1")
-    builder.button(text="📅 За 3 дня", callback_data="adm:f:bulk:3")
-    builder.button(text="📅 За неделю", callback_data="adm:f:bulk:7")
-    builder.button(text="❌ Отмена", callback_data="adm:f")
+    builder.button(text="  ", callback_data="adm:f:bulk:1")
+    builder.button(text="  3 ", callback_data="adm:f:bulk:3")
+    builder.button(text="  ", callback_data="adm:f:bulk:7")
+    builder.button(text=" ", callback_data="adm:f")
     builder.adjust(1)
     
     try:
         await cq.message.edit_text(
-            "<b>⚡ Массовое одобрение комиссий</b>\n\n"
-            "Выберите период для одобрения всех комиссий в статусе WAIT_PAY:",
+            "<b>   </b>\n\n"
+            "        WAIT_PAY:",
             reply_markup=builder.as_markup(),
             parse_mode="HTML",
         )
     except TelegramBadRequest as exc:
         if "message is not modified" not in str(exc).lower():
             await cq.message.answer(
-                "<b>⚡ Массовое одобрение комиссий</b>\n\n"
-                "Выберите период:",
+                "<b>   </b>\n\n"
+                " :",
                 reply_markup=builder.as_markup(),
                 parse_mode="HTML",
             )
@@ -450,7 +450,7 @@ async def on_finance_bulk_approve_confirm(
     staff: StaffUser,
     state: FSMContext,
 ) -> None:
-    """Подтверждение массового одобрения."""
+    """  ."""
     if not cq.message or not cq.data:
         await _safe_answer(cq)
         return
@@ -459,36 +459,36 @@ async def on_finance_bulk_approve_confirm(
     try:
         days = int(parts[-1])
     except (ValueError, IndexError):
-        await _safe_answer(cq, "Некорректный период", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
     
-    # Сохранить период в состояние
+    #    
     await state.update_data(bulk_days=days, bulk_chat_id=cq.message.chat.id)
     
-    # Показать подтверждение
+    #  
     builder = InlineKeyboardBuilder()
-    builder.button(text="✅ Подтвердить", callback_data=f"adm:f:bulk:exec:{days}")
-    builder.button(text="❌ Отмена", callback_data="adm:f")
+    builder.button(text=" ", callback_data=f"adm:f:bulk:exec:{days}")
+    builder.button(text=" ", callback_data="adm:f")
     builder.adjust(1)
     
     period_label = {
-        1: "сегодня",
-        3: "последние 3 дня",
-        7: "последнюю неделю",
-    }.get(days, f"последние {days} дней")
+        1: "",
+        3: " 3 ",
+        7: " ",
+    }.get(days, f" {days} ")
     
     try:
         await cq.message.edit_text(
-            f"<b>⚠️ Подтвердите массовое одобрение</b>\n\n"
-            f"Будут одобрены ВСЕ комиссии за {period_label} в статусе WAIT_PAY.\n\n"
-            f"Вы уверены?",
+            f"<b>   </b>\n\n"
+            f"     {period_label}   WAIT_PAY.\n\n"
+            f" ?",
             reply_markup=builder.as_markup(),
             parse_mode="HTML",
         )
     except TelegramBadRequest:
         await cq.message.answer(
-            f"<b>⚠️ Подтвердите массовое одобрение</b>\n\n"
-            f"Будут одобрены ВСЕ комиссии за {period_label}.\n\nВы уверены?",
+            f"<b>   </b>\n\n"
+            f"     {period_label}.\n\n ?",
             reply_markup=builder.as_markup(),
             parse_mode="HTML",
         )
@@ -504,7 +504,7 @@ async def on_finance_bulk_approve_execute(
     staff: StaffUser,
     state: FSMContext,
 ) -> None:
-    """Выполнить массовое одобрение."""
+    """  ."""
     if not cq.message or not cq.data:
         await _safe_answer(cq)
         return
@@ -513,21 +513,21 @@ async def on_finance_bulk_approve_execute(
     try:
         days = int(parts[-1])
     except (ValueError, IndexError):
-        await _safe_answer(cq, "Некорректный период", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
     
-    await _safe_answer(cq, "Обработка... Пожалуйста, подождите.")
+    await _safe_answer(cq, "... , .")
     
-    # Выполнить массовое одобрение
+    #   
     finance_service = _finance_service(cq.message.bot)
     
     try:
-        # Получить city_ids для RBAC
+        #  city_ids  RBAC
         city_ids = None
         if staff.role != StaffRole.GLOBAL_ADMIN:
             city_ids = staff.city_ids
         
-        # Вычисляем start_date и end_date
+        #  start_date  end_date
         from datetime import date, timedelta
         end_date = date.today()
         start_date = end_date - timedelta(days=days - 1)
@@ -543,23 +543,23 @@ async def on_finance_bulk_approve_execute(
         failed = len(errors)
         
         period_label = {
-            1: "сегодня",
-            3: "последние 3 дня",
-            7: "последнюю неделю",
-        }.get(days, f"последние {days} дней")
+            1: "",
+            3: " 3 ",
+            7: " ",
+        }.get(days, f" {days} ")
         
         builder = InlineKeyboardBuilder()
-        builder.button(text="🔙 К финансам", callback_data="adm:f")
+        builder.button(text="  ", callback_data="adm:f")
         builder.adjust(1)
         
         result_text = (
-            f"<b>✅ Массовое одобрение завершено</b>\n\n"
-            f"📅 Период: {period_label}\n"
-            f"✅ Одобрено: {approved}\n"
+            f"<b>   </b>\n\n"
+            f" : {period_label}\n"
+            f" : {approved}\n"
         )
         
         if failed > 0:
-            result_text += f"⚠️ Ошибок: {failed}\n"
+            result_text += f" : {failed}\n"
         
         await cq.message.edit_text(
             result_text,
@@ -573,13 +573,13 @@ async def on_finance_bulk_approve_execute(
         
         try:
             await cq.message.edit_text(
-                f"<b>❌ Ошибка при массовом одобрении</b>\n\n"
+                f"<b>    </b>\n\n"
                 f"{html.escape(str(exc))}",
                 parse_mode="HTML",
             )
         except TelegramBadRequest:
             await cq.message.answer(
-                f"<b>❌ Ошибка</b>\n\n{html.escape(str(exc))}",
+                f"<b> </b>\n\n{html.escape(str(exc))}",
                 parse_mode="HTML",
             )
     
@@ -645,13 +645,13 @@ async def on_owner_requisites_broadcast(
 
 
 # ============================================
-# P2-07: ОБРАБОТЧИКИ СПИСКОВ КОМИССИЙ
+# P2-07:   
 # ============================================
 
 FINANCE_SEGMENT_TITLES = {
-    "aw": "Ожидают оплаты",
-    "pd": "Оплаченные",
-    "ov": "Просроченные",
+    "aw": " ",
+    "pd": "",
+    "ov": "",
 }
 
 from .access import visible_city_ids_for
@@ -660,22 +660,22 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 def finance_list_line(item: CommissionListItem) -> str:
     """Format commission list item."""
-    return f"#{item.id} | {item.amount:.0f} ₽ | {item.master_name or 'N/A'}"
+    return f"#{item.id} | {item.amount:.0f}  | {item.master_name or 'N/A'}"
 
 
 def format_commission_detail(detail: CommissionDetail) -> str:
     """Format commission detail card."""
     lines = [
-        f"<b>Комиссия #{detail.id}</b>",
-        f"Заказ: #{detail.order_id}",
-        f"Мастер: {html.escape(detail.master_name or 'N/A')}",
-        f"Сумма: {detail.amount:.2f} ₽",
-        f"Статус: {detail.status}",
+        f"<b> #{detail.id}</b>",
+        f": #{detail.order_id}",
+        f": {html.escape(detail.master_name or 'N/A')}",
+        f": {detail.amount:.2f} ",
+        f": {detail.status}",
     ]
     if detail.deadline_at_local:
-        lines.append(f"Дедлайн: {detail.deadline_at_local}")
+        lines.append(f": {detail.deadline_at_local}")
     if detail.paid_amount:
-        lines.append(f"Оплачено: {detail.paid_amount:.2f} ₽")
+        lines.append(f": {detail.paid_amount:.2f} ")
     return "\n".join(lines)
 
 
@@ -800,8 +800,8 @@ async def cb_finance_ov(cq: CallbackQuery, staff: StaffUser, state: FSMContext) 
     await _safe_answer(cq)
 
 
-# CR-2025-10-03-013: СПЕЦИФИЧНЫЕ обработчики ВЫШЕ общего!
-# CR-2025-10-03-011: Обработчик быстрого одобрения
+# CR-2025-10-03-013:    !
+# CR-2025-10-03-011:   
 @router.callback_query(
     F.data.startswith("adm:f:cm:approve:"),
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
@@ -815,7 +815,7 @@ async def cb_finance_approve_instant(cq: CallbackQuery, staff: StaffUser, state:
     
     # CR-2025-10-03-FIX: Validate staff.id before database operations
     if not staff or staff.id is None or staff.id <= 0:
-        await _safe_answer(cq, "❌ Ошибка: некорректный ID персонала", show_alert=True)
+        await _safe_answer(cq, " :  ID ", show_alert=True)
         return
     
     data = await state.get_data()
@@ -832,18 +832,18 @@ async def cb_finance_approve_instant(cq: CallbackQuery, staff: StaffUser, state:
     if ok:
         live_log.push("finance", f"commission#{commission_id} approved by staff {staff.id} amount={default_amount}")
         
-        # CR-2025-10-03-014: Красивое сообщение об успехе
+        # CR-2025-10-03-014:    
         builder = InlineKeyboardBuilder()
-        builder.button(text="📋 К списку ожидающих", callback_data="adm:f:aw:1")
-        builder.button(text="💰 Все финансы", callback_data="adm:f")
+        builder.button(text="   ", callback_data="adm:f:aw:1")
+        builder.button(text="  ", callback_data="adm:f")
         builder.adjust(1)
         
         success_text = (
-            "✅ <b>Комиссия одобрена!</b>\n\n"
-            f"🆔 Комиссия #{commission_id}\n"
-            f"💵 Сумма: {default_amount} ₽\n"
-            f"👤 Одобрил: {staff.full_name or 'Администратор'}\n\n"
-            "Что дальше?"
+            " <b> !</b>\n\n"
+            f"  #{commission_id}\n"
+            f" : {default_amount} \n"
+            f" : {staff.full_name or ''}\n\n"
+            " ?"
         )
         
         await cq.message.edit_text(
@@ -851,12 +851,12 @@ async def cb_finance_approve_instant(cq: CallbackQuery, staff: StaffUser, state:
             reply_markup=builder.as_markup(),
             parse_mode="HTML",
         )
-        await _safe_answer(cq, "✅ Готово!")
+        await _safe_answer(cq, " !")
     else:
-        await _safe_answer(cq, "❌ Ошибка при одобрении", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
 
 
-# CR-2025-10-03-011: Переход к ручному вводу суммы
+# CR-2025-10-03-011:     
 @router.callback_query(
     F.data.startswith("adm:f:cm:editamt:"),
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
@@ -872,12 +872,12 @@ async def cb_finance_edit_amount(cq: CallbackQuery, staff: StaffUser, state: FSM
     await state.set_state(FinanceActionFSM.approve_amount)
     
     kb = InlineKeyboardBuilder()
-    kb.button(text="❌ Отмена", callback_data=f"adm:f:cm:card:{commission_id}")
+    kb.button(text=" ", callback_data=f"adm:f:cm:card:{commission_id}")
     
     await cq.message.edit_text(
-        f"<b>Введите сумму оплаты:</b>\n"
-        f"По умолчанию: {default_amount} ₽\n\n"
-        f"Например: <code>3000</code> или <code>3250.50</code>",
+        f"<b>  :</b>\n"
+        f" : {default_amount} \n\n"
+        f": <code>3000</code>  <code>3250.50</code>",
         reply_markup=kb.as_markup(),
     )
     await _safe_answer(cq)
@@ -890,12 +890,12 @@ async def cb_finance_edit_amount(cq: CallbackQuery, staff: StaffUser, state: FSM
 async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
     from decimal import Decimal
     parts = cq.data.split(":")
-    # parts = ['adm', 'f', 'cm', 'card', '14'] для adm:f:cm:card:14
+    # parts = ['adm', 'f', 'cm', 'card', '14']  adm:f:cm:card:14
     if len(parts) < 5:
-        await _safe_answer(cq, "Некорректный callback", show_alert=True)
+        await _safe_answer(cq, " callback", show_alert=True)
         return
     action = parts[3]  # 'card', 'open', 'ok', 'rej', 'blk'
-    commission_id = int(parts[4])  # ID комиссии
+    commission_id = int(parts[4])  # ID 
     finance_service = _finance_service(cq.message.bot)
     detail = await finance_service.get_commission_detail(commission_id)
     if not detail:
@@ -936,7 +936,7 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
         return
 
     if action == "ok":
-        # CR-2025-10-03-011: Красивый UI для подтверждения оплаты
+        # CR-2025-10-03-011:  UI   
         await state.update_data(
             commission_id=commission_id,
             segment=segment,
@@ -946,16 +946,16 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             source_message_id=cq.message.message_id,
         )
         
-        # Показываем кнопки для быстрого одобрения
+        #     
         from aiogram.utils.keyboard import InlineKeyboardBuilder
         kb = InlineKeyboardBuilder()
-        kb.button(text=f"✅ Подтвердить {detail.amount:.2f} ₽", callback_data=f"adm:f:cm:approve:{commission_id}")
-        kb.button(text="📝 Изменить сумму", callback_data=f"adm:f:cm:editamt:{commission_id}")
-        kb.button(text="❌ Отмена", callback_data=f"adm:f:cm:card:{commission_id}")
+        kb.button(text=f"  {detail.amount:.2f} ", callback_data=f"adm:f:cm:approve:{commission_id}")
+        kb.button(text="  ", callback_data=f"adm:f:cm:editamt:{commission_id}")
+        kb.button(text=" ", callback_data=f"adm:f:cm:card:{commission_id}")
         kb.adjust(1)
         
         await cq.message.edit_text(
-            f"{text_body}\n\n<b>Подтвердить оплату?</b>",
+            f"{text_body}\n\n<b> ?</b>",
             reply_markup=kb.as_markup(),
             disable_web_page_preview=True,
         )
@@ -988,14 +988,14 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
             source_message_id=cq.message.message_id,
         )
         
-        # CR-2025-10-03-011: Красивый UI для отклонения
+        # CR-2025-10-03-011:  UI  
         kb = InlineKeyboardBuilder()
-        kb.button(text="❌ Отмена", callback_data=f"adm:f:cm:card:{commission_id}")
+        kb.button(text=" ", callback_data=f"adm:f:cm:card:{commission_id}")
         
         await cq.message.edit_text(
             f"{text_body}\n\n"
-            f"<b>❌ Отклонить комиссию</b>\n\n"
-            f"Укажите причину отклонения (минимум 3 символа):",
+            f"<b>  </b>\n\n"
+            f"   ( 3 ):",
             reply_markup=kb.as_markup(),
         )
         await _safe_answer(cq)
@@ -1008,20 +1008,20 @@ async def cb_finance_card(cq: CallbackQuery, staff: StaffUser, state: FSMContext
 async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContext) -> None:
     reason = (msg.text or "").strip()
     
-    # Обработка отмены
+    #  
     if reason.lower() == "/cancel":
         await state.clear()
-        await msg.answer("❌ Отменено.")
+        await msg.answer(" .")
         return
     
     # CR-2025-10-03-FIX: Validate staff.id before database operations
     if not staff or staff.id is None or staff.id <= 0:
         await state.clear()
-        await msg.answer("❌ Ошибка: некорректный ID персонала")
+        await msg.answer(" :  ID ")
         return
     
     if len(reason) < 3:
-        await msg.answer("❌ Причина слишком короткая (минимум 3 символа).")
+        await msg.answer("    ( 3 ).")
         return
 
     data = await state.get_data()
@@ -1033,7 +1033,7 @@ async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContex
 
     if not commission_id:
         await state.clear()
-        await msg.answer("❌ Ошибка: комиссия не найдена.")
+        await msg.answer(" :   .")
         return
 
     finance_service = _finance_service(msg.bot)
@@ -1043,18 +1043,18 @@ async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContex
     if ok:
         live_log.push("finance", f"commission#{commission_id} rejected by staff {staff.id}")
         
-        # CR-2025-10-03-014: Красивое сообщение об отклонении
+        # CR-2025-10-03-014:    
         builder = InlineKeyboardBuilder()
-        builder.button(text="📋 К списку ожидающих", callback_data="adm:f:aw:1")
-        builder.button(text="💰 Все финансы", callback_data="adm:f")
+        builder.button(text="   ", callback_data="adm:f:aw:1")
+        builder.button(text="  ", callback_data="adm:f")
         builder.adjust(1)
         
         reject_text = (
-            "❌ <b>Комиссия отклонена</b>\n\n"
-            f"🆔 Комиссия #{commission_id}\n"
-            f"📝 Причина: {html.escape(reason)}\n"
-            f"👤 Отклонил: {staff.full_name or 'Администратор'}\n\n"
-            "Что дальше?"
+            " <b> </b>\n\n"
+            f"  #{commission_id}\n"
+            f" : {html.escape(reason)}\n"
+            f" : {staff.full_name or ''}\n\n"
+            " ?"
         )
         
         await msg.answer(
@@ -1063,7 +1063,7 @@ async def finance_reject_reason(msg: Message, staff: StaffUser, state: FSMContex
             parse_mode="HTML",
         )
     else:
-        await msg.answer("❌ Ошибка при отклонении комиссии.")
+        await msg.answer("    .")
 
 
 @router.message(StateFilter(FinanceActionFSM.approve_amount))
@@ -1073,14 +1073,14 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
     # CR-2025-10-03-FIX: Validate staff.id before database operations
     if not staff or staff.id is None or staff.id <= 0:
         await state.clear()
-        await msg.answer("❌ Ошибка: некорректный ID персонала")
+        await msg.answer(" :  ID ")
         return
     
     data = await state.get_data()
     commission_id = data.get("commission_id")
     if not commission_id:
         await state.clear()
-        await msg.answer("❌ Ошибка: комиссия не найдена.")
+        await msg.answer(" :   .")
         return
 
     segment = data.get("segment", "aw")
@@ -1094,15 +1094,15 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
         if source_chat_id and source_message_id:
             proxy = _MessageEditProxy(msg.bot, source_chat_id, source_message_id)
             await _render_finance_segment(proxy, staff, segment, page, state)
-        await msg.answer("❌ Отменено.")
+        await msg.answer(" .")
         return
 
-    # Парсим сумму
-    normalized = text_value.replace(",", ".").replace("₽", "").replace(" ", "").strip()
+    #  
+    normalized = text_value.replace(",", ".").replace("", "").replace(" ", "").strip()
     if not re.fullmatch(r"^\d{1,7}(?:\.\d{1,2})?$", normalized):
         await msg.answer(
-            "❌ Неверный формат суммы.\n"
-            "Пример: <code>3000</code> или <code>3250.50</code>"
+            "   .\n"
+            ": <code>3000</code>  <code>3250.50</code>"
         )
         return
     amount = Decimal(normalized)
@@ -1114,18 +1114,18 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
     if ok:
         live_log.push("finance", f"commission#{commission_id} approved by staff {staff.id} amount={amount}")
         
-        # CR-2025-10-03-014: Красивое сообщение об успехе
+        # CR-2025-10-03-014:    
         builder = InlineKeyboardBuilder()
-        builder.button(text="📋 К списку ожидающих", callback_data="adm:f:aw:1")
-        builder.button(text="💰 Все финансы", callback_data="adm:f")
+        builder.button(text="   ", callback_data="adm:f:aw:1")
+        builder.button(text="  ", callback_data="adm:f")
         builder.adjust(1)
         
         success_text = (
-            "✅ <b>Комиссия одобрена!</b>\n\n"
-            f"🆔 Комиссия #{commission_id}\n"
-            f"💵 Сумма: {amount} ₽\n"
-            f"👤 Одобрил: {staff.full_name or 'Администратор'}\n\n"
-            "Что дальше?"
+            " <b> !</b>\n\n"
+            f"  #{commission_id}\n"
+            f" : {amount} \n"
+            f" : {staff.full_name or ''}\n\n"
+            " ?"
         )
         
         await msg.answer(
@@ -1134,4 +1134,4 @@ async def finance_approve_amount(msg: Message, staff: StaffUser, state: FSMConte
             parse_mode="HTML",
         )
     else:
-        await msg.answer("❌ Ошибка при одобрении комиссии.")
+        await msg.answer("    .")

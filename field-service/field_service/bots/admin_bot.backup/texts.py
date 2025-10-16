@@ -13,14 +13,14 @@ from .dto import (
     OrderListItem,
 )
 
-FSM_TIMEOUT_MESSAGE = "Сессия истекла. Нажмите /start"
+FSM_TIMEOUT_MESSAGE = " .  /start"
 
 
 COMMISSION_STATUS_LABELS = {
-    'WAIT_PAY': 'Ожидает оплаты',
-    'REPORTED': 'Проверяется',
-    'APPROVED': 'Оплачено',
-    'OVERDUE': 'Просрочено',
+    'WAIT_PAY': ' ',
+    'REPORTED': '',
+    'APPROVED': '',
+    'OVERDUE': '',
 }
 
 
@@ -34,10 +34,10 @@ def _category_value(category: object) -> str:
 
 def order_teaser(order: OrderListItem) -> str:
     district = order.district_name or ""
-    slot = f" ⏰ {order.timeslot_local}" if order.timeslot_local else ""
+    slot = f"  {order.timeslot_local}" if order.timeslot_local else ""
     category = _category_value(order.category)
     return (
-        f"#{order.id} • {order.city_name}/{district} • {category}{slot} • {order.status}"
+        f"#{order.id}  {order.city_name}/{district}  {category}{slot}  {order.status}"
     )
 
 
@@ -57,18 +57,18 @@ def order_card(order: OrderCard) -> str:
         address_parts.append(str(order.house))
     address = ", ".join(p for p in address_parts if p)
     lines = [
-        f"🧾 <b>Заказ #{order.id}</b>",
-        f"📍 {address}",
-        f"🔧 Категория: {_category_value(order.category)}",
-        f"📦 Тип: {order.order_type.value}",
-        f"⏰ Слот: {slot}",
-        f"📌 Статус: {order.status}",
-        f"🗓 Создан: {order.created_at_local}",
-        f"👤 Клиент: {customer}",
+        f" <b> #{order.id}</b>",
+        f" {address}",
+        f" : {_category_value(order.category)}",
+        f" : {order.order_type.value}",
+        f" : {slot}",
+        f" : {order.status}",
+        f" : {order.created_at_local}",
+        f" : {customer}",
         master_line,
     ]
     if order.description:
-        lines.append("📝 Описание: " + order.description)
+        lines.append(" : " + order.description)
     return "\n".join(lines)
 
 
@@ -119,35 +119,35 @@ def commission_detail(detail: CommissionDetail) -> str:
     status_label = COMMISSION_STATUS_LABELS.get((detail.status or '').upper(), detail.status)
     master_name = html.escape(detail.master_name) if detail.master_name else ''
     master_phone = html.escape(detail.master_phone) if detail.master_phone else ''
-    master_line = f"👨‍🔧 Мастер: {master_name}" + (f" ({master_phone})" if master_phone else '')
+    master_line = f" : {master_name}" + (f" ({master_phone})" if master_phone else '')
 
     lines = [
-        f"💸 <b>Комиссия #{detail.id}</b>",
-        f"🧾 Заказ: #{detail.order_id}",
+        f" <b> #{detail.id}</b>",
+        f" : #{detail.order_id}",
         master_line,
-        f"📌 Статус: {status_label}",
-        f"💰 Сумма: {detail.amount:.2f} ₽",
+        f" : {status_label}",
+        f" : {detail.amount:.2f} ",
     ]
 
     rate = detail.rate or Decimal('0')
     rate_percent = rate * 100 if rate <= 1 else rate
     rate_str = f"{rate_percent:.2f}".rstrip('0').rstrip('.')
     if rate_percent > 0:
-        lines.append(f"🧮 Ставка: {rate_str}%")
+        lines.append(f" : {rate_str}%")
 
     if detail.deadline_at_local:
-        lines.append(f"⏳ Дедлайн: {html.escape(detail.deadline_at_local)}")
-    lines.append(f"🗓 Создано: {html.escape(detail.created_at_local)}")
+        lines.append(f" : {html.escape(detail.deadline_at_local)}")
+    lines.append(f" : {html.escape(detail.created_at_local)}")
     if detail.paid_reported_at_local:
-        lines.append(f"📨 Сообщено об оплате: {html.escape(detail.paid_reported_at_local)}")
+        lines.append(f"   : {html.escape(detail.paid_reported_at_local)}")
     if detail.paid_approved_at_local:
-        lines.append(f"✅ Подтверждено: {html.escape(detail.paid_approved_at_local)}")
+        lines.append(f" : {html.escape(detail.paid_approved_at_local)}")
     if detail.paid_amount is not None:
-        lines.append(f"💳 Оплачено: {detail.paid_amount:.2f} ₽")
+        lines.append(f" : {detail.paid_amount:.2f} ")
 
     if detail.snapshot_methods:
         methods = ', '.join(detail.snapshot_methods)
-        lines.append(f"💼 Способы оплаты: {html.escape(methods)}")
+        lines.append(f"  : {html.escape(methods)}")
 
     card_last4 = detail.snapshot_data.get('card_last4')
     if card_last4:
@@ -158,18 +158,18 @@ def commission_detail(detail: CommissionDetail) -> str:
         card_bank = detail.snapshot_data.get('card_bank')
         if card_bank:
             card_info.append(html.escape(card_bank))
-        lines.append(f"💳 Карта: {' / '.join(card_info)}")
+        lines.append(f" : {' / '.join(card_info)}")
 
     sbp_phone = detail.snapshot_data.get('sbp_phone')
     if sbp_phone:
-        sbp_line = f"🏦 СБП: {html.escape(sbp_phone)}"
+        sbp_line = f" : {html.escape(sbp_phone)}"
         sbp_bank = detail.snapshot_data.get('sbp_bank')
         if sbp_bank:
             sbp_line += f" ({html.escape(sbp_bank)})"
         lines.append(sbp_line)
 
     if detail.snapshot_data.get('qr_file_id'):
-        lines.append("QR: доступен")
+        lines.append("QR: ")
 
     other_text = detail.snapshot_data.get('other_text')
     if other_text:
@@ -177,24 +177,24 @@ def commission_detail(detail: CommissionDetail) -> str:
 
     comment = detail.snapshot_data.get('comment')
     if comment:
-        lines.append(f"📝 Комментарий: {html.escape(comment)}")
+        lines.append(f" : {html.escape(comment)}")
 
-    lines.append(f"📎 Чеки: {'есть' if detail.has_checks else 'нет'}")
+    lines.append(f" : {'' if detail.has_checks else ''}")
     return "\n".join(lines)
 
 
 def new_order_summary(data: Mapping[str, object]) -> str:
-    lines = ["🆕 <b>Новый заказ</b>"]
-    lines.append(f"Город: {data.get('city_name', '')}")
-    lines.append(f"Район: {data.get('district_name', '')}")
-    lines.append(f"Улица: {data.get('street_name', '')}")
-    lines.append(f"Дом: {data.get('house', '')}")
+    lines = [" <b> </b>"]
+    lines.append(f": {data.get('city_name', '')}")
+    lines.append(f": {data.get('district_name', '')}")
+    lines.append(f": {data.get('street_name', '')}")
+    lines.append(f": {data.get('house', '')}")
     if data.get('apartment'):
-        lines.append(f"Кв.: {data['apartment']}")
+        lines.append(f".: {data['apartment']}")
     if data.get('address_comment'):
-        lines.append(f"Комментарий к адресу: {data['address_comment']}")
+        lines.append(f"  : {data['address_comment']}")
     lines.append(
-        "Клиент: "
+        ": "
         + str(data.get('client_name', ''))
         + (f" ({data['client_phone']})" if data.get('client_phone') else "")
     )
@@ -204,14 +204,14 @@ def new_order_summary(data: Mapping[str, object]) -> str:
     else:
         category_fallback = str(category_obj or '')
     lines.append(
-        f"Категория: {data.get('category_label', category_fallback)}"
+        f": {data.get('category_label', category_fallback)}"
     )
-    lines.append(f"Тип: {data.get('order_type', 'NORMAL')}")
-    lines.append(f"Слот: {data.get('timeslot_display', '')}")
+    lines.append(f": {data.get('order_type', 'NORMAL')}")
+    lines.append(f": {data.get('timeslot_display', '')}")
     if data.get('description'):
-        lines.append("Описание: " + str(data['description']))
+        lines.append(": " + str(data['description']))
     if data.get('attachments_count'):
-        lines.append(f"Вложения: {data['attachments_count']}")
+        lines.append(f": {data['attachments_count']}")
     return "\n".join(lines)
 
 

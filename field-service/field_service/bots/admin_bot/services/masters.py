@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
+from field_service.services._session_utils import maybe_managed_session
 from field_service.services import live_log
 from field_service.services.candidates import select_candidates
 
@@ -64,7 +65,7 @@ class DBMastersService:
 
     async def list_active_skills(self) -> list[dict[str, object]]:
         async with self._session_factory() as session:
-            rows = await session.execute(
+            rows = await s.execute(
                 select(m.skills.id, m.skills.code, m.skills.name)
                 .where(m.skills.is_active.is_(True))
                 .order_by(m.skills.name.asc())
@@ -82,7 +83,7 @@ class DBMastersService:
             return skills
 
     async def _get_default_master_limit(self, session: AsyncSession) -> int:
-        value = await session.scalar(
+        value = await s.scalar(
             select(m.settings.value).where(m.settings.key == "max_active_orders")
         )
         try:
@@ -106,7 +107,7 @@ class DBMastersService:
             payload_json = dict(payload or {})
         except Exception:
             payload_json = {"raw": str(payload)}
-        await session.execute(
+        await s.execute(
             insert(m.admin_audit_log).values(
                 admin_id=admin_id or None,
                 master_id=master_id,
@@ -123,7 +124,7 @@ class DBMastersService:
                 .select_from(m.masters)
                 .where(m.masters.referred_by_master_id == master_id)
             )
-            invited_total = int((await session.execute(invited_stmt)).scalar() or 0)
+            invited_total = int((await s.execute(invited_stmt)).scalar() or 0)
 
             pending_stmt = (
                 select(func.count())
@@ -133,7 +134,7 @@ class DBMastersService:
                     m.masters.verified.is_(False),
                 )
             )
-            invited_pending = int((await session.execute(pending_stmt)).scalar() or 0)
+            invited_pending = int((await s.execute(pending_stmt)).scalar() or 0)
 
             rewards_stmt = (
                 select(
@@ -146,7 +147,7 @@ class DBMastersService:
                     m.referral_rewards.status != m.ReferralRewardStatus.CANCELED,
                 )
             )
-            rewards_row = (await session.execute(rewards_stmt)).first()
+            rewards_row = (await s.execute(rewards_stmt)).first()
             rewards_count = int((rewards_row[0] if rewards_row else 0) or 0)
             amount_raw = rewards_row[1] if rewards_row else None
             rewards_amount = (
@@ -283,7 +284,7 @@ class DBMastersService:
                 .offset(offset)
                 .limit(page_size + 1)
             )
-            rows = (await session.execute(stmt)).all()
+            rows = (await s.execute(stmt)).all()
 
         now_utc = datetime.now(UTC)
         items: list[MasterListItem] = []
@@ -339,7 +340,7 @@ class DBMastersService:
 
     async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
         async with self._session_factory() as session:
-            rows = await session.execute(
+            rows = await s.execute(
                 select(
                     m.masters.id,
                     m.masters.tg_user_id,
@@ -366,7 +367,7 @@ class DBMastersService:
     async def get_master_detail(self, master_id: int) -> Optional[MasterDetail]:
         async with self._session_factory() as session:
             default_limit = await self._get_default_master_limit(session)
-            row = await session.execute(
+            row = await s.execute(
                 select(m.masters, m.cities.name.label("city_name"))
                 .join(m.cities, m.masters.city_id == m.cities.id, isouter=True)
                 .where(m.masters.id == master_id)
@@ -377,14 +378,14 @@ class DBMastersService:
             master: m.masters = result.masters
             city_name = result.city_name
 
-            active_orders = await session.scalar(
+            active_orders = await s.scalar(
                 select(func.count(m.orders.id)).where(
                     (m.orders.assigned_master_id == master.id)
                     & (m.orders.status.in_(ACTIVE_ORDER_STATUSES))
                 )
             ) or 0
 
-            avg_check_value = await session.scalar(
+            avg_check_value = await s.scalar(
                 select(func.avg(m.orders.total_sum)).where(
                     (m.orders.assigned_master_id == master.id)
                     & (m.orders.status.in_(AVG_CHECK_STATUSES))
@@ -399,21 +400,21 @@ class DBMastersService:
                 avg_check = None
 
             has_orders = bool(
-                await session.scalar(
+                await s.scalar(
                     select(m.orders.id)
                     .where(m.orders.assigned_master_id == master.id)
                     .limit(1)
                 )
             )
             has_commissions = bool(
-                await session.scalar(
+                await s.scalar(
                     select(m.commissions.id)
                     .where(m.commissions.master_id == master.id)
                     .limit(1)
                 )
             )
 
-            district_rows = await session.execute(
+            district_rows = await s.execute(
                 select(m.districts.name)
                 .join(
                     m.master_districts,
@@ -424,7 +425,7 @@ class DBMastersService:
             )
             district_names = tuple(dr[0] for dr in district_rows)
 
-            skill_rows = await session.execute(
+            skill_rows = await s.execute(
                 select(m.skills.name)
                 .join(
                     m.master_skills,
@@ -435,7 +436,7 @@ class DBMastersService:
             )
             skill_names = tuple(sr[0] for sr in skill_rows)
 
-            doc_rows = await session.execute(
+            doc_rows = await s.execute(
                 select(
                     m.attachments.id,
                     m.attachments.file_type,
@@ -540,7 +541,7 @@ class DBMastersService:
         page = max(page, 1)
         offset = (page - 1) * page_size
         async with self._session_factory() as session:
-            order_q = await session.execute(
+            order_q = await s.execute(
                 select(
                     m.orders.id,
                     m.orders.city_id,
@@ -605,7 +606,7 @@ class DBMastersService:
 
     async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
         async with self._session_factory() as session:
-            rows = await session.execute(
+            rows = await s.execute(
                 select(
                     m.masters.id,
                     m.masters.tg_user_id,
@@ -631,9 +632,8 @@ class DBMastersService:
 
     async def approve_master(self, master_id: int, by_staff_id: int) -> bool:
         """Mark a master as approved and log the action."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(
@@ -660,9 +660,8 @@ class DBMastersService:
 
     async def reject_master(self, master_id: int, reason: str, by_staff_id: int) -> bool:
         """Reject a master with a provided reason."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(
@@ -690,9 +689,8 @@ class DBMastersService:
 
     async def block_master(self, master_id: int, reason: str, by_staff_id: int) -> bool:
         """Block a master and make them inactive."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(
@@ -721,9 +719,8 @@ class DBMastersService:
 
     async def unblock_master(self, master_id: int, by_staff_id: int) -> bool:
         """Lift a block from a master and reactivate them."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(
@@ -757,9 +754,8 @@ class DBMastersService:
         by_staff_id: int,
     ) -> bool:
         """Override the max active orders limit for a master."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(max_active_orders_override=limit)
@@ -783,9 +779,8 @@ class DBMastersService:
 
     async def enqueue_master_notification(self, master_id: int, message: str) -> None:
         """Queue a moderation notification for a master."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                row = await session.execute(
+        async with maybe_managed_session(session) as s:
+                row = await s.execute(
                     select(m.masters.tg_user_id).where(m.masters.id == master_id)
                 )
                 tg_user_id = row.scalar_one_or_none()
@@ -794,7 +789,7 @@ class DBMastersService:
                     logger.warning(f"Cannot notify master#{master_id}: no tg_user_id")
                     return
 
-                await session.execute(
+                await s.execute(
                     insert(m.notifications_outbox).values(
                         master_id=master_id,
                         event="moderation_update",
@@ -816,18 +811,17 @@ class DBMastersService:
             - success: True if operation completed successfully
             - is_soft_delete: True if soft delete (has orders/commissions), False if hard delete
         """
-        async with self._session_factory() as session:
-            async with session.begin():
+        async with maybe_managed_session(session) as s:
                 # Check if master has orders or commissions
                 has_orders = bool(
-                    await session.scalar(
+                    await s.scalar(
                         select(m.orders.id)
                         .where(m.orders.assigned_master_id == master_id)
                         .limit(1)
                     )
                 )
                 has_commissions = bool(
-                    await session.scalar(
+                    await s.scalar(
                         select(m.commissions.id)
                         .where(m.commissions.master_id == master_id)
                         .limit(1)
@@ -836,7 +830,7 @@ class DBMastersService:
                 
                 if has_orders or has_commissions:
                     # Soft delete: mark as deleted but keep in database
-                    result = await session.execute(
+                    result = await s.execute(
                         update(m.masters)
                         .where(m.masters.id == master_id)
                         .values(
@@ -872,13 +866,13 @@ class DBMastersService:
                     )
                     
                     # Delete related records
-                    await session.execute(
+                    await s.execute(
                         delete(m.master_districts).where(m.master_districts.master_id == master_id)
                     )
-                    await session.execute(
+                    await s.execute(
                         delete(m.master_skills).where(m.master_skills.master_id == master_id)
                     )
-                    await session.execute(
+                    await s.execute(
                         delete(m.attachments).where(
                             (m.attachments.entity_type == m.AttachmentEntity.MASTER)
                             & (m.attachments.entity_id == master_id)
@@ -886,7 +880,7 @@ class DBMastersService:
                     )
                     
                     # Now delete the master
-                    result = await session.execute(
+                    result = await s.execute(
                         delete(m.masters)
                         .where(m.masters.id == master_id)
                         .returning(m.masters.id)

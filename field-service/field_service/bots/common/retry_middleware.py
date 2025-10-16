@@ -1,8 +1,8 @@
 """
-Middleware для перехвата ошибок и предложения повтора действия.
+Middleware       .
 
-Оборачивает все callback handlers и при возникновении исключения
-сохраняет контекст и показывает пользователю кнопку "Повторить".
+  callback handlers    
+      "".
 """
 
 from __future__ import annotations
@@ -23,20 +23,20 @@ logger = logging.getLogger(__name__)
 
 class RetryMiddleware(BaseMiddleware):
     """
-    Middleware для отлова ошибок и предложения повтора действия.
+    Middleware       .
 
-    Оборачивает callback handlers и при ошибке:
-    1. Логирует исключение
-    2. Сохраняет контекст действия в FSM
-    3. Показывает пользователю UI с кнопкой "Повторить"
+     callback handlers   :
+    1.  
+    2.     FSM
+    3.   UI   ""
     """
 
     def __init__(self, enabled: bool = True):
         """
-        Инициализация middleware.
+         middleware.
 
         Args:
-            enabled: Включить/выключить функциональность
+            enabled: / 
         """
         self.enabled = enabled
         super().__init__()
@@ -48,31 +48,31 @@ class RetryMiddleware(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
         """
-        Основная логика middleware.
+          middleware.
 
         Args:
-            handler: Следующий handler в цепочке
-            event: Событие от Telegram
-            data: Данные контекста
+            handler:  handler  
+            event:   Telegram
+            data:  
 
         Returns:
-            Результат handler или None при ошибке
+             handler  None  
         """
         if not self.enabled:
             return await handler(event, data)
 
-        # Обрабатываем только CallbackQuery
+        #   CallbackQuery
         if not isinstance(event, CallbackQuery):
             return await handler(event, data)
 
         callback = event
 
         try:
-            # Выполняем основной handler
+            #   handler
             return await handler(event, data)
 
         except Exception as exc:
-            # Логируем ошибку
+            #  
             logger.error(
                 f"Error in callback handler: {callback.data}",
                 exc_info=exc,
@@ -82,7 +82,7 @@ class RetryMiddleware(BaseMiddleware):
                 },
             )
 
-            # Сохраняем контекст для повтора
+            #    
             state = data.get("state")
             if state and callback.data:
                 await save_retry_context(
@@ -94,10 +94,10 @@ class RetryMiddleware(BaseMiddleware):
                     attempt=1,
                 )
 
-            # Показываем сообщение об ошибке с кнопкой повтора
+            #       
             await self._show_error_with_retry(callback, exc)
 
-            # Не пробрасываем исключение дальше
+            #    
             return None
 
     async def _show_error_with_retry(
@@ -106,26 +106,26 @@ class RetryMiddleware(BaseMiddleware):
         exc: Exception,
     ) -> None:
         """
-        Показать сообщение об ошибке с кнопкой повтора.
+              .
 
         Args:
-            callback: CallbackQuery с ошибкой
-            exc: Исключение которое произошло
+            callback: CallbackQuery  
+            exc:   
         """
-        # Формируем текст ошибки
+        #   
         error_text = (
-            "❌ <b>Не удалось выполнить действие</b>\n\n"
-            "Возможные причины:\n"
-            "• Временные проблемы с сетью\n"
-            "• Превышено время ожидания\n"
-            "• Технические работы на сервере\n\n"
-            "Вы можете:"
+            " <b>   </b>\n\n"
+            " :\n"
+            "    \n"
+            "   \n"
+            "    \n\n"
+            " :"
         )
 
-        # Создаём кнопки
+        #  
         builder = InlineKeyboardBuilder()
-        builder.button(text="🔄 Повторить", callback_data="retry:execute")
-        builder.button(text="❌ Отменить", callback_data="retry:cancel")
+        builder.button(text=" ", callback_data="retry:execute")
+        builder.button(text=" ", callback_data="retry:cancel")
         builder.adjust(2)
 
         try:
@@ -134,7 +134,7 @@ class RetryMiddleware(BaseMiddleware):
                 reply_markup=builder.as_markup(),
             )
         except Exception:
-            # Если не удалось отредактировать, отправляем новое сообщение
+            #    ,   
             try:
                 await callback.message.answer(
                     text=error_text,
@@ -149,11 +149,11 @@ class RetryMiddleware(BaseMiddleware):
 
 def setup_retry_middleware(dp, enabled: bool = True) -> None:
     """
-    Подключить retry middleware к dispatcher.
+     retry middleware  dispatcher.
 
     Args:
         dp: Dispatcher
-        enabled: Включить/выключить функциональность
+        enabled: / 
     """
     middleware = RetryMiddleware(enabled=enabled)
     dp.callback_query.middleware(middleware)

@@ -22,6 +22,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -359,12 +360,82 @@ class TestEscalationNotifications:
             f"Timestamp не должен меняться при параллельных тиках. Было: {first_timestamp}, стало: {order.escalation_logist_notified_at}"
 
 
+    @pytest.mark.asyncio
+    async def test_double_tick_no_duplicate_notifications(
+        self,
+        session: AsyncSession,
+        sample_city,
+        sample_district,
+    ):
+        """
+        Тест 5: Двойной последовательный вызов тика не вызывает дублирование уведомлений
+        
+        Сценарий:
+        1. Создаём заказ без кандидатов
+        2. Вызываем tick_once() первый раз - устанавливается timestamp
+        3. Вызываем tick_once() второй раз - timestamp НЕ меняется
+        4. Проверяем что notification отправлено только один раз
+        """
+        # ✅ КРИТИЧНО: Используем время БД, а не Python время!
+        db_now = await _get_db_now(session)
+        
+        order = m.orders(
+            status=m.OrderStatus.SEARCHING,
+            city_id=sample_city.id,
+            district_id=sample_district.id,
+            category=m.OrderCategory.ELECTRICS,
+            house="1",
+            timeslot_start_utc=db_now + timedelta(hours=2),
+            timeslot_end_utc=db_now + timedelta(hours=4),
+        )
+        session.add(order)
+        await session.commit()
+        await session.refresh(order)
+
+        cfg = DistConfig(
+            tick_seconds=30,
+            sla_seconds=120,
+            rounds=2,
+            top_log_n=10,
+            to_admin_after_min=10,
+        )
+
+        # Act 1: Первый тик - устанавливается timestamp
+        await tick_once(cfg, bot=None, alerts_chat_id=None, session=session)
+        session.expire_all()
+        await session.refresh(order)
+        
+        # Сохраняем timestamp первого уведомления
+        first_timestamp = order.escalation_logist_notified_at
+        
+        # Assert 1: Timestamp установлен после первого тика
+        assert order.dist_escalated_logist_at is not None, "Эскалация должна быть установлена после первого тика"
+        assert first_timestamp is not None, "Timestamp уведомления должен быть установлен после первого тика"
+        
+        print(f"[DEBUG] После первого тика: escalation_logist_notified_at={first_timestamp}")
+
+        # Act 2: Второй тик сразу же - timestamp НЕ должен меняться
+        await tick_once(cfg, bot=None, alerts_chat_id=None, session=session)
+        session.expire_all()
+        await session.refresh(order)
+        
+        second_timestamp = order.escalation_logist_notified_at
+        
+        print(f"[DEBUG] После второго тика: escalation_logist_notified_at={second_timestamp}")
+        
+        # Assert 2: Timestamp НЕ изменился (повторная отправка заблокирована)
+        assert second_timestamp == first_timestamp, \
+            f"Timestamp НЕ должен меняться при повторном тике. " \
+            f"Было: {first_timestamp}, стало: {second_timestamp}"
+        
+        print("[OK] Двойной вызов тика: уведомление отправлено только один раз")
+
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def session():
     """Создаёт новую сессию БД для каждого теста"""
     async with SessionLocal() as session:
@@ -374,77 +445,49 @@ async def session():
             await session.rollback()
 
 
-@pytest.fixture(scope="function")
-async def clean_db(session: AsyncSession):
-    """Очищает БД перед каждым тестом"""
-    try:
-        # Пытаемся использовать TRUNCATE для скорости
-        await session.execute(text("TRUNCATE TABLE offers CASCADE"))
-        await session.execute(text("TRUNCATE TABLE orders CASCADE"))
-        await session.execute(text("TRUNCATE TABLE master_skills CASCADE"))
-        await session.execute(text("TRUNCATE TABLE master_districts CASCADE"))
-        await session.execute(text("TRUNCATE TABLE masters CASCADE"))
-        await session.execute(text("TRUNCATE TABLE skills CASCADE"))
-        await session.execute(text("TRUNCATE TABLE districts CASCADE"))
-        await session.execute(text("TRUNCATE TABLE cities CASCADE"))
-        await session.commit()
-    except Exception as e:
-        # Fallback на DELETE если TRUNCATE не работает
-        await session.rollback()
-        await session.execute(m.offers.__table__.delete())
-        await session.execute(m.orders.__table__.delete())
-        await session.execute(m.master_skills.__table__.delete())
-        await session.execute(m.master_districts.__table__.delete())
-        await session.execute(m.masters.__table__.delete())
-        await session.execute(m.skills.__table__.delete())
-        await session.execute(m.districts.__table__.delete())
-        await session.execute(m.cities.__table__.delete())
-        await session.commit()
-
-
-@pytest.fixture(scope="function")
-async def sample_city(session: AsyncSession, clean_db):
+@pytest_asyncio.fixture(scope="function")
+async def sample_city(async_session: AsyncSession):
     """Создаёт тестовый город"""
     city = m.cities(
         name="Test City",
         timezone="Europe/Moscow",
         is_active=True,
     )
-    session.add(city)
-    await session.commit()
-    await session.refresh(city)
+    async_session.add(city)
+    await async_session.commit()
+    await async_session.refresh(city)
     return city
 
 
-@pytest.fixture(scope="function")
-async def sample_district(session: AsyncSession, sample_city):
+@pytest_asyncio.fixture(scope="function")
+async def sample_district(async_session: AsyncSession, sample_city):
     """Создаёт тестовый район"""
     district = m.districts(
         city_id=sample_city.id,
         name="Test District",
     )
-    session.add(district)
-    await session.commit()
-    await session.refresh(district)
+    async_session.add(district)
+    await async_session.commit()
+    await async_session.refresh(district)
     return district
 
 
-@pytest.fixture(scope="function")
-async def sample_skill(session: AsyncSession):
+@pytest_asyncio.fixture(scope="function")
+async def sample_skill(async_session: AsyncSession):
     """Создаёт тестовый навык"""
     skill = m.skills(
         code="ELEC",
         name="Электрика",
         is_active=True,
     )
-    session.add(skill)
-    await session.commit()
-    await session.refresh(skill)
+    async_session.add(skill)
+    await async_session.commit()
+    await async_session.refresh(skill)
     return skill
 
 
-@pytest.fixture(scope="function")
-async def sample_master(session: AsyncSession, sample_city, sample_district, sample_skill):
+@pytest_asyncio.fixture(scope="function")
+async def sample_master(async_session: AsyncSession, sample_city, sample_district, sample_skill):
     """Создаёт тестового мастера"""
     master = m.masters(
         tg_user_id=123456789,
@@ -458,25 +501,25 @@ async def sample_master(session: AsyncSession, sample_city, sample_district, sam
         has_vehicle=True,
         rating=4.5,
     )
-    session.add(master)
-    await session.commit()
-    await session.refresh(master)
+    async_session.add(master)
+    await async_session.commit()
+    await async_session.refresh(master)
 
     # Связываем мастера с районом
     master_district = m.master_districts(
         master_id=master.id,
         district_id=sample_district.id,
     )
-    session.add(master_district)
+    async_session.add(master_district)
 
     # Связываем мастера с навыком
     master_skill = m.master_skills(
         master_id=master.id,
         skill_id=sample_skill.id,
     )
-    session.add(master_skill)
+    async_session.add(master_skill)
 
-    await session.commit()
+    await async_session.commit()
     return master
 
 

@@ -28,7 +28,7 @@ async def _get_db_now(session):
 
 
 @pytest.mark.asyncio
-async def test_metrics_recorded_on_offer_accept(session, clean_db):
+async def test_metrics_recorded_on_offer_accept(session):
     """
     Тест: При принятии оффера мастером записываются метрики.
     """
@@ -123,7 +123,7 @@ async def test_metrics_recorded_on_offer_accept(session, clean_db):
 
 
 @pytest.mark.asyncio
-async def test_metrics_recorded_on_manual_assign(session, clean_db):
+async def test_metrics_recorded_on_manual_assign(session):
     """
     Тест: При ручном назначении админом записываются метрики.
     """
@@ -209,7 +209,7 @@ async def test_metrics_recorded_on_manual_assign(session, clean_db):
 
 
 @pytest.mark.asyncio
-async def test_metrics_service_get_stats(session, clean_db):
+async def test_metrics_service_get_stats(session):
     """
     Тест: Сервис аналитики правильно считает статистику.
     """
@@ -258,7 +258,7 @@ async def test_metrics_service_get_stats(session, clean_db):
 
 
 @pytest.mark.asyncio
-async def test_metrics_service_city_performance(session, clean_db):
+async def test_metrics_service_city_performance(session):
     """
     Тест: Сервис аналитики возвращает статистику по городам.
     """
@@ -325,7 +325,7 @@ async def test_metrics_service_city_performance(session, clean_db):
 
 
 @pytest.mark.asyncio
-async def test_metrics_with_preferred_master(session, clean_db):
+async def test_metrics_with_preferred_master(session):
     """
     Тест: Метрики корректно отражают использование preferred мастера.
     """

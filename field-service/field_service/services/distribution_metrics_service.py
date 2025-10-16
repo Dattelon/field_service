@@ -1,4 +1,4 @@
-"""Сервис аналитики метрик распределения заказов."""
+"""    ."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -17,33 +17,33 @@ UTC = timezone.utc
 
 @dataclass
 class DistributionStats:
-    """Статистика распределения за период."""
+    """   ."""
     total_assignments: int
     avg_time_to_assign: float
     avg_round_number: float
     avg_candidates: float
     
-    # Процент использования preferred мастера
+    #   preferred 
     preferred_used_pct: float
     
-    # Процент эскалаций
+    #  
     escalated_to_logist_pct: float
     escalated_to_admin_pct: float
     
-    # Распределение по раундам
+    #   
     round_1_pct: float
     round_2_pct: float
     round_3_plus_pct: float
     
-    # Распределение по времени назначения
-    fast_assign_pct: float  # < 2 минуты
-    medium_assign_pct: float  # 2-5 минут
-    slow_assign_pct: float  # > 5 минут
+    #    
+    fast_assign_pct: float  # < 2 
+    medium_assign_pct: float  # 2-5 
+    slow_assign_pct: float  # > 5 
 
 
 @dataclass
 class CityPerformance:
-    """Производительность распределения по городу."""
+    """   ."""
     city_id: int
     city_name: str
     total_assignments: int
@@ -53,7 +53,7 @@ class CityPerformance:
 
 @dataclass
 class MasterPerformance:
-    """Производительность мастера в распределении."""
+    """   ."""
     master_id: int
     master_name: str
     total_assignments: int
@@ -64,7 +64,7 @@ class MasterPerformance:
 
 
 class DistributionMetricsService:
-    """Сервис для работы с метриками распределения."""
+    """     ."""
     
     def __init__(self, session_factory=SessionLocal):
         self._session_factory = session_factory
@@ -77,12 +77,12 @@ class DistributionMetricsService:
         city_id: Optional[int] = None,
     ) -> DistributionStats:
         """
-        Получить статистику распределения за период.
+            .
         
         Args:
-            start_date: Начало периода (default: последние 7 дней)
-            end_date: Конец периода (default: сейчас)
-            city_id: Фильтр по городу (optional)
+            start_date:   (default:  7 )
+            end_date:   (default: )
+            city_id:    (optional)
         """
         if end_date is None:
             end_date = datetime.now(UTC)
@@ -90,7 +90,7 @@ class DistributionMetricsService:
             start_date = end_date - timedelta(days=7)
         
         async with self._session_factory() as session:
-            # Базовый фильтр
+            #  
             filters = [
                 m.distribution_metrics.assigned_at >= start_date,
                 m.distribution_metrics.assigned_at <= end_date,
@@ -98,7 +98,7 @@ class DistributionMetricsService:
             if city_id:
                 filters.append(m.distribution_metrics.city_id == city_id)
             
-            # Основные метрики
+            #  
             result = await session.execute(
                 select(
                     func.count(m.distribution_metrics.id).label('total'),
@@ -114,11 +114,11 @@ class DistributionMetricsService:
                     func.sum(
                         case((m.distribution_metrics.was_escalated_to_admin == True, 1), else_=0)
                     ).label('admin_escalations'),
-                    # Распределение по раундам
+                    #   
                     func.sum(case((m.distribution_metrics.round_number == 1, 1), else_=0)).label('round_1'),
                     func.sum(case((m.distribution_metrics.round_number == 2, 1), else_=0)).label('round_2'),
                     func.sum(case((m.distribution_metrics.round_number >= 3, 1), else_=0)).label('round_3_plus'),
-                    # Распределение по времени
+                    #   
                     func.sum(
                         case((m.distribution_metrics.time_to_assign_seconds < 120, 1), else_=0)
                     ).label('fast_count'),
@@ -176,7 +176,7 @@ class DistributionMetricsService:
         end_date: Optional[datetime] = None,
         limit: int = 20,
     ) -> List[CityPerformance]:
-        """Получить статистику по городам."""
+        """   ."""
         if end_date is None:
             end_date = datetime.now(UTC)
         if start_date is None:
@@ -229,7 +229,7 @@ class DistributionMetricsService:
         master_id: Optional[int] = None,
         limit: int = 50,
     ) -> List[MasterPerformance]:
-        """Получить статистику по мастерам."""
+        """   ."""
         if end_date is None:
             end_date = datetime.now(UTC)
         if start_date is None:
@@ -291,7 +291,7 @@ class DistributionMetricsService:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
     ) -> Dict[int, int]:
-        """Получить распределение назначений по часам суток."""
+        """     ."""
         if end_date is None:
             end_date = datetime.now(UTC)
         if start_date is None:
@@ -314,3 +314,85 @@ class DistributionMetricsService:
             )
             
             return {int(row.hour): row.count for row in result}
+
+    async def record_assignment(
+        self,
+        *,
+        order_id: int,
+        master_id: int,
+        round_number: int,
+        candidates_count: int,
+        time_to_assign_seconds: Optional[int],
+        preferred_master_used: bool,
+        was_escalated_to_logist: bool,
+        was_escalated_to_admin: bool,
+        city_id: int,
+        district_id: Optional[int],
+        category: m.OrderCategory,
+        order_type: m.OrderType,
+        metadata_json: Optional[Dict[str, Any]] = None,
+        session: Optional[AsyncSession] = None,
+    ) -> None:
+        """
+        Записывает метрику назначения заказа мастеру.
+        
+        Args:
+            order_id: ID заказа
+            master_id: ID мастера
+            round_number: Номер раунда распределения
+            candidates_count: Количество кандидатов
+            time_to_assign_seconds: Время до назначения (секунды)
+            preferred_master_used: Использован ли preferred_master
+            was_escalated_to_logist: Была ли эскалация логисту
+            was_escalated_to_admin: Была ли эскалация админу
+            city_id: ID города
+            district_id: ID района (optional)
+            category: Категория заказа
+            order_type: Тип заказа
+            metadata_json: Дополнительные метаданные
+            session: Опциональная сессия (если None - создаётся новая)
+        """
+        from sqlalchemy import insert
+        
+        # Если передана сессия - используем её, иначе создаём свою
+        if session is not None:
+            await session.execute(
+                insert(m.distribution_metrics).values(
+                    order_id=order_id,
+                    master_id=master_id,
+                    assigned_at=datetime.now(UTC),
+                    round_number=round_number,
+                    candidates_count=candidates_count,
+                    time_to_assign_seconds=time_to_assign_seconds,
+                    preferred_master_used=preferred_master_used,
+                    was_escalated_to_logist=was_escalated_to_logist,
+                    was_escalated_to_admin=was_escalated_to_admin,
+                    city_id=city_id,
+                    district_id=district_id,
+                    category=category.value if hasattr(category, 'value') else str(category),
+                    order_type=order_type.value if hasattr(order_type, 'value') else str(order_type),
+                    metadata_json=metadata_json or {},
+                )
+            )
+            # НЕ делаем commit - это ответственность вызывающего кода
+        else:
+            async with self._session_factory() as new_session:
+                await new_session.execute(
+                    insert(m.distribution_metrics).values(
+                        order_id=order_id,
+                        master_id=master_id,
+                        assigned_at=datetime.now(UTC),
+                        round_number=round_number,
+                        candidates_count=candidates_count,
+                        time_to_assign_seconds=time_to_assign_seconds,
+                        preferred_master_used=preferred_master_used,
+                        was_escalated_to_logist=was_escalated_to_logist,
+                        was_escalated_to_admin=was_escalated_to_admin,
+                        city_id=city_id,
+                        district_id=district_id,
+                        category=category.value if hasattr(category, 'value') else str(category),
+                        order_type=order_type.value if hasattr(order_type, 'value') else str(order_type),
+                        metadata_json=metadata_json or {},
+                    )
+                )
+                await new_session.commit()

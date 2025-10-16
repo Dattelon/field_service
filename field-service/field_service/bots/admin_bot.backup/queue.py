@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import html
 from datetime import datetime, date
@@ -170,12 +170,12 @@ def _manual_candidates_text(order: OrderCard, masters: Sequence[MasterBrief], pa
     return "\n".join(lines)
 
 CATEGORY_CHOICES: tuple[tuple[OrderCategory, str], ...] = (
-    (OrderCategory.ELECTRICS, "Электрика"),
-    (OrderCategory.PLUMBING, "Сантехника"),
-    (OrderCategory.APPLIANCES, "Бытовая техника"),
-    (OrderCategory.WINDOWS, "Окна и двери"),
-    (OrderCategory.HANDYMAN, "Универсал на час"),
-    (OrderCategory.ROADSIDE, "Автопомощь"),
+    (OrderCategory.ELECTRICS, ""),
+    (OrderCategory.PLUMBING, ""),
+    (OrderCategory.APPLIANCES, " "),
+    (OrderCategory.WINDOWS, "  "),
+    (OrderCategory.HANDYMAN, "  "),
+    (OrderCategory.ROADSIDE, ""),
 )
 CATEGORY_LABELS = {category: label for category, label in CATEGORY_CHOICES}
 CATEGORY_LABELS_BY_VALUE = {category.value: label for category, label in CATEGORY_CHOICES}
@@ -228,7 +228,7 @@ def _format_order_card_text(
     description_line = html.escape(description) if description else "-"
 
     is_guarantee = order.order_type is OrderType.GUARANTEE
-    type_label = order.type if not is_guarantee else f"{order.type} (гарантия)"
+    type_label = order.type if not is_guarantee else f"{order.type} ()"
     normalized_category = normalize_category(getattr(order, "category", None))
     if normalized_category is not None:
         category_label = CATEGORY_LABELS.get(normalized_category, normalized_category.value)
@@ -237,27 +237,27 @@ def _format_order_card_text(
         category_label = str(raw_cat)
 
     lines_out = [
-        f"<b>Заявка #{order.id}</b>",
-        f"Статус: {html.escape(order.status)}",
-        f"Тип: {html.escape(type_label)}",
-        f"Категория: {html.escape(category_label)}",
-        f"Слот: {html.escape(order.timeslot_local) if order.timeslot_local else '-'}",
-        f"Адрес: {html.escape(address)}",
+        f"<b> #{order.id}</b>",
+        f": {html.escape(order.status)}",
+        f": {html.escape(type_label)}",
+        f": {html.escape(category_label)}",
+        f": {html.escape(order.timeslot_local) if order.timeslot_local else '-'}",
+        f": {html.escape(address)}",
     ]
     if is_guarantee:
-        lines_out.append("<b>Гарантия по предыдущему заказу</b>")
+        lines_out.append("<b>   </b>")
 
-    lines_out.append(f"Вложения: {len(order.attachments)}")
+    lines_out.append(f": {len(order.attachments)}")
     lines_out.append("")
-    lines_out.append("<b>Клиент</b>")
-    lines_out.append(f"Контакт: {client_line}")
-    master_display = master_line if master_line else "пока не назначен"
-    lines_out.append(f"Мастер: {master_display}")
+    lines_out.append("<b></b>")
+    lines_out.append(f": {client_line}")
+    master_display = master_line if master_line else "  "
+    lines_out.append(f": {master_display}")
     lines_out.append("")
-    lines_out.append("<b>Описание</b>")
+    lines_out.append("<b></b>")
     lines_out.append(description_line)
     lines_out.append("")
-    lines_out.append("<b>История статусов</b>")
+    lines_out.append("<b> </b>")
     if history:
         for item in history:
             when = item.changed_at_local or "-"
@@ -273,7 +273,7 @@ def _format_order_card_text(
             reason_part = f" - {item.reason}" if item.reason else ""
             lines_out.append(f"- {when}: {transition}{actor_part}{reason_part}")
     else:
-        lines_out.append("История пуста")
+        lines_out.append(" ")
 
     return "\n".join(lines_out)
 
@@ -282,7 +282,7 @@ def _order_card_markup(order: OrderDetail, *, show_guarantee: bool = False) -> I
     status = (order.status or '').upper()
     allow_return = status not in {'CANCELED', 'CLOSED'}
     allow_cancel = status not in {'CANCELED', 'CLOSED'}
-    is_deferred = status == 'DEFERRED'  # ⚠️ Новый параметр
+    is_deferred = status == 'DEFERRED'  #   
     return order_card_keyboard(
         order.id,
         attachments=order.attachments,
@@ -398,7 +398,7 @@ async def _format_filters_text(
 ) -> str:
     lines: list[str] = []
     if include_header:
-        lines.append("<b>🔧 Фильтры очереди</b>")
+        lines.append("<b>  </b>")
     
     city_text = ""
     if filters.city_id:
@@ -414,11 +414,11 @@ async def _format_filters_text(
     date_value = filters.date.isoformat() if filters.date else ""
     
     lines.extend([
-        f"🏙 Город: {city_text}",
-        f"📂 Категория: {category_text}",
-        f"📊 Статус: {status_text}",
-        f"👷 Мастер: {master_text}",
-        f"📅 Дата: {date_value}",
+        f" : {city_text}",
+        f" : {category_text}",
+        f" : {status_text}",
+        f" : {master_text}",
+        f" : {date_value}",
     ])
     return "\n".join(lines)
 
@@ -478,7 +478,7 @@ async def _render_city_selection(message: Message, staff: StaffUser, state: FSMC
     filters = await load_queue_filters(state)
     await _edit_or_reply(
         message,
-        "🏙 Выберите город:",
+        "  :",
         _city_keyboard(cities, filters.city_id),
         state
     )
@@ -526,15 +526,15 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
     filters_text = await _format_filters_text(
         staff, filters, orders_service, include_header=False
     )
-    lines = ["<b>📦 Очередь заявок</b>", filters_text]
+    lines = ["<b>  </b>", filters_text]
     if items:
         lines.append("")
         lines.extend(_format_order_line(item) for item in items)
     else:
         lines.append("")
-        lines.append("💭 Список пуст")
+        lines.append("  ")
     lines.append("")
-    lines.append(f"📄 Страница: {page}")
+    lines.append(f" : {page}")
     text = "\n".join(lines)
 
     markup = queue_list_keyboard(items, page=page, has_next=has_next)
@@ -544,13 +544,13 @@ async def _render_queue_list(message: Message, staff: StaffUser, state: FSMConte
 
 
 
-# P1-9: Функция для меню очереди
+# P1-9:    
 def _queue_menu_markup() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="🔍 Поиск по ID", callback_data="adm:q:search")
-    builder.button(text="🔧 Фильтры", callback_data="adm:q:flt")
-    builder.button(text="📋 Открыть очередь", callback_data="adm:orders:queue:1")
-    builder.button(text="🏠 В меню", callback_data="adm:menu")
+    builder.button(text="   ID", callback_data="adm:q:search")
+    builder.button(text=" ", callback_data="adm:q:flt")
+    builder.button(text="  ", callback_data="adm:orders:queue:1")
+    builder.button(text="  ", callback_data="adm:menu")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -588,7 +588,7 @@ async def cb_orders_queue_list(cq: CallbackQuery, staff: StaffUser, state: FSMCo
     try:
         page = int(cq.data.split(":")[3])
     except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверная страница", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     await _render_queue_list(cq.message, staff, state, page)
@@ -604,7 +604,7 @@ async def cb_orders_warranty_list(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         page = int(cq.data.split(":")[3])
     except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверная страница", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
@@ -616,15 +616,15 @@ async def cb_orders_warranty_list(cq: CallbackQuery, staff: StaffUser) -> None:
         page_size=QUEUE_PAGE_SIZE,
     )
 
-    lines = ["<b>🛡 Заявки на гарантии</b>"]
+    lines = ["<b>   </b>"]
     if items:
         lines.append("")
         lines.extend(_format_order_line(item) for item in items)
     else:
         lines.append("")
-        lines.append("💭 Список пуст")
+        lines.append("  ")
     lines.append("")
-    lines.append(f"📄 Страница: {page}")
+    lines.append(f" : {page}")
 
     text = "\n".join(lines)
 
@@ -637,16 +637,16 @@ async def cb_orders_warranty_list(cq: CallbackQuery, staff: StaffUser) -> None:
     nav = InlineKeyboardBuilder()
     nav_count = 0
     if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:orders:warranty:{page - 1}")
+        nav.button(text=" ", callback_data=f"adm:orders:warranty:{page - 1}")
         nav_count += 1
     if has_next:
-        nav.button(text="▶️ Далее", callback_data=f"adm:orders:warranty:{page + 1}")
+        nav.button(text=" ", callback_data=f"adm:orders:warranty:{page + 1}")
         nav_count += 1
     if nav_count:
         nav.adjust(nav_count)
         kb.attach(nav)
 
-    kb.button(text="⬅️ Назад", callback_data="adm:orders_menu")
+    kb.button(text=" ", callback_data="adm:orders_menu")
     markup = kb.as_markup()
 
     try:
@@ -667,7 +667,7 @@ async def cb_orders_closed_list(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         page = int(cq.data.split(":")[3])
     except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверная страница", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
@@ -679,15 +679,15 @@ async def cb_orders_closed_list(cq: CallbackQuery, staff: StaffUser) -> None:
         page_size=QUEUE_PAGE_SIZE,
     )
 
-    lines = ["<b>✅ Закрытые заявки</b>"]
+    lines = ["<b>  </b>"]
     if items:
         lines.append("")
         lines.extend(_format_order_line(item) for item in items)
     else:
         lines.append("")
-        lines.append("💭 Список пуст")
+        lines.append("  ")
     lines.append("")
-    lines.append(f"📄 Страница: {page}")
+    lines.append(f" : {page}")
 
     text = "\n".join(lines)
 
@@ -700,16 +700,16 @@ async def cb_orders_closed_list(cq: CallbackQuery, staff: StaffUser) -> None:
     nav = InlineKeyboardBuilder()
     nav_count = 0
     if page > 1:
-        nav.button(text="◀️ Назад", callback_data=f"adm:orders:closed:{page - 1}")
+        nav.button(text=" ", callback_data=f"adm:orders:closed:{page - 1}")
         nav_count += 1
     if has_next:
-        nav.button(text="▶️ Далее", callback_data=f"adm:orders:closed:{page + 1}")
+        nav.button(text=" ", callback_data=f"adm:orders:closed:{page + 1}")
         nav_count += 1
     if nav_count:
         nav.adjust(nav_count)
         kb.attach(nav)
 
-    kb.button(text="⬅️ Назад", callback_data="adm:orders_menu")
+    kb.button(text=" ", callback_data="adm:orders_menu")
     markup = kb.as_markup()
 
     try:
@@ -726,7 +726,7 @@ async def cb_orders_closed_list(cq: CallbackQuery, staff: StaffUser) -> None:
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    await cq.message.edit_text("📦 <b>Очередь заказов</b>", reply_markup=_queue_menu_markup(), parse_mode="HTML")
+    await cq.message.edit_text(" <b> </b>", reply_markup=_queue_menu_markup(), parse_mode="HTML")
     await _safe_answer(cq)
 
 
@@ -763,7 +763,7 @@ async def cb_queue_filters_city_pick(cq: CallbackQuery, staff: StaffUser, state:
         try:
             filters.city_id = int(payload)
         except ValueError:
-            await _safe_answer(cq, "❌ Неверный ID города", show_alert=True)
+            await _safe_answer(cq, "  ID ", show_alert=True)
             return
     
     await save_queue_filters(state, filters)
@@ -784,7 +784,7 @@ async def cb_queue_filters_category(cq: CallbackQuery, staff: StaffUser, state: 
         prefix="adm:q:flt:cat",
         selected=selected_value,
         state=state,
-        title="📂 Выберите категорию:",
+        title="  :",
     )
     await _safe_answer(cq)
 
@@ -801,7 +801,7 @@ async def cb_queue_filters_category_pick(cq: CallbackQuery, staff: StaffUser, st
         filters.category = None
     else:
         if value not in CATEGORY_VALUE_MAP:
-            await _safe_answer(cq, "❌ Неверная категория", show_alert=True)
+            await _safe_answer(cq, "  ", show_alert=True)
             return
         filters.category = CATEGORY_VALUE_MAP[value]
     
@@ -823,7 +823,7 @@ async def cb_queue_filters_status(cq: CallbackQuery, staff: StaffUser, state: FS
         prefix="adm:q:flt:st",
         selected=selected_value,
         state=state,
-        title="📊 Выберите статус:",
+        title="  :",
     )
     await _safe_answer(cq)
 
@@ -841,7 +841,7 @@ async def cb_queue_filters_status_pick(cq: CallbackQuery, staff: StaffUser, stat
     else:
         status_enum = normalize_status(value)
         if not status_enum:
-            await _safe_answer(cq, "❌ Неверный статус", show_alert=True)
+            await _safe_answer(cq, "  ", show_alert=True)
             return
         filters.status = status_enum
     
@@ -871,7 +871,7 @@ async def cb_queue_filters_master_input(msg: Message, staff: StaffUser, state: F
         filters.master_id = None
     else:
         if not text.isdigit():
-            await msg.answer("❌ ID мастера должен быть числом. Введите число или '-' для сброса.")
+            await msg.answer(" ID    .    '-'  .")
             return
         filters.master_id = int(text)
     
@@ -911,7 +911,7 @@ async def cb_queue_filters_date_input(msg: Message, staff: StaffUser, state: FSM
         try:
             filters.date = date.fromisoformat(text)
         except ValueError:
-            await msg.answer("❌ Неверный формат даты. Используйте YYYY-MM-DD или '-' для сброса.")
+            await msg.answer("   .  YYYY-MM-DD  '-'  .")
             return
     
     # Save message ref before clearing state
@@ -935,7 +935,7 @@ async def cb_queue_filters_reset(cq: CallbackQuery, staff: StaffUser, state: FSM
     filters = QueueFilters()  # Create default filters
     await save_queue_filters(state, filters)
     await _render_filters_menu(cq.message, staff, state)
-    await _safe_answer(cq, "🔄 Фильтры сброшены")
+    await _safe_answer(cq, "  ")
 
 
 @queue_router.callback_query(
@@ -1035,41 +1035,41 @@ async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         order_id = int(parts[4])
     except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверный формат", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
     distribution_service = get_service(cq.message.bot, "distribution_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "Нет доступа к этому городу", show_alert=True)
+        await _safe_answer(cq, "    ", show_alert=True)
         return
 
-    # ⚠️ ПРОВЕРКА СТАТУСА DEFERRED
+    #    DEFERRED
     if (order.status or "").upper() == "DEFERRED":
         from aiogram.utils.keyboard import InlineKeyboardBuilder
         
         builder = InlineKeyboardBuilder()
-        builder.button(text="✅ Да, запустить", callback_data=f"adm:q:as:auto:force:{order_id}")
-        builder.button(text="❌ Отмена", callback_data=f"adm:q:card:{order_id}")
+        builder.button(text=" , ", callback_data=f"adm:q:as:auto:force:{order_id}")
+        builder.button(text=" ", callback_data=f"adm:q:card:{order_id}")
         builder.adjust(2)
         
         try:
             await cq.message.edit_text(
-                f"⚠️ <b>Заказ #{order.id} в статусе ОТЛОЖЕН</b>\n\n"
-                "Сейчас нерабочее время. Автораспределение может не найти мастеров.\n\n"
-                "Запустить распределение сейчас?",
+                f" <b> #{order.id}   </b>\n\n"
+                "  .     .\n\n"
+                "  ?",
                 reply_markup=builder.as_markup(),
                 parse_mode="HTML",
             )
         except TelegramBadRequest:
             await cq.message.answer(
-                f"⚠️ <b>Заказ #{order.id} в статусе ОТЛОЖЕН</b>\n\n"
-                "Сейчас нерабочее время. Автораспределение может не найти мастеров.\n\n"
-                "Запустить распределение сейчас?",
+                f" <b> #{order.id}   </b>\n\n"
+                "  .     .\n\n"
+                "  ?",
                 reply_markup=builder.as_markup(),
                 parse_mode="HTML",
             )
@@ -1111,39 +1111,39 @@ async def cb_queue_assign_auto(cq: CallbackQuery, staff: StaffUser) -> None:
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_assign_auto_force(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Принудительное автораспределение для DEFERRED заказов."""
+    """   DEFERRED ."""
     parts = cq.data.split(":")
     try:
         order_id = int(parts[5])
     except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверный формат", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
     distribution_service = get_service(cq.message.bot, "distribution_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "Нет доступа к этому городу", show_alert=True)
+        await _safe_answer(cq, "    ", show_alert=True)
         return
 
     ok, result = await distribution_service.assign_auto(order_id, staff.id)
 
-    lines: list[str] = [f"Заказ #{order.id}"]
-    lines.append("Автораспределение запущено." if ok else "Не удалось запустить распределение.")
+    lines: list[str] = [f" #{order.id}"]
+    lines.append(" ." if ok else "   .")
     lines.append("")
     lines.append(result.message)
     if not ok and result.code == "no_candidates":
         lines.append("")
-        lines.append("Нет доступных мастеров. Попробуйте назначить вручную.")
+        lines.append("  .   .")
 
     text_body = "\n".join(lines)
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="Карточка заказа", callback_data=f"adm:q:card:{order_id}")
-    builder.button(text="Назначение", callback_data=f"adm:q:as:{order_id}")
+    builder.button(text=" ", callback_data=f"adm:q:card:{order_id}")
+    builder.button(text="", callback_data=f"adm:q:as:{order_id}")
     builder.adjust(1)
 
     try:
@@ -1153,7 +1153,7 @@ async def cb_queue_assign_auto_force(cq: CallbackQuery, staff: StaffUser) -> Non
             await cq.message.answer(text_body, reply_markup=builder.as_markup(), parse_mode="HTML")
 
     if ok:
-        await _safe_answer(cq, "Распределение запущено", show_alert=False)
+        await _safe_answer(cq, " ", show_alert=False)
     else:
         alert_codes = {"no_district", "no_category", "forbidden", "not_found", "offer_conflict"}
         await _safe_answer(cq, result.message, show_alert=result.code in alert_codes)
@@ -1172,22 +1172,22 @@ async def cb_queue_assign_manual_list(
         order_id = int(parts[4])
         page = int(parts[5])
     except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверный формат", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "Нет доступа к этому городу", show_alert=True)
+        await _safe_answer(cq, "    ", show_alert=True)
         return
 
-    # ⚠️ ПРЕДУПРЕЖДЕНИЕ ДЛЯ DEFERRED
+    #    DEFERRED
     warning_prefix = ""
     if (order.status or "").upper() == "DEFERRED":
-        warning_prefix = "⚠️ <b>Заказ сейчас ОТЛОЖЕН (нерабочее время)</b>\n\n"
+        warning_prefix = " <b>   ( )</b>\n\n"
 
     masters, has_next = await orders_service.manual_candidates(
         order_id,
@@ -1408,34 +1408,34 @@ async def cb_queue_assign_manual_pick(
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_activate_deferred(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Активировать DEFERRED заказ (перевести в PENDING)."""
+    """ DEFERRED  (  PENDING)."""
     parts = cq.data.split(":")
     try:
         order_id = int(parts[3])
     except (IndexError, ValueError):
-        await _safe_answer(cq, "Неверный формат", show_alert=True)
+        await _safe_answer(cq, " ", show_alert=True)
         return
 
     orders_service = get_service(cq.message.bot, "orders_service")
     order = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not order:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "Нет доступа к этому городу", show_alert=True)
+        await _safe_answer(cq, "    ", show_alert=True)
         return
 
-    # Переводим DEFERRED → PENDING
+    #  DEFERRED  PENDING
     ok = await orders_service.activate_deferred_order(order_id, staff.id)
     
     if not ok:
-        await _safe_answer(cq, "Не удалось активировать заказ", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
     
-    # Обновляем карточку
+    #  
     updated = await _call_service(orders_service.get_card, order_id, city_ids=visible_city_ids_for(staff))
     if not updated:
-        await _safe_answer(cq, "Заказ не найден", show_alert=True)
+        await _safe_answer(cq, "  ", show_alert=True)
         return
     
     history = await _call_service(
@@ -1447,7 +1447,7 @@ async def cb_queue_activate_deferred(cq: CallbackQuery, staff: StaffUser) -> Non
     
     show_guarantee = await _should_show_guarantee_button(updated, orders_service, visible_city_ids_for(staff))
     await _render_order_card(cq.message, updated, history, show_guarantee=show_guarantee)
-    await _safe_answer(cq, "✅ Заказ переведён в активный поиск")
+    await _safe_answer(cq, "     ")
 
 
 @queue_router.callback_query(
@@ -1543,7 +1543,7 @@ async def cb_queue_cancel_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
     try:
         order_id = int(parts[3])
     except (IndexError, ValueError):
-        await _safe_answer(cq, "❌ Неверный ID заказа", show_alert=True)
+        await _safe_answer(cq, "  ID ", show_alert=True)
         return
     
     orders_service = get_service(cq.message.bot, "orders_service")
@@ -1554,20 +1554,20 @@ async def cb_queue_cancel_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
     )
     
     if not order:
-        await _safe_answer(cq, "❌ Заказ не найден", show_alert=True)
+        await _safe_answer(cq, "   ", show_alert=True)
         return
     
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
-        await _safe_answer(cq, "❌ Нет доступа к этому городу", show_alert=True)
+        await _safe_answer(cq, "     ", show_alert=True)
         return
     
     await state.set_state(QueueActionFSM.cancel_reason)
     await save_cancel_state(state, order_id, cq.message.chat.id, cq.message.message_id)
     
     await cq.message.edit_text(
-        f"📝 Введите причину отмены заказа #{order_id}\n\n"
-        f"Минимум {CANCEL_REASON_MIN} символов (или пустое сообщение для пропуска).\n"
-        f"Для отмены введите /cancel",
+        f"     #{order_id}\n\n"
+        f" {CANCEL_REASON_MIN}  (    ).\n"
+        f"   /cancel",
         reply_markup=queue_cancel_keyboard(order_id),
         parse_mode="HTML",
     )
@@ -1611,7 +1611,7 @@ async def queue_cancel_abort(msg: Message, staff: StaffUser, state: FSMContext) 
     cancel_state = await load_cancel_state(state)
     await _clear_cancel_state(state)
     
-    await msg.answer("🔙 Отмена прервана.")
+    await msg.answer("  .")
     
     if not cancel_state:
         return
@@ -1673,8 +1673,8 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
     # Validate reason length
     if text_raw.strip() and len(text_raw.strip()) < CANCEL_REASON_MIN:
         await msg.answer(
-            f"❌ Причина отмены должна содержать минимум {CANCEL_REASON_MIN} символов "
-            f"(максимум {CANCEL_REASON_MAX})."
+            f"      {CANCEL_REASON_MIN}  "
+            f"( {CANCEL_REASON_MAX})."
         )
         return
     
@@ -1682,7 +1682,7 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
     
     if not cancel_state:
         await _clear_cancel_state(state)
-        await msg.answer("❌ Ошибка: не найдено состояние отмены. Попробуйте снова.")
+        await msg.answer(" :    .  .")
         return
     orders_service = get_service(msg.bot, "orders_service")
     order = await _call_service(
@@ -1693,12 +1693,12 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
     
     if not order:
         await _clear_cancel_state(state)
-        await msg.answer("❌ Заказ не найден.")
+        await msg.answer("   .")
         return
     
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
         await _clear_cancel_state(state)
-        await msg.answer("❌ Нет доступа к этому городу.")
+        await msg.answer("     .")
         return
     
     ok = await orders_service.cancel(
@@ -1708,9 +1708,9 @@ async def queue_cancel_reason(msg: Message, staff: StaffUser, state: FSMContext)
     )
     
     if ok:
-        await msg.answer(f"✅ Заказ #{cancel_state.order_id} отменён.")
+        await msg.answer(f"  #{cancel_state.order_id} .")
     else:
-        await msg.answer("❌ Не удалось отменить заказ.")
+        await msg.answer("    .")
     
     updated = await _call_service(
         orders_service.get_card,
@@ -1784,20 +1784,20 @@ async def cb_queue_attachment(cq: CallbackQuery, staff: StaffUser) -> None:
         return
     await _safe_answer(cq)
 
-# P1-9: ПОИСК ЗАКАЗА ПО ID
+# P1-9:    ID
 @queue_router.callback_query(
     F.data == "adm:q:search",
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_search_start(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """P1-9: Начать поиск заказа по ID."""
+    """P1-9:     ID."""
     await state.set_state(QueueActionFSM.search_by_id)
     await cq.message.answer(
-        "📋 <b>Поиск заказа по ID</b>\n\n"
-        "Введите номер заказа (например, 12345) или '-' для отмены.",
+        " <b>   ID</b>\n\n"
+        "   (, 12345)  '-'  .",
         parse_mode="HTML",
     )
-    await _safe_answer(cq, "Введите ID заказа")
+    await _safe_answer(cq, " ID ")
 
 
 @queue_router.message(
@@ -1806,9 +1806,9 @@ async def cb_queue_search_start(cq: CallbackQuery, staff: StaffUser, state: FSMC
     F.text == "-",
 )
 async def queue_search_cancel(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    """P1-9: Отменить поиск."""
+    """P1-9:  ."""
     await state.set_state(None)
-    await msg.answer("🔙 Поиск отменён.")
+    await msg.answer("  .")
 
 
 @queue_router.message(
@@ -1816,21 +1816,21 @@ async def queue_search_cancel(msg: Message, staff: StaffUser, state: FSMContext)
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) -> None:
-    """P1-9: Поиск заказа по ID."""
+    """P1-9:    ID."""
     text = (msg.text or "").strip()
     
-    # Валидация ID
+    #  ID
     if not text.isdigit():
         await msg.answer(
-            "⚠️ ID заказа должен быть числом.\n"
-            "Попробуйте ещё раз или введите '-' для отмены."
+            " ID    .\n"
+            "     '-'  ."
         )
         return
     
     order_id = int(text)
     await state.set_state(None)
     
-    # Загрузить заказ
+    #  
     orders_service = get_service(msg.bot, "orders_service")
     order = await _call_service(
         orders_service.get_card,
@@ -1840,28 +1840,28 @@ async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) 
     
     if not order:
         builder = InlineKeyboardBuilder()
-        builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
-        builder.button(text="🏠 В меню", callback_data="adm:menu")
+        builder.button(text="  ", callback_data="adm:q:search")
+        builder.button(text="  ", callback_data="adm:menu")
         builder.adjust(1)
         await msg.answer(
-            f"❌ Заказ #{order_id} не найден или у вас нет доступа к этому городу.",
+            f"  #{order_id}          .",
             reply_markup=builder.as_markup()
         )
         return
     
-    # Проверить доступ (дополнительная проверка)
+    #   ( )
     if staff.role is not StaffRole.GLOBAL_ADMIN and order.city_id not in staff.city_ids:
         builder = InlineKeyboardBuilder()
-        builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
-        builder.button(text="🏠 В меню", callback_data="adm:menu")
+        builder.button(text="  ", callback_data="adm:q:search")
+        builder.button(text="  ", callback_data="adm:menu")
         builder.adjust(1)
         await msg.answer(
-            f"❌ Заказ #{order_id} находится в городе, к которому у вас нет доступа.",
+            f"  #{order_id}   ,      .",
             reply_markup=builder.as_markup()
         )
         return
     
-    # Загрузить историю и отобразить карточку
+    #     
     history = await _call_service(
         orders_service.list_status_history,
         order_id,
@@ -1875,18 +1875,18 @@ async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) 
         visible_city_ids_for(staff)
     )
     
-    # Отправить карточку
+    #  
     text_body = _format_order_card_text(order, history)
     markup = _order_card_markup(order, show_guarantee=show_guarantee)
     
     await msg.answer(text_body, reply_markup=markup, parse_mode="HTML")
     
-    # Подтверждение
+    # 
     builder = InlineKeyboardBuilder()
-    builder.button(text="🔍 Искать другой", callback_data="adm:q:search")
+    builder.button(text="  ", callback_data="adm:q:search")
     builder.adjust(1)
     await msg.answer(
-        f"✅ Найден заказ #{order_id}",
+        f"   #{order_id}",
         reply_markup=builder.as_markup()
     )
 
@@ -1896,5 +1896,5 @@ async def queue_search_by_id(msg: Message, staff: StaffUser, state: FSMContext) 
     StaffRoleFilter(_ALLOWED_ROLES),
 )
 async def cb_queue_back(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    await cq.message.edit_text("📦 <b>Очередь заказов</b>", reply_markup=_queue_menu_markup(), parse_mode="HTML")
+    await cq.message.edit_text(" <b> </b>", reply_markup=_queue_menu_markup(), parse_mode="HTML")
     await _safe_answer(cq)

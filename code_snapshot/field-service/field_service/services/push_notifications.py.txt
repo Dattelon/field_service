@@ -1,7 +1,7 @@
 """
-P1-05: PUSH-УВЕДОМЛЕНИЯ КРИТИЧНЫХ СОБЫТИЙ
+P1-05: PUSH-  
 
-Расширение системы уведомлений для важных событий.
+     .
 """
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ from field_service.infra.notify import send_alert
 
 
 class NotificationEvent(str, Enum):
-    """Типы критичных уведомлений."""
-    # Для мастеров
+    """  ."""
+    #  
     MODERATION_APPROVED = "moderation_approved"
     MODERATION_REJECTED = "moderation_rejected"
     ACCOUNT_BLOCKED = "account_blocked"
@@ -27,64 +27,64 @@ class NotificationEvent(str, Enum):
     NEW_OFFER = "new_offer"
     LIMIT_CHANGED = "limit_changed"
     
-    # Для админов
+    #  
     ESCALATION_LOGIST = "escalation_logist"
     ESCALATION_ADMIN = "escalation_admin"
     COMMISSION_OVERDUE = "commission_overdue"
     
-    # Для логистов
+    #  
     UNASSIGNED_ORDERS = "unassigned_orders"
 
 
-# Шаблоны сообщений
+#  
 NOTIFICATION_TEMPLATES = {
     NotificationEvent.MODERATION_APPROVED: (
-        "✅ <b>Анкета одобрена!</b>\n\n"
-        "Теперь вы можете принимать заказы. "
-        "Включите смену в меню."
+        " <b> !</b>\n\n"
+        "    . "
+        "   ."
     ),
     NotificationEvent.MODERATION_REJECTED: (
-        "❌ <b>Анкета отклонена</b>\n\n"
-        "Причина: {reason}\n\n"
-        "Обратитесь в поддержку для уточнения."
+        " <b> </b>\n\n"
+        ": {reason}\n\n"
+        "    ."
     ),
     NotificationEvent.ACCOUNT_BLOCKED: (
-        "🚫 <b>Аккаунт заблокирован</b>\n\n"
-        "Причина: {reason}\n\n"
-        "Для разблокировки обратитесь в поддержку."
+        " <b> </b>\n\n"
+        ": {reason}\n\n"
+        "    ."
     ),
     NotificationEvent.ACCOUNT_UNBLOCKED: (
-        "✅ <b>Аккаунт разблокирован</b>\n\n"
-        "Вы снова можете принимать заказы."
+        " <b> </b>\n\n"
+        "    ."
     ),
     NotificationEvent.NEW_OFFER: (
-        "🆕 <b>Новый заказ #{order_id}</b>\n\n"
-        "📍 {city}, {district}\n"
-        "⏰ {timeslot}\n"
-        "🛠 {category}\n\n"
-        "Откройте бот для принятия заказа."
+        " <b>  #{order_id}</b>\n\n"
+        " {city}, {district}\n"
+        " {timeslot}\n"
+        " {category}\n\n"
+        "    ."
     ),
     NotificationEvent.LIMIT_CHANGED: (
-        "🎯 <b>Лимит активных заказов изменён</b>\n\n"
-        "Новый лимит: {limit}"
+        " <b>   </b>\n\n"
+        " : {limit}"
     ),
     NotificationEvent.ESCALATION_LOGIST: (
-        "⚠️ <b>Эскалация заказа #{order_id}</b>\n\n"
-        "Заказ не распределён. Требуется ручное назначение."
+        " <b>  #{order_id}</b>\n\n"
+        "  .   ."
     ),
     NotificationEvent.ESCALATION_ADMIN: (
-        "🚨 <b>Критическая эскалация #{order_id}</b>\n\n"
-        "Заказ не распределён после логиста. Срочное назначение!"
+        " <b>  #{order_id}</b>\n\n"
+        "    .  !"
     ),
     NotificationEvent.COMMISSION_OVERDUE: (
-        "⏱ <b>Просрочена комиссия #{commission_id}</b>\n\n"
-        "Заказ: #{order_id}\n"
-        "Мастер: {master_name} (#{master_id})\n"
-        "Мастер заблокирован автоматически."
+        " <b>  #{commission_id}</b>\n\n"
+        ": #{order_id}\n"
+        ": {master_name} (#{master_id})\n"
+        "  ."
     ),
     NotificationEvent.UNASSIGNED_ORDERS: (
-        "📋 <b>Нераспределённые заказы: {count}</b>\n\n"
-        "В очереди {count} заказов более 10 минут."
+        " <b> : {count}</b>\n\n"
+        "  {count}   10 ."
     ),
 }
 
@@ -97,17 +97,17 @@ async def notify_master(
     **kwargs: Any,
 ) -> None:
     """
-    Отправить уведомление мастеру через notifications_outbox.
+        notifications_outbox.
     
     Args:
-        session: Сессия БД
-        master_id: ID мастера
-        event: Тип события
-        **kwargs: Параметры для шаблона
+        session:  
+        master_id: ID 
+        event:  
+        **kwargs:   
     """
     template = NOTIFICATION_TEMPLATES.get(event)
     if not template:
-        template = "Уведомление: {event}"
+        template = ": {event}"
     
     try:
         message = template.format(event=event.value, **kwargs)
@@ -117,7 +117,7 @@ async def notify_master(
             f"Template error for {event}: missing key {exc}",
             level="ERROR"
         )
-        message = f"Уведомление: {event.value}"
+        message = f": {event.value}"
     
     await session.execute(
         insert(m.notifications_outbox).values(
@@ -142,17 +142,17 @@ async def notify_admin(
     **kwargs: Any,
 ) -> None:
     """
-    Отправить уведомление админам в канал алертов.
+         .
     
     Args:
-        bot: Экземпляр бота
-        alerts_chat_id: ID чата для алертов
-        event: Тип события
-        **kwargs: Параметры для шаблона
+        bot:  
+        alerts_chat_id: ID   
+        event:  
+        **kwargs:   
     """
     template = NOTIFICATION_TEMPLATES.get(event)
     if not template:
-        template = "Алерт: {event}"
+        template = ": {event}"
     
     try:
         message = template.format(event=event.value, **kwargs)
@@ -162,7 +162,7 @@ async def notify_admin(
             f"Template error for {event}: missing key {exc}",
             level="ERROR"
         )
-        message = f"Алерт: {event.value}"
+        message = f": {event.value}"
     
     try:
         await send_alert(bot, message, chat_id=alerts_chat_id)
@@ -187,18 +187,18 @@ async def notify_logist(
     **kwargs: Any,
 ) -> None:
     """
-    Отправить уведомление логистам (пока через тот же канал).
+       (    ).
     
-    В будущем можно создать отдельный канал для логистов.
+           .
     """
-    # Пока используем тот же канал что и админы
+    #        
     await notify_admin(bot, alerts_chat_id, event=event, **kwargs)
 
 
-# Примеры использования:
+#  :
 
 """
-# При одобрении мастера (admin_masters.py):
+#    (admin_masters.py):
 from field_service.services.push_notifications import notify_master, NotificationEvent
 
 await notify_master(
@@ -207,7 +207,7 @@ await notify_master(
     event=NotificationEvent.MODERATION_APPROVED,
 )
 
-# При эскалации (distribution_worker.py):
+#   (distribution_worker.py):
 from field_service.services.push_notifications import notify_admin, NotificationEvent
 
 await notify_admin(
@@ -217,12 +217,12 @@ await notify_admin(
     order_id=order_id,
 )
 
-# При просрочке комиссии (watchdogs.py):
+#    (watchdogs.py):
 await notify_master(
     session,
     master_id=master_id,
     event=NotificationEvent.ACCOUNT_BLOCKED,
-    reason="Просрочка оплаты комиссии",
+    reason="  ",
 )
 
 await notify_admin(
@@ -237,5 +237,5 @@ await notify_admin(
 """
 
 # Service initialization logging disabled for Windows console compatibility
-# print("✅ P1-05: PUSH-УВЕДОМЛЕНИЯ - сервис создан")
-# print("Интегрировать в существующие обработчики событий")
+# print(" P1-05: PUSH- -  ")
+# print("    ")

@@ -27,11 +27,11 @@ def _extract_user_id(event: TelegramObject) -> Optional[int]:
 def _extract_username(event: TelegramObject) -> Optional[str]:
     """Извлечь username пользователя из события."""
     if isinstance(event, Message):
-        return event.from_user.username if event.from_user else None
+        return getattr(event.from_user, "username", None) if event.from_user else None
     if isinstance(event, CallbackQuery):
-        return event.from_user.username if event.from_user else None
+        return getattr(event.from_user, "username", None) if event.from_user else None
     user = getattr(event, "from_user", None)
-    return user.username if user else None
+    return getattr(user, "username", None) if user else None
 
 
 def _extract_full_name(event: TelegramObject) -> Optional[str]:

@@ -3,10 +3,13 @@
 """
 
 import asyncio
+import pytest
 from tests.telegram_ui.bot_client import BotTestClient
 from tests.telegram_ui.config import MASTER_BOT_USERNAME, ADMIN_BOT_USERNAME
 
 
+@pytest.mark.telegram_ui
+@pytest.mark.asyncio
 async def test_master_bot_connection():
     """Простая проверка связи с мастер-ботом"""
     print("\n" + "="*60)
@@ -49,6 +52,8 @@ async def test_master_bot_connection():
             return False
 
 
+@pytest.mark.telegram_ui
+@pytest.mark.asyncio
 async def test_admin_bot_connection():
     """Простая проверка связи с админ-ботом"""
     print("\n" + "="*60)

@@ -16,6 +16,8 @@ openpyxl>=3.1
 # Tooling & QA
 pytest>=8.3
 pytest-asyncio>=0.23
+pytest-timeout>=2.2
+pytest-env>=1.0
 ruff>=0.13
 black>=24.8
 mypy>=1.8

@@ -131,6 +131,8 @@ async def test_wait_pay_recipients(async_session) -> None:
     )
     async_session.add_all([commission1, commission2])
     await async_session.flush()
+    # Ensure data is visible to a new session used by service layer
+    await async_session.commit()
 
     session_maker = async_sessionmaker(async_session.bind, expire_on_commit=False)
 

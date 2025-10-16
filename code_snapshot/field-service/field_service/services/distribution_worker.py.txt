@@ -15,17 +15,9 @@ from field_service.db.session import SessionLocal
 from field_service.db import models as m
 from field_service.services import live_log
 from field_service.services.settings_service import get_timezone, get_working_window
+from field_service.services.skills_map import get_skill_code
 
 UTC = timezone.utc
-
-CATEGORY_TO_SKILL_CODE = {
-    "ELECTRICS": "ELEC",
-    "PLUMBING": "PLUMB",
-    "APPLIANCES": "APPLI",
-    "WINDOWS": "WINDOWS",
-    "HANDYMAN": "HANDY",
-    "ROADSIDE": "AUTOHELP",
-}
 
 LEGACY_STATUS_ALIASES = {
     "DISTRIBUTION": m.OrderStatus.SEARCHING,
@@ -34,11 +26,6 @@ LEGACY_STATUS_ALIASES = {
     "INPROGRESS": m.OrderStatus.WORKING,
     "DONE": m.OrderStatus.PAYMENT,
 }
-
-def _skill_code_for_category(category: str | None) -> str | None:
-    if not category:
-        return None
-    return CATEGORY_TO_SKILL_CODE.get(str(category).upper())
 
 # ---------- helpers ----------
 
@@ -516,7 +503,7 @@ async def candidate_rows(
     if not skill_code:
         return []
 
-    # NOTE: orders.category holds ENUM-like strings; map to skills via CATEGORY_TO_SKILL_CODE.
+    # NOTE: orders.category holds ENUM-like strings; map to skills via skills_map.get_skill_code()
     sql = text(
         f"""
     WITH active_cnt AS (
@@ -673,7 +660,7 @@ async def process_one_order(
             is_guarantee = str(order_type).upper() == "GUARANTEE"
 
     category = getattr(o, "category", None)
-    skill_code = _skill_code_for_category(category)
+    skill_code = get_skill_code(category)
     if skill_code is None:
         message = log_skip_no_category(o.id, category)
         print(message)

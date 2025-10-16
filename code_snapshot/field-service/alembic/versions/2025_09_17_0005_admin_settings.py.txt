@@ -5,6 +5,7 @@ Create Date: 2025-09-17 20:10:00.000000
 """
 
 from __future__ import annotations
+import os
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
@@ -16,6 +17,8 @@ depends_on = None
 
 
 def upgrade() -> None:
+    if os.getenv("FS_SKIP_SEED", "").lower() in {"1", "true", "yes"}:
+        return
     # 1) orders:  CHECK  -
     op.drop_constraint("ck_orders__slot_in_working_window", "orders", type_="check")
     op.create_check_constraint(

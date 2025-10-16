@@ -1,11 +1,14 @@
+# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from collections.abc import AsyncIterator
 
 import sqlalchemy as sa
 import pytest_asyncio
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -17,13 +20,31 @@ from sqlalchemy.pool import NullPool
 
 from field_service.db import models as m
 from field_service.db.base import metadata
+from field_service.db import session as session_module
 
+# --- Windows совместимость вывода и цикла ---
 if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+try:
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    if hasattr(sys.stdout, "reconfigure"):
+        try: sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception: pass
+    if hasattr(sys.stderr, "reconfigure"):
+        try: sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+        except Exception: pass
+except Exception:
+    pass
 
+# --- Настройки БД тестов ---
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://fs_user:fs_password@localhost:5439/field_service_test",
+)
 
+# --- Патченая AsyncSession для предотвращения устаревания объектов ---
 class PatchedAsyncSession(AsyncSession):
-    """AsyncSession variant that preserves primary key attributes on expire_all."""
+    """AsyncSession variant that preserves PK on expire_all and refreshes sensitive rows."""
 
     def expire_all(self) -> None:
         snapshot: list[tuple[object, tuple, tuple]] = []
@@ -32,44 +53,41 @@ class PatchedAsyncSession(AsyncSession):
             if state.identity is None:
                 continue
             snapshot.append((obj, state.mapper.primary_key, state.identity))
-
         super().expire_all()
-
         for obj, pk_cols, identity in snapshot:
             for column, value in zip(pk_cols, identity):
                 set_committed_value(obj, column.key, value)
 
-
-def _make_constraints_deferrable(sync_conn) -> None:
-    inspector = sa.inspect(sync_conn)
-    for table in TABLES:
-        table_name = table.name
-        schema = table.schema
-        for fk in inspector.get_foreign_keys(table_name, schema=schema):
-            constraint = fk.get("name")
-            if not constraint:
-                continue
-            qualified_table = f"{schema}.{table_name}" if schema else table_name
-            sync_conn.execute(
-                sa.text(
-                    f"ALTER TABLE {qualified_table} "
-                    f"ALTER CONSTRAINT {constraint} DEFERRABLE INITIALLY DEFERRED"
-                )
-            )
+    async def get(self, entity, ident, **kw):  # type: ignore[override]
+        obj = await super().get(entity, ident, **kw)
+        # свежие данные для часто изменяемых сущностей
+        try:
+            if obj is not None and (entity is m.notifications_outbox or entity is m.orders):
+                await super().refresh(obj)
+        except Exception:
+            pass
+        return obj
 
 
-# ✅ STEP 2: Используем PostgreSQL вместо SQLite для тестов
-# Это обеспечивает полную совместимость и точность тестирования
-
-# Читаем DATABASE_URL из переменной окружения или используем дефолтный
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://fs_user:fs_password@localhost:5439/field_service_test"
+# --- Единый engine на сессию тестов + патч SessionLocal на тестовый engine ---
+_patched_engine: AsyncEngine = create_async_engine(
+    TEST_DATABASE_URL,
+    echo=False,
+    future=True,
+    poolclass=NullPool,  # избегаем перекрёстного переиспользования коннектов между тестами
 )
 
-# Ensure application code that uses SessionLocal points to the test database.
-os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
+# ВАЖНО: прямо тут перенаправляем приложение на тестовый engine/SessionLocal,
+# чтобы код, который импортирует SessionLocal напрямую, уже смотрел в тестовую БД.
+session_module.engine = _patched_engine
+session_module.SessionLocal = async_sessionmaker(
+    bind=_patched_engine,
+    expire_on_commit=False,
+    autoflush=False,
+    class_=PatchedAsyncSession,
+)
 
+# Таблицы, которые должны существовать (включая служебные, часто встречаются в тестах)
 TABLES = [
     m.cities.__table__,
     m.districts.__table__,
@@ -98,157 +116,82 @@ TABLES = [
     m.distribution_metrics.__table__,
 ]
 
+_DB_INITIALIZED = False
 
-@pytest_asyncio.fixture()
+
+@pytest_asyncio.fixture(scope="session")
 async def engine() -> AsyncIterator[AsyncEngine]:
     """
-    ✅ Session-scoped engine для PostgreSQL.
-    
-    Создаётся один раз на всю сессию тестов.
+    Session-scoped engine. Схема БД должна быть уже создана миграциями Alembic.
+    Никаких DDL операций не выполняем - используем механизм ROLLBACK для очистки.
     """
-    engine = create_async_engine(
-        TEST_DATABASE_URL,
-        echo=False,
-    )
-    from field_service.db import session as session_module
-    session_module.engine = engine
-    session_module.SessionLocal = async_sessionmaker(
-        bind=engine,
-        expire_on_commit=False,
-        autoflush=False,
-        class_=AsyncSession,
-    )
+    # Создаём совместимые колонки для тестов
+    from field_service.db.session import _ensure_testing_ddl
+    await _ensure_testing_ddl()
     
-    # Создаём все таблицы один раз
-    async with engine.begin() as conn:
-        # Создаём ENUM types
-        await conn.execute(sa.text("DROP TYPE IF EXISTS staff_role CASCADE"))
-        await conn.execute(sa.text("""
-            CREATE TYPE staff_role AS ENUM ('GLOBAL_ADMIN', 'CITY_ADMIN', 'LOGIST')
-        """))
-        
-        # Пересоздаём staff_users вручную (не через metadata)
-        await conn.execute(sa.text("DROP TABLE IF EXISTS staff_users CASCADE"))
-        await conn.execute(sa.text("""
-            CREATE TABLE staff_users (
-                id SERIAL PRIMARY KEY,
-                tg_user_id BIGINT UNIQUE,
-                username VARCHAR(64),
-                full_name VARCHAR(160),
-                phone VARCHAR(32),
-                role staff_role NOT NULL,
-                is_active BOOLEAN DEFAULT TRUE NOT NULL,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                commission_requisites TEXT DEFAULT '{}'
-            )
-        """))
-        
-        # Создаём остальные таблицы через metadata
-        await conn.run_sync(metadata.create_all, tables=TABLES)
-        await conn.run_sync(_make_constraints_deferrable)
-    
-    yield engine
-
-    # �������������� ���?�?�>�� ������: �����?�?�?
-    try:
-        async with engine.begin() as conn:
-            await conn.execute(sa.text("DROP TABLE IF EXISTS staff_users CASCADE"))
-            await conn.run_sync(metadata.drop_all, tables=TABLES)
-    except Exception:
-        pass
-
-    try:
-        await engine.dispose()
-    except Exception:
-        pass
+    yield _patched_engine
 
 
-@pytest_asyncio.fixture()
+# -------- ГЛАВНОЕ: Функциональная фикстура с полной транзакционной изоляцией --------
+@pytest_asyncio.fixture(scope="function")
 async def async_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
     """
-    ✅ Function-scoped сессия для каждого теста.
-    
-    Каждый тест получает чистую БД благодаря TRUNCATE CASCADE.
+    Выдаём AsyncSession, связанный с ОДНИМ соединением и большим транзактом,
+    внутри которого автоперезапускаем SAVEPOINT после каждого commit().
+    Ни TRUNCATE, ни DELETE не используются.
     """
-    session_factory = async_sessionmaker(
-        engine,
-        expire_on_commit=False,
-        class_=PatchedAsyncSession
-    )
-    
-    async with session_factory() as session:
-        # Очищаем все таблицы перед тестом
-        await _clean_database(session)
-        
-        yield session
-        
-        # Откатываем после теста
-        await session.rollback()
+    async with engine.connect() as conn:
+        # Большая транзакция уровня соединения
+        outer = await conn.begin()
 
+        # Делаем factory, привязанный именно к ЭТОМУ соединению
+        Session = async_sessionmaker(
+            bind=conn,
+            expire_on_commit=False,
+            autoflush=False,
+            class_=PatchedAsyncSession,
+        )
 
-async def _clean_database(session: AsyncSession) -> None:
-    """
-    ✅ Очищает все таблицы с TRUNCATE CASCADE.
-    
-    Быстрее чем DROP/CREATE и сохраняет структуру.
-    """
-    tables_to_clean = [
-        "commission_deadline_notifications",
-        "order_status_history",
-        "attachments", 
-        "offers",
-        "commissions",
-        "referrals",
-        "referral_rewards",
-        "notifications_outbox",
-        "order_autoclose_queue",
-        "distribution_metrics",
-        "orders",
-        "master_districts",
-        "master_skills",
-        "master_invite_codes",
-        "masters",
-        "staff_access_code_cities",
-        "staff_access_codes",
-        "staff_cities",
-        "staff_users",
-        "streets",
-        "districts",
-        "cities",
-        "skills",
-        "settings",
-        "geocache",
-        "admin_audit_log",
-    ]
-    
-    try:
-        for table in tables_to_clean:
-            await session.execute(sa.text(f"TRUNCATE TABLE {table} CASCADE"))
-        await session.commit()
-    except Exception:
-        await session.rollback()
-        # Fallback на DELETE если TRUNCATE не сработал
-        for table in tables_to_clean:
+        # Переопределяем SessionLocal приложения на "сессионный" фабричный метод,
+        # чтобы весь код приложения (и фоновые куски), который создаёт сессии,
+        # попадал в тот же коннект/транзакцию.
+        old_SessionLocal = session_module.SessionLocal
+        session_module.SessionLocal = Session
+
+        async with Session() as session:
+            # Инициализируем первый SAVEPOINT (nested)
+            # Событие ниже будет перезапускать его после каждого commit() внутри кода.
+            def _restart_savepoint(sess, trans):
+                # Этот event синхронный и приходит на sync_session.
+                if trans.nested and not trans._parent.nested:
+                    sess.begin_nested()
+
+            # Подписываемся на событие sync-части сессии
+            event.listen(session.sync_session, "after_transaction_end", _restart_savepoint)
+
+            # Стартуем первый nested
+            session.sync_session.begin_nested()
+
+            # Дополнительно уменьшим таймауты, чтобы зависания не тянулись:
+            await session.execute(text("SET LOCAL lock_timeout = '2s'"))
+            await session.execute(text("SET LOCAL statement_timeout = '30s'"))
+            await session.execute(text("SET CONSTRAINTS ALL DEFERRED"))
+
             try:
-                await session.execute(sa.text(f"DELETE FROM {table}"))
-            except Exception:
-                pass
-        await session.commit()
+                yield session
+            finally:
+                # Снимаем подписку, восстанавливаем фабрику
+                event.remove(session.sync_session, "after_transaction_end", _restart_savepoint)
+
+        # ROLLBACK большого транзакта — мгновенная очистка БД после теста
+        await outer.rollback()
+        session_module.SessionLocal = old_SessionLocal
 
 
-# ===== Алиасы для совместимости =====
-
-@pytest_asyncio.fixture()
-async def clean_db(async_session: AsyncSession):
-    """Compatibility fixture: async_session already resets the database state."""
-    yield
-
-
-@pytest_asyncio.fixture()
-async def session(async_session: AsyncSession) -> AsyncSession:
-    """Alias для совместимости с существующими тестами"""
-    return async_session
+# Иногда тесты ожидают фикстуру 'session' — дадим алиас
+@pytest_asyncio.fixture(scope="function")
+async def session(async_session: AsyncSession) -> AsyncIterator[AsyncSession]:
+    yield async_session
 
 
 # ===== Стандартные фикстуры для тестов =====
@@ -334,10 +277,9 @@ async def sample_master(
     return master
 
 
-
-
 @pytest_asyncio.fixture(autouse=True)
 async def _patch_distribution_tick(async_session: AsyncSession, monkeypatch):
+    """Патчим tick_once чтобы он использовал фикстурную сессию"""
     from field_service.services import distribution_scheduler
 
     original_tick_once = distribution_scheduler.tick_once
@@ -349,3 +291,29 @@ async def _patch_distribution_tick(async_session: AsyncSession, monkeypatch):
 
     monkeypatch.setattr(distribution_scheduler, "tick_once", tick_once_proxy)
     yield
+
+
+# Seed minimal reference data for tests that explicitly need it
+@pytest_asyncio.fixture()
+async def seed_minimal_data(async_session: AsyncSession) -> None:
+    """
+    Создаём минимальные справочные данные для тестов.
+    Тесты должны явно запрашивать эту фикстуру, если им нужны данные.
+    """
+    # Seed a default city if none exists
+    res = await async_session.execute(sa.select(sa.func.count()).select_from(m.cities))
+    if (res.scalar_one() or 0) == 0:
+        city = m.cities(id=999999, name="ZZZ Seed City", timezone="Europe/Moscow")
+        async_session.add(city)
+        await async_session.flush()
+
+        # Seed a default district bound to the city
+        district = m.districts(id=999999, city_id=city.id, name="ZZZ Seed District")
+        async_session.add(district)
+        await async_session.commit()
+    
+    # Provide a generic city with id=1 for tests that reference it directly
+    existing1 = await async_session.get(m.cities, 1)
+    if existing1 is None:
+        async_session.add(m.cities(id=1, name="City #1", timezone="Europe/Moscow"))
+        await async_session.commit()

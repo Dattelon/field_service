@@ -1,7 +1,7 @@
 """
 P2.2: Typed state management for admin queue filters and actions.
 
-Использование dataclasses для type-safe хранения FSM state вместо магических словарей.
+ dataclasses  type-safe  FSM state   .
 """
 from __future__ import annotations
 
@@ -20,35 +20,35 @@ from ..core.dto import OrderCategory, OrderStatus
 
 @dataclass
 class QueueFilters:
-    """Фильтры для списка заказов в очереди."""
+    """     ."""
     
     city_id: Optional[int] = None
     category: Optional[OrderCategory] = None
     status: Optional[OrderStatus] = None
     master_id: Optional[int] = None
     date: Optional[date] = None
-    order_id: Optional[int] = None  # P1: Поиск по ID заказа
+    order_id: Optional[int] = None  # P1:   ID 
     
     def to_dict(self) -> dict[str, Optional[str | int]]:
-        """Сериализация для хранения в FSM state."""
+        """    FSM state."""
         return {
             "city_id": self.city_id,
             "category": self.category.value if self.category else None,
             "status": self.status.value if self.status else None,
             "master_id": self.master_id,
             "date": self.date.isoformat() if self.date else None,
-            "order_id": self.order_id,  # P1: Поиск по ID
+            "order_id": self.order_id,  # P1:   ID
         }
     
     @classmethod
     def from_dict(cls, data: dict[str, Optional[str | int]]) -> QueueFilters:
-        """Десериализация из FSM state."""
+        """  FSM state."""
         city_id = data.get("city_id")
         category_value = data.get("category")
         status_value = data.get("status")
         master_id = data.get("master_id")
         date_value = data.get("date")
-        order_id = data.get("order_id")  # P1: Поиск по ID
+        order_id = data.get("order_id")  # P1:   ID
         
         # Parse enums
         category = None
@@ -79,13 +79,13 @@ class QueueFilters:
             status=status,
             master_id=int(master_id) if master_id else None,
             date=parsed_date,
-            order_id=int(order_id) if order_id else None,  # P1: Поиск по ID
+            order_id=int(order_id) if order_id else None,  # P1:   ID
         )
 
 
 @dataclass
 class QueueFiltersMessage:
-    """Ссылка на сообщение с фильтрами (для редактирования)."""
+    """     ( )."""
     
     chat_id: int
     message_id: int
@@ -104,7 +104,7 @@ class QueueFiltersMessage:
 
 @dataclass
 class CancelOrderState:
-    """State для процесса отмены заказа."""
+    """State    ."""
     
     order_id: int
     chat_id: int
@@ -128,7 +128,7 @@ class CancelOrderState:
 
 
 # =============================================================================
-# STATE KEYS (константы для хранения в FSM)
+# STATE KEYS (    FSM)
 # =============================================================================
 
 _QUEUE_FILTERS_KEY = "queue:filters"
@@ -141,7 +141,7 @@ _QUEUE_CANCEL_KEY = "queue:cancel"
 # =============================================================================
 
 async def load_queue_filters(state: FSMContext) -> QueueFilters:
-    """Загрузить фильтры очереди из FSM state."""
+    """    FSM state."""
     data = await state.get_data()
     stored = data.get(_QUEUE_FILTERS_KEY)
     if not stored:
@@ -153,12 +153,12 @@ async def load_queue_filters(state: FSMContext) -> QueueFilters:
 
 
 async def save_queue_filters(state: FSMContext, filters: QueueFilters) -> None:
-    """Сохранить фильтры очереди в FSM state."""
+    """    FSM state."""
     await state.update_data({_QUEUE_FILTERS_KEY: filters.to_dict()})
 
 
 async def load_filters_message(state: FSMContext) -> Optional[QueueFiltersMessage]:
-    """Загрузить ссылку на сообщение с фильтрами."""
+    """     ."""
     data = await state.get_data()
     stored = data.get(_QUEUE_FILTERS_MSG_KEY)
     if not stored:
@@ -167,13 +167,13 @@ async def load_filters_message(state: FSMContext) -> Optional[QueueFiltersMessag
 
 
 async def save_filters_message(state: FSMContext, chat_id: int, message_id: int) -> None:
-    """Сохранить ссылку на сообщение с фильтрами."""
+    """     ."""
     msg = QueueFiltersMessage(chat_id=chat_id, message_id=message_id)
     await state.update_data({_QUEUE_FILTERS_MSG_KEY: msg.to_dict()})
 
 
 async def load_cancel_state(state: FSMContext) -> Optional[CancelOrderState]:
-    """Загрузить state отмены заказа."""
+    """ state  ."""
     data = await state.get_data()
     stored = data.get(_QUEUE_CANCEL_KEY)
     if stored:
@@ -193,7 +193,7 @@ async def save_cancel_state(
     chat_id: int,
     message_id: int
 ) -> None:
-    """Сохранить state отмены заказа."""
+    """ state  ."""
     cancel_state = CancelOrderState(
         order_id=order_id,
         chat_id=chat_id,
@@ -211,7 +211,7 @@ async def save_cancel_state(
 
 
 async def clear_cancel_state(state: FSMContext) -> None:
-    """Очистить state отмены заказа."""
+    """ state  ."""
     current = await state.get_state()
     if current and current.startswith("QueueActionFSM:cancel_reason"):
         await state.set_state(None)

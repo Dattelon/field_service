@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Iterable, Sequence
 
@@ -11,7 +11,7 @@ from .utils import inline_keyboard
 
 
 def cancel_button(callback_data: str = "m:cancel") -> list[InlineKeyboardButton]:
-    """Создаёт кнопку отмены для любого FSM-состояния."""
+    """Кнопка отмены для FSM-сценариев."""
     return [InlineKeyboardButton(text="❌ Отменить", callback_data=callback_data)]
 
 
@@ -31,8 +31,8 @@ def start_onboarding_keyboard() -> InlineKeyboardMarkup:
 def pdn_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
         [
-            [InlineKeyboardButton(text="Согласен", callback_data="m:onboarding:pdn_accept")],
-            [InlineKeyboardButton(text="Не согласен", callback_data="m:onboarding:pdn_decline")],
+            [InlineKeyboardButton(text="✅ Согласен", callback_data="m:onboarding:pdn_accept")],
+            [InlineKeyboardButton(text="❌ Не согласен", callback_data="m:onboarding:pdn_decline")],
             cancel_button(),
         ]
     )
@@ -41,8 +41,8 @@ def pdn_keyboard() -> InlineKeyboardMarkup:
 def vehicle_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
         [
-            [InlineKeyboardButton(text="Есть авто", callback_data="m:onboarding:vehicle_yes")],
-            [InlineKeyboardButton(text="Нет авто", callback_data="m:onboarding:vehicle_no")],
+            [InlineKeyboardButton(text="🚗 Есть авто", callback_data="m:onboarding:vehicle_yes")],
+            [InlineKeyboardButton(text="🚶 Нет авто", callback_data="m:onboarding:vehicle_no")],
             cancel_button(),
         ]
     )
@@ -65,16 +65,16 @@ def districts_keyboard(
     if total_pages > 1:
         if page > 1:
             controls.append(
-                InlineKeyboardButton(text="‹ Назад", callback_data=f"m:onboarding:districts_page:{page - 1}")
+                InlineKeyboardButton(text="◀️ Назад", callback_data=f"m:onboarding:districts_page:{page - 1}")
             )
         controls.append(
             InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="m:onboarding:districts_page:noop")
         )
         if page < total_pages:
             controls.append(
-                InlineKeyboardButton(text="Вперёд ›", callback_data=f"m:onboarding:districts_page:{page + 1}")
+                InlineKeyboardButton(text="▶️ Далее", callback_data=f"m:onboarding:districts_page:{page + 1}")
             )
-    controls.append(InlineKeyboardButton(text="Готово", callback_data="m:onboarding:districts_done"))
+    controls.append(InlineKeyboardButton(text="✅ Готово", callback_data="m:onboarding:districts_done"))
     if controls:
         rows.append(controls)
     rows.append(cancel_button())
@@ -88,7 +88,7 @@ def skills_keyboard(skills: Sequence[tuple[int, str, bool]]) -> InlineKeyboardMa
         rows.append(
             [InlineKeyboardButton(text=label, callback_data=f"m:onboarding:skill:{skill_id}")]
         )
-    rows.append([InlineKeyboardButton(text="Готово", callback_data="m:onboarding:skills_done")])
+    rows.append([InlineKeyboardButton(text="✅ Готово", callback_data="m:onboarding:skills_done")])
     rows.append(cancel_button())
     return inline_keyboard(rows)
 
@@ -108,30 +108,30 @@ def payout_methods_keyboard(methods: Iterable[m.PayoutMethod]) -> InlineKeyboard
     return inline_keyboard(rows)
 
 
-# 🔧 Список банков для СБП
+# Список банков для СБП с короткими читаемыми названиями
 SBP_BANKS = [
-    ("sber", "Сбербанк"),
+    ("sber", "Сбер"),
     ("tinkoff", "Тинькофф"),
     ("vtb", "ВТБ"),
     ("alfa", "Альфа-Банк"),
-    ("raiff", "Райффайзенбанк"),
+    ("raiff", "Райффайзен"),
     ("gpb", "Газпромбанк"),
     ("mts", "МТС Банк"),
     ("psb", "ПСБ"),
     ("open", "Открытие"),
     ("sovcom", "Совкомбанк"),
-    ("rsb", "Россельхозбанк"),
+    ("rsb", "РСБ"),
     ("ak_bars", "Ак Барс"),
     ("uralsib", "Уралсиб"),
     ("mkb", "МКБ"),
-    ("other", "Другой банк"),
+    ("other", "Другое"),
 ]
 
 
 def sbp_bank_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура выбора банка для СБП."""
     rows: list[list[InlineKeyboardButton]] = []
-    # Добавляем кнопки парами
+    # Размещаем кнопки по 2 в ряд
     for i in range(0, len(SBP_BANKS), 2):
         row = []
         for j in range(2):
@@ -150,8 +150,8 @@ def sbp_bank_keyboard() -> InlineKeyboardMarkup:
 def home_geo_keyboard() -> InlineKeyboardMarkup:
     return inline_keyboard(
         [
-        [InlineKeyboardButton(text="Отправить геопозицию", callback_data="m:onboarding:home_geo_share")],
-        [InlineKeyboardButton(text="Пропустить", callback_data="m:onboarding:home_geo_skip")],
+        [InlineKeyboardButton(text="📍 Отправить геолокацию", callback_data="m:onboarding:home_geo_share")],
+        [InlineKeyboardButton(text="⏭️ Пропустить", callback_data="m:onboarding:home_geo_skip")],
         cancel_button(),
         ]
     )
@@ -275,21 +275,21 @@ def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
 
 def _method_title(method: m.PayoutMethod) -> str:
     mapping = {
-        m.PayoutMethod.CARD: "Банковская карта",
-        m.PayoutMethod.SBP: "СБП",
-        m.PayoutMethod.YOOMONEY: "ЮMoney",
-        m.PayoutMethod.BANK_ACCOUNT: "Банковский счёт",
+        m.PayoutMethod.CARD: "💳 Карта",
+        m.PayoutMethod.SBP: "📱 СБП",
+        m.PayoutMethod.YOOMONEY: "💰 ЮMoney",
+        m.PayoutMethod.BANK_ACCOUNT: "🏦 Банковский счёт",
     }
     return mapping.get(method, method.value.title())
 
 
 def close_order_cancel_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура с кнопкой отмены для процесса закрытия заказа."""
+    """Клавиатура отмены закрытия заказа."""
     return inline_keyboard([cancel_button(callback_data="m:act:cls:cancel")])
 
 
 def finance_cancel_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура с кнопкой отмены для загрузки финансовых чеков."""
+    """Клавиатура отмены отправки чека."""
     return inline_keyboard([cancel_button(callback_data="m:fin:chk:cancel")])
 
 
@@ -297,29 +297,29 @@ def finance_cancel_keyboard() -> InlineKeyboardMarkup:
 # P1-16: Клавиатура выбора длительности перерыва
 def break_duration_keyboard(extend_mode: bool = False) -> InlineKeyboardMarkup:
     """
-    Клавиатура выбора длительности перерыва.
+    Клавиатура для выбора длительности перерыва.
     
     Args:
-        extend_mode: Если True, используется для продления перерыва (другие callback_data)
+        extend_mode: Если True, используется префикс для продления (изменённый callback_data)
     """
     prefix = "m:sh:brk:ext:" if extend_mode else "m:sh:brk:"
     
     return inline_keyboard(
         [
-            [InlineKeyboardButton(text="☕ 15 минут", callback_data=f"{prefix}15m")],
-            [InlineKeyboardButton(text="🍔 1 час", callback_data=f"{prefix}1h")],
-            [InlineKeyboardButton(text="😴 2 часа", callback_data=f"{prefix}2h")],
+            [InlineKeyboardButton(text="⏱️ 15 минут", callback_data=f"{prefix}15m")],
+            [InlineKeyboardButton(text="⏱️ 1 час", callback_data=f"{prefix}1h")],
+            [InlineKeyboardButton(text="⏱️ 2 часа", callback_data=f"{prefix}2h")],
             cancel_button(),
         ]
     )
 
 
-# P1-16: Клавиатура для напоминания о перерыве
+# P1-16: Клавиатура напоминания о перерыве
 def break_reminder_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура для напоминания об окончании перерыва."""
     return inline_keyboard(
         [
-            [InlineKeyboardButton(text="🟢 Вернуться на смену", callback_data="m:sh:brk:ok")],
-            [InlineKeyboardButton(text="☕ Продлить перерыв", callback_data="m:sh:brk:extend")],
+            [InlineKeyboardButton(text="✅ Вернуться на смену", callback_data="m:sh:brk:ok")],
+            [InlineKeyboardButton(text="⏱️ Продлить перерыв", callback_data="m:sh:brk:extend")],
         ]
     )

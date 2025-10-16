@@ -1,5 +1,5 @@
 # field_service/bots/admin_bot/handlers/reports.py
-"""Обработчики экспорта отчётов (ReportsExportFSM)."""
+"""   (ReportsExportFSM)."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -27,29 +27,29 @@ from ..common.helpers import _settings_service
 router = Router(name="admin_reports")
 
 
-# Определения типов отчётов
+#   
 REPORT_DEFINITIONS: dict[str, tuple[str, Any, str]] = {
-    "orders": ("Заказы", export_service.export_orders, "Orders"),
-    "commissions": ("Комиссии", export_service.export_commissions, "Commissions"),
-    "ref_rewards": ("Реферальные начисления", export_service.export_referral_rewards, "Referral rewards"),
+    "orders": ("", export_service.export_orders, "Orders"),
+    "commissions": ("", export_service.export_commissions, "Commissions"),
+    "ref_rewards": (" ", export_service.export_referral_rewards, "Referral rewards"),
 }
 
-# Форматы ввода даты
+#   
 DATE_INPUT_FORMATS = ("%Y-%m-%d", "%d.%m.%Y")
 
 
 # ============================================
-# ХЕЛПЕРЫ
+# 
 # ============================================
 
 def _parse_period_input(text: str) -> Optional[tuple[date, date]]:
     """
-    Парсинг периода из текста.
+       .
     
-    Ожидаемый формат: "YYYY-MM-DD YYYY-MM-DD" или "DD.MM.YYYY DD.MM.YYYY"
+     : "YYYY-MM-DD YYYY-MM-DD"  "DD.MM.YYYY DD.MM.YYYY"
     
     Returns:
-        (start_date, end_date) или None если не удалось распарсить
+        (start_date, end_date)  None    
     """
     if not text:
         return None
@@ -74,14 +74,14 @@ def _parse_period_input(text: str) -> Optional[tuple[date, date]]:
 
 def _compute_quick_period(key: str, *, tz: str) -> Optional[tuple[date, date]]:
     """
-    Вычислить период для быстрых кнопок.
+        .
     
     Args:
-        key: Ключ периода (today, yesterday, last7, this_month, prev_month)
-        tz: Часовой пояс
+        key:   (today, yesterday, last7, this_month, prev_month)
+        tz:  
     
     Returns:
-        (start_date, end_date) или None
+        (start_date, end_date)  None
     """
     now = time_service.now_in_city(tz)
     today = now.date()
@@ -112,14 +112,14 @@ def _compute_quick_period(key: str, *, tz: str) -> Optional[tuple[date, date]]:
 
 def _format_period_label(start_dt: date, end_dt: date) -> str:
     """
-    Форматировать период для отображения.
+       .
     
     Args:
-        start_dt: Начало периода
-        end_dt: Конец периода
+        start_dt:  
+        end_dt:  
     
     Returns:
-        Строка вида "01.01.2025 - 31.01.2025"
+          "01.01.2025 - 31.01.2025"
     """
     if start_dt == end_dt:
         return start_dt.strftime("%d.%m.%Y")
@@ -134,13 +134,13 @@ async def _send_export_documents(
     chat_id: int,
 ) -> None:
     """
-    Отправить экспортированные документы (CSV и XLSX).
+       (CSV  XLSX).
     
     Args:
         bot: Bot instance
-        bundle: ExportBundle с CSV и XLSX данными
-        caption: Подпись к файлам
-        chat_id: ID чата для отправки
+        bundle: ExportBundle  CSV  XLSX 
+        caption:   
+        chat_id: ID   
     """
     documents = [
         (bundle.csv_bytes, bundle.csv_filename, f"{caption} - CSV"),
@@ -160,7 +160,7 @@ async def _send_export_documents(
 
 
 # ============================================
-# ОБРАБОТЧИКИ
+# 
 # ============================================
 
 @router.callback_query(
@@ -168,27 +168,27 @@ async def _send_export_documents(
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_reports(cq: CallbackQuery, staff: StaffUser, state: FSMContext) -> None:
-    """Показать меню отчётов."""
+    """  ."""
     await state.clear()
-    await cq.message.edit_text("📊 Отчёты:", reply_markup=reports_menu_keyboard())
+    await cq.message.edit_text(" :", reply_markup=reports_menu_keyboard())
     await cq.answer()
 
 
 async def _prompt_report_period(cq: CallbackQuery, state: FSMContext, report_kind: str) -> None:
     """
-    Запросить выбор периода для отчёта.
+        .
     
     Args:
         cq: CallbackQuery
         state: FSMContext
-        report_kind: Тип отчёта (orders, commissions, ref_rewards)
+        report_kind:   (orders, commissions, ref_rewards)
     """
     await state.clear()
     label, _, _ = REPORT_DEFINITIONS[report_kind]
     await state.set_state(ReportsExportFSM.awaiting_period)
     await state.update_data(report_kind=report_kind)
     await cq.message.answer(
-        f"Выберите период для отчёта ({label}) или укажите вручную:",
+        f"    ({label})   :",
         reply_markup=reports_periods_keyboard(),
     )
     await cq.answer()
@@ -199,7 +199,7 @@ async def _prompt_report_period(cq: CallbackQuery, state: FSMContext, report_kin
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_reports_orders(cq: CallbackQuery, state: FSMContext) -> None:
-    """Экспорт отчёта по заказам."""
+    """   ."""
     await _prompt_report_period(cq, state, "orders")
 
 
@@ -208,7 +208,7 @@ async def cb_reports_orders(cq: CallbackQuery, state: FSMContext) -> None:
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_reports_commissions(cq: CallbackQuery, state: FSMContext) -> None:
-    """Экспорт отчёта по комиссиям."""
+    """   ."""
     await _prompt_report_period(cq, state, "commissions")
 
 
@@ -217,15 +217,15 @@ async def cb_reports_commissions(cq: CallbackQuery, state: FSMContext) -> None:
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
 )
 async def cb_reports_referrals(cq: CallbackQuery, state: FSMContext) -> None:
-    """Экспорт отчёта по реферальным начислениям."""
+    """    ."""
     await _prompt_report_period(cq, state, "ref_rewards")
 
 
 @router.message(StateFilter(ReportsExportFSM.awaiting_period), F.text == "/cancel")
 async def reports_cancel(msg: Message, state: FSMContext) -> None:
-    """Отменить экспорт отчёта."""
+    """  ."""
     await state.clear()
-    await msg.answer("Экспорт отменён.")
+    await msg.answer(" .")
 
 
 @router.message(StateFilter(ReportsExportFSM.awaiting_period))
@@ -235,14 +235,14 @@ async def reports_period_submit(
     state: FSMContext,
 ) -> None:
     """
-    Обработать ввод периода вручную.
+       .
     
-    Ожидается формат: "YYYY-MM-DD YYYY-MM-DD" или "DD.MM.YYYY DD.MM.YYYY"
+     : "YYYY-MM-DD YYYY-MM-DD"  "DD.MM.YYYY DD.MM.YYYY"
     """
     period = _parse_period_input(msg.text or "")
     if not period:
         await msg.answer(
-            "Неверный формат. Введите даты как 'YYYY-MM-DD YYYY-MM-DD' или воспользуйтесь кнопками.",
+            " .    'YYYY-MM-DD YYYY-MM-DD'   .",
             reply_markup=reports_periods_keyboard(),
         )
         return
@@ -254,39 +254,39 @@ async def reports_period_submit(
     if not definition:
         await state.clear()
         await msg.answer(
-            "Ошибка: тип отчёта не найден. Вернитесь в меню отчётов:",
+            ":    .    :",
             reply_markup=reports_menu_keyboard(),
         )
         return
 
     label, exporter, caption_prefix = definition
     
-    # RBAC: фильтрация по городам
+    # RBAC:   
     city_ids = visible_city_ids_for(staff) if isinstance(staff, StaffUser) else None
 
-    # P0-8: Индикация загрузки перед долгой операцией
-    await msg.answer("⏳ Формирую отчёт, подождите...")
+    # P0-8:     
+    await msg.answer("  , ...")
 
     try:
         bundle = await exporter(date_from=start_dt, date_to=end_dt, city_ids=city_ids)
     except Exception as exc:
         await state.clear()
         await msg.answer(
-            f"Ошибка при формировании отчёта: {exc}",
+            f"   : {exc}",
             reply_markup=reports_menu_keyboard(),
         )
         return
 
     period_label = _format_period_label(start_dt, end_dt)
     
-    # Определить куда отправлять
+    #   
     operator_chat_id = None
     if msg.chat:
         operator_chat_id = msg.chat.id
     elif msg.from_user:
         operator_chat_id = msg.from_user.id
     
-    # Получить настроенный канал отчётов
+    #    
     configured_chat_id: Optional[int] = None
     try:
         settings_service = _settings_service(msg.bot)
@@ -306,7 +306,7 @@ async def reports_period_submit(
     if target_chat_id is None:
         await state.clear()
         await msg.answer(
-            "Канал для отчётов не настроен.",
+            "    .",
             reply_markup=reports_menu_keyboard(),
         )
         return
@@ -319,7 +319,7 @@ async def reports_period_submit(
             chat_id=target_chat_id,
         )
     except TelegramBadRequest:
-        # Если не удалось отправить в канал - отправить оператору
+        #       -  
         if operator_chat_id is not None and target_chat_id != operator_chat_id:
             await _send_export_documents(
                 msg.bot,
@@ -327,13 +327,13 @@ async def reports_period_submit(
                 f"{caption_prefix} {period_label}",
                 chat_id=operator_chat_id,
             )
-            await msg.answer("Отчёт отправлен вам в чат, т.к. канал недоступен.")
+            await msg.answer("    , ..  .")
         else:
             await state.clear()
-            await msg.answer("Не удалось отправить отчёт.")
+            await msg.answer("   .")
             return
     else:
-        await msg.answer("✅ Отчёт отправлен.")
+        await msg.answer("  .")
     
     await state.clear()
 
@@ -345,15 +345,15 @@ async def reports_quick_period_choice(
     staff: StaffUser | None = None,
 ) -> None:
     """
-    Обработать выбор быстрого периода.
+       .
     
-    Периоды:
-    - today: сегодня
-    - yesterday: вчера
-    - last7: последние 7 дней
-    - this_month: текущий месяц
-    - prev_month: прошлый месяц
-    - custom: ручной ввод
+    :
+    - today: 
+    - yesterday: 
+    - last7:  7 
+    - this_month:  
+    - prev_month:  
+    - custom:  
     """
     key = (cq.data or "").rsplit(":", 1)[-1]
     data = await state.get_data()
@@ -362,40 +362,40 @@ async def reports_quick_period_choice(
     if not definition:
         await state.clear()
         if cq.message:
-            await cq.message.edit_text("Выберите отчёт:", reply_markup=reports_menu_keyboard())
+            await cq.message.edit_text(" :", reply_markup=reports_menu_keyboard())
         await cq.answer()
         return
     
     if key == "custom":
         if cq.message:
             await cq.message.answer(
-                "Введите период в формате: YYYY-MM-DD YYYY-MM-DD\nИли нажмите /cancel для отмены."
+                "   : YYYY-MM-DD YYYY-MM-DD\n  /cancel  ."
             )
         await cq.answer()
         return
     
     period = _compute_quick_period(key, tz=env_settings.timezone)
     if not period:
-        await cq.answer("Неверный период", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
     start_dt, end_dt = period
     label, exporter, caption_prefix = definition
     
-    # RBAC: фильтрация по городам
+    # RBAC:   
     city_ids = visible_city_ids_for(staff) if isinstance(staff, StaffUser) else None
     
-    # P0-8: Индикация загрузки для callback query
-    await cq.answer("⏳ Формирую отчёт...", show_alert=False)
+    # P0-8:    callback query
+    await cq.answer("  ...", show_alert=False)
     if cq.message:
-        await cq.message.answer("⏳ Формирую отчёт, подождите...")
+        await cq.message.answer("  , ...")
     
     try:
         bundle = await exporter(date_from=start_dt, date_to=end_dt, city_ids=city_ids)
     except Exception as exc:
         if cq.message:
             await cq.message.answer(
-                f"Не удалось сформировать отчёт: {exc}",
+                f"   : {exc}",
                 reply_markup=reports_menu_keyboard(),
             )
         await cq.answer()
@@ -403,13 +403,13 @@ async def reports_quick_period_choice(
     
     period_label = _format_period_label(start_dt, end_dt)
     
-    # Определить куда отправлять
+    #   
     target_chat_id = env_settings.reports_channel_id or (cq.message.chat.id if cq.message else None)
     if target_chat_id is None and cq.from_user:
         target_chat_id = cq.from_user.id
     if target_chat_id is None:
         if cq.message:
-            await cq.message.answer("Канал для отчётов не настроен.", reply_markup=reports_menu_keyboard())
+            await cq.message.answer("    .", reply_markup=reports_menu_keyboard())
         await cq.answer()
         return
     
@@ -421,7 +421,7 @@ async def reports_quick_period_choice(
             chat_id=target_chat_id,
         )
     except TelegramBadRequest:
-        # Fallback на отправку оператору
+        # Fallback   
         if cq.from_user:
             await _send_export_documents(
                 cq.bot,
@@ -430,18 +430,18 @@ async def reports_quick_period_choice(
                 chat_id=cq.from_user.id,
             )
             if cq.message:
-                await cq.message.answer("Отчёт отправлен вам в чат (канал недоступен).")
+                await cq.message.answer("     ( ).")
         else:
             if cq.message:
-                await cq.message.answer("Не удалось доставить отчёт.")
+                await cq.message.answer("   .")
             await cq.answer()
             return
     else:
         if cq.message:
-            await cq.message.answer("✅ Отчёт отправлен.")
+            await cq.message.answer("  .")
     
     await state.clear()
-    # P0-8: cq.answer() уже вызван в начале функции для индикации загрузки
+    # P0-8: cq.answer()        
 
 
 __all__ = [

@@ -11,14 +11,14 @@ from ...core.dto import CommissionDetail, StaffUser, StaffRole
 
 def finance_menu(staff: StaffUser) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="⏳ Ожидают оплаты", callback_data="adm:f:aw:1")
-    kb.button(text="✅ Оплаченные", callback_data="adm:f:pd:1")
-    kb.button(text="⏰ Просроченные", callback_data="adm:f:ov:1")
-    kb.button(text="📊 По периодам", callback_data="adm:f:grouped:aw")  # P1-15: Группировка
+    kb.button(text="  ", callback_data="adm:f:aw:1")
+    kb.button(text=" ", callback_data="adm:f:pd:1")
+    kb.button(text=" ", callback_data="adm:f:ov:1")
+    kb.button(text="  ", callback_data="adm:f:grouped:aw")  # P1-15: 
     if staff.role is StaffRole.GLOBAL_ADMIN:
-        kb.button(text="⚡ Одобрить все", callback_data="adm:f:bulk")  # P2-11: Массовое одобрение
-        kb.button(text="💼 Реквизиты владельца", callback_data="adm:f:set")
-    kb.button(text="⬅️ В меню", callback_data="adm:menu")
+        kb.button(text="  ", callback_data="adm:f:bulk")  # P2-11:  
+        kb.button(text="  ", callback_data="adm:f:set")
+    kb.button(text="  ", callback_data="adm:menu")
     if staff.role != StaffRole.GLOBAL_ADMIN:
         kb.adjust(2, 2, 1)
     else:
@@ -28,24 +28,24 @@ def finance_menu(staff: StaffUser) -> InlineKeyboardMarkup:
 
 def finance_grouped_keyboard(segment: str, groups: dict[str, int]) -> InlineKeyboardMarkup:
     """
-    P1-15: Клавиатура для группированного вида комиссий.
+    P1-15:     .
     
     Args:
         segment: 'aw', 'pd', 'ov'
-        groups: dict с количеством комиссий в каждой группе
+        groups: dict      
     """
     kb = InlineKeyboardBuilder()
     
-    # Карта названий периодов
+    #   
     period_labels = {
-        'today': f"📅 Сегодня ({groups.get('today', 0)})",
-        'yesterday': f"📅 Вчера ({groups.get('yesterday', 0)})",
-        'week': f"📅 Эта неделя ({groups.get('week', 0)})",
-        'month': f"📅 Этот месяц ({groups.get('month', 0)})",
-        'older': f"📅 Старше ({groups.get('older', 0)})",
+        'today': f"  ({groups.get('today', 0)})",
+        'yesterday': f"  ({groups.get('yesterday', 0)})",
+        'week': f"   ({groups.get('week', 0)})",
+        'month': f"   ({groups.get('month', 0)})",
+        'older': f"  ({groups.get('older', 0)})",
     }
     
-    # Добавляем кнопки для непустых групп
+    #     
     for period in ['today', 'yesterday', 'week', 'month', 'older']:
         count = groups.get(period, 0)
         if count > 0:
@@ -54,32 +54,32 @@ def finance_grouped_keyboard(segment: str, groups: dict[str, int]) -> InlineKeyb
                 callback_data=f"adm:f:grp:{segment}:{period}:1"
             )
     
-    # Кнопка возврата
-    kb.button(text="⬅️ Назад", callback_data="adm:f")
+    #  
+    kb.button(text=" ", callback_data="adm:f")
     kb.adjust(1)
     return kb.as_markup()
 
 
 def finance_group_period_keyboard(segment: str, period: str, page: int, has_next: bool) -> InlineKeyboardMarkup:
     """
-    P1-15: Клавиатура для просмотра комиссий внутри группы.
+    P1-15:      .
     
     Args:
         segment: 'aw', 'pd', 'ov'
         period: 'today', 'yesterday', 'week', 'month', 'older'
-        page: номер страницы
-        has_next: есть ли следующая страница
+        page:  
+        has_next:    
     """
     kb = InlineKeyboardBuilder()
     
-    # Навигация по страницам
+    #   
     if page > 1:
-        kb.button(text="◀️ Назад", callback_data=f"adm:f:grp:{segment}:{period}:{page - 1}")
+        kb.button(text=" ", callback_data=f"adm:f:grp:{segment}:{period}:{page - 1}")
     if has_next:
-        kb.button(text="▶️ Далее", callback_data=f"adm:f:grp:{segment}:{period}:{page + 1}")
+        kb.button(text=" ", callback_data=f"adm:f:grp:{segment}:{period}:{page + 1}")
     
-    # Возврат к списку групп
-    kb.button(text="⬅️ К группам", callback_data=f"adm:f:grouped:{segment}")
+    #    
+    kb.button(text="  ", callback_data=f"adm:f:grouped:{segment}")
     kb.adjust(2, 1)
     return kb.as_markup()
 
@@ -87,24 +87,24 @@ def finance_group_period_keyboard(segment: str, period: str, page: int, has_next
 
 
 def finance_segment_keyboard(seg: str, page: int, has_next: bool, grouped: bool = False) -> InlineKeyboardMarkup:
-    """P1-15: Клавиатура списка комиссий с опцией группировки."""
+    """P1-15:      ."""
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     kb = InlineKeyboardBuilder()
     
-    # Пагинация только для негруппированного списка
+    #     
     if not grouped:
         if page > 1:
-            kb.button(text="◀️ Назад", callback_data=f"adm:f:{seg}:{page - 1}")
+            kb.button(text=" ", callback_data=f"adm:f:{seg}:{page - 1}")
         if has_next:
-            kb.button(text="▶️ Далее", callback_data=f"adm:f:{seg}:{page + 1}")
+            kb.button(text=" ", callback_data=f"adm:f:{seg}:{page + 1}")
     
-    # Кнопка переключения группировки
+    #   
     if grouped:
-        kb.button(text="📋 Обычный список", callback_data=f"adm:f:{seg}:1")
+        kb.button(text="  ", callback_data=f"adm:f:{seg}:1")
     else:
-        kb.button(text="📊 По периодам", callback_data=f"adm:f:{seg}:grp")
+        kb.button(text="  ", callback_data=f"adm:f:{seg}:grp")
     
-    kb.button(text="⬅️ Назад", callback_data="adm:f")
+    kb.button(text=" ", callback_data="adm:f")
     kb.adjust(2, 1) if not grouped else kb.adjust(1, 1)
     return kb.as_markup()
 
@@ -113,16 +113,16 @@ def finance_segment_keyboard(seg: str, page: int, has_next: bool, grouped: bool 
 
 def finance_card_actions(detail: CommissionDetail, segment: str, page: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="🧾 Открыть чек", callback_data=f"adm:f:cm:open:{detail.id}")
+    kb.button(text="  ", callback_data=f"adm:f:cm:open:{detail.id}")
 
     status = (detail.status or "").upper()
     if status in {"WAIT_PAY", "REPORTED", "OVERDUE"}:
-        kb.button(text="✅ Подтвердить", callback_data=f"adm:f:cm:ok:{detail.id}")
+        kb.button(text=" ", callback_data=f"adm:f:cm:ok:{detail.id}")
     if status in {"WAIT_PAY", "REPORTED"}:
-        kb.button(text="❌ Отклонить", callback_data=f"adm:f:cm:rej:{detail.id}")
+        kb.button(text=" ", callback_data=f"adm:f:cm:rej:{detail.id}")
     if detail.master_id is not None:
-        kb.button(text="🚫 Заблокировать", callback_data=f"adm:f:cm:blk:{detail.id}")
-    kb.button(text="⬅️ Назад", callback_data=f"adm:f:{segment}:{page}")
+        kb.button(text=" ", callback_data=f"adm:f:cm:blk:{detail.id}")
+    kb.button(text=" ", callback_data=f"adm:f:{segment}:{page}")
     kb.adjust(1)
     return kb.as_markup()
 
@@ -131,7 +131,7 @@ def finance_card_actions(detail: CommissionDetail, segment: str, page: int) -> I
 
 def finance_reject_cancel_keyboard(commission_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="⬅️ Назад", callback_data=f"adm:f:cm:card:{commission_id}")
+    kb.button(text=" ", callback_data=f"adm:f:cm:card:{commission_id}")
     return kb.as_markup()
 
 
@@ -139,8 +139,8 @@ def finance_reject_cancel_keyboard(commission_id: int) -> InlineKeyboardMarkup:
 
 def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="✏️ Редактировать", callback_data="adm:f:set:edit")
-    kb.button(text="⬅️ Назад", callback_data="adm:f")
+    kb.button(text=" ", callback_data="adm:f:set:edit")
+    kb.button(text=" ", callback_data="adm:f")
     kb.adjust(1)
     return kb.as_markup()
 
@@ -150,20 +150,20 @@ def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
 def owner_pay_edit_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     field_labels = [
-        ("methods", "💳 Способы оплаты"),
-        ("card_number", "🔢 Номер карты"),
-        ("card_holder", "👤 Держатель карты"),
-        ("card_bank", "🏦 Банк карты"),
-        ("sbp_phone", "📱 Телефон СБП"),
-        ("sbp_bank", "🏦 Банк СБП"),
-        ("sbp_qr_file_id", "🔲 QR-код СБП"),
-        ("other_text", "📝 Дополнительно"),
-        ("comment_template", "💬 Шаблон комментария"),
+        ("methods", "  "),
+        ("card_number", "  "),
+        ("card_holder", "  "),
+        ("card_bank", "  "),
+        ("sbp_phone", "  "),
+        ("sbp_bank", "  "),
+        ("sbp_qr_file_id", " QR- "),
+        ("other_text", " "),
+        ("comment_template", "  "),
     ]
     for field, label in field_labels:
         kb.button(text=label, callback_data=f"adm:f:set:field:{field}")
     kb.adjust(2)
-    kb.button(text="⬅️ Назад", callback_data="adm:f:set")
+    kb.button(text=" ", callback_data="adm:f:set")
     return kb.as_markup()
 
 

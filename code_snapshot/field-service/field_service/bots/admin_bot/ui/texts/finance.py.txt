@@ -31,35 +31,35 @@ def commission_detail(detail: CommissionDetail) -> str:
     status_label = COMMISSION_STATUS_LABELS.get((detail.status or '').upper(), detail.status)
     master_name = html.escape(detail.master_name) if detail.master_name else ''
     master_phone = html.escape(detail.master_phone) if detail.master_phone else ''
-    master_line = f"👨‍🔧 Мастер: {master_name}" + (f" ({master_phone})" if master_phone else '')
+    master_line = f" : {master_name}" + (f" ({master_phone})" if master_phone else '')
 
     lines = [
-        f"💸 <b>Комиссия #{detail.id}</b>",
-        f"🧾 Заказ: #{detail.order_id}",
+        f" <b> #{detail.id}</b>",
+        f" : #{detail.order_id}",
         master_line,
-        f"📌 Статус: {status_label}",
-        f"💰 Сумма: {detail.amount:.2f} ₽",
+        f" : {status_label}",
+        f" : {detail.amount:.2f} ",
     ]
 
     rate = detail.rate or Decimal('0')
     rate_percent = rate * 100 if rate <= 1 else rate
     rate_str = f"{rate_percent:.2f}".rstrip('0').rstrip('.')
     if rate_percent > 0:
-        lines.append(f"🧮 Ставка: {rate_str}%")
+        lines.append(f" : {rate_str}%")
 
     if detail.deadline_at_local:
-        lines.append(f"⏳ Дедлайн: {html.escape(detail.deadline_at_local)}")
-    lines.append(f"🗓 Создано: {html.escape(detail.created_at_local)}")
+        lines.append(f" : {html.escape(detail.deadline_at_local)}")
+    lines.append(f" : {html.escape(detail.created_at_local)}")
     if detail.paid_reported_at_local:
-        lines.append(f"📨 Сообщено об оплате: {html.escape(detail.paid_reported_at_local)}")
+        lines.append(f"   : {html.escape(detail.paid_reported_at_local)}")
     if detail.paid_approved_at_local:
-        lines.append(f"✅ Подтверждено: {html.escape(detail.paid_approved_at_local)}")
+        lines.append(f" : {html.escape(detail.paid_approved_at_local)}")
     if detail.paid_amount is not None:
-        lines.append(f"💳 Оплачено: {detail.paid_amount:.2f} ₽")
+        lines.append(f" : {detail.paid_amount:.2f} ")
 
     if detail.snapshot_methods:
         methods = ', '.join(detail.snapshot_methods)
-        lines.append(f"💼 Способы оплаты: {html.escape(methods)}")
+        lines.append(f"  : {html.escape(methods)}")
 
     card_last4 = detail.snapshot_data.get('card_last4')
     if card_last4:
@@ -70,18 +70,18 @@ def commission_detail(detail: CommissionDetail) -> str:
         card_bank = detail.snapshot_data.get('card_bank')
         if card_bank:
             card_info.append(html.escape(card_bank))
-        lines.append(f"💳 Карта: {' / '.join(card_info)}")
+        lines.append(f" : {' / '.join(card_info)}")
 
     sbp_phone = detail.snapshot_data.get('sbp_phone')
     if sbp_phone:
-        sbp_line = f"🏦 СБП: {html.escape(sbp_phone)}"
+        sbp_line = f" : {html.escape(sbp_phone)}"
         sbp_bank = detail.snapshot_data.get('sbp_bank')
         if sbp_bank:
             sbp_line += f" ({html.escape(sbp_bank)})"
         lines.append(sbp_line)
 
     if detail.snapshot_data.get('qr_file_id'):
-        lines.append("QR: доступен")
+        lines.append("QR: ")
 
     other_text = detail.snapshot_data.get('other_text')
     if other_text:
@@ -89,9 +89,9 @@ def commission_detail(detail: CommissionDetail) -> str:
 
     comment = detail.snapshot_data.get('comment')
     if comment:
-        lines.append(f"📝 Комментарий: {html.escape(comment)}")
+        lines.append(f" : {html.escape(comment)}")
 
-    lines.append(f"📎 Чеки: {'есть' if detail.has_checks else 'нет'}")
+    lines.append(f" : {'' if detail.has_checks else ''}")
     return "\n".join(lines)
 
 

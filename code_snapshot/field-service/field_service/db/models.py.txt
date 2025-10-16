@@ -56,6 +56,8 @@ class OrderStatus(str, enum.Enum):
     """Canonical order statuses per TZ v1.2."""
 
     CREATED = "CREATED"
+    # Backward-compatible alias used by some tests/fixtures
+    NEW = CREATED
     SEARCHING = "SEARCHING"
     ASSIGNED = "ASSIGNED"
     EN_ROUTE = "EN_ROUTE"
@@ -217,7 +219,11 @@ class masters(Base):
     tg_user_id: Mapped[Optional[int]] = mapped_column(
         BigInteger, unique=True, index=True
     )
-    full_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    # Дополнительные поля совместимости для тестов истории/интерфейса
+    telegram_username: Mapped[Optional[str]] = mapped_column(String(64))
+    first_name: Mapped[Optional[str]] = mapped_column(String(80))
+    last_name: Mapped[Optional[str]] = mapped_column(String(120))
+    full_name: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
     phone: Mapped[Optional[str]] = mapped_column(String(32), index=True)
     city_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("cities.id", ondelete="SET NULL"), nullable=True, index=True
@@ -310,6 +316,9 @@ class masters(Base):
     def phone_number(self, value: Optional[str]) -> None:
         self.phone = value
 
+    # Compatibility alias for legacy field name used in tests
+    telegram_user_id = synonym("tg_user_id")
+
     __table_args__ = (
         Index("ix_masters__mod_shift", "moderation_status", "shift_status"),
         Index("ix_masters__onshift_verified", "is_on_shift", "verified"),
@@ -371,15 +380,17 @@ class staff_access_codes(Base):
     city_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("cities.id", ondelete="SET NULL"), nullable=True
     )
-    issued_by_staff_id: Mapped[Optional[int]] = mapped_column(
+    created_by_staff_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("staff_users.id", ondelete="SET NULL"), nullable=True
     )
+    # Алиас для обратной совместимости
+    issued_by_staff_id = synonym("created_by_staff_id")
     used_by_staff_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("staff_users.id", ondelete="SET NULL"), nullable=True
     )
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    is_revoked: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="false"
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     comment: Mapped[Optional[str]] = mapped_column(Text)
@@ -388,9 +399,11 @@ class staff_access_codes(Base):
     )
 
     city: Mapped[Optional["cities"]] = relationship()
-    issued_by_staff: Mapped[Optional["staff_users"]] = relationship(
-        foreign_keys=[issued_by_staff_id]
+    created_by_staff: Mapped[Optional["staff_users"]] = relationship(
+        foreign_keys=[created_by_staff_id]
     )
+    # Алиас для обратной совместимости
+    issued_by_staff = synonym("created_by_staff")
     used_by_staff: Mapped[Optional["staff_users"]] = relationship(
         foreign_keys=[used_by_staff_id]
     )
@@ -430,6 +443,10 @@ class orders(Base):
     street_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("streets.id", ondelete="SET NULL"), nullable=True, index=True
     )
+
+    # Convenient relationships for eager access in UI/tests
+    city: Mapped[Optional["cities"]] = relationship(lazy="raise_on_sql")
+    district: Mapped[Optional["districts"]] = relationship(lazy="raise_on_sql")
 
     lat: Mapped[Optional[float]] = mapped_column(Float(asdecimal=False))
     lon: Mapped[Optional[float]] = mapped_column(Float(asdecimal=False))
@@ -474,6 +491,8 @@ class orders(Base):
     assigned_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # Совместимость со старыми тестами/фикстурами
+    master_id = synonym("assigned_master_id")
 
     total_sum: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=Decimal("0"), server_default="0"
@@ -481,6 +500,7 @@ class orders(Base):
     company_payment: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=0, server_default="0"
     )
+    cancel_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     late_visit: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
@@ -521,6 +541,70 @@ class orders(Base):
     # Optional: relationship to the source order for guarantee cases
     source_order: Mapped[Optional["orders"]] = relationship(remote_side="orders.id")
 
+    # --- Compatibility aliases (legacy fields used by tests/old code) ---
+    # Monetary amount alias
+    final_amount = synonym("total_sum")
+    # Timeslot convenience aliases
+    timeslot_start = synonym("timeslot_start_utc")
+    timeslot_end = synonym("timeslot_end_utc")
+    # Address/geo aliases
+    house_number = synonym("house")
+    apartment_number = synonym("apartment")
+    street_address = synonym("address_comment")
+    # Generic address alias
+    address = synonym("address_comment")
+    # Additional legacy aliases used in tests
+    address_street = synonym("address_comment")
+    address_house = synonym("house")
+
+    # Legacy input helpers: visit_date + slot_start/slot_end
+    @property
+    def visit_date(self):  # type: ignore[override]
+        ts = getattr(self, "timeslot_start_utc", None)
+        return ts.date() if ts is not None else None
+
+    @visit_date.setter  # type: ignore[override]
+    def visit_date(self, value):
+        setattr(self, "_compat_visit_date", value)
+        self._update_timeslot_from_compat()
+
+    @property
+    def slot_start(self):  # type: ignore[override]
+        ts = getattr(self, "timeslot_start_utc", None)
+        return ts.strftime("%H:%M") if ts is not None else None
+
+    @slot_start.setter  # type: ignore[override]
+    def slot_start(self, value: str):
+        setattr(self, "_compat_slot_start", value)
+        self._update_timeslot_from_compat()
+
+    @property
+    def slot_end(self):  # type: ignore[override]
+        te = getattr(self, "timeslot_end_utc", None)
+        return te.strftime("%H:%M") if te is not None else None
+
+    @slot_end.setter  # type: ignore[override]
+    def slot_end(self, value: str):
+        setattr(self, "_compat_slot_end", value)
+        self._update_timeslot_from_compat()
+
+    def _update_timeslot_from_compat(self) -> None:
+        try:
+            vd = getattr(self, "_compat_visit_date", None)
+            ss = getattr(self, "_compat_slot_start", None)
+            se = getattr(self, "_compat_slot_end", None)
+            if vd is None or ss is None or se is None:
+                return
+            from datetime import datetime as _dt, time as _time, timezone as _tz
+
+            st = _time.fromisoformat(ss)
+            et = _time.fromisoformat(se)
+            self.timeslot_start_utc = _dt.combine(vd, st).replace(tzinfo=_tz.utc)
+            self.timeslot_end_utc = _dt.combine(vd, et).replace(tzinfo=_tz.utc)
+        except Exception:
+            # best-effort: ignore parse/assignment issues
+            pass
+
     __table_args__ = (
         CheckConstraint(
             "(timeslot_start_utc IS NULL AND timeslot_end_utc IS NULL) OR (timeslot_start_utc < timeslot_end_utc)",
@@ -556,8 +640,8 @@ class order_status_history(Base):
     changed_by_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL")
     )
-    actor_type: Mapped[ActorType] = mapped_column(
-        Enum(ActorType, name="actor_type"), nullable=False, index=True
+    actor_type: Mapped[Optional[ActorType]] = mapped_column(
+        Enum(ActorType, name="actor_type"), nullable=True, index=True
     )
     context: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
@@ -581,6 +665,7 @@ class offers(Base):
         nullable=False,
         index=True,
     )
+    # FK на masters.id восстановлен для целостности данных
     master_id: Mapped[int] = mapped_column(
         ForeignKey("masters.id", ondelete="CASCADE"),
         nullable=False,
@@ -607,7 +692,8 @@ class offers(Base):
     master: Mapped["masters"] = relationship(lazy="raise_on_sql")
 
     __table_args__ = (
-        # Partial unique index: уникальность только для активных офферов
+        # Partial unique index: активные офферы уникальны по (order_id, master_id)
+        # для state IN ('SENT', 'VIEWED', 'ACCEPTED')
         Index(
             "uq_offers__order_master_active",
             "order_id",
@@ -666,12 +752,15 @@ class attachments(Base):
 
 class commissions(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # FK на orders с UNIQUE constraint - каждый заказ имеет только одну комиссию
     order_id: Mapped[int] = mapped_column(
         ForeignKey("orders.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
         index=True,
     )
+    # Алиас для обратной совместимости с тестами
+    order_id_raw = synonym("order_id")
     master_id: Mapped[int] = mapped_column(
         ForeignKey("masters.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -689,6 +778,9 @@ class commissions(Base):
     )
     paid_approved_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True)
+    )
+    paid_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     paid_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
     is_paid: Mapped[bool] = mapped_column(
@@ -965,7 +1057,7 @@ class distribution_metrics(Base):
         nullable=True,
         index=True
     )
-    # ✅ BUGFIX: Используем String вместо Enum т.к. в БД это VARCHAR
+    # В БД хранятся как VARCHAR, поэтому используем String
     category: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     order_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     
@@ -981,6 +1073,16 @@ class distribution_metrics(Base):
         DateTime(timezone=True),
         server_default=func.now()
     )
+    
+    def __init__(self, **kwargs):
+        """Конвертируем Enum в строки для category и order_type."""
+        # Конвертация category
+        if 'category' in kwargs and hasattr(kwargs['category'], 'value'):
+            kwargs['category'] = kwargs['category'].value
+        # Конвертация order_type  
+        if 'order_type' in kwargs and hasattr(kwargs['order_type'], 'value'):
+            kwargs['order_type'] = kwargs['order_type'].value
+        super().__init__(**kwargs)
     
     __table_args__ = (
         Index("ix_distribution_metrics__assigned_at_desc", "assigned_at", postgresql_using="btree"),

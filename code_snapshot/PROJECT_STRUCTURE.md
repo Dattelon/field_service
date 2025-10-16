@@ -28,6 +28,7 @@ field-service/
     ├── data/
     ├── db/
     ├── infra/
+    ├── scripts/
     └── services/
         └── distribution/
 ```

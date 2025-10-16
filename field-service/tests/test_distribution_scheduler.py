@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from field_service.db import models as m
 from field_service.services.distribution import wakeup
@@ -248,18 +249,29 @@ async def test_distribution_sends_offer_when_candidates_exist(async_session):
 @pytest.mark.asyncio
 async def test_distribution_config_loads_from_settings(async_session):
     """Test that DistConfig properly loads values from settings."""
-    # Insert test settings
-    await async_session.execute(
-        sa.insert(m.settings).values([
-            {"key": "distribution_sla_seconds", "value": "180"},
-            {"key": "distribution_rounds", "value": "3"},
-            {"key": "escalate_to_admin_after_min", "value": "15"},
-        ])
-    )
+    # Сбрасываем кэш перед тестом
+    distribution_scheduler._CONFIG_CACHE = None
+    distribution_scheduler._CONFIG_CACHE_TIMESTAMP = None
+    
+    # Используем ON CONFLICT DO UPDATE вместо простого INSERT
+    settings_data = [
+        {"key": "distribution_sla_seconds", "value": "180"},
+        {"key": "distribution_rounds", "value": "3"},
+        {"key": "escalate_to_admin_after_min", "value": "15"},
+    ]
+    
+    for setting in settings_data:
+        stmt = pg_insert(m.settings).values(**setting)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["key"],
+            set_={"value": stmt.excluded.value}
+        )
+        await async_session.execute(stmt)
+    
     await async_session.commit()
 
-    cfg = await distribution_scheduler._load_config()
-    
+    cfg = await distribution_scheduler._load_config(session=async_session)
+
     assert cfg.sla_seconds == 180
     assert cfg.rounds == 3
     assert cfg.to_admin_after_min == 15

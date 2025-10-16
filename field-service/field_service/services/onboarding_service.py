@@ -182,3 +182,4 @@ def validate_payout(method_str: str, raw_payload: str) -> PayoutData:
         raise ValidationError("Неизвестный способ оплаты.")
 
     return PayoutData(method=method, payload=payload)
+

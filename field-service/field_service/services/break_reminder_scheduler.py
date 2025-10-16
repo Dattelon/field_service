@@ -1,8 +1,8 @@
 """
-P1-16: НАПОМИНАНИЕ ОБ ОКОНЧАНИИ ПЕРЕРЫВА
+P1-16:    
 
-За 10 минут до окончания перерыва отправляет напоминание мастеру
-с предложением вернуться на смену или продлить перерыв.
+ 10       
+       .
 """
 from __future__ import annotations
 
@@ -18,21 +18,21 @@ from field_service.services import live_log
 
 UTC = timezone.utc
 
-# За сколько минут до окончания перерыва отправлять напоминание
+#        
 REMINDER_MINUTES_BEFORE = 10
 
-# ID уведомления для дедупликации (чтобы не отправлять дважды одному мастеру)
-# Храним время окончания перерыва, чтобы отслеживать продление
+# ID    (     )
+#    ,   
 _reminded_master_breaks: dict[int, datetime] = {}
 
 
 async def _check_breaks_once() -> None:
-    """Проверяет все перерывы и отправляет напоминания за 10 минут до окончания."""
+    """       10   ."""
     async with SessionLocal() as session:
         now = datetime.now(UTC)
         reminder_threshold = now + timedelta(minutes=REMINDER_MINUTES_BEFORE)
         
-        # Находим всех мастеров на перерыве, у которых перерыв заканчивается в ближайшие 10 минут
+        #     ,       10 
         result = await session.execute(
             select(m.masters.id, m.masters.tg_user_id, m.masters.break_until)
             .where(
@@ -48,31 +48,31 @@ async def _check_breaks_once() -> None:
         if not masters:
             return
         
-        # Отправляем напоминания только тем, кому ещё не отправляли
+        #    ,    
         for master_id, tg_user_id, break_until in masters:
             stored_break_until = _reminded_master_breaks.get(master_id)
             if stored_break_until is not None:
                 if stored_break_until != break_until:
-                    # Перерыв был изменён, сбрасываем отметку и продолжаем
+                    #   ,    
                     _reminded_master_breaks.pop(master_id, None)
                 else:
-                    continue  # Уже отправляли напоминание для того же перерыва
+                    continue  #       
             
             if not tg_user_id:
-                continue  # Нет Telegram ID
+                continue  #  Telegram ID
             
-            # Вычисляем сколько минут осталось
+            #    
             time_left = break_until - now
             minutes_left = int(time_left.total_seconds() / 60)
             
-            # Формируем сообщение
+            #  
             message = (
-                f"⏰ <b>Перерыв заканчивается через {minutes_left} мин</b>\n\n"
-                "Готовы вернуться на смену?\n\n"
-                "Нажмите кнопку ниже или продлите перерыв ещё на 2 часа."
+                f" <b>   {minutes_left} </b>\n\n"
+                "   ?\n\n"
+                "        2 ."
             )
             
-            # Добавляем в очередь уведомлений
+            #    
             await session.execute(
                 insert(m.notifications_outbox).values(
                     master_id=master_id,
@@ -85,7 +85,7 @@ async def _check_breaks_once() -> None:
                 )
             )
             
-            # Помечаем, что отправили напоминание для конкретного времени окончания
+            # ,       
             _reminded_master_breaks[master_id] = break_until
             
             live_log.push(
@@ -99,26 +99,26 @@ async def _check_breaks_once() -> None:
 
 async def _cleanup_reminded_set(session: AsyncSession | None = None) -> None:
     """
-    Очищаем набор напоминаний для мастеров, у которых перерыв уже закончился.
-    Это позволяет отправить напоминание снова, если мастер возьмёт новый перерыв.
+        ,     .
+        ,     .
     
     Args:
-        session: Опциональная сессия для тестов
+        session:    
     """
     if session is not None:
-        # Используем переданную сессию (для тестов)
+        #    ( )
         await _cleanup_impl(session)
     else:
-        # Создаём свою сессию
+        #   
         async with SessionLocal() as session:
             await _cleanup_impl(session)
 
 
 async def _cleanup_impl(session: AsyncSession) -> None:
-    """Внутренняя реализация очистки."""
+    """  ."""
     now = datetime.now(UTC)
     
-    # Находим всех мастеров из _reminded_master_breaks
+    #     _reminded_master_breaks
     if not _reminded_master_breaks:
         return
 
@@ -160,10 +160,10 @@ async def _cleanup_impl(session: AsyncSession) -> None:
 
 async def run_break_reminder(*, interval_seconds: int = 60) -> None:
     """
-    Основной цикл планировщика напоминаний о перерывах.
+         .
     
     Args:
-        interval_seconds: Интервал проверки в секундах (по умолчанию 60 сек)
+        interval_seconds:     (  60 )
     """
     sleep_for = max(10, int(interval_seconds))
     

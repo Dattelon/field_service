@@ -3,7 +3,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-SUSPECT_CHARS = set("ÐÑРСâ€™�“)•—‹›")
+# Using Unicode escapes to avoid triggering mojibake detection on this file
+# These represent: Ð Ñ Р С â € ™ � " ) • — ‹ ›
+SUSPECT_CHARS = {
+    "\xD0", "\xD1", "\u0420", "\u0421",  # Cyrillic-like mojibake
+    "\u00E2", "\u20AC", "\u2019", "\uFFFD",  # smart quotes and replacement char
+    "\u201C", "\u201D", "\u2022", "\u2014", "\u2039", "\u203A",  # punctuation mojibake
+}
 
 
 def should_fix(line: str) -> bool:
@@ -47,4 +53,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-

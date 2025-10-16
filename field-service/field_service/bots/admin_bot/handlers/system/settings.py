@@ -1,5 +1,5 @@
 # field_service/bots/admin_bot/handlers/settings.py
-"""Обработчики настроек системы (SettingsEditFSM)."""
+"""   (SettingsEditFSM)."""
 from __future__ import annotations
 
 import html
@@ -26,12 +26,12 @@ router = Router(name="admin_settings")
 
 
 # ============================================
-# ОПРЕДЕЛЕНИЯ НАСТРОЕК
+#  
 # ============================================
 
 @dataclass(frozen=True)
 class SettingFieldDef:
-    """Определение одного поля настройки."""
+    """   ."""
     key: str
     label: str
     schema: str
@@ -43,74 +43,74 @@ class SettingFieldDef:
 
 @dataclass(frozen=True)
 class SettingGroupDef:
-    """Определение группы настроек."""
+    """  ."""
     key: str
     title: str
     fields: tuple[SettingFieldDef, ...]
     description: str = ""
 
 
-# Группы настроек
+#  
 SETTING_GROUPS: dict[str, SettingGroupDef] = {
     "workday": SettingGroupDef(
         key="workday",
-        title="Рабочий день",
-        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
+        title=" ",
+        description="  .      .",
         fields=(
             SettingFieldDef(
                 key="working_hours_start",
-                label="Начало рабочего дня",
+                label="  ",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_start,
-                help_text="Формат ЧЧ:ММ, по умолчанию 10:00.",
+                help_text=" :,   10:00.",
             ),
             SettingFieldDef(
                 key="working_hours_end",
-                label="Конец рабочего дня",
+                label="  ",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_end,
-                help_text="Формат ЧЧ:ММ, по умолчанию 20:00.",
+                help_text=" :,   20:00.",
             ),
         ),
     ),
     "distribution": SettingGroupDef(
         key="distribution",
-        title="Распределение",
-        description="Настройки автораспределения заявок (частота, SLA, раунды).",
+        title="",
+        description="   (, SLA, ).",
         fields=(
             SettingFieldDef(
                 key="distribution_tick_seconds",
-                label="Шаг цикла (сек.)",
+                label="  (.)",
                 schema="int",
                 value_type="INT",
                 default=30,
             ),
             SettingFieldDef(
                 key="distribution_sla_seconds",
-                label="SLA ответа мастера (сек.)",
+                label="SLA   (.)",
                 schema="int",
                 value_type="INT",
                 default=env_settings.distribution_sla_seconds,
             ),
             SettingFieldDef(
                 key="distribution_rounds",
-                label="Количество раундов",
+                label=" ",
                 schema="int",
                 value_type="INT",
                 default=env_settings.distribution_rounds,
             ),
             SettingFieldDef(
                 key="escalate_to_admin_after_min",
-                label="Эскалация к админу через (мин.)",
+                label="    (.)",
                 schema="int_non_negative",
                 value_type="INT",
                 default=10,
             ),
             SettingFieldDef(
                 key="distribution_log_topn",
-                label="Логировать topN кандидатов",
+                label=" topN ",
                 schema="int",
                 value_type="INT",
                 default=10,
@@ -119,12 +119,12 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "limits": SettingGroupDef(
         key="limits",
-        title="Лимиты",
-        description="Ограничения сервиса для мастеров и процессов.",
+        title="",
+        description="     .",
         fields=(
             SettingFieldDef(
                 key="max_active_orders",
-                label="Макс. активных заказов на мастера",
+                label=".    ",
                 schema="int",
                 value_type="INT",
                 default=1,
@@ -133,59 +133,59 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "support": SettingGroupDef(
         key="support",
-        title="Поддержка",
-        description="Контакты поддержки и материалы.",
+        title="",
+        description="   .",
         fields=(
             SettingFieldDef(
                 key="support_contact",
-                label="Контакт поддержки",
+                label=" ",
                 schema="string",
                 value_type="STR",
-                help_text="Например, @username, если доступно.",
+                help_text=", @username,  .",
             ),
             SettingFieldDef(
                 key="support_faq_url",
-                label="Ссылка на FAQ",
+                label="  FAQ",
                 schema="string_optional",
                 value_type="STR",
-                help_text="Укажите URL или '-' чтобы очистить.",
+                help_text=" URL  '-'  .",
             ),
         ),
     ),
     "geo": SettingGroupDef(
         key="geo",
-        title="Гео",
-        description="Режим и лимиты геокодера.",
+        title="",
+        description="   .",
         fields=(
             SettingFieldDef(
                 key="geo_mode",
-                label="Режим геокодера",
+                label=" ",
                 schema="choice",
                 value_type="STR",
                 choices=(
-                    ("local_centroids", "Локальные центроиды"),
-                    ("yandex", "Яндекс"),
+                    ("local_centroids", " "),
+                    ("yandex", ""),
                 ),
                 default="local_centroids",
-                help_text="1 — локально, 2 — через API.",
+                help_text="1  , 2   API.",
             ),
             SettingFieldDef(
                 key="yandex_geocoder_key",
-                label="API‑ключ Яндекс",
+                label="API ",
                 schema="string_optional",
                 value_type="STR",
-                help_text="Оставьте '-' чтобы очистить.",
+                help_text=" '-'  .",
             ),
             SettingFieldDef(
                 key="yandex_throttle_rps",
-                label="RPS ограничение",
+                label="RPS ",
                 schema="int_non_negative",
                 value_type="INT",
                 default=1,
             ),
             SettingFieldDef(
                 key="yandex_daily_limit",
-                label="Суточный лимит запросов",
+                label="  ",
                 schema="int_non_negative",
                 value_type="INT",
                 default=1000,
@@ -194,35 +194,35 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "channels": SettingGroupDef(
         key="channels",
-        title="Каналы",
-        description="ID каналов Telegram для уведомлений и отчётов.",
+        title="",
+        description="ID  Telegram    .",
         fields=(
             SettingFieldDef(
                 key="alerts_channel_id",
-                label="Канал алертов (ID)",
+                label="  (ID)",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID или '-' чтобы очистить.",
+                help_text="ID  '-'  .",
             ),
             SettingFieldDef(
                 key="logs_channel_id",
-                label="Канал логов (ID)",
+                label="  (ID)",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID или '-' чтобы очистить.",
+                help_text="ID  '-'  .",
             ),
             SettingFieldDef(
                 key="reports_channel_id",
-                label="Канал отчётов (ID)",
+                label="  (ID)",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID или '-' чтобы очистить.",
+                help_text="ID  '-'  .",
             ),
         ),
     ),
 }
 
-# Индексы для быстрого доступа
+#    
 SETTING_FIELD_BY_KEY: dict[str, SettingFieldDef] = {
     field.key: field
     for group in SETTING_GROUPS.values()
@@ -235,24 +235,24 @@ SETTING_FIELD_GROUP: dict[str, str] = {
     for field in group.fields
 }
 
-# Хелпы по умолчанию для схем
+#     
 SCHEMA_DEFAULT_HELP = {
-    "time": "Формат ЧЧ:ММ, по умолчанию 10:00.",
-    "int": "Введите положительное целое число.",
-    "int_non_negative": "Введите целое число 0 или больше.",
-    "string": "Введите текстовое значение.",
-    "string_optional": "Введите текст или '-' чтобы очистить значение.",
-    "int_optional": "Введите число или '-' чтобы очистить значение.",
-    "choice": "Выберите один из предложенных вариантов.",
+    "time": " :,   10:00.",
+    "int": "   .",
+    "int_non_negative": "   0  .",
+    "string": "  .",
+    "string_optional": "   '-'   .",
+    "int_optional": "   '-'   .",
+    "choice": "    .",
 }
 
 
 # ============================================
-# ХЕЛПЕРЫ
+# 
 # ============================================
 
 def _get_setting_group(group_key: str) -> SettingGroupDef:
-    """Получить определение группы по ключу."""
+    """    ."""
     group = SETTING_GROUPS.get(group_key)
     if group is None:
         raise KeyError(f"Unknown settings group: {group_key}")
@@ -260,7 +260,7 @@ def _get_setting_group(group_key: str) -> SettingGroupDef:
 
 
 def _get_setting_field(field_key: str) -> SettingFieldDef:
-    """Получить определение поля по ключу."""
+    """    ."""
     field = SETTING_FIELD_BY_KEY.get(field_key)
     if field is None:
         raise KeyError(f"Unknown setting field: {field_key}")
@@ -269,7 +269,7 @@ def _get_setting_field(field_key: str) -> SettingFieldDef:
 
 def _format_setting_value(field: SettingFieldDef, raw_value: Optional[str]) -> tuple[str, bool]:
     """
-    Форматировать значение настройки для отображения.
+        .
     
     Returns:
         (formatted_value, from_default)
@@ -290,7 +290,7 @@ def _format_setting_value(field: SettingFieldDef, raw_value: Optional[str]) -> t
 
 
 def _choice_help(field: SettingFieldDef) -> str:
-    """Сгенерировать текст помощи для choice-поля."""
+    """    choice-."""
     if not field.choices:
         return ""
     lines = []
@@ -300,11 +300,11 @@ def _choice_help(field: SettingFieldDef) -> str:
 
 
 def _build_setting_prompt(field: SettingFieldDef, current_display: str) -> str:
-    """Построить prompt для редактирования настройки."""
+    """ prompt   ."""
     lines = [f"<b>{field.label}</b>"]
     if current_display and current_display != EMPTY_PLACEHOLDER:
-        lines.append(f"Текущее: <code>{html.escape(current_display, quote=False)}</code>")
-    base_help = SCHEMA_DEFAULT_HELP.get(field.schema, "Введите новое значение.")
+        lines.append(f": <code>{html.escape(current_display, quote=False)}</code>")
+    base_help = SCHEMA_DEFAULT_HELP.get(field.schema, "  .")
     if field.schema == "choice":
         options = _choice_help(field)
         if options:
@@ -314,19 +314,19 @@ def _build_setting_prompt(field: SettingFieldDef, current_display: str) -> str:
             lines.append(base_help)
     else:
         lines.append(field.help_text or base_help)
-    lines.append("\nОтправьте /cancel для отмены.")
+    lines.append("\n /cancel  .")
     return "\n".join(lines)
 
 
 def _parse_setting_input(field: SettingFieldDef, user_input: str) -> tuple[str, str]:
     """
-    Парсинг и валидация ввода пользователя.
+        .
     
     Returns:
         (parsed_value, value_type)
     
     Raises:
-        ValueError: если ввод невалидный
+        ValueError:   
     """
     text = (user_input or "").strip()
     
@@ -335,35 +335,35 @@ def _parse_setting_input(field: SettingFieldDef, user_input: str) -> tuple[str, 
     
     if field.schema == "time":
         if not re.fullmatch(r"^\d{1,2}:\d{2}$", text):
-            raise ValueError("Неверный формат. Ожидается ЧЧ:ММ.")
+            raise ValueError(" .  :.")
         hh, mm = map(int, text.split(":"))
         if not (0 <= hh < 24 and 0 <= mm < 60):
-            raise ValueError("Часы: 0-23, минуты: 0-59.")
+            raise ValueError(": 0-23, : 0-59.")
         return text, field.value_type
     
     if field.schema == "int":
         try:
             value = int(text)
         except ValueError:
-            raise ValueError("Ожидается целое число.")
+            raise ValueError("  .")
         if value <= 0:
-            raise ValueError("Число должно быть больше 0.")
+            raise ValueError("    0.")
         return str(value), field.value_type
     
     if field.schema == "int_non_negative":
         try:
             value = int(text)
         except ValueError:
-            raise ValueError("Ожидается целое число.")
+            raise ValueError("  .")
         if value < 0:
-            raise ValueError("Число должно быть 0 или больше.")
+            raise ValueError("   0  .")
         return str(value), field.value_type
     
     if field.schema == "int_optional":
         try:
             value = int(text)
         except ValueError:
-            raise ValueError("Ожидается число или '-' для очистки.")
+            raise ValueError("   '-'  .")
         return str(value), field.value_type
     
     if field.schema == "choice":
@@ -372,21 +372,21 @@ def _parse_setting_input(field: SettingFieldDef, user_input: str) -> tuple[str, 
             for idx, (code, label) in enumerate(field.choices, 1):
                 if normalized in {code.lower(), label.lower(), str(idx)}:
                     return code, field.value_type
-        raise ValueError("Выберите один из предложенных вариантов.")
+        raise ValueError("    .")
     
     if field.schema == "string_optional":
         return text, field.value_type
     
     if field.schema == "string":
         if not text:
-            raise ValueError("Поле не может быть пустым.")
+            raise ValueError("    .")
         return text, field.value_type
     
-    raise ValueError("Неизвестная схема валидации.")
+    raise ValueError("  .")
 
 
 async def _build_settings_view(bot, group_key: str) -> tuple[str, Any]:
-    """Построить представление группы настроек."""
+    """   ."""
     group = _get_setting_group(group_key)
     service = _settings_service(bot)
     raw_map = await service.get_values([field.key for field in group.fields])
@@ -404,16 +404,16 @@ async def _build_settings_view(bot, group_key: str) -> tuple[str, Any]:
         label = field.label
         
         if display == EMPTY_PLACEHOLDER:
-            value_line = f"• {label}: {EMPTY_PLACEHOLDER}"
+            value_line = f" {label}: {EMPTY_PLACEHOLDER}"
         else:
-            value_line = f"• {label}: <code>{html.escape(display, quote=False)}</code>"
+            value_line = f" {label}: <code>{html.escape(display, quote=False)}</code>"
         
         if from_default and field.default not in (None, ""):
-            value_line += " <i>(по умолчанию)</i>"
+            value_line += " <i>( )</i>"
         
         lines.append(value_line)
     
-    lines.append("\nВыберите поле ниже, чтобы отредактировать значение.")
+    lines.append("\n  ,   .")
     
     keyboard = settings_group_keyboard(
         group_key,
@@ -423,7 +423,7 @@ async def _build_settings_view(bot, group_key: str) -> tuple[str, Any]:
 
 
 # ============================================
-# ОБРАБОТЧИКИ
+# 
 # ============================================
 
 @router.callback_query(
@@ -431,9 +431,9 @@ async def _build_settings_view(bot, group_key: str) -> tuple[str, Any]:
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
 )
 async def cb_settings_menu(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Показать главное меню настроек."""
+    """   ."""
     await cq.message.edit_text(
-        "<b>⚙️ Настройки</b>\n\nВыберите группу настроек для редактирования.",
+        "<b> </b>\n\n    .",
         reply_markup=settings_menu_keyboard(),
     )
     await cq.answer()
@@ -444,12 +444,12 @@ async def cb_settings_menu(cq: CallbackQuery, staff: StaffUser) -> None:
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN}),
 )
 async def cb_settings_group(cq: CallbackQuery, staff: StaffUser) -> None:
-    """Показать группу настроек."""
+    """  ."""
     group_key = cq.data.split(":")[3]
     try:
         view_text, keyboard = await _build_settings_view(cq.message.bot, group_key)
     except KeyError:
-        await cq.answer("Группа не найдена", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await cq.message.edit_text(
         view_text,
@@ -466,17 +466,17 @@ async def cb_settings_group(cq: CallbackQuery, staff: StaffUser) -> None:
 async def cb_settings_edit_start(
     cq: CallbackQuery, staff: StaffUser, state: FSMContext
 ) -> None:
-    """Начать редактирование настройки."""
+    """  ."""
     parts = cq.data.split(":")
     if len(parts) != 5:
-        await cq.answer("Неверный формат", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     _, _, _, group_key, field_key = parts
     
     try:
         field = _get_setting_field(field_key)
     except KeyError:
-        await cq.answer("Поле не найдено", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
 
     service = _settings_service(cq.message.bot)
@@ -502,9 +502,9 @@ async def cb_settings_edit_start(
     F.text == "/cancel",
 )
 async def settings_edit_cancel(msg: Message, state: FSMContext) -> None:
-    """Отменить редактирование настройки."""
+    """  ."""
     await state.clear()
-    await msg.answer("Редактирование отменено.")
+    await msg.answer(" .")
 
 
 @router.message(
@@ -514,7 +514,7 @@ async def settings_edit_cancel(msg: Message, state: FSMContext) -> None:
 async def settings_edit_value(
     msg: Message, staff: StaffUser, state: FSMContext
 ) -> None:
-    """Обработать ввод нового значения настройки."""
+    """    ."""
     data = await state.get_data()
     field_key = data.get("edit_key")
     group_key = data.get("group_key")
@@ -523,18 +523,18 @@ async def settings_edit_value(
 
     if not field_key or not group_key or source_chat_id is None or source_message_id is None:
         await state.clear()
-        await msg.answer("Ошибка: данные сессии потеряны.")
+        await msg.answer(":   .")
         return
 
     try:
         field = _get_setting_field(field_key)
     except KeyError:
         await state.clear()
-        await msg.answer("Ошибка: поле не найдено.")
+        await msg.answer(":   .")
         return
 
     if not msg.text:
-        await msg.answer("Пожалуйста, отправьте текстовое значение.")
+        await msg.answer(",   .")
         return
 
     try:
@@ -546,9 +546,9 @@ async def settings_edit_value(
     service = _settings_service(msg.bot)
     await service.set_value(field.key, value, value_type=value_type)
     await state.clear()
-    await msg.answer("✅ Значение сохранено.")
+    await msg.answer("  .")
 
-    # Обновить исходное сообщение с группой настроек
+    #      
     try:
         view_text, keyboard = await _build_settings_view(msg.bot, group_key)
         await msg.bot.edit_message_text(

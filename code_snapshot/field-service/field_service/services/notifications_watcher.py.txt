@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import logging
 from typing import Optional
@@ -8,6 +9,7 @@ from typing import Optional
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db.session import SessionLocal
 from field_service.db import models as m
@@ -17,9 +19,27 @@ MAX_SEND_ATTEMPTS = 5
 logger = logging.getLogger(__name__)
 
 
-async def _drain_outbox_once(bot: Bot) -> None:
-    async with SessionLocal() as session:
-        rows = await session.execute(
+@asynccontextmanager
+async def _maybe_session(session: Optional[AsyncSession]):
+    """Context manager для работы с опциональной сессией."""
+    if session is not None:
+        # Используем переданную сессию, не закрываем её
+        yield session
+        return
+    # Создаём временную сессию через SessionLocal
+    async with SessionLocal() as s:
+        yield s
+
+
+async def _drain_outbox_once(bot: Bot, *, session: Optional[AsyncSession] = None) -> None:
+    """Обработать один батч уведомлений из outbox.
+    
+    Args:
+        bot: Bot instance для отправки сообщений
+        session: Опциональная тестовая сессия
+    """
+    async with _maybe_session(session) as s:
+        rows = await s.execute(
             select(
                 m.notifications_outbox.id,
                 m.notifications_outbox.master_id,
@@ -46,7 +66,7 @@ async def _drain_outbox_once(bot: Bot) -> None:
         ) in items:
             if not tg_user_id:
                 # пометим как обработанное без отправки
-                await session.execute(
+                await s.execute(
                     update(m.notifications_outbox)
                     .where(m.notifications_outbox.id == outbox_id)
                     .values(processed_at=datetime.now(UTC))
@@ -78,13 +98,13 @@ async def _drain_outbox_once(bot: Bot) -> None:
                 }
                 if current_attempt >= MAX_SEND_ATTEMPTS:
                     values["processed_at"] = datetime.now(UTC)
-                await session.execute(
+                await s.execute(
                     update(m.notifications_outbox)
                     .where(m.notifications_outbox.id == outbox_id)
                     .values(**values)
                 )
             else:
-                await session.execute(
+                await s.execute(
                     update(m.notifications_outbox)
                     .where(m.notifications_outbox.id == outbox_id)
                     .values(
@@ -93,16 +113,27 @@ async def _drain_outbox_once(bot: Bot) -> None:
                         last_error=None,
                     )
                 )
-        await session.commit()
+        await s.commit()
 
 
-async def run_master_notifications(bot: Bot, *, interval_seconds: int = 5) -> None:
+async def run_master_notifications(
+    bot: Bot, 
+    *, 
+    interval_seconds: int = 5,
+    session: Optional[AsyncSession] = None
+) -> None:
+    """Периодически обрабатывать очередь уведомлений.
+    
+    Args:
+        bot: Bot instance для отправки сообщений
+        interval_seconds: Интервал проверки в секундах
+        session: Опциональная тестовая сессия (для тестов)
+    """
     sleep_for = max(1, int(interval_seconds))
     while True:
         try:
-            await _drain_outbox_once(bot)
+            await _drain_outbox_once(bot, session=session)
         except Exception:
             # Не падаем из‑за сбоев доставки, просто пишем в лог stderr
             logger.exception("Failed to drain notifications outbox")
         await asyncio.sleep(sleep_for)
-

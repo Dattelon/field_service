@@ -18,24 +18,24 @@ from ...core.dto import (
 def _category_value(category: OrderCategory) -> str:
     """Convert OrderCategory enum to human-readable text."""
     category_labels = {
-        OrderCategory.ELECTRICS: "Электрика",
-        OrderCategory.PLUMBING: "Сантехника",
-        OrderCategory.APPLIANCES: "Бытовая техника",
-        OrderCategory.DOORS: "Двери/Замки",
-        OrderCategory.FURNITURE: "Мебель",
-        OrderCategory.WINDOWS: "Окна",
-        OrderCategory.RENOVATION: "Ремонт/Отделка",
-        OrderCategory.OTHER: "Другое",
+        OrderCategory.ELECTRICS: "",
+        OrderCategory.PLUMBING: "",
+        OrderCategory.APPLIANCES: " ",
+        OrderCategory.DOORS: "/",
+        OrderCategory.FURNITURE: "",
+        OrderCategory.WINDOWS: "",
+        OrderCategory.RENOVATION: "/",
+        OrderCategory.OTHER: "",
     }
     return category_labels.get(category, str(category.value) if hasattr(category, 'value') else str(category))
 
 
 def order_teaser(order: OrderListItem) -> str:
     district = order.district_name or ""
-    slot = f" ⏰ {order.timeslot_local}" if order.timeslot_local else ""
+    slot = f"  {order.timeslot_local}" if order.timeslot_local else ""
     category = _category_value(order.category)
     return (
-        f"#{order.id} • {order.city_name}/{district} • {category}{slot} • {order.status}"
+        f"#{order.id}  {order.city_name}/{district}  {category}{slot}  {order.status}"
     )
 
 
@@ -44,8 +44,8 @@ def order_card(order: OrderCard) -> str:
     district = order.district_name or ""
     slot = order.timeslot_local or ""
     master_line = (
-        f"👤 Мастер: {order.master_name}" + (f" ({order.master_phone})" if order.master_phone else "")
-    ) if order.master_name else "👤 Мастер: —"
+        f" : {order.master_name}" + (f" ({order.master_phone})" if order.master_phone else "")
+    ) if order.master_name else " : "
     customer = order.client_name or ""
     if order.client_phone:
         customer += f" ({order.client_phone})"
@@ -57,75 +57,75 @@ def order_card(order: OrderCard) -> str:
     address = ", ".join(p for p in address_parts if p)
     
     lines = [
-        f"🧾 <b>Заказ #{order.id}</b>",
-        f"📍 {address}",
-        f"🔧 Категория: {_category_value(order.category)}",
-        f"📦 Тип: {order.order_type.value}",
-        f"⏰ Слот: {slot}",
-        f"📌 Статус: {order.status}",
-        f"🗓 Создан: {order.created_at_local}",
-        f"👤 Клиент: {customer}",
+        f" <b> #{order.id}</b>",
+        f" {address}",
+        f" : {_category_value(order.category)}",
+        f" : {order.order_type.value}",
+        f" : {slot}",
+        f" : {order.status}",
+        f" : {order.created_at_local}",
+        f" : {customer}",
         master_line,
     ]
     
     if order.description:
-        lines.append("📝 Описание: " + order.description)
+        lines.append(" : " + order.description)
     
-    # P1-02: Время в пути и длительность работы
+    # P1-02:      
     if order.en_route_at_local and order.working_at_local:
-        lines.append(f"🚗 В пути: {order.en_route_at_local}")
+        lines.append(f"  : {order.en_route_at_local}")
     if order.working_at_local and order.payment_at_local:
-        lines.append(f"⏱ Работа: {order.working_at_local} — {order.payment_at_local}")
+        lines.append(f" : {order.working_at_local}  {order.payment_at_local}")
     
-    # P1-02: Отклонившие мастера
+    # P1-02:  
     if order.declined_masters:
         declined_count = len(order.declined_masters)
-        lines.append(f"\n❌ <b>Отклонили ({declined_count}):</b>")
-        for dm in order.declined_masters[:5]:  # Показываем первых 5
-            lines.append(f"  • {dm.master_name} (р.{dm.round_number}) — {dm.declined_at_local}")
+        lines.append(f"\n <b> ({declined_count}):</b>")
+        for dm in order.declined_masters[:5]:  #   5
+            lines.append(f"   {dm.master_name} (.{dm.round_number})  {dm.declined_at_local}")
         if declined_count > 5:
-            lines.append(f"  ... и ещё {declined_count - 5}")
+            lines.append(f"  ...   {declined_count - 5}")
     
-    # P1-20: Детальная история статусов с контекстом
+    # P1-20:     
     if order.status_history:
-        lines.append(f"\n📋 <b>История статусов:</b>")
-        # Показываем последние 5 изменений
+        lines.append(f"\n <b> :</b>")
+        #   5 
         for item in order.status_history[-5:]:
-            from_status_text = item.from_status or "—"
-            change_text = f"{from_status_text} → {item.to_status}"
+            from_status_text = item.from_status or ""
+            change_text = f"{from_status_text}  {item.to_status}"
             
-            # Иконка актора
+            #  
             actor_icon = {
-                "SYSTEM": "🤖",
-                "ADMIN": "👤",
-                "MASTER": "🔧",
-                "AUTO_DISTRIBUTION": "⚙️"
+                "SYSTEM": "",
+                "ADMIN": "",
+                "MASTER": "",
+                "AUTO_DISTRIBUTION": ""
             }.get(item.actor_type, "")
             
-            # Основная строка с актором
+            #    
             actor_name = item.actor_name or ""
             if actor_name:
-                lines.append(f"  {actor_icon} {change_text} — {item.changed_at_local}")
-                lines.append(f"    <i>Кто: {actor_name}</i>")
+                lines.append(f"  {actor_icon} {change_text}  {item.changed_at_local}")
+                lines.append(f"    <i>: {actor_name}</i>")
             else:
-                lines.append(f"  {actor_icon} {change_text} — {item.changed_at_local}")
+                lines.append(f"  {actor_icon} {change_text}  {item.changed_at_local}")
             
-            # Причина
+            # 
             if item.reason:
-                lines.append(f"    <i>Причина: {item.reason}</i>")
+                lines.append(f"    <i>: {item.reason}</i>")
             
-            # Дополнительный контекст из context (если есть важные данные)
+            #    context (   )
             if item.context:
                 ctx = item.context
                 if "candidates_count" in ctx and "round_number" in ctx:
-                    lines.append(f"    <i>Раунд {ctx['round_number']}, кандидатов: {ctx['candidates_count']}</i>")
+                    lines.append(f"    <i> {ctx['round_number']}, : {ctx['candidates_count']}</i>")
                 elif "method" in ctx:
                     method_text = {
-                        "auto_distribution": "Автораспределение",
-                        "manual_assign": "Ручное назначение",
-                        "admin_override": "Переназначение админом"
+                        "auto_distribution": "",
+                        "manual_assign": " ",
+                        "admin_override": " "
                     }.get(ctx["method"], ctx["method"])
-                    lines.append(f"    <i>Метод: {method_text}</i>")
+                    lines.append(f"    <i>: {method_text}</i>")
     
     # P1-23: Add breadcrumbs navigation
     text = "\n".join(lines)
@@ -164,17 +164,17 @@ def master_brief_line(master: MasterBrief) -> str:
     return text_block
 
 def new_order_summary(data: Mapping[str, object]) -> str:
-    lines = ["🆕 <b>Новый заказ</b>"]
-    lines.append(f"Город: {data.get('city_name', '')}")
-    lines.append(f"Район: {data.get('district_name', '')}")
-    lines.append(f"Улица: {data.get('street_name', '')}")
-    lines.append(f"Дом: {data.get('house', '')}")
+    lines = [" <b> </b>"]
+    lines.append(f": {data.get('city_name', '')}")
+    lines.append(f": {data.get('district_name', '')}")
+    lines.append(f": {data.get('street_name', '')}")
+    lines.append(f": {data.get('house', '')}")
     if data.get('apartment'):
-        lines.append(f"Кв.: {data['apartment']}")
+        lines.append(f".: {data['apartment']}")
     if data.get('address_comment'):
-        lines.append(f"Комментарий к адресу: {data['address_comment']}")
+        lines.append(f"  : {data['address_comment']}")
     lines.append(
-        "Клиент: "
+        ": "
         + str(data.get('client_name', ''))
         + (f" ({data['client_phone']})" if data.get('client_phone') else "")
     )
@@ -184,14 +184,14 @@ def new_order_summary(data: Mapping[str, object]) -> str:
     else:
         category_fallback = str(category_obj or '')
     lines.append(
-        f"Категория: {data.get('category_label', category_fallback)}"
+        f": {data.get('category_label', category_fallback)}"
     )
-    lines.append(f"Тип: {data.get('order_type', 'NORMAL')}")
-    lines.append(f"Слот: {data.get('timeslot_display', '')}")
+    lines.append(f": {data.get('order_type', 'NORMAL')}")
+    lines.append(f": {data.get('timeslot_display', '')}")
     if data.get('description'):
-        lines.append("Описание: " + str(data['description']))
+        lines.append(": " + str(data['description']))
     if data.get('attachments_count'):
-        lines.append(f"Вложения: {data['attachments_count']}")
+        lines.append(f": {data['attachments_count']}")
     
     # P1-23: Add breadcrumbs navigation
     text = "\n".join(lines)

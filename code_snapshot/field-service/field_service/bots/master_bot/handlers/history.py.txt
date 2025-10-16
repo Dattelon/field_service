@@ -1,4 +1,4 @@
-"""История заказов мастера (P1-9)."""
+"""   (P1-9)."""
 from __future__ import annotations
 
 import logging
@@ -55,7 +55,7 @@ async def history_root(
     master: m.masters,
     state: FSMContext,
 ) -> None:
-    """Показать историю заказов (главная страница)."""
+    """   ( )."""
     await state.clear()
     _log.info("history_root: master_id=%s", master.id)
     await _render_history(callback, session, master, page=1, filter_status=None)
@@ -68,7 +68,7 @@ async def history_page(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
-    """Переход на страницу истории с фильтром."""
+    """     ."""
     parts = callback.data.split(":")
     page = int(parts[2])
     filter_status = parts[3] if len(parts) > 3 else None
@@ -84,7 +84,7 @@ async def history_card(
     session: AsyncSession,
     master: m.masters,
 ) -> None:
-    """Показать карточку завершенного заказа."""
+    """   ."""
     parts = callback.data.split(":")
     order_id = int(parts[3])
     page = int(parts[4]) if len(parts) > 4 else 1
@@ -92,7 +92,7 @@ async def history_card(
     
     _log.info("history_card: master_id=%s, order_id=%s", master.id, order_id)
     
-    # Загружаем заказ
+    #  
     stmt = (
         select(m.orders)
         .where(
@@ -107,24 +107,24 @@ async def history_card(
     order = result.scalar_one_or_none()
     
     if not order:
-        await safe_answer_callback(callback, "❌ Заказ не найден", show_alert=True)
+        await safe_answer_callback(callback, "   ", show_alert=True)
         await _render_history(callback, session, master, page=page, filter_status=filter_status)
         return
     
-    # Загружаем связанные данные
+    #   
     await session.refresh(order, ["city", "district", "category"])
     
-    # Формируем карточку
+    #  
     text_without_breadcrumbs = history_order_card(
         order_id=order.id,
         status=ORDER_STATUS_TITLES.get(order.status, order.status),
-        city=order.city.name if order.city else "—",
+        city=order.city.name if order.city else "",
         district=order.district.name if order.district else None,
         street=order.street_address,
         house=order.house_number,
         apartment=order.apartment_number,
         address_comment=order.address_comment,
-        category=order.category.label if order.category else "—",
+        category=order.category.label if order.category else "",
         description=order.description,
         timeslot=_timeslot_text(order.timeslot_start, order.timeslot_end),
         client_name=order.client_name,
@@ -138,14 +138,14 @@ async def history_card(
     breadcrumb_path = MasterPaths.history_order_card(order.id)
     text = add_breadcrumbs_to_text(text_without_breadcrumbs, breadcrumb_path)
     
-    # Кнопки возврата
+    #  
     back_callback = f"m:hist:{page}"
     if filter_status:
         back_callback += f":{filter_status}"
     
     keyboard = inline_keyboard([
-        [InlineKeyboardButton(text="← Назад к истории", callback_data=back_callback)],
-        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="m:menu")],
+        [InlineKeyboardButton(text="   ", callback_data=back_callback)],
+        [InlineKeyboardButton(text="  ", callback_data="m:menu")],
     ])
     
     if callback.message:
@@ -160,9 +160,9 @@ async def _render_history(
     page: int,
     filter_status: str | None,
 ) -> None:
-    """Отобразить список истории заказов с пагинацией и фильтрами."""
+    """       ."""
     
-    # Определяем статусы для фильтра
+    #    
     if filter_status == "closed":
         statuses = (m.OrderStatus.CLOSED,)
     elif filter_status == "canceled":
@@ -170,7 +170,7 @@ async def _render_history(
     else:
         statuses = HISTORY_STATUSES
     
-    # Подсчет общего количества заказов
+    #    
     count_stmt = (
         select(func.count(m.orders.id))
         .where(
@@ -186,18 +186,18 @@ async def _render_history(
     if total == 0:
         text = HISTORY_EMPTY
         keyboard = inline_keyboard([
-            [InlineKeyboardButton(text="🏠 Главное меню", callback_data="m:menu")],
+            [InlineKeyboardButton(text="  ", callback_data="m:menu")],
         ])
         if callback.message:
             await safe_edit_or_send(callback.message, text, keyboard)
         return
     
-    # Вычисляем пагинацию
+    #  
     total_pages = math.ceil(total / HISTORY_PAGE_SIZE)
     page = max(1, min(page, total_pages))
     offset = (page - 1) * HISTORY_PAGE_SIZE
     
-    # Загружаем заказы для текущей страницы
+    #     
     orders_stmt = (
         select(m.orders)
         .where(
@@ -213,7 +213,7 @@ async def _render_history(
     orders_result = await session.execute(orders_stmt)
     orders = orders_result.scalars().all()
     
-    # Загружаем статистику для шапки
+    #    
     stats_stmt = select(
         func.count(m.orders.id).label("total_completed"),
         func.sum(m.orders.final_amount).label("total_earned"),
@@ -226,7 +226,7 @@ async def _render_history(
     stats_result = await session.execute(stats_stmt)
     stats = stats_result.one()
     
-    # Формируем заголовок
+    #  
     header = HISTORY_HEADER_TEMPLATE.format(
         page=page,
         pages=total_pages,
@@ -236,67 +236,67 @@ async def _render_history(
     stats_text = HISTORY_STATS_TEMPLATE.format(
         total_completed=stats.total_completed or 0,
         total_earned=float(stats.total_earned or 0),
-        avg_rating="—",  # TODO: реализовать рейтинги позже
+        avg_rating="",  # TODO:   
     )
     
-    # Формируем список заказов
+    #   
     lines = [header, "", stats_text, ""]
     for order in orders:
         await session.refresh(order, ["city", "district", "category"])
         line = history_order_line(
             order_id=order.id,
             status=ORDER_STATUS_TITLES.get(order.status, order.status),
-            city=order.city.name if order.city else "—",
+            city=order.city.name if order.city else "",
             district=order.district.name if order.district else None,
-            category=order.category.label if order.category else "—",
+            category=order.category.label if order.category else "",
             timeslot=_timeslot_text(order.timeslot_start, order.timeslot_end),
         )
         lines.append(line)
     
     text = "\n".join(lines)
     
-    # Формируем клавиатуру
+    #  
     rows: list[list[InlineKeyboardButton]] = []
     
-    # Кнопки для каждого заказа
+    #    
     for order in orders:
         callback_data = f"m:hist:card:{order.id}:{page}"
         if filter_status:
             callback_data += f":{filter_status}"
         rows.append([
             InlineKeyboardButton(
-                text=f"#{order.id} • {ORDER_STATUS_TITLES.get(order.status, order.status)}",
+                text=f"#{order.id}  {ORDER_STATUS_TITLES.get(order.status, order.status)}",
                 callback_data=callback_data,
             )
         ])
     
-    # Фильтры
+    # 
     filter_row: list[InlineKeyboardButton] = []
     if filter_status != "closed":
         filter_row.append(
             InlineKeyboardButton(
-                text="✅ Завершенные",
+                text=" ",
                 callback_data=f"m:hist:1:closed",
             )
         )
     if filter_status != "canceled":
         filter_row.append(
             InlineKeyboardButton(
-                text="❌ Отмененные",
+                text=" ",
                 callback_data=f"m:hist:1:canceled",
             )
         )
     if filter_status is not None:
         filter_row.append(
             InlineKeyboardButton(
-                text="📋 Все",
+                text=" ",
                 callback_data="m:hist:1",
             )
         )
     if filter_row:
         rows.append(filter_row)
     
-    # Пагинация
+    # 
     if total_pages > 1:
         nav_row: list[InlineKeyboardButton] = []
         if page > 1:
@@ -304,7 +304,7 @@ async def _render_history(
             if filter_status:
                 prev_callback += f":{filter_status}"
             nav_row.append(
-                InlineKeyboardButton(text="‹ Назад", callback_data=prev_callback)
+                InlineKeyboardButton(text=" ", callback_data=prev_callback)
             )
         nav_row.append(
             InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="m:hist:noop")
@@ -314,13 +314,13 @@ async def _render_history(
             if filter_status:
                 next_callback += f":{filter_status}"
             nav_row.append(
-                InlineKeyboardButton(text="Вперёд ›", callback_data=next_callback)
+                InlineKeyboardButton(text=" ", callback_data=next_callback)
             )
         rows.append(nav_row)
     
-    # Кнопка "Главное меню"
+    #  " "
     rows.append([
-        InlineKeyboardButton(text="🏠 Главное меню", callback_data="m:menu")
+        InlineKeyboardButton(text="  ", callback_data="m:menu")
     ])
     
     keyboard = inline_keyboard(rows)

@@ -1,6 +1,10 @@
 {
-  "python.defaultInterpreterPath": ".venv",
-  "python.testing.pytestEnabled": true,
-  "python.testing.pytestArgs": ["-q"],
-  "editor.formatOnSave": true
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
+  "terminal.integrated.env.windows": {
+    "PYTHONUTF8": "1",
+    "PYTHONIOENCODING": "utf-8",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "LC_ALL": "C.UTF-8"
+  }
 }

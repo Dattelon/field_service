@@ -19,6 +19,7 @@ class OnboardingStates(StatesGroup):
     payout_requisites = State()
     payout_sbp_bank = State()  # 🔧 Выбор банка для СБП
     confirm = State()
+    home_geo = State()
 
 
 class FinanceUploadStates(StatesGroup):

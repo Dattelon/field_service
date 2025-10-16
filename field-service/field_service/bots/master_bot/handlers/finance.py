@@ -27,24 +27,24 @@ router = Router(name="master_finance")
 COMMISSIONS_PAGE_SIZE = 5
 FINANCE_MODES: dict[str, tuple[str, tuple[m.CommissionStatus, ...]]] = {
     "aw": (
-        "💳 К оплате",
+        "  ",
         (m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED),
     ),
-    "pd": ("✅ Выплачено", (m.CommissionStatus.APPROVED,)),
-    "ov": ("⚠️ Просрочено", (m.CommissionStatus.OVERDUE,)),
+    "pd": (" ", (m.CommissionStatus.APPROVED,)),
+    "ov": (" ", (m.CommissionStatus.OVERDUE,)),
 }
 MODE_ORDER = ("aw", "pd", "ov")
 
 STATUS_LABELS: dict[m.CommissionStatus, str] = {
-    m.CommissionStatus.WAIT_PAY: "Ожидает оплаты",
-    m.CommissionStatus.REPORTED: "Отправлен отчёт",
-    m.CommissionStatus.APPROVED: "Оплата подтверждена",
-    m.CommissionStatus.OVERDUE: "Просрочено",
+    m.CommissionStatus.WAIT_PAY: " ",
+    m.CommissionStatus.REPORTED: " ",
+    m.CommissionStatus.APPROVED: " ",
+    m.CommissionStatus.OVERDUE: "",
 }
 
 ORDER_TYPE_LABELS: dict[m.OrderType, str] = {
-    m.OrderType.NORMAL: "Обычный заказ",
-    m.OrderType.GUARANTEE: "Гарантийный визит",
+    m.OrderType.NORMAL: " ",
+    m.OrderType.GUARANTEE: " ",
 }
 
 
@@ -93,21 +93,21 @@ async def finances_show_payto(
     commission_id = int(callback.data.split(":")[-1])
     commission = await _get_commission(session, master.id, commission_id)
     if commission is None:
-        await safe_answer_callback(callback, "Комиссия не найдена.", show_alert=True)
+        await safe_answer_callback(callback, "  .", show_alert=True)
         return
 
     snapshot_text = format_pay_snapshot(commission.pay_to_snapshot)
     if snapshot_text:
         await callback.message.answer(snapshot_text)
     else:
-        await callback.message.answer("Реквизиты для оплаты пока недоступны.")
+        await callback.message.answer("    .")
 
     qr_id = commission.pay_to_snapshot.get("sbp_qr_file_id") if commission.pay_to_snapshot else None
     if qr_id:
         try:
             await callback.message.answer_photo(qr_id)
         except TelegramBadRequest:
-            await callback.message.answer("Не удалось отправить QR-код.")
+            await callback.message.answer("   QR-.")
     await safe_answer_callback(callback)
 
 
@@ -121,13 +121,13 @@ async def finances_request_check(
     commission_id = int(callback.data.split(":")[-1])
     commission = await _get_commission(session, master.id, commission_id)
     if commission is None:
-        await safe_answer_callback(callback, "Комиссия не найдена.", show_alert=True)
+        await safe_answer_callback(callback, "  .", show_alert=True)
         return
 
     await state.set_state(FinanceUploadStates.check)
     await state.update_data(fin_upload={"commission_id": commission_id})
     prompt = await callback.message.answer(
-        "Загрузите чек (фото или PDF одним файлом).",
+        "  (  PDF  ).",
         reply_markup=finance_cancel_keyboard(),
     )
     await remember_finance_prompt(state, prompt)
@@ -155,9 +155,9 @@ async def finances_upload_cancel(
 
     if commission_id is not None:
         await _render_commission_card(callback, session, master, int(commission_id), state)
-        await safe_answer_callback(callback, "Загрузка чека отменена")
+        await safe_answer_callback(callback, "  ")
     else:
-        await safe_answer_callback(callback, "Не удалось определить комиссию.", show_alert=True)
+        await safe_answer_callback(callback, "   .", show_alert=True)
 
 
 @router.callback_query(F.data.regexp(r"^m:fin:cm:ip:(\d+)$"))
@@ -170,14 +170,14 @@ async def finances_mark_paid(
     commission_id = int(callback.data.split(":")[-1])
     commission = await _get_commission(session, master.id, commission_id)
     if commission is None:
-        await safe_answer_callback(callback, "Комиссия не найдена.", show_alert=True)
+        await safe_answer_callback(callback, "  .", show_alert=True)
         return
 
     commission.paid_reported_at = now_utc()
     if commission.status == m.CommissionStatus.WAIT_PAY:
         commission.status = m.CommissionStatus.REPORTED
     await session.commit()
-    await safe_answer_callback(callback, "Спасибо! Отметили платёж.", show_alert=True)
+    await safe_answer_callback(callback, "!  .", show_alert=True)
     await _render_commission_card(callback, session, master, commission_id, state)
 
 
@@ -196,7 +196,7 @@ async def finances_upload_check(
     commission_id = upload.get("commission_id")
     if commission_id is None:
         await message.answer(
-            "Не удалось определить комиссию. Вернитесь к списку финансов и попробуйте снова."
+            "   .       ."
         )
         await cleanup_finance_prompts(
             state,
@@ -208,7 +208,7 @@ async def finances_upload_check(
 
     commission = await _get_commission(session, master.id, int(commission_id))
     if commission is None:
-        await message.answer("Комиссия не найдена.")
+        await message.answer("  .")
         await cleanup_finance_prompts(
             state,
             getattr(message, "bot", None),
@@ -239,7 +239,7 @@ async def finances_upload_check(
 
     await state.set_state(None)
     await state.update_data(fin_upload=None)
-    await message.answer("Чек загружен. Спасибо!")
+    await message.answer(" . !")
     await _render_commission_card(message, session, master, commission.id, state)
 
 
@@ -251,7 +251,7 @@ async def finances_upload_invalid(message: Message, state: FSMContext) -> None:
         getattr(getattr(message, "chat", None), "id", None),
     )
     response = await message.answer(
-        "Загрузите чек (фото или PDF одним файлом).",
+        "  (  PDF  ).",
         reply_markup=finance_cancel_keyboard(),
     )
     await remember_finance_prompt(state, response)
@@ -282,42 +282,42 @@ async def _render_commission_list(
     mode_buttons: list[InlineKeyboardButton] = []
     for code in MODE_ORDER:
         caption, _ = FINANCE_MODES[code]
-        label = f"• {caption}" if code == mode else caption
+        label = f" {caption}" if code == mode else caption
         mode_buttons.append(InlineKeyboardButton(text=label, callback_data=f"m:fin:{code}:1"))
     buttons.append(mode_buttons)
 
     if not current:
-        lines.append("Комиссий в этом разделе пока нет.")
+        lines.append("     .")
     else:
-        # НОВОЕ: Для раздела "К оплате" показываем информацию о реквизитах
+        # :   " "    
         if mode == "aw" and current:
             lines.append("")
-            lines.append("💼 <b>Реквизиты для оплаты:</b>")
-            # Берём реквизиты из первой комиссии (все комиссии используют одни и те же реквизиты владельца)
+            lines.append(" <b>  :</b>")
+            #      (        )
             first_commission = current[0]
             snapshot_text = format_pay_snapshot(first_commission.pay_to_snapshot)
             if snapshot_text:
                 lines.append(snapshot_text)
             else:
-                lines.append("⚠️ Реквизиты пока не заполнены администратором.")
+                lines.append("     .")
             lines.append("")
-            lines.append("<i>Оплатите комиссию по указанным реквизитам и прикрепите чек в карточке комиссии.</i>")
+            lines.append("<i>          .</i>")
             lines.append("")
         
         for commission in current:
             lines.append(_commission_summary_line(commission))
             lines.append(
-                f"Статус: {STATUS_LABELS.get(commission.status, commission.status.value)}"
+                f": {STATUS_LABELS.get(commission.status, commission.status.value)}"
             )
             if commission.deadline_at:
                 lines.append(
-                    f"Оплатить до: {commission.deadline_at.strftime('%d.%m %H:%M')}"
+                    f" : {commission.deadline_at.strftime('%d.%m %H:%M')}"
                 )
             lines.append("")
             buttons.append(
                 [
                     InlineKeyboardButton(
-                        text=f"Открыть #{commission.id}",
+                        text=f" #{commission.id}",
                         callback_data=f"m:fin:cm:{commission.id}",
                     )
                 ]
@@ -325,16 +325,16 @@ async def _render_commission_list(
 
         nav: list[InlineKeyboardButton] = []
         if page > 1:
-            nav.append(InlineKeyboardButton(text="◀️", callback_data=f"m:fin:{mode}:{page - 1}"))
+            nav.append(InlineKeyboardButton(text="", callback_data=f"m:fin:{mode}:{page - 1}"))
         nav.append(
             InlineKeyboardButton(text=f"{page}/{pages}", callback_data=f"m:fin:{mode}:{page}")
         )
         if page < pages:
-            nav.append(InlineKeyboardButton(text="▶️", callback_data=f"m:fin:{mode}:{page + 1}"))
+            nav.append(InlineKeyboardButton(text="", callback_data=f"m:fin:{mode}:{page + 1}"))
         if nav:
             buttons.append(nav)
 
-    buttons.append([InlineKeyboardButton(text="⬅️ В главное меню", callback_data="m:menu")])
+    buttons.append([InlineKeyboardButton(text="   ", callback_data="m:menu")])
     
     # P1-23: Add breadcrumbs navigation
     text_without_breadcrumbs = "\n".join([line for line in lines if line])
@@ -354,8 +354,8 @@ async def _render_commission_card(
     if row is None:
         await safe_edit_or_send(
             event,
-            "Комиссия не найдена.",
-            inline_keyboard([[InlineKeyboardButton(text="⬅️ В главное меню", callback_data="m:menu")]]),
+            "  .",
+            inline_keyboard([[InlineKeyboardButton(text="   ", callback_data="m:menu")]]),
         )
         return
 
@@ -364,20 +364,20 @@ async def _render_commission_card(
     status_label = STATUS_LABELS.get(commission.status, commission.status.value)
 
     lines = [
-        f"<b>💳 Комиссия #{commission.id}</b>",
+        f"<b>  #{commission.id}</b>",
         "",
-        f"📊 Статус: {status_label}",
-        f"💰 Сумма к оплате: {Decimal(commission.amount):.2f} ₽",
+        f" : {status_label}",
+        f"   : {Decimal(commission.amount):.2f} ",
     ]
     
-    # P1-8: Добавлена детальная информация о заказе
+    # P1-8:     
     if order:
         lines.append("")
-        lines.append("<b>📦 Информация о заказе:</b>")
+        lines.append("<b>   :</b>")
         order_label = ORDER_TYPE_LABELS.get(order.order_type, order.order_type.value)
-        lines.append(f"• Заказ #{order.id} ({order_label})")
+        lines.append(f"  #{order.id} ({order_label})")
         
-        # Адрес
+        # 
         address_parts = []
         if row.city_name:
             address_parts.append(row.city_name)
@@ -388,86 +388,86 @@ async def _render_commission_card(
         if order.house:
             address_parts.append(str(order.house))
         if address_parts:
-            lines.append(f"• Адрес: {', '.join(address_parts)}")
+            lines.append(f" : {', '.join(address_parts)}")
         
-        # Категория
+        # 
         if order.category:
             category_value = order.category.value if hasattr(order.category, 'value') else str(order.category)
-            lines.append(f"• Категория: {category_value}")
+            lines.append(f" : {category_value}")
         
         if order.total_sum is not None:
-            lines.append(f"• Сумма заказа: {Decimal(order.total_sum):.2f} ₽")
+            lines.append(f"  : {Decimal(order.total_sum):.2f} ")
     
     lines.append("")
 
-    # P1-8: Детали комиссии
-    lines.append("<b>📊 Детали комиссии:</b>")
+    # P1-8:  
+    lines.append("<b>  :</b>")
     
     rate = commission.rate or commission.percent
     if rate is not None:
         rate_decimal = Decimal(str(rate))
         rate_percent = rate_decimal * 100 if rate_decimal <= 1 else rate_decimal
-        lines.append(f"• Ставка: {rate_percent:.2f}%")
+        lines.append(f" : {rate_percent:.2f}%")
     
     if commission.created_at:
-        lines.append(f"• Создана: {commission.created_at.strftime('%d.%m.%Y %H:%M')}")
+        lines.append(f" : {commission.created_at.strftime('%d.%m.%Y %H:%M')}")
 
     if commission.deadline_at:
-        lines.append(f"• Оплатить до: {commission.deadline_at.strftime('%d.%m %H:%M')}")
+        lines.append(f"  : {commission.deadline_at.strftime('%d.%m %H:%M')}")
     if commission.paid_reported_at:
-        lines.append(f"• Отправлено: {commission.paid_reported_at.strftime('%d.%m %H:%M')}")
+        lines.append(f" : {commission.paid_reported_at.strftime('%d.%m %H:%M')}")
     if commission.paid_approved_at:
-        lines.append(f"• Подтверждено: {commission.paid_approved_at.strftime('%d.%m %H:%M')}")
+        lines.append(f" : {commission.paid_approved_at.strftime('%d.%m %H:%M')}")
     if commission.paid_amount is not None:
-        lines.append(f"• Оплачено: {Decimal(commission.paid_amount):.2f} ₽")
+        lines.append(f" : {Decimal(commission.paid_amount):.2f} ")
     
     lines.append("")
-    check_status = "✅ Чеки загружены" if commission.has_checks else "⚠️ Чеки ещё не загружены"
+    check_status = "  " if commission.has_checks else "    "
     lines.append(check_status)
 
-    # НОВОЕ: Показываем реквизиты для оплаты комиссии
+    # :     
     if commission.status in {m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED, m.CommissionStatus.OVERDUE}:
         lines.append("")
-        lines.append("<b>💼 Реквизиты для оплаты комиссии:</b>")
+        lines.append("<b>    :</b>")
         
         snapshot_text = format_pay_snapshot(commission.pay_to_snapshot)
         if snapshot_text:
             lines.append(snapshot_text)
         else:
-            lines.append("⚠️ Реквизиты пока не заполнены администратором.")
-            lines.append("Обратитесь к администратору для уточнения реквизитов.")
+            lines.append("     .")
+            lines.append("     .")
 
     buttons: list[list[InlineKeyboardButton]] = []
     
-    # P0-7: Кнопка перехода к заказу
+    # P0-7:    
     if order and order.id:
         buttons.append([
             InlineKeyboardButton(
-                text=f"📋 Посмотреть заказ #{order.id}",
+                text=f"   #{order.id}",
                 callback_data=f"m:act:card:{order.id}"
             )
         ])
     
-    # Кнопка "Показать QR-код", если он есть
+    #  " QR-",   
     qr_id = commission.pay_to_snapshot.get("sbp_qr_file_id") if commission.pay_to_snapshot else None
     if qr_id and commission.status in {m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED, m.CommissionStatus.OVERDUE}:
         buttons.append([
-            InlineKeyboardButton(text="🔲 Показать QR-код СБП", callback_data=f"m:fin:cm:pt:{commission.id}")
+            InlineKeyboardButton(text="  QR- ", callback_data=f"m:fin:cm:pt:{commission.id}")
         ])
     
     buttons.append([
-        InlineKeyboardButton(text="📎 Прикрепить чек", callback_data=f"m:fin:cm:chk:{commission.id}")
+        InlineKeyboardButton(text="  ", callback_data=f"m:fin:cm:chk:{commission.id}")
     ])
     if commission.status in {m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED}:
         buttons.append([
-            InlineKeyboardButton(text="✅ Я оплатил", callback_data=f"m:fin:cm:ip:{commission.id}")
+            InlineKeyboardButton(text="  ", callback_data=f"m:fin:cm:ip:{commission.id}")
         ])
 
     ctx = await state.get_data()
     fin_ctx = ctx.get("fin_ctx", {"mode": "aw", "page": 1})
     buttons.append([
         InlineKeyboardButton(
-            text="⬅️ Назад",
+            text=" ",
             callback_data=f"m:fin:{fin_ctx.get('mode', 'aw')}:{fin_ctx.get('page', 1)}",
         )
     ])
@@ -504,7 +504,7 @@ async def _load_commission_detail(
     master_id: int,
     commission_id: int,
 ) -> SimpleNamespace | None:
-    # P1-8: Добавлено информацию о городе, районе, улице
+    # P1-8:    , , 
     stmt = (
         select(
             m.commissions,
@@ -557,7 +557,7 @@ async def _get_commission(
 
 def _commission_summary_line(commission: m.commissions) -> str:
     amount = Decimal(commission.amount)
-    summary = f"#{commission.id} • {amount:.2f} ₽"
+    summary = f"#{commission.id}  {amount:.2f} "
     if commission.deadline_at:
-        summary += f" • оплатить до {commission.deadline_at.strftime('%d.%m %H:%M')}"
+        summary += f"    {commission.deadline_at.strftime('%d.%m %H:%M')}"
     return summary

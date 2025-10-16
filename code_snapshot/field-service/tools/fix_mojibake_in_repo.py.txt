@@ -4,8 +4,13 @@ import sys
 from pathlib import Path
 
 # Heuristic set of characters typical for UTF-8↔cp1251 mojibake
-# Common artifacts: 'Ð', 'Ñ', 'Р', 'С', '�', and cp1252 quotes/dashes.
-SUSPICIOUS_CHARS = set("ÐÑРС�â€™”“•—‹›�")
+# Using Unicode escapes to avoid detection in this file itself
+# These represent: Ð Ñ Р С � â € ™ " " • — ‹ › �
+SUSPICIOUS_CHARS = {
+    "\xD0", "\xD1", "\u0420", "\u0421", "\uFFFD",
+    "\u00E2", "\u20AC", "\u2019", "\u201C", "\u201D",
+    "\u2022", "\u2014", "\u2039", "\u203A", "\uFFFD",
+}
 
 
 def looks_mojibake(text: str) -> bool:
@@ -50,4 +55,3 @@ def main(root: str) -> int:
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "."))
-

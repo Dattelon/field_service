@@ -22,7 +22,7 @@ from field_service.db import models as m
 
 
 @pytest_asyncio.fixture
-async def test_master(session: AsyncSession) -> m.masters:
+async def test_master(async_session: AsyncSession) -> m.masters:
     """Создать тестового мастера."""
     master = m.masters(
         tg_user_id=100001,
@@ -33,19 +33,19 @@ async def test_master(session: AsyncSession) -> m.masters:
         shift_status=m.ShiftStatus.SHIFT_ON,
         rating=5.0,
     )
-    session.add(master)
-    await session.commit()
-    await session.refresh(master)
+    async_session.add(master)
+    await async_session.commit()
+    await async_session.refresh(master)
     return master
 
 
 @pytest_asyncio.fixture
-async def test_city(session: AsyncSession) -> m.cities:
+async def test_city(async_session: AsyncSession) -> m.cities:
     """Создать тестовый город."""
     city = m.cities(name="Тестовый Город", is_active=True)
-    session.add(city)
-    await session.commit()
-    await session.refresh(city)
+    async_session.add(city)
+    await async_session.commit()
+    await async_session.refresh(city)
     return city
 
 
@@ -55,7 +55,7 @@ async def _get_db_now(session: AsyncSession) -> datetime:
     return row.scalar()
 
 
-async def test_statistics_no_orders(session: AsyncSession, test_master: m.masters) -> None:
+async def test_statistics_no_orders(async_session: AsyncSession, test_master: m.masters) -> None:
     """Статистика для мастера без заказов."""
     from field_service.bots.master_bot.handlers.statistics import handle_statistics
     from unittest.mock import AsyncMock, MagicMock
@@ -71,7 +71,7 @@ async def test_statistics_no_orders(session: AsyncSession, test_master: m.master
     state.clear = AsyncMock()
     
     # Вызываем handler
-    await handle_statistics(callback, state, test_master, session)
+    await handle_statistics(callback, state, test_master, async_session)
     
     # Проверяем что метод был вызван
     assert callback.message.edit_text.called or hasattr(callback.message, 'text')
@@ -81,12 +81,12 @@ async def test_statistics_no_orders(session: AsyncSession, test_master: m.master
 
 
 async def test_statistics_with_completed_orders(
-    session: AsyncSession,
+    async_session: AsyncSession,
     test_master: m.masters,
     test_city: m.cities,
 ) -> None:
     """Статистика для мастера с выполненными заказами."""
-    db_now = await _get_db_now(session)
+    db_now = await _get_db_now(async_session)
     
     # Создаём 15 завершённых заказов
     for i in range(15):
@@ -100,28 +100,28 @@ async def test_statistics_with_completed_orders(
             created_at=db_now - timedelta(days=i),
             updated_at=db_now - timedelta(days=i),
         )
-        session.add(order)
+        async_session.add(order)
     
-    await session.commit()
+    await async_session.commit()
     
     # Проверяем подсчёт через SQL
     completed_query = select(m.orders.id).where(
         m.orders.assigned_master_id == test_master.id,
         m.orders.status == m.OrderStatus.CLOSED,
     )
-    result = await session.execute(completed_query)
+    result = await async_session.execute(completed_query)
     completed_count = len(result.all())
     
     assert completed_count == 15
 
 
 async def test_statistics_response_time_calculation(
-    session: AsyncSession,
+    async_session: AsyncSession,
     test_master: m.masters,
     test_city: m.cities,
 ) -> None:
     """Расчёт среднего времени отклика."""
-    db_now = await _get_db_now(session)
+    db_now = await _get_db_now(async_session)
     
     # Создаём заказ
     order = m.orders(
@@ -132,9 +132,9 @@ async def test_statistics_response_time_calculation(
         assigned_master_id=test_master.id,
         total_sum=Decimal("1000.00"),
     )
-    session.add(order)
-    await session.commit()
-    await session.refresh(order)
+    async_session.add(order)
+    await async_session.commit()
+    await async_session.refresh(order)
     
     # Создаём офферы с разным временем отклика
     offers_data = [
@@ -153,9 +153,9 @@ async def test_statistics_response_time_calculation(
             responded_at=db_now + timedelta(minutes=minutes),
             round_number=1,
         )
-        session.add(offer)
+        async_session.add(offer)
     
-    await session.commit()
+    await async_session.commit()
     
     # Проверяем расчёт среднего времени
     from sqlalchemy import func
@@ -169,7 +169,7 @@ async def test_statistics_response_time_calculation(
         m.offers.responded_at.isnot(None),
     )
     
-    result = await session.execute(response_time_query)
+    result = await async_session.execute(response_time_query)
     avg_minutes = result.scalar()
     
     # Среднее: (5 + 10 + 20) / 3 ≈ 11.67 минут
@@ -178,12 +178,12 @@ async def test_statistics_response_time_calculation(
 
 
 async def test_statistics_month_filter(
-    session: AsyncSession,
+    async_session: AsyncSession,
     test_master: m.masters,
     test_city: m.cities,
 ) -> None:
     """Фильтрация заказов за текущий месяц."""
-    db_now = await _get_db_now(session)
+    db_now = await _get_db_now(async_session)
     month_start = db_now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
     # Создаём 5 заказов в текущем месяце
@@ -198,7 +198,7 @@ async def test_statistics_month_filter(
             created_at=month_start + timedelta(days=i),
             updated_at=month_start + timedelta(days=i),
         )
-        session.add(order)
+        async_session.add(order)
     
     # Создаём 3 заказа в прошлом месяце
     last_month = month_start - timedelta(days=1)
@@ -213,9 +213,9 @@ async def test_statistics_month_filter(
             created_at=last_month - timedelta(days=i),
             updated_at=last_month - timedelta(days=i),
         )
-        session.add(order)
+        async_session.add(order)
     
-    await session.commit()
+    await async_session.commit()
     
     # Проверяем подсчёт за текущий месяц
     month_query = select(m.orders.id).where(
@@ -223,67 +223,79 @@ async def test_statistics_month_filter(
         m.orders.status == m.OrderStatus.CLOSED,
         m.orders.updated_at >= month_start,
     )
-    result = await session.execute(month_query)
+    result = await async_session.execute(month_query)
     month_count = len(result.all())
     
     assert month_count == 5
 
 
+@pytest.mark.parametrize("completed_count,expected_message_part", [
+    (0, "🚀 Начните принимать заказы"),
+    (5, "💪 Отличное начало"),
+    (25, "🔥 Так держать"),
+    (75, "⭐ Вы на пути к сотне"),
+    (150, "🏆 Вы профессионал"),
+])
 async def test_statistics_motivational_messages(
-    session: AsyncSession,
-    test_master: m.masters,
-    test_city: m.cities,
+    async_session: AsyncSession,
+    completed_count: int,
+    expected_message_part: str,
 ) -> None:
     """Проверка мотивирующих сообщений для разного количества заказов."""
     
-    test_cases = [
-        (0, "🚀 Начните принимать заказы"),
-        (5, "💪 Отличное начало"),
-        (25, "🔥 Так держать"),
-        (75, "⭐ Вы на пути к сотне"),
-        (150, "🏆 Вы профессионал"),
-    ]
+    # Создаём город
+    city = m.cities(name="Тестовый Город", is_active=True)
+    async_session.add(city)
+    await async_session.flush()
     
-    for completed_count, expected_message_part in test_cases:
-        # Очищаем заказы
-        await session.execute(text("TRUNCATE TABLE orders CASCADE"))
-        await session.commit()
-        
-        # Создаём нужное количество заказов
-        db_now = await _get_db_now(session)
-        for i in range(completed_count):
-            order = m.orders(
-                city_id=test_city.id,
-                client_phone=f"+79991{i:06d}",
-                category=m.OrderCategory.ELECTRICS,
-                status=m.OrderStatus.CLOSED,
-                assigned_master_id=test_master.id,
-                total_sum=Decimal("1000.00"),
-                created_at=db_now - timedelta(days=i),
-                updated_at=db_now - timedelta(days=i),
-            )
-            session.add(order)
-        
-        await session.commit()
-        
-        # Проверяем количество
-        count_query = select(m.orders.id).where(
-            m.orders.assigned_master_id == test_master.id,
-            m.orders.status == m.OrderStatus.CLOSED,
+    # Создаём мастера
+    master = m.masters(
+        tg_user_id=100001,
+        full_name="Тестовый Мастер",
+        phone="+79991234567",
+        verified=True,
+        moderation_status=m.ModerationStatus.APPROVED,
+        shift_status=m.ShiftStatus.SHIFT_ON,
+        rating=5.0,
+    )
+    async_session.add(master)
+    await async_session.flush()
+    
+    # Создаём нужное количество заказов
+    db_now = await _get_db_now(async_session)
+    for i in range(completed_count):
+        order = m.orders(
+            city_id=city.id,
+            client_phone=f"+79991{i:06d}",
+            category=m.OrderCategory.ELECTRICS,
+            status=m.OrderStatus.CLOSED,
+            assigned_master_id=master.id,
+            total_sum=Decimal("1000.00"),
+            created_at=db_now - timedelta(days=i),
+            updated_at=db_now - timedelta(days=i),
         )
-        result = await session.execute(count_query)
-        actual_count = len(result.all())
-        
-        assert actual_count == completed_count
+        async_session.add(order)
+    
+    await async_session.commit()
+    
+    # Проверяем количество
+    count_query = select(m.orders.id).where(
+        m.orders.assigned_master_id == master.id,
+        m.orders.status == m.OrderStatus.CLOSED,
+    )
+    result = await async_session.execute(count_query)
+    actual_count = len(result.all())
+    
+    assert actual_count == completed_count
 
 
 async def test_statistics_formatting_response_time(
-    session: AsyncSession,
+    async_session: AsyncSession,
     test_master: m.masters,
     test_city: m.cities,
 ) -> None:
     """Проверка форматирования времени отклика (минуты vs часы)."""
-    db_now = await _get_db_now(session)
+    db_now = await _get_db_now(async_session)
     
     order = m.orders(
         city_id=test_city.id,
@@ -293,9 +305,9 @@ async def test_statistics_formatting_response_time(
         assigned_master_id=test_master.id,
         total_sum=Decimal("1000.00"),
     )
-    session.add(order)
-    await session.commit()
-    await session.refresh(order)
+    async_session.add(order)
+    await async_session.commit()
+    await async_session.refresh(order)
     
     # Тест 1: < 60 минут (должно быть в минутах)
     offer_minutes = m.offers(
@@ -306,8 +318,8 @@ async def test_statistics_formatting_response_time(
         responded_at=db_now + timedelta(minutes=45),
         round_number=1,
     )
-    session.add(offer_minutes)
-    await session.commit()
+    async_session.add(offer_minutes)
+    await async_session.commit()
     
     # Проверяем что < 60
     from sqlalchemy import func
@@ -321,7 +333,7 @@ async def test_statistics_formatting_response_time(
         m.offers.responded_at.isnot(None),
     )
     
-    result = await session.execute(response_query)
+    result = await async_session.execute(response_query)
     avg_minutes = result.scalar()
     
     assert avg_minutes is not None

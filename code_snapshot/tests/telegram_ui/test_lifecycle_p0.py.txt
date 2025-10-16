@@ -22,6 +22,7 @@ from tests.telegram_ui.helpers.admin_helpers import finalize_order
 
 
 @pytest.mark.p0
+@pytest.mark.telegram_ui
 @pytest.mark.asyncio
 async def test_tp001_full_order_cycle(
     clean_db,

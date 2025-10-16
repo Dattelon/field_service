@@ -1,8 +1,8 @@
 """
-Модуль для работы с контекстом повтора действий.
+      .
 
-Сохраняет информацию о последнем действии пользователя для возможности
-повтора при ошибках сети или временных сбоях.
+       
+      .
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from aiogram.fsm.context import FSMContext
 
 @dataclass
 class RetryContext:
-    """Контекст для повтора действия"""
+    """   """
 
     callback_data: str
     timestamp: datetime
@@ -28,11 +28,11 @@ class RetryContext:
     MAX_ATTEMPTS = 3
 
     def can_retry(self) -> bool:
-        """Проверка возможности повтора"""
+        """  """
         return self.attempt < self.MAX_ATTEMPTS
 
     def to_dict(self) -> dict:
-        """Сериализация в словарь для сохранения в FSM"""
+        """      FSM"""
         return {
             "callback_data": self.callback_data,
             "timestamp": self.timestamp.isoformat(),
@@ -44,7 +44,7 @@ class RetryContext:
 
     @classmethod
     def from_dict(cls, data: dict) -> RetryContext:
-        """Десериализация из словаря"""
+        """  """
         return cls(
             callback_data=data["callback_data"],
             timestamp=datetime.fromisoformat(data["timestamp"]),
@@ -64,15 +64,15 @@ async def save_retry_context(
     attempt: int = 1,
 ) -> None:
     """
-    Сохранить контекст для повтора действия.
+        .
 
     Args:
-        state: FSM контекст
-        callback_data: Данные callback'а для повтора
-        user_id: ID пользователя
-        chat_id: ID чата
-        message_id: ID сообщения
-        attempt: Номер попытки (по умолчанию 1)
+        state: FSM 
+        callback_data:  callback'  
+        user_id: ID 
+        chat_id: ID 
+        message_id: ID 
+        attempt:   (  1)
     """
     ctx = RetryContext(
         callback_data=callback_data,
@@ -87,13 +87,13 @@ async def save_retry_context(
 
 async def load_retry_context(state: FSMContext) -> Optional[RetryContext]:
     """
-    Загрузить контекст повтора из FSM.
+        FSM.
 
     Args:
-        state: FSM контекст
+        state: FSM 
 
     Returns:
-        RetryContext или None если контекст не сохранён
+        RetryContext  None    
     """
     data = await state.get_data()
     retry_data = data.get("retry_context")
@@ -104,10 +104,10 @@ async def load_retry_context(state: FSMContext) -> Optional[RetryContext]:
 
 async def clear_retry_context(state: FSMContext) -> None:
     """
-    Очистить контекст повтора из FSM.
+        FSM.
 
     Args:
-        state: FSM контекст
+        state: FSM 
     """
     data = await state.get_data()
     if "retry_context" in data:

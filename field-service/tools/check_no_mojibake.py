@@ -5,10 +5,11 @@ import re
 import sys
 from pathlib import Path
 
+# Using Unicode escapes to avoid mojibake detection in this file itself
 PATTERNS = [
-    re.compile(r"Ð[^\s]"),
-    re.compile(r"Ñ[^\s]"),
-    re.compile(r"\u0014"),
+    re.compile(r"\xD0[^\s]"),  # Ð followed by non-space
+    re.compile(r"\xD1[^\s]"),  # Ñ followed by non-space
+    re.compile(r"\u0014"),  # control character
 ]
 
 

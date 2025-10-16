@@ -7,6 +7,7 @@ from sqlalchemy import select, text
 
 from field_service.db import models as m
 from field_service.services.watchdogs import watchdog_expired_breaks
+from tests.factories import ensure_city
 
 UTC = timezone.utc
 
@@ -18,7 +19,7 @@ async def _get_db_now(session):
 
 
 @pytest.mark.asyncio
-async def test_watchdog_expired_breaks_basic(session, clean_db):
+async def test_watchdog_expired_breaks_basic(async_session):
     """
     Тест базовой функциональности watchdog_expired_breaks:
     - Мастер на перерыве с истёкшим временем должен быть снят со смены
@@ -26,12 +27,10 @@ async def test_watchdog_expired_breaks_basic(session, clean_db):
     - is_on_shift = False
     - break_until = None
     """
-    db_now = await _get_db_now(session)
+    db_now = await _get_db_now(async_session)
     
-    # Создаём город
-    city = m.cities(name="Москва", timezone="Europe/Moscow")
-    session.add(city)
-    await session.commit()
+    # Создаём город через фабрику
+    city = await ensure_city(async_session, name="Москва", tz="Europe/Moscow")
     
     # Создаём мастера на перерыве с истёкшим временем
     master = m.masters(
@@ -45,17 +44,17 @@ async def test_watchdog_expired_breaks_basic(session, clean_db):
         is_on_shift=False,
         break_until=db_now - timedelta(minutes=5),  # Перерыв закончился 5 минут назад
     )
-    session.add(master)
-    await session.commit()
+    async_session.add(master)
+    await async_session.flush()
     
     master_id = master.id
     
-    # Запускаем watchdog (1 итерация)
-    await watchdog_expired_breaks(interval_seconds=60, iterations=1)
+    # Запускаем watchdog (1 итерация) с передачей сессии
+    await watchdog_expired_breaks(interval_seconds=60, iterations=1, session=async_session)
     
     # Проверяем что мастер снят со смены
-    session.expire_all()
-    result = await session.execute(
+    async_session.expire_all()
+    result = await async_session.execute(
         select(m.masters).where(m.masters.id == master_id)
     )
     updated_master = result.scalar_one()
@@ -66,22 +65,20 @@ async def test_watchdog_expired_breaks_basic(session, clean_db):
 
 
 @pytest.mark.asyncio
-async def test_watchdog_expired_breaks_not_expired(session, clean_db):
+async def test_watchdog_expired_breaks_not_expired(async_session):
     """
     Тест что watchdog НЕ снимает мастеров с активным перерывом.
     """
-    db_now = await _get_db_now(session)
+    db_now = await _get_db_now(async_session)
     
-    # Создаём город
-    city = m.cities(name="Москва", timezone="Europe/Moscow")
-    session.add(city)
-    await session.commit()
+    # Создаём город через фабрику
+    city = await ensure_city(async_session, name="Санкт-Петербург", tz="Europe/Moscow")
     
     # Создаём мастера на перерыве с НЕ истёкшим временем
     master = m.masters(
-        tg_user_id=12345,
-        full_name="Тестовый Мастер",
-        phone="+79001234567",
+        tg_user_id=12346,
+        full_name="Тестовый Мастер 2",
+        phone="+79001234568",
         city_id=city.id,
         verified=True,
         moderation_status=m.ModerationStatus.APPROVED,
@@ -89,17 +86,17 @@ async def test_watchdog_expired_breaks_not_expired(session, clean_db):
         is_on_shift=False,
         break_until=db_now + timedelta(minutes=30),  # Перерыв ещё не закончился
     )
-    session.add(master)
-    await session.commit()
+    async_session.add(master)
+    await async_session.flush()
     
     master_id = master.id
     
-    # Запускаем watchdog (1 итерация)
-    await watchdog_expired_breaks(interval_seconds=60, iterations=1)
+    # Запускаем watchdog (1 итерация) с передачей сессии
+    await watchdog_expired_breaks(interval_seconds=60, iterations=1, session=async_session)
     
     # Проверяем что мастер остался на перерыве
-    session.expire_all()
-    result = await session.execute(
+    async_session.expire_all()
+    result = await async_session.execute(
         select(m.masters).where(m.masters.id == master_id)
     )
     updated_master = result.scalar_one()
@@ -110,16 +107,14 @@ async def test_watchdog_expired_breaks_not_expired(session, clean_db):
 
 
 @pytest.mark.asyncio
-async def test_watchdog_expired_breaks_multiple_masters(session, clean_db):
+async def test_watchdog_expired_breaks_multiple_masters(async_session):
     """
     Тест что watchdog обрабатывает нескольких мастеров одновременно.
     """
-    db_now = await _get_db_now(session)
+    db_now = await _get_db_now(async_session)
     
-    # Создаём город
-    city = m.cities(name="Москва", timezone="Europe/Moscow")
-    session.add(city)
-    await session.commit()
+    # Создаём город через фабрику
+    city = await ensure_city(async_session, name="Новосибирск", tz="Asia/Novosibirsk")
     
     # Создаём 3 мастеров:
     # 1. С истёкшим перерывом
@@ -161,21 +156,21 @@ async def test_watchdog_expired_breaks_multiple_masters(session, clean_db):
         break_until=None,  # Не на перерыве
     )
     
-    session.add_all([master1, master2, master3])
-    await session.commit()
+    async_session.add_all([master1, master2, master3])
+    await async_session.flush()
     
     master1_id = master1.id
     master2_id = master2.id
     master3_id = master3.id
     
-    # Запускаем watchdog (1 итерация)
-    await watchdog_expired_breaks(interval_seconds=60, iterations=1)
+    # Запускаем watchdog (1 итерация) с передачей сессии
+    await watchdog_expired_breaks(interval_seconds=60, iterations=1, session=async_session)
     
     # Проверяем результаты
-    session.expire_all()
+    async_session.expire_all()
     
     # Мастер 1 должен быть снят со смены
-    result1 = await session.execute(
+    result1 = await async_session.execute(
         select(m.masters).where(m.masters.id == master1_id)
     )
     updated_master1 = result1.scalar_one()
@@ -184,7 +179,7 @@ async def test_watchdog_expired_breaks_multiple_masters(session, clean_db):
     assert updated_master1.break_until is None
     
     # Мастер 2 должен остаться на перерыве
-    result2 = await session.execute(
+    result2 = await async_session.execute(
         select(m.masters).where(m.masters.id == master2_id)
     )
     updated_master2 = result2.scalar_one()
@@ -193,7 +188,7 @@ async def test_watchdog_expired_breaks_multiple_masters(session, clean_db):
     assert updated_master2.break_until is not None
     
     # Мастер 3 должен остаться на смене
-    result3 = await session.execute(
+    result3 = await async_session.execute(
         select(m.masters).where(m.masters.id == master3_id)
     )
     updated_master3 = result3.scalar_one()
@@ -203,23 +198,21 @@ async def test_watchdog_expired_breaks_multiple_masters(session, clean_db):
 
 
 @pytest.mark.asyncio
-async def test_watchdog_expired_breaks_edge_case_exactly_now(session, clean_db):
+async def test_watchdog_expired_breaks_edge_case_exactly_now(async_session):
     """
     Тест граничного случая: break_until ровно равен NOW().
     Должен быть обработан как истёкший.
     """
-    db_now = await _get_db_now(session)
+    db_now = await _get_db_now(async_session)
     
-    # Создаём город
-    city = m.cities(name="Москва", timezone="Europe/Moscow")
-    session.add(city)
-    await session.commit()
+    # Создаём город через фабрику
+    city = await ensure_city(async_session, name="Екатеринбург", tz="Asia/Yekaterinburg")
     
     # Создаём мастера с break_until = NOW()
     master = m.masters(
-        tg_user_id=12345,
-        full_name="Тестовый Мастер",
-        phone="+79001234567",
+        tg_user_id=12347,
+        full_name="Тестовый Мастер 3",
+        phone="+79001234569",
         city_id=city.id,
         verified=True,
         moderation_status=m.ModerationStatus.APPROVED,
@@ -227,17 +220,17 @@ async def test_watchdog_expired_breaks_edge_case_exactly_now(session, clean_db):
         is_on_shift=False,
         break_until=db_now,  # Ровно сейчас
     )
-    session.add(master)
-    await session.commit()
+    async_session.add(master)
+    await async_session.flush()
     
     master_id = master.id
     
-    # Запускаем watchdog (1 итерация)
-    await watchdog_expired_breaks(interval_seconds=60, iterations=1)
+    # Запускаем watchdog (1 итерация) с передачей сессии
+    await watchdog_expired_breaks(interval_seconds=60, iterations=1, session=async_session)
     
     # Проверяем что мастер снят со смены
-    session.expire_all()
-    result = await session.execute(
+    async_session.expire_all()
+    result = await async_session.execute(
         select(m.masters).where(m.masters.id == master_id)
     )
     updated_master = result.scalar_one()

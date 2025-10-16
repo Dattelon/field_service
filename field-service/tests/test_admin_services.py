@@ -53,7 +53,7 @@ async def test_list_cities_and_districts(async_session) -> None:
 
     district = m.districts(city_id=city.id, name="Central")
     async_session.add(district)
-    await async_session.commit()
+    await async_session.flush()
 
     orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
     cities = await orders_service.list_cities(limit=5)
@@ -80,7 +80,7 @@ async def test_search_streets(async_session) -> None:
 
     street = m.streets(city_id=city.id, district_id=district.id, name="Baker Street")
     async_session.add(street)
-    await async_session.commit()
+    await async_session.flush()
 
     orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
     results = await orders_service.search_streets(city.id, "Baker")
@@ -122,7 +122,7 @@ async def test_create_guarantee_order(async_session) -> None:
         total_sum=Decimal("1500"),
     )
     async_session.add(order)
-    await async_session.commit()
+    await async_session.flush()
 
     service = DBOrdersService(session_factory=lambda: existing_session(async_session))
     new_id = await service.create_guarantee_order(order.id, by_staff_id=0)
@@ -192,7 +192,7 @@ async def test_commission_detail(async_session) -> None:
         file_name="check.pdf",
     )
     async_session.add(attachment)
-    await async_session.commit()
+    await async_session.flush()
 
     finance_service = DBFinanceService(session_factory=lambda: existing_session(async_session))
     detail = await finance_service.get_commission_detail(commission.id)
@@ -248,7 +248,7 @@ async def test_finance_approve_updates_order(async_session) -> None:
 
     staff_row = m.staff_users(id=1, role=m.StaffRole.GLOBAL_ADMIN, is_active=True)
     async_session.add(staff_row)
-    await async_session.commit()
+    await async_session.flush()
 
     finance_service = DBFinanceService(session_factory=lambda: existing_session(async_session))
     ok = await finance_service.approve(commission.id, paid_amount=Decimal("1500"), by_staff_id=1)
@@ -308,7 +308,7 @@ async def test_finance_reject_resets_state(async_session) -> None:
         paid_amount=Decimal("1200"),
     )
     async_session.add(commission)
-    await async_session.commit()
+    await async_session.flush()
 
     finance_service = DBFinanceService(session_factory=lambda: existing_session(async_session))
     ok = await finance_service.reject(commission.id, reason="invalid receipt", by_staff_id=0)
@@ -339,7 +339,7 @@ async def test_finance_block_master(async_session) -> None:
         moderation_status=m.ModerationStatus.APPROVED,
     )
     async_session.add(master)
-    await async_session.commit()
+    await async_session.flush()
 
     finance_service = DBFinanceService(session_factory=lambda: existing_session(async_session))
     ok = await finance_service.block_master_for_overdue(master.id, by_staff_id=0)
@@ -697,8 +697,6 @@ async def test_finance_approve_creates_referral_rewards(async_session) -> None:
     async_session.add(commission)
     await async_session.flush()
 
-    await async_session.commit()
-
     finance_service = DBFinanceService(session_factory=lambda: existing_session(async_session))
 
     result = await finance_service.approve(
@@ -734,7 +732,7 @@ async def test_search_streets_deduplicates_similar(async_session) -> None:
             m.streets(city_id=city.id, district_id=district.id, name="Baker St."),
         ]
     )
-    await async_session.commit()
+    await async_session.flush()
 
     orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
     results = await orders_service.search_streets(city.id, "Baker")
@@ -781,7 +779,7 @@ async def test_create_order_uses_centroid_when_coordinates_missing(async_session
         centroid_lon=37.601,
     )
     async_session.add(street)
-    await async_session.commit()
+    await async_session.flush()
 
     orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
     data = NewOrderData(
@@ -821,7 +819,7 @@ async def test_get_city_timezone_uses_city_value(async_session) -> None:
     await _ensure_tables(async_session, _tables())
     city = m.cities(name="Timezone City", timezone="Asia/Yekaterinburg")
     async_session.add(city)
-    await async_session.commit()
+    await async_session.flush()
 
     orders_service = DBOrdersService(session_factory=lambda: existing_session(async_session))
     tz_value = await orders_service.get_city_timezone(city.id)

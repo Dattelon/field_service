@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
@@ -39,14 +39,14 @@ MANAGE_ROLES = {
     StaffRole.CITY_ADMIN,
 }
 SHIFT_LABELS = {
-    "SHIFT_ON": "На смене",
-    "SHIFT_OFF": "Не на смене",
-    "BREAK": "Перерыв",
+    "SHIFT_ON": " ",
+    "SHIFT_OFF": "  ",
+    "BREAK": "",
 }
 GROUP_LABELS = {
-    "ok": "Одобренные",
-    "mod": "На модерации",
-    "blk": "Неактивные",
+    "ok": "",
+    "mod": " ",
+    "blk": "",
 }
 
 MASTER_GROUP_ORDER = ("ok", "mod", "blk")
@@ -104,7 +104,7 @@ class ChangeLimitState(StatesGroup):
 
 
 async def debug_callback_middleware(handler, event, data):
-    """Middleware для отладки всех callback в роутере мастеров."""
+    """Middleware    callback   ."""
     if hasattr(event, 'data'):
         logger.info(f"[MASTERS ROUTER] Callback received: {event.data}")
     return await handler(event, data)
@@ -141,13 +141,13 @@ def _shift_label(status: str, on_break: bool) -> str:
     status_key = (status or "").upper()
     base = SHIFT_LABELS.get(status_key, status_key or "UNKNOWN")
     if on_break:
-        return f"{base} (перерыв)"
+        return f"{base} ()"
     return base
 
 
 def _category_label(category: str, skills: list[dict[str, object]]) -> str:
     if not category or category == "all":
-        return "Все"
+        return ""
     lookup: dict[str, str] = {}
     for item in skills:
         code = str(item.get("code") or "").lower()
@@ -159,29 +159,29 @@ def _category_label(category: str, skills: list[dict[str, object]]) -> str:
 
 
 def _format_master_line(item: MasterListItem) -> str:
-    skills = ", ".join(item.skills) if item.skills else "—"
-    transport = "🚗" if item.has_vehicle else "🚶"
+    skills = ", ".join(item.skills) if item.skills else ""
+    transport = "" if item.has_vehicle else ""
     on_break = item.on_break or item.shift_status.upper() == "BREAK"
     shift = _shift_label(item.shift_status, on_break)
     status_flags: list[str] = []
     if item.is_deleted:
-        status_flags.append("удален")
+        status_flags.append("")
     if not item.verified:
-        status_flags.append("не проверен")
+        status_flags.append(" ")
     if not item.is_active:
-        status_flags.append("не активен")
+        status_flags.append(" ")
     flags = f" ({', '.join(status_flags)})" if status_flags else ""
     limit_value: str
     if item.max_active_orders:
         limit_value = f"{item.active_orders}/{item.max_active_orders}"
     else:
         limit_value = str(item.active_orders)
-    avg_check = f"{item.avg_check:.0f} ₽" if item.avg_check is not None else "—"
-    city = item.city_name or "—"
+    avg_check = f"{item.avg_check:.0f} " if item.avg_check is not None else ""
+    city = item.city_name or ""
     return (
-        f"#{item.id} {item.full_name} • {city} • {skills} • {item.rating:.1f} ★ • "
-        f"{transport} • {shift}{flags}\n"
-        f"Активные заказы: {limit_value} • Средний чек: {avg_check}"
+        f"#{item.id} {item.full_name}  {city}  {skills}  {item.rating:.1f}   "
+        f"{transport}  {shift}{flags}\n"
+        f" : {limit_value}   : {avg_check}"
     )
 
 
@@ -194,7 +194,7 @@ def build_list_kb(
     skills: list[dict[str, object]],
     *,
     prefix: str = "adm:m",
-    selected_ids: set[int] | None = None,  # P1-14: Для чекбоксов
+    selected_ids: set[int] | None = None,  # P1-14:  
 ) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
 
@@ -217,28 +217,28 @@ def build_list_kb(
     is_moderation = prefix == "adm:mod"
     selected = selected_ids or set()
     
-    # P1-14: В модерации показываем чекбоксы + кнопку просмотра
+    # P1-14:     +  
     if is_moderation:
         for item in items:
             is_selected = item.id in selected
-            checkbox = "☑️" if is_selected else "⬜"
-            # Чекбокс
+            checkbox = "" if is_selected else ""
+            # 
             list_builder.button(
                 text=f"{checkbox} #{item.id}",
                 callback_data=f"{prefix}:toggle:{group}:{category}:{page}:{item.id}",
             )
-            # Кнопка просмотра
+            #  
             list_builder.button(
-                text="👁 Открыть",
+                text=" ",
                 callback_data=f"{prefix}:card:{group}:{category}:{page}:{item.id}",
             )
         if items:
-            list_builder.adjust(2)  # 2 кнопки в ряд (чекбокс + открыть)
+            list_builder.adjust(2)  # 2    ( + )
     else:
-        # Обычный режим - только кнопка открытия
+        #   -   
         for item in items:
             list_builder.button(
-                text=f"Открыть #{item.id}",
+                text=f" #{item.id}",
                 callback_data=f"{prefix}:card:{group}:{category}:{page}:{item.id}",
             )
         if items:
@@ -247,19 +247,19 @@ def build_list_kb(
     if items:
         kb.attach(list_builder)
 
-    # P1-14: Массовые операции в модерации
+    # P1-14:    
     if is_moderation and selected:
         bulk_actions = InlineKeyboardBuilder()
         bulk_actions.button(
-            text=f"✅ Одобрить выбранные ({len(selected)})",
+            text=f"   ({len(selected)})",
             callback_data=f"{prefix}:bulk:approve:{group}:{category}:{page}",
         )
         bulk_actions.button(
-            text=f"❌ Отклонить выбранные ({len(selected)})",
+            text=f"   ({len(selected)})",
             callback_data=f"{prefix}:bulk:reject:{group}:{category}:{page}",
         )
         bulk_actions.button(
-            text="🔄 Сбросить выбор",
+            text="  ",
             callback_data=f"{prefix}:bulk:clear:{group}:{category}:{page}",
         )
         bulk_actions.adjust(1)
@@ -268,12 +268,12 @@ def build_list_kb(
     nav = InlineKeyboardBuilder()
     if page > 1:
         nav.button(
-            text="◀️ Назад",
+            text=" ",
             callback_data=f"{prefix}:list:{group}:{category}:{page - 1}",
         )
     if has_next:
         nav.button(
-            text="▶️ Вперёд",
+            text=" ",
             callback_data=f"{prefix}:list:{group}:{category}:{page + 1}",
         )
     nav_count = 0
@@ -286,12 +286,12 @@ def build_list_kb(
         kb.attach(nav)
 
     categories = InlineKeyboardBuilder()
-    categories.button(text="Все", callback_data=f"{prefix}:list:{group}:all:1")
+    categories.button(text="", callback_data=f"{prefix}:list:{group}:all:1")
     for skill in skills[:6]:
         skill_id = str(skill.get("id"))
         label = str(skill.get("name") or skill_id)
         if len(label) > 24:
-            label = label[:21] + "…"
+            label = label[:21] + ""
         categories.button(
             text=label,
             callback_data=f"{prefix}:list:{group}:{skill_id}:1",
@@ -302,8 +302,8 @@ def build_list_kb(
         kb.attach(categories)
 
     footer = InlineKeyboardBuilder()
-    footer.button(text="⬅️ Назад", callback_data="adm:menu")
-    footer.button(text="🏠 Меню", callback_data="adm:menu")
+    footer.button(text=" ", callback_data="adm:menu")
+    footer.button(text=" ", callback_data="adm:menu")
     footer.adjust(2)
     kb.attach(footer)
 
@@ -331,46 +331,46 @@ def build_card_kb(
 
     if mode == "moderation":
         if manage and not detail.verified:
-            kb.button(text="✅ Одобрить", callback_data=_action_callback("ok"))
+            kb.button(text=" ", callback_data=_action_callback("ok"))
         if manage:
-            kb.button(text="❌ Отклонить", callback_data=_action_callback("rej"))
-        kb.button(text="📄 Документы", callback_data=_action_callback("docs"))
+            kb.button(text=" ", callback_data=_action_callback("rej"))
+        kb.button(text=" ", callback_data=_action_callback("docs"))
         kb.adjust(1)
         kb.row(
             InlineKeyboardButton(
-                text="⬅️ Назад",
+                text=" ",
                 callback_data=f"{prefix}:list:{group_value}:{category_value}:{page_value}",
             ),
-            InlineKeyboardButton(text="🏠 Меню", callback_data="adm:menu"),
+            InlineKeyboardButton(text=" ", callback_data="adm:menu"),
         )
         return kb.as_markup()
 
     if manage and not detail.verified:
-        kb.button(text="✅ Одобрить", callback_data=_action_callback("ok"))
+        kb.button(text=" ", callback_data=_action_callback("ok"))
     if manage:
-        kb.button(text="❌ Отклонить", callback_data=_action_callback("rej"))
+        kb.button(text=" ", callback_data=_action_callback("rej"))
     if manage:
         if detail.is_active and not detail.is_deleted:
-            kb.button(text="🚫 Заблокировать", callback_data=_action_callback("blk"))
+            kb.button(text=" ", callback_data=_action_callback("blk"))
         else:
-            kb.button(text="✅ Разблокировать", callback_data=_action_callback("unb"))
-        kb.button(text="🎯 Изм. лимит", callback_data=_action_callback("lim"))
-    kb.button(text="📄 Документы", callback_data=_action_callback("docs"))
+            kb.button(text=" ", callback_data=_action_callback("unb"))
+        kb.button(text=" . ", callback_data=_action_callback("lim"))
+    kb.button(text=" ", callback_data=_action_callback("docs"))
     if manage:
         delete_text = (
-            "🗑 Удалить"
+            " "
             if not (detail.has_orders or detail.has_commissions)
-            else "🧹 Мягкое удаление"
+            else "  "
         )
         kb.button(text=delete_text, callback_data=_action_callback("del"))
 
     kb.adjust(2, 2, 2)
     kb.row(
         InlineKeyboardButton(
-            text="⬅️ Назад",
+            text=" ",
             callback_data=f"{prefix}:list:{group_value}:{category_value}:{page_value}",
         ),
-        InlineKeyboardButton(text="🏠 Меню", callback_data="adm:menu"),
+        InlineKeyboardButton(text=" ", callback_data="adm:menu"),
     )
     return kb.as_markup()
 
@@ -384,7 +384,7 @@ async def render_master_list(
     staff: StaffUser,
     mode: str = "masters",
     prefix: str = "adm:m",
-    selected_ids: set[int] | None = None,  # P1-14: Выбранные для массовых операций
+    selected_ids: set[int] | None = None,  # P1-14:    
 ) -> tuple[str, InlineKeyboardMarkup, list[MasterListItem], list[dict[str, object]], bool]:
     service = _masters_service(bot)
     skills = await service.list_active_skills()
@@ -395,22 +395,22 @@ async def render_master_list(
         page=page,
         page_size=PAGE_SIZE,
     )
-    title = "👷 <b>Мастера</b>"
+    title = " <b></b>"
     if mode == "moderation":
-        title = "🛠 <b>Модерация мастеров</b>"
+        title = " <b> </b>"
     group_label = _group_label(group)
     category_label = _category_label(category, skills)
     lines = [
         title,
-        f"Группа: {group_label}",
-        f"Категория: {category_label}",
-        f"Страница: {page}",
+        f": {group_label}",
+        f": {category_label}",
+        f": {page}",
     ]
-    # P1-14: Показываем количество выбранных
+    # P1-14:   
     if selected_ids:
-        lines.append(f"✅ Выбрано: {len(selected_ids)}")
+        lines.append(f" : {len(selected_ids)}")
     if not items:
-        lines.append("Список пуст.")
+        lines.append(" .")
     else:
         for item in items:
             lines.append(_format_master_line(item))
@@ -422,7 +422,7 @@ async def render_master_list(
         has_next,
         skills,
         prefix=prefix,
-        selected_ids=selected_ids,  # P1-14: Передаём выбранные
+        selected_ids=selected_ids,  # P1-14:  
     )
     return "\n\n".join(lines), markup, items, skills, has_next
 
@@ -441,38 +441,38 @@ async def render_master_card(
     service = _masters_service(bot)
     detail = await service.get_master_detail(master_id)
     if not detail:
-        return "Мастер не найден или удалён.", back_to_menu()
+        return "    .", back_to_menu()
 
     status_parts: list[str] = []
     if detail.is_deleted:
-        status_parts.append("удалён")
+        status_parts.append("")
     if not detail.verified:
-        status_parts.append("не проверен")
+        status_parts.append(" ")
     if not detail.is_active:
-        status_parts.append("не активен")
+        status_parts.append(" ")
     if detail.is_blocked:
-        status_parts.append("заблокирован")
-    status_line = ", ".join(status_parts) if status_parts else "активен"
+        status_parts.append("")
+    status_line = ", ".join(status_parts) if status_parts else ""
 
-    avg_check = f"{detail.avg_check:.0f} ₽" if detail.avg_check is not None else "—"
-    limit_value = detail.current_limit if detail.current_limit else "—"
-    verified_at = detail.verified_at_local or "—"
+    avg_check = f"{detail.avg_check:.0f} " if detail.avg_check is not None else ""
+    limit_value = detail.current_limit if detail.current_limit else ""
+    verified_at = detail.verified_at_local or ""
     status_value = (detail.shift_status or "").upper()
     shift = _shift_label(status_value, status_value == "BREAK")
 
     lines = [
-        f"👷 <b>{detail.full_name}</b> #{detail.id}",
-        f"📍 Город: {detail.city_name or '—'}",
-        f"📞 Телефон: {detail.phone or '—'}",
-        f"⭐️ Рейтинг: {detail.rating:.1f}",
-        f"🚗 Транспорт: {'Авто' if detail.has_vehicle else 'Пеший'}",
-        f"🕒 Смена: {shift}",
-        f"📊 Активные заказы: {detail.active_orders}",
-        f"🎯 Лимит: {limit_value}",
-        f"💰 Средний чек: {avg_check}",
-        f"📎 Статус: {status_line}",
-        f"✅ Проверен: {detail.verified}",
-        f"📅 Дата проверки: {verified_at}",
+        f" <b>{detail.full_name}</b> #{detail.id}",
+        f" : {detail.city_name or ''}",
+        f" : {detail.phone or ''}",
+        f" : {detail.rating:.1f}",
+        f" : {'' if detail.has_vehicle else ''}",
+        f" : {shift}",
+        f"  : {detail.active_orders}",
+        f" : {limit_value}",
+        f"  : {avg_check}",
+        f" : {status_line}",
+        f" : {detail.verified}",
+        f"  : {verified_at}",
     ]
     if detail.referral_code:
         lines.append(f"?? ???. ???: {detail.referral_code}")
@@ -491,20 +491,20 @@ async def render_master_card(
             logger.debug("Failed to load referral stats", exc_info=True)
 
     if detail.moderation_reason:
-        lines.append(f"📝 Причина: {detail.moderation_reason}")
+        lines.append(f" : {detail.moderation_reason}")
     if detail.blocked_reason:
-        lines.append(f"🚫 Блокировка: {detail.blocked_reason}")
+        lines.append(f" : {detail.blocked_reason}")
     lines.append(
-        "🏙 Районы: " + (", ".join(detail.district_names) or "—")
+        " : " + (", ".join(detail.district_names) or "")
     )
     lines.append(
-        "🛠 Навыки: " + (", ".join(detail.skill_names) or "—")
+        " : " + (", ".join(detail.skill_names) or "")
     )
     if detail.documents:
         doc_types = ", ".join(filter(None, (doc.document_type for doc in detail.documents)))
-        lines.append("📄 Документы: " + (doc_types or "доступны"))
-    lines.append(f"📅 Создан: {detail.created_at_local}")
-    lines.append(f"🆙 Обновлён: {detail.updated_at_local}")
+        lines.append(" : " + (doc_types or ""))
+    lines.append(f" : {detail.created_at_local}")
+    lines.append(f" : {detail.updated_at_local}")
 
     markup = build_card_kb(
         detail,
@@ -651,7 +651,7 @@ async def list_page(cq: CallbackQuery, staff: StaffUser) -> None:
         _, _, _, group, category, page = parts
         page_num = max(1, int(page))
     except (ValueError, IndexError):
-        await cq.answer("Некорректный запрос", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     text, markup, *_ = await render_master_list(
         cq.bot,
@@ -673,7 +673,7 @@ async def master_card(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         action = parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     text, markup = await render_master_card(
         cq.bot,
@@ -698,12 +698,12 @@ async def approve_master(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         action = parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     master_id = action.master_id
     service = _masters_service(cq.bot)
     if not await service.approve_master(master_id, staff.id):
-        await cq.answer("Не удалось обновить статус", show_alert=True)
+        await cq.answer("   ", show_alert=True)
         return
     await _send_master_event(
         service,
@@ -713,7 +713,7 @@ async def approve_master(cq: CallbackQuery, staff: StaffUser) -> None:
     await notify_master(
         cq.bot,
         master_id,
-        "Анкета одобрена. Вам доступна смена.",
+        " .   .",
     )
     await refresh_card(
         cq,
@@ -725,7 +725,7 @@ async def approve_master(cq: CallbackQuery, staff: StaffUser) -> None:
         category=action.category,
         page=action.page,
     )
-    await cq.answer("Мастер одобрен")
+    await cq.answer(" ")
 
 
 @router.callback_query(
@@ -736,7 +736,7 @@ async def ask_reject_reason(cq: CallbackQuery, state: FSMContext, staff: StaffUs
     try:
         action = parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     await state.set_state(RejectReasonState.waiting)
     await state.update_data(
@@ -751,7 +751,7 @@ async def ask_reject_reason(cq: CallbackQuery, state: FSMContext, staff: StaffUs
         mode=action.mode,
     )
     if cq.message:
-        await cq.message.answer("Укажите причину отклонения (1–200 символов).")
+        await cq.message.answer("   (1200 ).")
     await cq.answer()
 
 
@@ -763,7 +763,7 @@ async def ask_block_reason(cq: CallbackQuery, state: FSMContext, staff: StaffUse
     try:
         action = parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     await state.set_state(RejectReasonState.waiting)
     await state.update_data(
@@ -778,7 +778,7 @@ async def ask_block_reason(cq: CallbackQuery, state: FSMContext, staff: StaffUse
         mode=action.mode,
     )
     if cq.message:
-        await cq.message.answer("Укажите причину блокировки (1–200 символов).")
+        await cq.message.answer("   (1200 ).")
     await cq.answer()
 
 
@@ -794,13 +794,13 @@ async def process_reason(message: Message, state: FSMContext, staff: StaffUser) 
     origin_message_id = data.get("origin_message_id")
     reason = (message.text or "").strip()
     if not 1 <= len(reason) <= 200:
-        await message.answer("Причина должна быть от 1 до 200 символов.")
+        await message.answer("    1  200 .")
         return
     service = _masters_service(message.bot)
     if action == "reject":
         ok = await service.reject_master(master_id, reason=reason, by_staff_id=staff.id)
         if not ok:
-            await message.answer("Не удалось отклонить мастера.")
+            await message.answer("   .")
             await state.clear()
             return
         await _send_master_event(
@@ -812,13 +812,13 @@ async def process_reason(message: Message, state: FSMContext, staff: StaffUser) 
         await notify_master(
             message.bot,
             master_id,
-            f"Анкета отклонена. Причина: {reason}",
+            f" . : {reason}",
         )
-        await message.answer("Анкета отклонена.")
+        await message.answer(" .")
     else:
         ok = await service.block_master(master_id, reason=reason, by_staff_id=staff.id)
         if not ok:
-            await message.answer("Не удалось заблокировать мастера.")
+            await message.answer("   .")
             await state.clear()
             return
         await _send_master_event(
@@ -830,9 +830,9 @@ async def process_reason(message: Message, state: FSMContext, staff: StaffUser) 
         await notify_master(
             message.bot,
             master_id,
-            f"Ваш аккаунт заблокирован. Причина: {reason}",
+            f"  . : {reason}",
         )
-        await message.answer("Мастер заблокирован.")
+        await message.answer(" .")
     if origin_chat_id and origin_message_id:
         await _refresh_card_message(
             message.bot,
@@ -857,19 +857,19 @@ async def unblock_master(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         action = parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     master_id = action.master_id
     service = _masters_service(cq.bot)
     if not await service.unblock_master(master_id, by_staff_id=staff.id):
-        await cq.answer("Не удалось разблокировать", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await _send_master_event(
         service,
         master_id,
         NotificationEvent.ACCOUNT_UNBLOCKED,
     )
-    await notify_master(cq.bot, master_id, "Ваш аккаунт разблокирован.")
+    await notify_master(cq.bot, master_id, "  .")
     await refresh_card(
         cq,
         master_id,
@@ -880,7 +880,7 @@ async def unblock_master(cq: CallbackQuery, staff: StaffUser) -> None:
         category=action.category,
         page=action.page,
     )
-    await cq.answer("Разблокирован")
+    await cq.answer("")
 
 
 @router.callback_query(
@@ -891,7 +891,7 @@ async def ask_limit(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> N
     try:
         action = parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     await state.set_state(ChangeLimitState.waiting)
     await state.update_data(
@@ -905,7 +905,7 @@ async def ask_limit(cq: CallbackQuery, state: FSMContext, staff: StaffUser) -> N
         mode=action.mode,
     )
     if cq.message:
-        await cq.message.answer("Введите лимит активных заказов (1–20):")
+        await cq.message.answer("    (120):")
     await cq.answer()
 
 
@@ -920,12 +920,12 @@ async def change_limit(message: Message, state: FSMContext, staff: StaffUser) ->
     origin_message_id = data.get("origin_message_id")
     raw_value = (message.text or "").strip()
     if not raw_value.isdigit():
-        await message.answer("Введите число от 1 до 20.")
+        await message.answer("   1  20.")
         return
     limit = max(1, min(int(raw_value), 20))
     service = _masters_service(message.bot)
     if not await service.set_master_limit(master_id, limit=limit, by_staff_id=staff.id):
-        await message.answer("Не удалось обновить лимит.")
+        await message.answer("   .")
         await state.clear()
         return
     await _send_master_event(
@@ -937,9 +937,9 @@ async def change_limit(message: Message, state: FSMContext, staff: StaffUser) ->
     await notify_master(
         message.bot,
         master_id,
-        f"Ваш лимит активных заказов обновлён: {limit}",
+        f"    : {limit}",
     )
-    await message.answer(f"Лимит обновлён: {limit}")
+    await message.answer(f" : {limit}")
     if origin_chat_id and origin_message_id:
         await _refresh_card_message(
             message.bot,
@@ -989,7 +989,7 @@ async def _relay_document(current_bot, *, chat_id: int, file_id: str, file_type:
 
 
 async def _clear_document_messages(bot: Bot, state: FSMContext, chat_id: int) -> None:
-    """Очистить сообщения с документами из чата."""
+    """     ."""
     data = await state.get_data()
     doc_msg_ids = data.get("document_msg_ids", [])
     
@@ -999,7 +999,7 @@ async def _clear_document_messages(bot: Bot, state: FSMContext, chat_id: int) ->
         except Exception:
             pass
     
-    # Очищаем список после удаления
+    #    
     await state.update_data(document_msg_ids=[])
 
 
@@ -1013,7 +1013,7 @@ async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext)
         action = parse_master_action(cq.data)
     except ValueError:
         logger.error(f"[DOCS] Failed to parse action from {cq.data}")
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     master_id = action.master_id
     logger.info(f"[DOCS] Master ID: {master_id}")
@@ -1023,7 +1023,7 @@ async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext)
     except Exception:
         pass
     
-    # Очищаем старые документы перед показом новых
+    #      
     if cq.message:
         await _clear_document_messages(cq.bot, state, cq.message.chat.id)
     
@@ -1034,7 +1034,7 @@ async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext)
     if not detail or not detail.documents:
         logger.info(f"[DOCS] No documents found. detail={detail is not None}, documents={len(detail.documents) if detail else 0}")
         if cq.message:
-            await cq.message.answer("Документы отсутствуют")
+            await cq.message.answer(" ")
         return
     
     logger.info(f"[DOCS] Found {len(detail.documents)} documents")
@@ -1055,9 +1055,9 @@ async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext)
                 sent_msg = await cq.message.answer_document(document.file_id, caption=caption)
             else:
                 logger.warning(f"[DOCS] Unknown file type: {document.file_type}")
-                sent_msg = await cq.message.answer(f"Неизвестный тип файла: {document.file_type}")
+                sent_msg = await cq.message.answer(f"  : {document.file_type}")
             
-            # Сохраняем message_id отправленного документа
+            #  message_id  
             if sent_msg:
                 sent_msg_ids.append(sent_msg.message_id)
                 logger.info(f"[DOCS] Document {idx+1} sent successfully")
@@ -1074,7 +1074,7 @@ async def show_documents(cq: CallbackQuery, staff: StaffUser, state: FSMContext)
                 logger.warning('[DOCS] No chat_id for relay', exc_info=True)
     
     logger.info(f"[DOCS] Completed. Sent {len(sent_msg_ids)} documents")
-    # Сохраняем message_id документов в state
+    #  message_id   state
     await state.update_data(document_msg_ids=sent_msg_ids)
 @router.callback_query(
     F.data.startswith("adm:m:del:") | F.data.startswith("adm:mod:del:"),
@@ -1085,7 +1085,7 @@ async def delete_master(cq: CallbackQuery, staff: StaffUser) -> None:
     try:
         action = parse_master_action(cq.data)
     except ValueError:
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     master_id = action.master_id
     group_value = action.group or ("mod" if action.mode == "moderation" else "ok")
@@ -1096,17 +1096,17 @@ async def delete_master(cq: CallbackQuery, staff: StaffUser) -> None:
     logger.info(f"Generated delete confirmation callback: {confirm_callback}")
     kb = InlineKeyboardBuilder()
     kb.button(
-        text="✅ Подтвердить",
+        text=" ",
         callback_data=confirm_callback,
     )
     kb.button(
-        text="⬅️ Назад",
+        text=" ",
         callback_data=f"{prefix}:card:{group_value}:{category_value}:{page_value}:{master_id}",
     )
     kb.adjust(1)
     if cq.message:
         await cq.message.edit_text(
-            "Точно удалить мастера?", reply_markup=kb.as_markup()
+            "  ?", reply_markup=kb.as_markup()
         )
     await cq.answer()
 
@@ -1122,7 +1122,7 @@ async def perform_delete(cq: CallbackQuery, staff: StaffUser) -> None:
         logger.info(f"Parsed action: master_id={action.master_id}, mode={action.mode}")
     except ValueError as e:
         logger.error(f"Failed to parse action: {e}")
-        await cq.answer("Некорректный идентификатор", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     
     master_id = action.master_id
@@ -1134,17 +1134,17 @@ async def perform_delete(cq: CallbackQuery, staff: StaffUser) -> None:
         logger.info(f"Delete result: success={success}, soft={soft}")
     except Exception as e:
         logger.error(f"Exception in delete_master: {e}", exc_info=True)
-        await cq.answer("Ошибка при удалении", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     
     if not success:
         logger.warning(f"Delete failed for master_id={master_id}")
-        await cq.answer("Не удалось удалить", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     
     if soft:
         logger.info(f"Soft delete successful for master_id={master_id}")
-        await cq.answer("Профиль помечен как удалён", show_alert=True)
+        await cq.answer("   ", show_alert=True)
         await refresh_card(
             cq,
             master_id,
@@ -1158,18 +1158,18 @@ async def perform_delete(cq: CallbackQuery, staff: StaffUser) -> None:
     else:
         logger.info(f"Hard delete successful for master_id={master_id}")
         if cq.message:
-            await cq.message.edit_text("Профиль удалён окончательно.", reply_markup=back_to_menu())
-        await cq.answer("Профиль удалён", show_alert=True)
+            await cq.message.edit_text("  .", reply_markup=back_to_menu())
+        await cq.answer(" ", show_alert=True)
     
     logger.info(f"Delete handler completed for master_id={master_id}")
 
 
-# Отладочный обработчик для неперехваченных callback (только adm:m:, БЕЗ adm:mod:)
+#     callback ( adm:m:,  adm:mod:)
 @router.callback_query(F.data.startswith("adm:m:"))
 async def catch_unhandled_master_callbacks(cq: CallbackQuery) -> None:
-    """Ловит все необработанные callback для мастеров (исключая модерацию)."""
+    """   callback   ( )."""
     logger.warning(f"[UNHANDLED CALLBACK] Masters router: {cq.data}")
-    await cq.answer(f"Обработчик для '{cq.data}' не найден", show_alert=True)
+    await cq.answer(f"  '{cq.data}'  ", show_alert=True)
 
 
 __all__ = [

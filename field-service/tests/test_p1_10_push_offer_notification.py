@@ -13,27 +13,23 @@ from field_service.services.push_notifications import NotificationEvent
 
 
 @pytest.mark.asyncio
-async def test_offer_push_notification(session):
+async def test_offer_push_notification(async_session):
     """Проверить что при создании оффера мастер получает push-уведомление."""
     
-    # 1. Очистить БД
-    await session.execute(text("TRUNCATE TABLE offers, notifications_outbox, orders, masters, master_districts, master_skills, districts, cities, skills CASCADE"))
-    await session.commit()
-    
-    # 2. Создать город
+    # 1. Создать город
     city = m.cities(name="Москва", timezone="Europe/Moscow")
-    session.add(city)
-    await session.flush()
+    async_session.add(city)
+    await async_session.flush()
     
     # 2. Создать район
     district = m.districts(city_id=city.id, name="Центральный")
-    session.add(district)
-    await session.flush()
+    async_session.add(district)
+    await async_session.flush()
     
     # 3. Создать навык
     skill = m.skills(name="Электрика", code="ELEC", is_active=True)
-    session.add(skill)
-    await session.flush()
+    async_session.add(skill)
+    await async_session.flush()
     
     # 4. Создать мастера
     master = m.masters(
@@ -46,18 +42,18 @@ async def test_offer_push_notification(session):
         is_on_shift=True,
         max_active_orders_override=5,
     )
-    session.add(master)
-    await session.flush()
+    async_session.add(master)
+    await async_session.flush()
     
     # 5. Связать мастера с районом
     master_district = m.master_districts(master_id=master.id, district_id=district.id)
-    session.add(master_district)
-    await session.flush()
+    async_session.add(master_district)
+    await async_session.flush()
     
     # 6. Связать мастера с навыком
     master_skill = m.master_skills(master_id=master.id, skill_id=skill.id)
-    session.add(master_skill)
-    await session.flush()
+    async_session.add(master_skill)
+    await async_session.flush()
     
     # 7. Создать заказ
     now = datetime.now(timezone.utc)
@@ -75,17 +71,17 @@ async def test_offer_push_notification(session):
         address_street="Улица",
         address_house="1",
     )
-    session.add(order)
-    await session.flush()
-    await session.commit()
+    async_session.add(order)
+    await async_session.flush()
+    await async_session.commit()
     
     # 8. Запустить тик распределения
     cfg = await _load_config()
-    await tick_once(cfg, bot=None, alerts_chat_id=None, session=session)
+    await tick_once(cfg, bot=None, alerts_chat_id=None, session=async_session)
     
     # 9. Проверить что оффер создан
-    session.expire_all()
-    result = await session.execute(
+    async_session.expire_all()
+    result = await async_session.execute(
         select(m.offers)
         .where(m.offers.order_id == order.id)
         .where(m.offers.master_id == master.id)
@@ -95,7 +91,7 @@ async def test_offer_push_notification(session):
     assert offer.state == m.OfferState.SENT, "Оффер должен быть в статусе SENT"
     
     # 10. Проверить что уведомление добавлено в outbox
-    result = await session.execute(
+    result = await async_session.execute(
         select(m.notifications_outbox)
         .where(m.notifications_outbox.master_id == master.id)
         .where(m.notifications_outbox.event == NotificationEvent.NEW_OFFER.value)
@@ -116,22 +112,18 @@ async def test_offer_push_notification(session):
 
 
 @pytest.mark.asyncio
-async def test_notification_format(session):
+async def test_notification_format(async_session):
     """Проверить формат уведомления."""
     from field_service.services.distribution_scheduler import _get_order_notification_data
     
-    # 1. Очистить БД
-    await session.execute(text("TRUNCATE TABLE orders, districts, cities CASCADE"))
-    await session.commit()
-    
-    # 2. Создать тестовые данные
+    # 1. Создать тестовые данные
     city = m.cities(name="Санкт-Петербург", timezone="Europe/Moscow")
-    session.add(city)
-    await session.flush()
+    async_session.add(city)
+    await async_session.flush()
     
     district = m.districts(city_id=city.id, name="Невский")
-    session.add(district)
-    await session.flush()
+    async_session.add(district)
+    await async_session.flush()
     
     now = datetime.now(timezone.utc)
     order = m.orders(
@@ -148,12 +140,12 @@ async def test_notification_format(session):
         address_street="Улица",
         address_house="1",
     )
-    session.add(order)
-    await session.flush()
-    await session.commit()
+    async_session.add(order)
+    await async_session.flush()
+    await async_session.commit()
     
     # 2. Получить данные для уведомления
-    data = await _get_order_notification_data(session, order.id)
+    data = await _get_order_notification_data(async_session, order.id)
     
     # 3. Проверить формат данных
     assert data["order_id"] == order.id
@@ -166,18 +158,14 @@ async def test_notification_format(session):
 
 
 @pytest.mark.asyncio
-async def test_notification_without_district(session):
+async def test_notification_without_district(async_session):
     """Проверить уведомление для заказа без района."""
     from field_service.services.distribution_scheduler import _get_order_notification_data
     
-    # 1. Очистить БД
-    await session.execute(text("TRUNCATE TABLE orders, cities CASCADE"))
-    await session.commit()
-    
-    # 2. Создать город
+    # 1. Создать город
     city = m.cities(name="Казань", timezone="Europe/Moscow")
-    session.add(city)
-    await session.flush()
+    async_session.add(city)
+    await async_session.flush()
     
     now = datetime.now(timezone.utc)
     order = m.orders(
@@ -192,11 +180,11 @@ async def test_notification_without_district(session):
         address_street="Улица",
         address_house="1",
     )
-    session.add(order)
-    await session.flush()
-    await session.commit()
+    async_session.add(order)
+    await async_session.flush()
+    await async_session.commit()
     
-    data = await _get_order_notification_data(session, order.id)
+    data = await _get_order_notification_data(async_session, order.id)
     
     assert data["district"] == "не указан", "Для заказа без района должно быть 'не указан'"
     print(f"✅ Уведомление без района: {data}")

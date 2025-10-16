@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import distribution_scheduler as ds
+from field_service.services.skills_map import get_skill_code
 from field_service.infra.structured_logging import log_candidate_rejection
 
 UTC = timezone.utc
@@ -137,7 +138,7 @@ async def select_candidates(
         return []
     city_id = city_id_int
 
-    skill_code = ds._skill_code_for_category(_order_attr(order, "category"))
+    skill_code = get_skill_code(_order_attr(order, "category"))
     if skill_code is None:
         logger.info(
             "[candidates] order=%s:  -    ", order_id

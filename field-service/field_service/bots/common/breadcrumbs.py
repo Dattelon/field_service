@@ -3,8 +3,8 @@
 Provides hierarchical navigation path display for better UX.
 
 Example:
-    >>> build_breadcrumbs(["Главное меню", "Заявки", "Очередь", "Заказ #123"])
-    "Главное меню > Заявки > Очередь > Заказ #123"
+    >>> build_breadcrumbs([" ", "", "", " #123"])
+    "  >  >  >  #123"
 """
 from __future__ import annotations
 
@@ -53,38 +53,38 @@ def format_breadcrumb_header(breadcrumbs: str) -> str:
 class AdminPaths:
     """Predefined navigation paths for admin bot."""
     
-    MAIN = ["Главное меню"]
+    MAIN = [" "]
     
     # Orders section
-    ORDERS = MAIN + ["Заявки"]
-    ORDERS_QUEUE = ORDERS + ["Очередь"]
-    ORDERS_CREATE = ORDERS + ["Создание заказа"]
-    ORDERS_QUICK_CREATE = ORDERS + ["Быстрое создание"]
+    ORDERS = MAIN + [""]
+    ORDERS_QUEUE = ORDERS + [""]
+    ORDERS_CREATE = ORDERS + [" "]
+    ORDERS_QUICK_CREATE = ORDERS + [" "]
     
     # Masters section
-    MASTERS = MAIN + ["Мастера"]
-    MASTERS_MODERATION = MASTERS + ["Модерация"]
-    MASTERS_LIST = MASTERS + ["Список мастеров"]
+    MASTERS = MAIN + [""]
+    MASTERS_MODERATION = MASTERS + [""]
+    MASTERS_LIST = MASTERS + [" "]
     
     # Finance section
-    FINANCE = MAIN + ["Финансы"]
-    FINANCE_COMMISSIONS = FINANCE + ["Комиссии"]
+    FINANCE = MAIN + [""]
+    FINANCE_COMMISSIONS = FINANCE + [""]
     
     # Staff section
-    STAFF = MAIN + ["Персонал"]
-    STAFF_MANAGEMENT = STAFF + ["Управление"]
-    STAFF_ACCESS_CODES = STAFF + ["Коды доступа"]
+    STAFF = MAIN + [""]
+    STAFF_MANAGEMENT = STAFF + [""]
+    STAFF_ACCESS_CODES = STAFF + [" "]
     
     # System section
-    SYSTEM = MAIN + ["Система"]
-    SYSTEM_REPORTS = SYSTEM + ["Отчёты"]
-    SYSTEM_SETTINGS = SYSTEM + ["Настройки"]
-    SYSTEM_LOGS = SYSTEM + ["Логи"]
+    SYSTEM = MAIN + [""]
+    SYSTEM_REPORTS = SYSTEM + [""]
+    SYSTEM_SETTINGS = SYSTEM + [""]
+    SYSTEM_LOGS = SYSTEM + [""]
     
     @staticmethod
     def order_card(order_id: int) -> list[str]:
         """Build path for order card."""
-        return AdminPaths.ORDERS_QUEUE + [f"Заказ #{order_id}"]
+        return AdminPaths.ORDERS_QUEUE + [f" #{order_id}"]
     
     @staticmethod
     def master_card(master_name: str) -> list[str]:
@@ -96,48 +96,48 @@ class AdminPaths:
 class MasterPaths:
     """Predefined navigation paths for master bot."""
     
-    MAIN = ["Главное меню"]
+    MAIN = [" "]
     
     # Orders section
-    NEW_ORDERS = MAIN + ["Новые заказы"]
-    ACTIVE_ORDERS = MAIN + ["Активные заказы"]
-    ACTIVE_ORDER = MAIN + ["Активный заказ"]  # Оставляем для обратной совместимости
-    HISTORY = MAIN + ["История заказов"]
+    NEW_ORDERS = MAIN + [" "]
+    ACTIVE_ORDERS = MAIN + [" "]
+    ACTIVE_ORDER = MAIN + [" "]  #    
+    HISTORY = MAIN + [" "]
     
     # Finance section
-    FINANCE = MAIN + ["Финансы"]
-    FINANCE_COMMISSIONS = FINANCE + ["Комиссии"]
+    FINANCE = MAIN + [""]
+    FINANCE_COMMISSIONS = FINANCE + [""]
     
     # Other sections
-    REFERRAL = MAIN + ["Реферальная программа"]
-    STATISTICS = MAIN + ["Моя статистика"]
-    KNOWLEDGE = MAIN + ["База знаний"]
+    REFERRAL = MAIN + [" "]
+    STATISTICS = MAIN + [" "]
+    KNOWLEDGE = MAIN + [" "]
     
     # Shift management
-    SHIFT = MAIN + ["Управление сменой"]
+    SHIFT = MAIN + [" "]
     
     # Onboarding
-    ONBOARDING = ["Регистрация"]
+    ONBOARDING = [""]
     
     @staticmethod
     def offer_card(order_id: int) -> list[str]:
         """Build path for offer card."""
-        return MasterPaths.NEW_ORDERS + [f"Заказ #{order_id}"]
+        return MasterPaths.NEW_ORDERS + [f" #{order_id}"]
     
     @staticmethod
     def active_order_card(order_id: int) -> list[str]:
         """Build path for active order card."""
-        return MasterPaths.ACTIVE_ORDERS + [f"Заказ #{order_id}"]
+        return MasterPaths.ACTIVE_ORDERS + [f" #{order_id}"]
     
     @staticmethod
     def history_order_card(order_id: int) -> list[str]:
         """Build path for history order card."""
-        return MasterPaths.HISTORY + [f"Заказ #{order_id}"]
+        return MasterPaths.HISTORY + [f" #{order_id}"]
     
     @staticmethod
     def commission_card(commission_id: int) -> list[str]:
         """Build path for commission card."""
-        return MasterPaths.FINANCE_COMMISSIONS + [f"Комиссия #{commission_id}"]
+        return MasterPaths.FINANCE_COMMISSIONS + [f" #{commission_id}"]
 
 
 # Helper functions for common use cases

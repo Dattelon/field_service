@@ -95,21 +95,21 @@ from .texts import FSM_TIMEOUT_MESSAGE, new_order_summary, order_card
 def _maybe_fix_mojibake(s: Any) -> Any:
     return s
 
-# ---------- Читаемые русские константы (override) ----------
-# Эти присваивания гарантируют, что пользователь увидит нормальные строки,
-# даже если где-то в файле остались кракозябры из старых литералов.
+# ----------    (override) ----------
+#   ,     ,
+#   -       .
 
-STAFF_CODE_PROMPT = "Введите код доступа, который выдал администратор."
-STAFF_CODE_ERROR = "Код не найден / истёк / уже использован / вам недоступен."
+STAFF_CODE_PROMPT = "  ,   ."
+STAFF_CODE_ERROR = "   /  /   /  ."
 STAFF_PDN_TEXT = (
-    "Согласие на обработку персональных данных.",
-    "Согласие включает обработку ФИО, телефона и данных о заказах для допуска к работе и обеспечения безопасности сервиса. ",
-    "Отправьте \"Согласен\" для продолжения или \"Не согласен\" для отмены."
+    "    .",
+    "   ,             . ",
+    " \"\"    \" \"  ."
 )
 REPORT_DEFINITIONS: dict[str, tuple[str, Any, str]] = {
-    "orders": ("Заказы", export_service.export_orders, "Orders"),
-    "commissions": ("Комиссии", export_service.export_commissions, "Commissions"),
-    "ref_rewards": ("Реферальные начисления", export_service.export_referral_rewards, "Referral rewards"),
+    "orders": ("", export_service.export_orders, "Orders"),
+    "commissions": ("", export_service.export_commissions, "Commissions"),
+    "ref_rewards": (" ", export_service.export_referral_rewards, "Referral rewards"),
 }
 
 DATE_INPUT_FORMATS = ("%Y-%m-%d", "%d.%m.%Y")
@@ -119,17 +119,17 @@ LOCAL_TZ = ZoneInfo(env_settings.timezone or "UTC")
 
 # Staff role labels
 STAFF_ROLE_LABELS = {
-    StaffRole.GLOBAL_ADMIN: "Глобальный администратор",
-    StaffRole.CITY_ADMIN: "Администратор города",
-    StaffRole.LOGIST: "Логист",
+    StaffRole.GLOBAL_ADMIN: " ",
+    StaffRole.CITY_ADMIN: " ",
+    StaffRole.LOGIST: "",
 }
 
 # Access code error messages
 ACCESS_CODE_ERROR_MESSAGES = {
-    "expired": "Код истёк. Запросите новый у администратора.",
-    "used": "Код уже использован.",
-    "not_found": "Код не найден.",
-    "role_mismatch": "Код вам недоступен (несоответствие ролей).",
+    "expired": " .    .",
+    "used": "  .",
+    "not_found": "  .",
+    "role_mismatch": "   ( ).",
 }
 
 # Aliases for text formatting functions
@@ -138,11 +138,11 @@ format_order_card = order_card
 
 def _parse_period_input(text: str) -> tuple[date, date] | None:
     """
-    Парсит ввод пользователя в формате 'YYYY-MM-DD YYYY-MM-DD'
-    или 'DD.MM.YYYY DD.MM.YYYY' и возвращает кортеж из двух дат.
+         'YYYY-MM-DD YYYY-MM-DD'
+     'DD.MM.YYYY DD.MM.YYYY'      .
     
     Returns:
-        tuple[date, date] | None: Кортеж (start_date, end_date) или None при ошибке
+        tuple[date, date] | None:  (start_date, end_date)  None  
     """
     text = text.strip()
     if not text:
@@ -154,7 +154,7 @@ def _parse_period_input(text: str) -> tuple[date, date] | None:
     
     start_str, end_str = parts
     
-    # Пробуем разные форматы
+    #   
     for fmt in DATE_INPUT_FORMATS:
         try:
             start_dt = datetime.strptime(start_str, fmt).date()
@@ -169,14 +169,14 @@ def _parse_period_input(text: str) -> tuple[date, date] | None:
 
 def _format_period_label(start_dt: date, end_dt: date) -> str:
     """
-    Форматирует две даты в читаемую строку для отображения в отчете.
+             .
     
     Args:
-        start_dt: Начальная дата
-        end_dt: Конечная дата
+        start_dt:  
+        end_dt:  
     
     Returns:
-        str: Отформатированная строка типа "01.01.2024 - 31.01.2024"
+        str:    "01.01.2024 - 31.01.2024"
     """
     if start_dt == end_dt:
         return start_dt.strftime("%d.%m.%Y")
@@ -190,8 +190,8 @@ async def show_admin_main_menu(
     edit: bool = False,
     notice: str | None = None,
 ) -> None:
-    """Показывает главное меню админ-бота"""
-    text = notice or "Выберите раздел:"
+    """   -"""
+    text = notice or " :"
     markup = main_menu(staff)
     
     if edit:
@@ -226,29 +226,29 @@ class SettingGroupDef:
 SETTING_GROUPS: dict[str, SettingGroupDef] = {
     "workday": SettingGroupDef(
         key="workday",
-        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
+        title=" ",\n        description="  .      .",
         fields=(
             SettingFieldDef(
                 key="working_hours_start",
-                label="Начало рабочего дня",
+                label="  ",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_start,
-                help_text="Формат ЧЧ:ММ, по умолчанию 10:00.",
+                help_text=" :,   10:00.",
             ),
             SettingFieldDef(
                 key="working_hours_end",
-                label="Конец рабочего дня",
+                label="  ",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_end,
-                help_text="Формат ЧЧ:ММ, по умолчанию 20:00.",
+                help_text=" :,   20:00.",
             ),
         ),
     ),
     "distribution": SettingGroupDef(
         key="distribution",
-        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
+        title=" ",\n        description="  .      .",
         fields=(
             SettingFieldDef(
                 key="distribution_tick_seconds",
@@ -302,7 +302,7 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "support": SettingGroupDef(
         key="support",
-        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
+        title=" ",\n        description="  .      .",
         fields=(
             SettingFieldDef(
                 key="support_contact",
@@ -361,7 +361,7 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "channels": SettingGroupDef(
         key="channels",
-        title="Рабочий день",\n        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
+        title=" ",\n        description="  .      .",
         fields=(
             SettingFieldDef(
                 key="alerts_channel_id",
@@ -394,63 +394,63 @@ SETTINGS_GROUPS = SETTING_GROUPS
 SETTING_GROUPS: dict[str, SettingGroupDef] = {
     "workday": SettingGroupDef(
         key="workday",
-        title="Рабочий день",
-        description="Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
+        title=" ",
+        description="  .      .",
         fields=(
             SettingFieldDef(
                 key="working_hours_start",
-                label="Начало рабочего дня",
+                label="  ",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_start,
-                help_text="Формат ЧЧ:ММ, по умолчанию 10:00.",
+                help_text=" :,   10:00.",
             ),
             SettingFieldDef(
                 key="working_hours_end",
-                label="Конец рабочего дня",
+                label="  ",
                 schema="time",
                 value_type="TIME",
                 default=env_settings.working_hours_end,
-                help_text="Формат ЧЧ:ММ, по умолчанию 20:00.",
+                help_text=" :,   20:00.",
             ),
         ),
     ),
     "distribution": SettingGroupDef(
         key="distribution",
-        title="Распределение",
-        description="Настройки автораспределения заявок (частота, SLA, раунды).",
+        title="",
+        description="   (, SLA, ).",
         fields=(
             SettingFieldDef(
                 key="distribution_tick_seconds",
-                label="Шаг цикла (сек.)",
+                label="  (.)",
                 schema="int",
                 value_type="INT",
                 default=30,
             ),
             SettingFieldDef(
                 key="distribution_sla_seconds",
-                label="SLA ответа мастера (сек.)",
+                label="SLA   (.)",
                 schema="int",
                 value_type="INT",
                 default=env_settings.distribution_sla_seconds,
             ),
             SettingFieldDef(
                 key="distribution_rounds",
-                label="Количество раундов",
+                label=" ",
                 schema="int",
                 value_type="INT",
                 default=env_settings.distribution_rounds,
             ),
             SettingFieldDef(
                 key="escalate_to_admin_after_min",
-                label="Эскалация к админу через (мин.)",
+                label="    (.)",
                 schema="int_non_negative",
                 value_type="INT",
                 default=10,
             ),
             SettingFieldDef(
                 key="distribution_log_topn",
-                label="Логировать topN кандидатов",
+                label=" topN ",
                 schema="int",
                 value_type="INT",
                 default=10,
@@ -459,12 +459,12 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "limits": SettingGroupDef(
         key="limits",
-        title="Лимиты",
-        description="Ограничения сервиса для мастеров и процессов.",
+        title="",
+        description="     .",
         fields=(
             SettingFieldDef(
                 key="max_active_orders",
-                label="Макс. активных заказов на мастера",
+                label=".    ",
                 schema="int",
                 value_type="INT",
                 default=1,
@@ -473,59 +473,59 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "support": SettingGroupDef(
         key="support",
-        title="Поддержка",
-        description="Контакты поддержки и материалы.",
+        title="",
+        description="   .",
         fields=(
             SettingFieldDef(
                 key="support_contact",
-                label="Контакт поддержки",
+                label=" ",
                 schema="string",
                 value_type="STR",
-                help_text="Например, @username, если доступно.",
+                help_text=", @username,  .",
             ),
             SettingFieldDef(
                 key="support_faq_url",
-                label="Ссылка на FAQ",
+                label="  FAQ",
                 schema="string_optional",
                 value_type="STR",
-                help_text="Укажите URL или '-' чтобы очистить.",
+                help_text=" URL  '-'  .",
             ),
         ),
     ),
     "geo": SettingGroupDef(
         key="geo",
-        title="Гео",
-        description="Режим и лимиты геокодера.",
+        title="",
+        description="   .",
         fields=(
             SettingFieldDef(
                 key="geo_mode",
-                label="Режим геокодера",
+                label=" ",
                 schema="choice",
                 value_type="STR",
                 choices=(
-                    ("local_centroids", "Локальные центроиды"),
-                    ("yandex", "Яндекс"),
+                    ("local_centroids", " "),
+                    ("yandex", ""),
                 ),
                 default="local_centroids",
-                help_text="1 — локально, 2 — через API.",
+                help_text="1  , 2   API.",
             ),
             SettingFieldDef(
                 key="yandex_geocoder_key",
-                label="API‑ключ Яндекс",
+                label="API ",
                 schema="string_optional",
                 value_type="STR",
-                help_text="Оставьте '-' чтобы очистить.",
+                help_text=" '-'  .",
             ),
             SettingFieldDef(
                 key="yandex_throttle_rps",
-                label="RPS ограничение",
+                label="RPS ",
                 schema="int_non_negative",
                 value_type="INT",
                 default=1,
             ),
             SettingFieldDef(
                 key="yandex_daily_limit",
-                label="Суточный лимит запросов",
+                label="  ",
                 schema="int_non_negative",
                 value_type="INT",
                 default=1000,
@@ -534,29 +534,29 @@ SETTING_GROUPS: dict[str, SettingGroupDef] = {
     ),
     "channels": SettingGroupDef(
         key="channels",
-        title="Каналы",
-        description="ID каналов Telegram для уведомлений и отчётов.",
+        title="",
+        description="ID  Telegram    .",
         fields=(
             SettingFieldDef(
                 key="alerts_channel_id",
-                label="Канал алертов (ID)",
+                label="  (ID)",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID или '-' чтобы очистить.",
+                help_text="ID  '-'  .",
             ),
             SettingFieldDef(
                 key="logs_channel_id",
-                label="Канал логов (ID)",
+                label="  (ID)",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID или '-' чтобы очистить.",
+                help_text="ID  '-'  .",
             ),
             SettingFieldDef(
                 key="reports_channel_id",
-                label="Канал отчётов (ID)",
+                label="  (ID)",
                 schema="int_optional",
                 value_type="STR",
-                help_text="ID или '-' чтобы очистить.",
+                help_text="ID  '-'  .",
             ),
         ),
     ),
@@ -714,7 +714,7 @@ async def _build_settings_view(bot, group_key: str) -> tuple[str, InlineKeyboard
             value_line = f"{label}: <code>{html.escape(display, quote=False)}</code>"
         if from_default and field.default not in (None, ""):
             value_line += " <i>( )</i>"
-        lines.append(value_line)\n    lines.append("Выберите поле ниже, чтобы отредактировать значение.")
+        lines.append(value_line)\n    lines.append("  ,   .")
     keyboard = settings_group_keyboard(
         group_key,
         [(field.key, _RU_FIELD_LABELS.get(field.key, field.label)) for field in group.fields],
@@ -740,9 +740,9 @@ async def _build_settings_view(bot, group_key: str) -> tuple[str, InlineKeyboard
         else:
             value_line = f"{label}: <code>{html.escape(display, quote=False)}</code>"
         if from_default and field.default not in (None, ""):
-            value_line += " <i>(по умолчанию)</i>"
+            value_line += " <i>( )</i>"
         lines.append(value_line)
-    lines.append("Выберите поле ниже, чтобы отредактировать значение.")
+    lines.append("  ,   .")
     keyboard = settings_group_keyboard(
         group_key,
         [(field.key, _RU_FIELD_LABELS.get(field.key, field.label)) for field in group.fields],
@@ -798,7 +798,7 @@ def _settings_service(bot):
 
 
 PHONE_RE = re.compile(r"^\+7\d{10}$")
-NAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё\- ]{1,99}$")
+NAME_RE = re.compile(r"^[A-Za-z--][A-Za-z--\- ]{1,99}$")
 ATTACHMENTS_LIMIT = 10
 
 def _normalize_phone(value: str) -> str:
@@ -1033,7 +1033,7 @@ async def _render_created_order_card(message: Message, order_id: int, staff: Sta
 @router.message(CommandStart(), StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN, StaffRole.LOGIST}))
 async def admin_start(message: Message, staff: StaffUser) -> None:
     #  ,    
-    await message.answer("Добро пожаловать в Field Service. Выберите раздел:", reply_markup=main_menu(staff))
+    await message.answer("   Field Service.  :", reply_markup=main_menu(staff))
     return
 
 
@@ -1175,11 +1175,11 @@ async def cb_staff_menu_denied(cq: CallbackQuery, staff: StaffUser) -> None:
 
 
 # ==============================================================================
-# ФИНАНСЫ
+# 
 # ==============================================================================
-# ВАЖНО: Все обработчики финансов (кроме входной точки cb_finance_root)
-# находятся в handlers_finance.py для избежания дублирования и коллизий.
-# См. CR-2025-10-03-012
+# :    (   cb_finance_root)
+#   handlers_finance.py     .
+# . CR-2025-10-03-012
 @router.callback_query(
     F.data == "adm:f",
     StaffRoleFilter({StaffRole.GLOBAL_ADMIN, StaffRole.CITY_ADMIN}),
@@ -1206,7 +1206,7 @@ async def _prompt_report_period(cq: CallbackQuery, state: FSMContext, report_kin
     await state.set_state(ReportsExportFSM.awaiting_period)
     await state.update_data(report_kind=report_kind)
     await cq.message.answer(
-        f"Выберите период для отчёта ({label}) или укажите вручную:",
+        f"    ({label})   :",
         reply_markup=reports_periods_keyboard(),
     )
     await cq.answer()
@@ -1239,7 +1239,7 @@ async def cb_reports_referrals(cq: CallbackQuery, state: FSMContext) -> None:
 @router.message(StateFilter(ReportsExportFSM.awaiting_period), F.text == "/cancel")
 async def reports_cancel(msg: Message, state: FSMContext) -> None:
     await state.clear()
-    await msg.answer("Редактирование отменено.")
+    await msg.answer(" .")
 
 
 @router.message(StateFilter(ReportsExportFSM.awaiting_period))
@@ -1251,7 +1251,7 @@ async def reports_period_submit(
     period = _parse_period_input(msg.text or "")
     if not period:
         await msg.answer(
-            "Неверный формат. Введите даты как 'YYYY-MM-DD YYYY-MM-DD' или воспользуйтесь кнопками.",
+            " .    'YYYY-MM-DD YYYY-MM-DD'   .",
             reply_markup=reports_periods_keyboard(),
         )
         return
@@ -1369,19 +1369,19 @@ async def reports_quick_period_choice(
     if not definition:
         await state.clear()
         if cq.message:
-            await cq.message.edit_text("Выберите отчёт:", reply_markup=reports_menu_keyboard())
+            await cq.message.edit_text(" :", reply_markup=reports_menu_keyboard())
         await cq.answer()
         return
     if key == "custom":
         if cq.message:
             await cq.message.answer(
-                "Введите период в формате: YYYY-MM-DD YYYY-MM-DD\nИли нажмите /cancel для отмены."
+                "   : YYYY-MM-DD YYYY-MM-DD\n  /cancel  ."
             )
         await cq.answer()
         return
     period = _compute_quick_period(key, tz=env_settings.timezone)
     if not period:
-        await cq.answer("Неверный период", show_alert=True)
+        await cq.answer(" ", show_alert=True)
         return
     start_dt, end_dt = period
     label, exporter, caption_prefix = definition
@@ -1390,7 +1390,7 @@ async def reports_quick_period_choice(
         bundle = await exporter(date_from=start_dt, date_to=end_dt, city_ids=city_ids)
     except Exception:
         if cq.message:
-            await cq.message.answer("Не удалось сформировать отчёт.", reply_markup=reports_menu_keyboard())
+            await cq.message.answer("   .", reply_markup=reports_menu_keyboard())
         await cq.answer()
         return
     period_label = _format_period_label(start_dt, end_dt)
@@ -1399,7 +1399,7 @@ async def reports_quick_period_choice(
         target_chat_id = cq.from_user.id
     if target_chat_id is None:
         if cq.message:
-            await cq.message.answer("Канал для отчётов не настроен.", reply_markup=reports_menu_keyboard())
+            await cq.message.answer("    .", reply_markup=reports_menu_keyboard())
         await cq.answer()
         return
     try:
@@ -1408,15 +1408,15 @@ async def reports_quick_period_choice(
         if cq.from_user:
             await _send_export_documents(cq.bot, bundle, f"{caption_prefix} {period_label}", chat_id=cq.from_user.id)
             if cq.message:
-                await cq.message.answer("Отчёт отправлен вам в чат (канал недоступен).")
+                await cq.message.answer("     ( ).")
         else:
             if cq.message:
-                await cq.message.answer("Не удалось доставить отчёт.")
+                await cq.message.answer("   .")
             await cq.answer()
             return
     else:
         if cq.message:
-            await cq.message.answer("Отчёт отправлен.")
+            await cq.message.answer(" .")
     await state.clear()
     await cq.answer()
 
@@ -1437,9 +1437,9 @@ async def _render_city_step(message: Message, state: FSMContext, page: int, quer
         cities = await orders_service.list_cities(limit=limit)
     if not cities:
         try:
-            await message.edit_text("Города не найдены. Нажмите /cancel, чтобы отменить.")
+            await message.edit_text("  .  /cancel,  .")
         except TelegramBadRequest:
-            await message.answer("Города не найдены. Нажмите /cancel, чтобы отменить.")
+            await message.answer("  .  /cancel,  .")
         return
     per_page = 10
     total_pages = max(1, (len(cities) + per_page - 1) // per_page)
@@ -1447,7 +1447,7 @@ async def _render_city_step(message: Message, state: FSMContext, page: int, quer
     start = (page - 1) * per_page
     chunk = cities[start : start + per_page]
     keyboard = new_order_city_keyboard([(c.id, c.name) for c in chunk], page=page, total_pages=total_pages)
-    prompt = "Выберите город:"
+    prompt = " :"
     try:
         await message.edit_text(prompt, reply_markup=keyboard)
     except TelegramBadRequest:
@@ -1474,7 +1474,7 @@ async def admin_cancel_command(message: Message, staff: StaffUser, state: FSMCon
     await show_admin_main_menu(
         message,
         staff,
-        notice="Создание заявки отменено.",
+        notice="  .",
     )
 
 
@@ -1486,9 +1486,9 @@ async def cb_new_order_cancel(cq: CallbackQuery, staff: StaffUser, state: FSMCon
             cq.message,
             staff,
             edit=True,
-            notice="Создание заявки отменено",
+            notice="  ",
         )
-    await cq.answer("Отмена")
+    await cq.answer("")
 
 
 @router.callback_query(F.data.startswith("adm:new:city_page:"), StateFilter(NewOrderFSM.city))
@@ -1504,7 +1504,7 @@ async def cb_new_order_city_page(cq: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "adm:new:city_search", StateFilter(NewOrderFSM.city))
 async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.city)
-    prompt = "Введите название города (минимум 2 символа). Команда /cancel вернёт в меню."
+    prompt = "   ( 2 ).  /cancel   ."
     try:
         await cq.message.edit_text(prompt)
     except TelegramBadRequest:
@@ -1518,7 +1518,7 @@ async def cb_new_order_city_search(cq: CallbackQuery, state: FSMContext) -> None
 async def new_order_city_input(msg: Message, state: FSMContext) -> None:
     query = (msg.text or "").strip()
     if len(query) < 2:
-        await msg.answer("Минимум 2 символа. Попробуйте снова.")
+        await msg.answer(" 2 .  .")
         return
     await _render_city_step(msg, state, page=1, query=query)
 
@@ -1529,7 +1529,7 @@ async def cb_new_order_city_pick(cq: CallbackQuery, state: FSMContext) -> None:
     orders_service = _orders_service(cq.message.bot)
     city = await orders_service.get_city(city_id)
     if not city:
-        await cq.answer("Город не найден", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await state.update_data(city_id=city.id, city_name=city.name)
     await state.set_state(NewOrderFSM.district)
@@ -1544,7 +1544,7 @@ async def _render_district_step(message: Message, state: FSMContext, page: int) 
     districts, has_next = await orders_service.list_districts(city_id, page=page, page_size=5)
     buttons = [(d.id, d.name) for d in districts]
     keyboard = new_order_district_keyboard(buttons, page=page, has_next=has_next)
-    prompt = "Выберите район:"
+    prompt = " :"
     try:
         await message.edit_text(prompt, reply_markup=keyboard)
     except TelegramBadRequest:
@@ -1580,7 +1580,7 @@ async def cb_new_order_district_none(cq: CallbackQuery, state: FSMContext) -> No
     await state.update_data(district_id=None, district_name="")
     await state.set_state(NewOrderFSM.street_mode)
     await cq.message.edit_text(
-        "Выберите способ указать улицу:",
+        "   :",
         reply_markup=new_order_street_mode_keyboard(),
     )
     await cq.answer()
@@ -1592,12 +1592,12 @@ async def cb_new_order_district_pick(cq: CallbackQuery, state: FSMContext) -> No
     orders_service = _orders_service(cq.message.bot)
     district = await orders_service.get_district(district_id)
     if not district:
-        await cq.answer("Район не найден", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await state.update_data(district_id=district.id, district_name=district.name)
     await state.set_state(NewOrderFSM.street_mode)
     await cq.message.edit_text(
-        "Выберите способ указать улицу:",
+        "   :",
         reply_markup=new_order_street_mode_keyboard(),
     )
     await cq.answer()
@@ -1606,7 +1606,7 @@ async def cb_new_order_district_pick(cq: CallbackQuery, state: FSMContext) -> No
 @router.callback_query(F.data == "adm:new:street:search", StateFilter(NewOrderFSM.street_mode))
 async def cb_new_order_street_search(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.street_search)
-    await cq.message.edit_text("Введите минимум 2 символа названия улицы для поиска.")
+    await cq.message.edit_text("  2     .")
     await cq.answer()
 
 
@@ -1614,7 +1614,7 @@ async def cb_new_order_street_search(cq: CallbackQuery, state: FSMContext) -> No
 async def cb_new_order_street_manual(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.street_manual)
     await cq.message.edit_text(
-        "Введите название улицы (до 250 символов).",
+        "   ( 250 ).",
         reply_markup=new_order_street_manual_keyboard(),
     )
     await cq.answer()
@@ -1624,7 +1624,7 @@ async def cb_new_order_street_manual(cq: CallbackQuery, state: FSMContext) -> No
 async def cb_new_order_street_none(cq: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(street_id=None, street_name="", street_manual=None)
     await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("Укажите номер дома (до 10 символов, '-' если нет).")
+    await cq.message.edit_text("   ( 10 , '-'  ).")
     await cq.answer()
 
 
@@ -1640,28 +1640,28 @@ async def cb_new_order_street_back(cq: CallbackQuery, state: FSMContext) -> None
 async def new_order_street_manual_input(msg: Message, state: FSMContext) -> None:
     value = (msg.text or "").strip()
     if not (2 <= len(value) <= 250):
-        await msg.answer("Название улицы должно быть от 2 до 250 символов.")
+        await msg.answer("     2  250 .")
         return
     await state.update_data(street_id=None, street_name=value, street_manual=value)
     await state.set_state(NewOrderFSM.house)
-    await msg.answer("Укажите номер дома (до 10 символов, '-' если нет).")
+    await msg.answer("   ( 10 , '-'  ).")
 
 
 @router.message(StateFilter(NewOrderFSM.street_search))
 async def new_order_street_search_input(msg: Message, state: FSMContext) -> None:
     query = (msg.text or "").strip()
     if len(query) < 2:
-        await msg.answer("Введите минимум 2 символа для поиска улицы.")
+        await msg.answer("  2    .")
         return
     data = await state.get_data()
     city_id = data.get("city_id")
     orders_service = _orders_service(msg.bot)
     streets = await orders_service.search_streets(city_id, query)
     if not streets:
-        await msg.answer("Не удалось найти улицу. Попробуйте другой запрос или введите её вручную.")
+        await msg.answer("   .       .")
         await state.set_state(NewOrderFSM.street_mode)
         await msg.answer(
-            "Выберите способ указать улицу:",
+            "   :",
             reply_markup=new_order_street_mode_keyboard(),
         )
         return
@@ -1670,7 +1670,7 @@ async def new_order_street_search_input(msg: Message, state: FSMContext) -> None
         for s in streets
     ]
     await msg.answer(
-        "Выберите улицу:",
+        " :",
         reply_markup=new_order_street_keyboard(buttons),
     )
     await state.set_state(NewOrderFSM.street_mode)
@@ -1682,13 +1682,13 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
     tail = cq.data.split(":")[3]
     if tail == "search_again":
         await state.set_state(NewOrderFSM.street_search)
-        await cq.message.edit_text("Введите минимум 2 символа названия улицы для поиска.")
+        await cq.message.edit_text("  2     .")
         await cq.answer()
         return
     if tail == "manual_back":
         await state.set_state(NewOrderFSM.street_mode)
         await cq.message.edit_text(
-            "Выберите способ указать улицу:",
+            "   :",
             reply_markup=new_order_street_mode_keyboard(),
         )
         await cq.answer()
@@ -1696,7 +1696,7 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
     if tail == "back":
         await state.set_state(NewOrderFSM.street_mode)
         await cq.message.edit_text(
-            "Выберите способ указать улицу:",
+            "   :",
             reply_markup=new_order_street_mode_keyboard(),
         )
         await cq.answer()
@@ -1705,11 +1705,11 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
     orders_service = _orders_service(cq.message.bot)
     street = await orders_service.get_street(street_id)
     if not street:
-        await cq.answer("Улица не найдена", show_alert=True)
+        await cq.answer("  ", show_alert=True)
         return
     await state.update_data(street_id=street.id, street_name=street.name, street_manual=None)
     await state.set_state(NewOrderFSM.house)
-    await cq.message.edit_text("Укажите номер дома (до 10 символов, '-' если нет).")
+    await cq.message.edit_text("   ( 10 , '-'  ).")
     await cq.answer()
 
 
@@ -1717,11 +1717,11 @@ async def cb_new_order_street_pick(cq: CallbackQuery, state: FSMContext) -> None
 async def new_order_house(msg: Message, state: FSMContext) -> None:
     value = (msg.text or "").strip()
     if not (1 <= len(value) <= 10):
-        await msg.answer("Номер дома должен быть от 1 до 10 символов.")
+        await msg.answer("     1  10 .")
         return
     await state.update_data(house=value)
     await state.set_state(NewOrderFSM.apartment)
-    await msg.answer("Введите квартиру/офис (до 10 символов, '-' если нет).")
+    await msg.answer(" / ( 10 , '-'  ).")
 
 
 @router.message(StateFilter(NewOrderFSM.apartment))
@@ -1730,11 +1730,11 @@ async def new_order_apartment(msg: Message, state: FSMContext) -> None:
     if value == "-":
         value = ""
     if len(value) > 10:
-        await msg.answer("Максимальная длина квартиры/офиса 10 символов.")
+        await msg.answer("  / 10 .")
         return
     await state.update_data(apartment=value or None)
     await state.set_state(NewOrderFSM.address_comment)
-    await msg.answer("Добавьте комментарий к адресу (до 250 символов, '-' если пропустить).")
+    await msg.answer("    ( 250 , '-'  ).")
 
 
 @router.message(StateFilter(NewOrderFSM.address_comment))
@@ -1744,25 +1744,25 @@ async def new_order_address_comment(msg: Message, state: FSMContext) -> None:
         value = ""
     await state.update_data(address_comment=value or None)
     await state.set_state(NewOrderFSM.client_name)
-    await msg.answer("Введите имя клиента (ФИО).")
+    await msg.answer("   ().")
 
 
 @router.message(StateFilter(NewOrderFSM.client_name))
 async def new_order_client_name(msg: Message, state: FSMContext) -> None:
     value = (msg.text or "").strip()
     if not _validate_name(value):
-        await msg.answer("Имя должно содержать только буквы и пробелы.")
+        await msg.answer("      .")
         return
     await state.update_data(client_name=value)
     await state.set_state(NewOrderFSM.client_phone)
-    await msg.answer("Укажите телефон клиента в формате +7XXXXXXXXXX.")
+    await msg.answer("     +7XXXXXXXXXX.")
 
 
 @router.message(StateFilter(NewOrderFSM.client_phone))
 async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
     raw = _normalize_phone(msg.text)
     if not _validate_phone(raw):
-        await msg.answer("Телефон должен быть в формате +7XXXXXXXXXX.")
+        await msg.answer("     +7XXXXXXXXXX.")
         return
     await state.update_data(client_phone=raw)
     await state.set_state(NewOrderFSM.category)
@@ -1772,7 +1772,7 @@ async def new_order_client_phone(msg: Message, state: FSMContext) -> None:
     for category, label in CATEGORY_CHOICES:
         kb.button(text=label, callback_data=f"adm:new:cat:{category.value}")
     kb.adjust(2)
-    await msg.answer("Выберите категорию заявки:", reply_markup=kb.as_markup())
+    await msg.answer("  :", reply_markup=kb.as_markup())
 
 
 @router.callback_query(F.data.startswith("adm:new:cat:"), StateFilter(NewOrderFSM.category))
@@ -1780,14 +1780,14 @@ async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
     raw = cq.data.split(":")[3]
     category = normalize_category(raw)
     if category is None:
-        await cq.answer("Неизвестная категория.", show_alert=True)
+        await cq.answer(" .", show_alert=True)
         return
     await state.update_data(
         category=category,
         category_label=CATEGORY_LABELS.get(category, CATEGORY_LABELS_BY_VALUE.get(raw, raw)),
     )
     await state.set_state(NewOrderFSM.description)
-    await cq.message.edit_text("Опишите проблему (10-500 символов).")
+    await cq.message.edit_text("  (10-500 ).")
     await cq.answer()
 
 
@@ -1795,12 +1795,12 @@ async def cb_new_order_category(cq: CallbackQuery, state: FSMContext) -> None:
 async def new_order_description(msg: Message, state: FSMContext) -> None:
     text_value = (msg.text or "").strip()
     if not (10 <= len(text_value) <= 500):
-        await msg.answer("Описание должно содержать от 10 до 500 символов.")
+        await msg.answer("    10  500 .")
         return
     await state.update_data(description=text_value)
     await state.set_state(NewOrderFSM.attachments)
     await msg.answer(
-        'Пришлите файлы или нажмите "Готово", чтобы продолжить.',
+        '    "",  .',
         reply_markup=new_order_attachments_keyboard(False),
     )
 
@@ -1808,7 +1808,7 @@ async def new_order_description(msg: Message, state: FSMContext) -> None:
 @router.callback_query(F.data == "adm:new:att:add", StateFilter(NewOrderFSM.attachments))
 async def cb_new_order_att_add(cq: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(NewOrderFSM.attachments)
-    await cq.answer("Пришлите фото или документ одним сообщением.")
+    await cq.answer("     .")
 
 
 @router.callback_query(F.data == "adm:new:att:clear", StateFilter(NewOrderFSM.attachments))
@@ -1818,7 +1818,7 @@ async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(**data)
     await state.set_state(NewOrderFSM.attachments)
     await cq.message.edit_text(
-        'Вложения удалены. Пришлите новые или нажмите "Готово".',
+        ' .     "".',
         reply_markup=new_order_attachments_keyboard(False),
     )
     await cq.answer()
@@ -1828,7 +1828,7 @@ async def cb_new_order_att_clear(cq: CallbackQuery, state: FSMContext) -> None:
 async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
     attachments = _attachments_from_state(await state.get_data())
     if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("Достигнут лимит вложений.")
+        await msg.answer("  .")
         return
     photo = msg.photo[-1]
     attachments.append(
@@ -1843,7 +1843,7 @@ async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
     )
     await state.update_data(attachments=attachments)
     await msg.answer(
-        f'Вложений добавлено: {len(attachments)}. Пришлите ещё или нажмите "Готово".',
+        f' : {len(attachments)}.     "".',
         reply_markup=new_order_attachments_keyboard(True),
     )
 
@@ -1852,7 +1852,7 @@ async def new_order_attach_photo(msg: Message, state: FSMContext) -> None:
 async def new_order_attach_doc(msg: Message, state: FSMContext) -> None:
     attachments = _attachments_from_state(await state.get_data())
     if len(attachments) >= ATTACHMENTS_LIMIT:
-        await msg.answer("Достигнут лимит вложений.")
+        await msg.answer("  .")
         return
     doc = msg.document
     attachments.append(
@@ -1867,7 +1867,7 @@ async def new_order_attach_doc(msg: Message, state: FSMContext) -> None:
     )
     await state.update_data(attachments=attachments)
     await msg.answer(
-        f'Вложений добавлено: {len(attachments)}. Пришлите ещё или нажмите "Готово".',
+        f' : {len(attachments)}.     "".',
         reply_markup=new_order_attachments_keyboard(True),
     )
 @router.callback_query(F.data == "adm:new:att:done", StateFilter(NewOrderFSM.attachments))
@@ -1876,10 +1876,10 @@ async def cb_new_order_att_done(cq: CallbackQuery, state: FSMContext) -> None:
     from aiogram.utils.keyboard import InlineKeyboardBuilder
 
     kb = InlineKeyboardBuilder()
-    kb.button(text="Стандартная", callback_data="adm:new:type:NORMAL")
-    kb.button(text="Гарантия", callback_data="adm:new:type:GUARANTEE")
+    kb.button(text="", callback_data="adm:new:type:NORMAL")
+    kb.button(text="", callback_data="adm:new:type:GUARANTEE")
     kb.adjust(2)
-    await cq.message.edit_text("Выберите тип заявки:", reply_markup=kb.as_markup())
+    await cq.message.edit_text("  :", reply_markup=kb.as_markup())
     await cq.answer()
 
 
@@ -1895,7 +1895,7 @@ async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
+        await cq.answer("   .", show_alert=True)
         return
     tz = await _resolve_city_timezone(cq.message.bot, city_id)
     workday_start, workday_end = await _resolve_workday_window()
@@ -1908,7 +1908,7 @@ async def cb_new_order_type(cq: CallbackQuery, state: FSMContext) -> None:
         pending_asap=False,
     )
     keyboard = new_order_slot_keyboard(options)
-    await cq.message.edit_text("Выберите доступное время:", reply_markup=keyboard)
+    await cq.message.edit_text("  :", reply_markup=keyboard)
     await cq.answer()
 
 
@@ -1918,13 +1918,13 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
+        await cq.answer("   .", show_alert=True)
         return
     await state.set_state(NewOrderFSM.slot)
     options = data.get("slot_options") or []
     valid_keys = {item[0] for item in options}
     if key not in valid_keys:
-        await cq.answer("Слот недоступен.", show_alert=True)
+        await cq.answer(" .", show_alert=True)
         return
     tz_value = data.get("city_timezone")
     if tz_value:
@@ -1945,7 +1945,7 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
             await state.update_data(pending_asap=True)
             await state.set_state(NewOrderFSM.slot)
             await cq.message.edit_text(
-                "Мастер может выехать только завтра с 10:00 до 13:00. Подтвердить перенос?",
+                "      10:00  13:00.  ?",
                 reply_markup=new_order_asap_late_keyboard(),
             )
             await cq.answer()
@@ -1975,10 +1975,10 @@ async def cb_new_order_slot(cq: CallbackQuery, state: FSMContext) -> None:
         await state.update_data(slot_options=refreshed_options, pending_asap=False, initial_status=None)
         await state.set_state(NewOrderFSM.slot)
         await cq.message.edit_text(
-            "Слот недоступен. Выберите другое время:",
+            " .   :",
             reply_markup=new_order_slot_keyboard(refreshed_options),
         )
-        await cq.answer("Расписание обновлено, попробуйте снова.", show_alert=True)
+        await cq.answer(" ,  .", show_alert=True)
         return
     await cq.answer()
 
@@ -1988,7 +1988,7 @@ async def cb_new_order_slot_lateok(cq: CallbackQuery, state: FSMContext) -> None
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
+        await cq.answer("   .", show_alert=True)
         return
     tz_value = data.get("city_timezone")
     if tz_value:
@@ -2014,7 +2014,7 @@ async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None
     data = await state.get_data()
     city_id = data.get("city_id")
     if not city_id:
-        await cq.answer("Не удалось определить город.", show_alert=True)
+        await cq.answer("   .", show_alert=True)
         return
     await state.set_state(NewOrderFSM.slot)
     tz_value = data.get("city_timezone")
@@ -2031,7 +2031,7 @@ async def cb_new_order_slot_reslot(cq: CallbackQuery, state: FSMContext) -> None
     )
     options = [(k, _maybe_fix_mojibake(lbl)) for (k, lbl) in options]
     await state.update_data(slot_options=options, pending_asap=False, initial_status=None)
-    await cq.message.edit_text("Выберите доступное время:", reply_markup=new_order_slot_keyboard(options))
+    await cq.message.edit_text("  :", reply_markup=new_order_slot_keyboard(options))
     await cq.answer()
 @router.callback_query(F.data == "adm:new:confirm", StateFilter(NewOrderFSM.confirm))
 async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: StaffUser | None = None) -> None:
@@ -2048,19 +2048,19 @@ async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: Staf
         new_order = _build_new_order_data(data, staff)
     except KeyError:
         await state.clear()
-        await cq.answer("Не удалось собрать данные заявки. Попробуйте заново.", show_alert=True)
+        await cq.answer("    .  .", show_alert=True)
         return
     orders_service = _orders_service(cq.message.bot)
     order_id = await orders_service.create_order(new_order)
     detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
     await state.clear()
-    await cq.answer("Заявка создана")
+    await cq.answer(" ")
     if detail:
         allow_auto = detail.district_id is not None
-        prompt_parts = [f"Заявка #{detail.id} создана.", summary_text]
+        prompt_parts = [f" #{detail.id} .", summary_text]
         if not allow_auto:
-            prompt_parts.append("Автораспределение недоступно: не выбран район.")
-        prompt_parts.append("Выберите способ распределения:")
+            prompt_parts.append(" :   .")
+        prompt_parts.append("  :")
         prompt = "\n\n".join(prompt_parts)
         markup = assign_menu_keyboard(detail.id, allow_auto=allow_auto)
         try:
@@ -2152,7 +2152,7 @@ async def cb_settings_edit_start(
 )
 async def settings_edit_cancel(msg: Message, state: FSMContext) -> None:
     await state.clear()
-    await msg.answer("Редактирование отменено.")
+    await msg.answer(" .")
 
 async def settings_edit_value(
     msg: Message, staff: StaffUser, state: FSMContext
@@ -2165,18 +2165,18 @@ async def settings_edit_value(
 
     if not field_key or not group_key or source_chat_id is None or source_message_id is None:
         await state.clear()
-        await msg.answer("Редактирование отменено.")
+        await msg.answer(" .")
         return
 
     try:
         field = _get_setting_field(field_key)
     except KeyError:
         await state.clear()
-        await msg.answer("Редактирование отменено.")
+        await msg.answer(" .")
         return
 
     if not msg.text:
-        await msg.answer("Редактирование отменено.")
+        await msg.answer(" .")
         return
 
     try:
@@ -2188,7 +2188,7 @@ async def settings_edit_value(
     service = _settings_service(msg.bot)
     await service.set_value(field.key, value, value_type=value_type)
     await state.clear()
-    await msg.answer("Редактирование отменено.")
+    await msg.answer(" .")
 
     try:
         view_text, keyboard = await _build_settings_view(msg.bot, group_key)
@@ -2253,62 +2253,62 @@ async def cb_logs_clear(cq: CallbackQuery, staff: StaffUser) -> None:
 
 # -------- Final overrides to fix mojibake in constants --------
 # These assignments ensure readable Russian texts regardless of earlier literals.
-STAFF_CODE_PROMPT = "Введите код доступа, который выдал администратор."
-STAFF_CODE_ERROR = "Код не найден / истёк / уже использован / вам недоступен."
+STAFF_CODE_PROMPT = "  ,   ."
+STAFF_CODE_ERROR = "   /  /   /  ."
 STAFF_PDN_TEXT = (
-    "Согласие на обработку персональных данных.\n"
-    "Согласие включает обработку ФИО, телефона и данных о заказах для допуска к работе и обеспечения безопасности сервиса. "
-    "Отправьте \"Согласен\" для продолжения или \"Не согласен\" для отмены."
+    "    .\n"
+    "   ,             . "
+    " \"\"    \" \"  ."
 )
 
 REPORT_DEFINITIONS: dict[str, tuple[str, Any, str]] = {
-    "orders": ("Заказы", export_service.export_orders, "Orders"),
-    "commissions": ("Комиссии", export_service.export_commissions, "Commissions"),
-    "ref_rewards": ("Реферальные начисления", export_service.export_referral_rewards, "Referral rewards"),
+    "orders": ("", export_service.export_orders, "Orders"),
+    "commissions": ("", export_service.export_commissions, "Commissions"),
+    "ref_rewards": (" ", export_service.export_referral_rewards, "Referral rewards"),
 }
 
 _RU_GROUP_TITLES = {
-    "workday": "Рабочий день",
-    "distribution": "Распределение",
-    "limits": "Лимиты",
-    "support": "Поддержка",
-    "geo": "Гео",
-    "channels": "Каналы",
+    "workday": " ",
+    "distribution": "",
+    "limits": "",
+    "support": "",
+    "geo": "",
+    "channels": "",
 }
 _RU_GROUP_DESCRIPTIONS = {
-    "workday": "Рабочий интервал сервиса. В это время назначаются визиты мастеров.",
-    "distribution": "Настройки автораспределения заявок (частота, SLA, раунды).",
-    "limits": "Ограничения сервиса для мастеров и процессов.",
-    "support": "Контакты поддержки и материалы.",
-    "geo": "Режим и лимиты геокодера.",
-    "channels": "ID каналов Telegram для уведомлений и отчётов.",
+    "workday": "  .      .",
+    "distribution": "   (, SLA, ).",
+    "limits": "     .",
+    "support": "   .",
+    "geo": "   .",
+    "channels": "ID  Telegram    .",
 }
 _RU_FIELD_LABELS = {
-    "working_hours_start": "Начало рабочего дня",
-    "working_hours_end": "Конец рабочего дня",
-    "distribution_tick_seconds": "Шаг цикла (сек.)",
-    "distribution_sla_seconds": "SLA ответа мастера (сек.)",
-    "distribution_rounds": "Количество раундов",
-    "escalate_to_admin_after_min": "Эскалация к админу через (мин.)",
-    "distribution_log_topn": "Логировать topN кандидатов",
-    "max_active_orders": "Макс. активных заказов на мастера",
-    "support_contact": "Контакт поддержки",
-    "support_faq_url": "Ссылка на FAQ",
-    "geo_mode": "Режим геокодера",
-    "yandex_geocoder_key": "API‑ключ Яндекс",
-    "yandex_throttle_rps": "RPS ограничение",
-    "yandex_daily_limit": "Суточный лимит запросов",
-    "alerts_channel_id": "Канал алертов (ID)",
-    "logs_channel_id": "Канал логов (ID)",
-    "reports_channel_id": "Канал отчётов (ID)",
+    "working_hours_start": "  ",
+    "working_hours_end": "  ",
+    "distribution_tick_seconds": "  (.)",
+    "distribution_sla_seconds": "SLA   (.)",
+    "distribution_rounds": " ",
+    "escalate_to_admin_after_min": "    (.)",
+    "distribution_log_topn": " topN ",
+    "max_active_orders": ".    ",
+    "support_contact": " ",
+    "support_faq_url": "  FAQ",
+    "geo_mode": " ",
+    "yandex_geocoder_key": "API ",
+    "yandex_throttle_rps": "RPS ",
+    "yandex_daily_limit": "  ",
+    "alerts_channel_id": "  (ID)",
+    "logs_channel_id": "  (ID)",
+    "reports_channel_id": "  (ID)",
 }
 
 SCHEMA_DEFAULT_HELP = {
-    "time": "Формат ЧЧ:ММ, по умолчанию 10:00.",
-    "int": "Введите положительное целое число.",
-    "int_non_negative": "Введите целое число 0 или больше.",
-    "string": "Введите текстовое значение.",
-    "string_optional": "Введите текст или '-' чтобы очистить значение.",
-    "int_optional": "Введите число или '-' чтобы очистить значение.",
-    "choice": "Выберите один из предложенных вариантов.",
+    "time": " :,   10:00.",
+    "int": "   .",
+    "int_non_negative": "   0  .",
+    "string": "  .",
+    "string_optional": "   '-'   .",
+    "int_optional": "   '-'   .",
+    "choice": "    .",
 }

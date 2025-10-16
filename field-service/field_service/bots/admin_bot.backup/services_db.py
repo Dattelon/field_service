@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone, timedelta
@@ -64,9 +64,9 @@ from .normalizers import normalize_category, normalize_status
 UTC = timezone.utc
 logger = logging.getLogger(__name__)
 PAYMENT_METHOD_LABELS = {
-    "card": "рџ’і РљР°СЂС‚Р°",
-    "sbp": "РЎР‘Рџ",
-    "cash": "РќР°Р»РёС‡РЅС‹Рµ",
+    "card": "💳 Карта",
+    "sbp": "СБП",
+    "cash": "Наличные",
 }
 
 OWNER_PAY_SETTING_FIELDS: dict[str, tuple[str, str]] = {
@@ -437,18 +437,18 @@ class DBStaffService:
         username: Optional[str] = None,
         update_tg_id: bool = True,
     ) -> Optional[StaffUser]:
-        """Найти сотрудника по Telegram ID ИЛИ username."""
+        """   Telegram ID  username."""
         if tg_id is None:
             return None
         
         async with self._session_factory() as session:
-            # 1. Пытаемся найти по tg_user_id
+            # 1.    tg_user_id
             row = await session.execute(
                 select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
             )
             staff = row.scalar_one_or_none()
             
-            # 2. Если не нашли по tg_id, пытаемся по username
+            # 2.     tg_id,   username
             if not staff and username:
                 normalized_username = username.lower().lstrip("@")
                 row = await session.execute(
@@ -458,9 +458,9 @@ class DBStaffService:
                 )
                 staff = row.scalar_one_or_none()
                 
-                # 3. Если нашли по username и tg_user_id=NULL - обновляем
+                # 3.    username  tg_user_id=NULL - 
                 if staff and staff.tg_user_id is None and update_tg_id:
-                    # Обновляем без вложенной транзакции
+                    #    
                     staff.tg_user_id = tg_id
                     await session.commit()
                     live_log.push(
@@ -471,7 +471,7 @@ class DBStaffService:
             if not staff:
                 return None
             
-            # Загружаем города
+            #  
             city_rows = await session.execute(
                 select(m.staff_cities.city_id).where(
                     m.staff_cities.staff_user_id == staff.id
@@ -1068,7 +1068,7 @@ class DBStaffService:
                         order_type=order_type,
                         category=row.category,
                         created_at_local=_format_created_at(row.created_at),
-                        timeslot_local=f"Гарантия: {days_left} дн.",
+                        timeslot_local=f": {days_left} .",
                         master_id=row.assigned_master_id,
                         master_name=row.master_name,
                         master_phone=row.master_phone,
@@ -1208,7 +1208,7 @@ class DBStaffService:
                         order_type=order_type,
                         category=row.category,
                         created_at_local=_format_created_at(row.created_at),
-                        timeslot_local=f"Закрыта: {closed_date}",
+                        timeslot_local=f": {closed_date}",
                         master_id=row.assigned_master_id,
                         master_name=row.master_name,
                         master_phone=row.master_phone,
@@ -2362,18 +2362,18 @@ class DBOrdersService:
 
     async def activate_deferred_order(self, order_id: int, staff_id: int) -> bool:
         """
-        Перевести DEFERRED заказ в PENDING (активировать поиск мастера).
+         DEFERRED   PENDING (  ).
         
         Args:
-            order_id: ID заказа
-            staff_id: ID сотрудника, который активирует заказ
+            order_id: ID 
+            staff_id: ID ,   
             
         Returns:
-            True если успешно, False если не удалось
+            True  , False   
         """
         async with self._session_factory() as session:
             async with session.begin():
-                # Загружаем заказ с блокировкой
+                #    
                 q = await session.execute(
                     select(m.orders)
                     .where(m.orders.id == order_id)
@@ -2383,16 +2383,16 @@ class DBOrdersService:
                 if not order:
                     return False
                 
-                # Проверяем доступ админа
+                #   
                 staff = await _load_staff_access(session, staff_id or None)
                 if not _staff_can_access_city(staff, order.city_id):
                     return False
                 
-                # Проверяем, что заказ в статусе DEFERRED
+                # ,     DEFERRED
                 if order.status != m.OrderStatus.DEFERRED:
                     return False
                 
-                # Переводим в PENDING (или SEARCHING для обычных, GUARANTEE для гарантийных)
+                #   PENDING ( SEARCHING  , GUARANTEE  )
                 prev_status = order.status
                 order_type = _raw_order_type(order)
                 if order_type == m.OrderType.GUARANTEE:
@@ -2404,7 +2404,7 @@ class DBOrdersService:
                 order.updated_at = datetime.now(UTC)
                 order.version = (order.version or 0) + 1
                 
-                # Записываем в историю
+                #   
                 session.add(
                     m.order_status_history(
                         order_id=order.id,
@@ -2415,15 +2415,15 @@ class DBOrdersService:
                     )
                 )
                 
-                # Логируем активацию
+                #  
                 live_log.push(
                     "orders",
-                    f"DEFERRED order #{order_id} activated → {new_status.value} by staff #{staff_id}",
+                    f"DEFERRED order #{order_id} activated  {new_status.value} by staff #{staff_id}",
                     level="INFO"
                 )
         
-        # Автораспределение будет запущено в следующем тике (каждые 30 секунд)
-        # Заказ перешёл в статус PENDING/SEARCHING/GUARANTEE и будет обработан автоматически
+        #       ( 30 )
+        #     PENDING/SEARCHING/GUARANTEE    
         return True
 
 
@@ -2637,14 +2637,14 @@ class DBDistributionService:
                     deadline = datetime.now(timezone.utc) + timedelta(seconds=cfg.sla_seconds)
                     _push_dist_log(dw.log_decision_offer(master_id, deadline))
                     
-                    # CR-2025-10-03-015: Форматируем дедлайн красиво
+                    # CR-2025-10-03-015:   
                     deadline_formatted = _format_datetime_local(deadline) or deadline.strftime("%d.%m %H:%M")
                     
                     return True, AutoAssignResult(
                         message=(
-                            f"✅ Предложение отправлено\n\n"
-                            f"👤 Мастер #{master_id}\n"
-                            f"⏰ Срок: {deadline_formatted}"
+                            f"  \n\n"
+                            f"  #{master_id}\n"
+                            f" : {deadline_formatted}"
                         ),
                         master_id=master_id,
                         deadline=deadline,
@@ -2764,7 +2764,7 @@ class DBDistributionService:
                     .limit(1)
                 )
                 if skill_row.first() is None:
-                    return False, "Мастер не владеет требуемым навыком"
+                    return False, "    "
 
                 existing_offer = await session.execute(
                     select(m.offers.id)
@@ -2812,7 +2812,7 @@ class DBDistributionService:
 
 
 class DBFinanceService:
-    """Сервис для работы с комиссиями и финансами."""
+    """      ."""
     
     def __init__(self, session_factory=SessionLocal) -> None:
         self._session_factory = session_factory
@@ -2826,27 +2826,27 @@ class DBFinanceService:
         city_ids: Optional[Iterable[int]] = None,
     ) -> tuple[int, list[str]]:
         """
-        Массовое одобрение комиссий за период.
+            .
         
         Args:
-            start_date: Начало периода
-            end_date: Конец периода (включительно)
-            by_staff_id: ID админа
-            city_ids: Фильтр по городам (RBAC)
+            start_date:  
+            end_date:   ()
+            by_staff_id: ID 
+            city_ids:    (RBAC)
         
         Returns:
-            (количество одобренных, список ошибок)
+            ( ,  )
         """
         errors: list[str] = []
         approved_count = 0
         
         async with self._session_factory() as session:
-            # Загружаем админа для RBAC
+            #    RBAC
             staff = await _load_staff_access(session, by_staff_id)
             if staff is None:
-                return 0, ["Админ не найден"]
+                return 0, ["  "]
             
-            # Применяем фильтр по городам
+            #    
             visible_cities = _visible_city_ids_for_staff(staff)
             if visible_cities is not None:
                 if city_ids is not None:
@@ -2858,7 +2858,7 @@ class DBFinanceService:
             else:
                 allowed = None
             
-            # Находим комиссии WAIT_PAY за период
+            #   WAIT_PAY  
             stmt = (
                 select(m.commissions.id)
                 .join(m.orders, m.commissions.order_id == m.orders.id)
@@ -2876,13 +2876,13 @@ class DBFinanceService:
             commission_ids = [row[0] for row in rows]
             
             if not commission_ids:
-                return 0, ["Нет комиссий для одобрения"]
+                return 0, ["   "]
             
-            # Одобряем каждую комиссию
+            #   
             for comm_id in commission_ids:
                 try:
                     async with session.begin():
-                        # Загружаем комиссию с блокировкой
+                        #    
                         comm_stmt = (
                             select(m.commissions)
                             .where(m.commissions.id == comm_id)
@@ -2892,20 +2892,20 @@ class DBFinanceService:
                         commission = comm_row.scalar_one_or_none()
                         
                         if not commission:
-                            errors.append(f"Комиссия #{comm_id} не найдена")
+                            errors.append(f" #{comm_id}  ")
                             continue
                         
                         if commission.status != m.CommissionStatus.WAIT_PAY:
-                            errors.append(f"Комиссия #{comm_id} не в статусе WAIT_PAY")
+                            errors.append(f" #{comm_id}    WAIT_PAY")
                             continue
                         
-                        # Обновляем статус
+                        #  
                         commission.status = m.CommissionStatus.PAID
                         commission.approved_by_staff_id = by_staff_id
                         commission.approved_at = datetime.now(UTC)
                         commission.updated_at = datetime.now(UTC)
                         
-                        # Применяем реферальные вознаграждения
+                        #   
                         try:
                             await apply_rewards_for_commission(session, commission)
                         except Exception as exc:
@@ -2918,7 +2918,7 @@ class DBFinanceService:
                         approved_count += 1
                         
                 except Exception as exc:
-                    errors.append(f"Ошибка при одобрении #{comm_id}: {exc}")
+                    errors.append(f"   #{comm_id}: {exc}")
                     logger.exception("Bulk approve failed for commission %s", comm_id)
         
         return approved_count, errors

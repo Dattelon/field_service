@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +17,7 @@ from field_service.services.distribution_scheduler import tick_once, _load_confi
 UTC = timezone.utc
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_city(async_session: AsyncSession):
     """Create test city"""
     city = m.cities(name="Test City Escalations", timezone="Europe/Moscow")
@@ -25,7 +26,7 @@ async def test_city(async_session: AsyncSession):
     return city
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_district(async_session: AsyncSession, test_city):
     """Create test district"""
     district = m.districts(city_id=test_city.id, name="Test District")
@@ -34,7 +35,7 @@ async def test_district(async_session: AsyncSession, test_city):
     return district
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_master(async_session: AsyncSession, test_city, test_district):
     """Create verified master on shift"""
     master = m.masters(
