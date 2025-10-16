@@ -316,8 +316,31 @@ class masters(Base):
     def phone_number(self, value: Optional[str]) -> None:
         self.phone = value
 
-    # Compatibility alias for legacy field name used in tests
+    # Compatibility aliases for legacy field names used in tests
     telegram_user_id = synonym("tg_user_id")
+    tg_id = synonym("tg_user_id")  # Additional backward-compat alias
+
+    # Patronymic property for backward compatibility (no DB column)
+    @property
+    def patronymic(self) -> Optional[str]:
+        """Backward-compat property for tests using patronymic field."""
+        return getattr(self, "_patronymic", None)
+
+    @patronymic.setter
+    def patronymic(self, value: Optional[str]) -> None:
+        """Accept patronymic in constructor and auto-build full_name if needed."""
+        # Store in memory (not persisted to DB)
+        self._patronymic = value
+        # If full_name not set yet, try to build it from name parts
+        if not getattr(self, "full_name", None):
+            parts = [
+                getattr(self, "first_name", None),
+                value,  # patronymic
+                getattr(self, "last_name", None),
+            ]
+            parts = [p for p in parts if p]
+            if parts:
+                self.full_name = " ".join(parts)
 
     __table_args__ = (
         Index("ix_masters__mod_shift", "moderation_status", "shift_status"),
@@ -640,8 +663,11 @@ class order_status_history(Base):
     changed_by_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL")
     )
-    actor_type: Mapped[Optional[ActorType]] = mapped_column(
-        Enum(ActorType, name="actor_type"), nullable=True, index=True
+    actor_type: Mapped[ActorType] = mapped_column(
+        Enum(ActorType, name="actor_type"),
+        nullable=False,
+        default=ActorType.SYSTEM,
+        index=True
     )
     context: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")

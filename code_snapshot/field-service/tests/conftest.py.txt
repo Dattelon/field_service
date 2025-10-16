@@ -194,6 +194,44 @@ async def session(async_session: AsyncSession) -> AsyncIterator[AsyncSession]:
     yield async_session
 
 
+# ===== ФИКС 2: Минимальный сид для FK (autouse) =====
+@pytest_asyncio.fixture(autouse=True)
+async def _minimal_seed(async_session: AsyncSession):
+    """
+    Автоматически создаёт минимальные справочные данные для предотвращения FK-ошибок.
+    Срабатывает для КАЖДОГО теста перед его выполнением.
+    Не заменяет фабрики, но страхует тесты, которые создают сущности без связанных записей.
+    
+    Создаёт базовые сущности с уникальными именами, чтобы не конфликтовать с тестами.
+    """
+    # Город по умолчанию - с уникальным именем чтобы не конфликтовать с тестами
+    # Используем имя которое вряд ли будет использоваться в тестах
+    seed_city_result = await async_session.execute(
+        sa.select(m.cities).where(m.cities.name == "__SeedCity__")
+    )
+    seed_city = seed_city_result.scalar_one_or_none()
+    
+    if seed_city is None:
+        # Используем timezone, который важен для планировщика
+        seed_city = m.cities(name="__SeedCity__", timezone="Europe/Moscow")
+        async_session.add(seed_city)
+        await async_session.flush()  # без commit! Всё внутри транзакции теста
+
+    # Район по умолчанию - создаём только если нет ни одного для этого города
+    seed_district_result = await async_session.execute(
+        sa.select(m.districts).where(
+            m.districts.city_id == seed_city.id,
+            m.districts.name == "__SeedDistrict__"
+        )
+    )
+    seed_district = seed_district_result.scalar_one_or_none()
+    
+    if seed_district is None:
+        seed_district = m.districts(city_id=seed_city.id, name="__SeedDistrict__")
+        async_session.add(seed_district)
+        await async_session.flush()
+
+
 # ===== Стандартные фикстуры для тестов =====
 
 @pytest_asyncio.fixture()

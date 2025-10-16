@@ -8,12 +8,14 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import OperationalError
 
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import time_service
 from field_service.services import settings_service as settings_store
 from field_service.services import owner_requisites_service as owner_reqs
+from field_service.services._session_utils import maybe_managed_session
 
 
 # Common utilities from _common
@@ -112,30 +114,30 @@ class DBSettingsService:
             values[setting_key] = (normalized.get(field), value_type)
         await settings_store.set_values(values)
 
-    async def set_value(self, key: str, value: object, *, value_type: str = "STR") -> None:
+    async def set_value(self, key: str, value: object, *, value_type: str = "STR", session: Optional[AsyncSession] = None) -> None:
         normalized = settings_store._normalize_value_type(value_type)
         payload = settings_store._serialize_value(value, normalized)
 
-        async def _apply(session: AsyncSession) -> None:
+        async def _apply(s: AsyncSession) -> None:
             stmt = insert(m.settings).values(key=key, value=payload, value_type=normalized)
             if hasattr(stmt, "on_conflict_do_update"):
                 stmt = stmt.on_conflict_do_update(
                     index_elements=[m.settings.key],
                     set_={"value": payload, "value_type": normalized},
                 )
-                await session.execute(stmt)
+                await s.execute(stmt)
             else:
-                existing = await session.execute(
+                existing = await s.execute(
                     select(m.settings).where(m.settings.key == key)
                 )
                 if existing.scalar_one_or_none():
-                    await session.execute(
+                    await s.execute(
                         update(m.settings)
                         .where(m.settings.key == key)
                         .values(value=payload, value_type=normalized)
                     )
                 else:
-                    await session.execute(
+                    await s.execute(
                         insert(m.settings).values(
                             key=key,
                             value=payload,
@@ -143,18 +145,14 @@ class DBSettingsService:
                         )
                     )
 
-        async with self._session_factory() as session:
+        async with maybe_managed_session(session) as s:
             for attempt in range(2):
                 try:
-                    if session.in_transaction():
-                        await _apply(session)
-                    else:
-                        async with session.begin():
-                            await _apply(session)
+                    await _apply(s)
                 except OperationalError as exc:
                     message = str(exc).lower()
                     if "no such table" in message and "settings" in message and attempt == 0:
-                        await session.run_sync(
+                        await s.run_sync(
                             lambda sync_session: m.settings.__table__.create(
                                 sync_session.connection(), checkfirst=True
                             )
@@ -174,9 +172,8 @@ class DBSettingsService:
                     return data
             return await owner_reqs.fetch_effective(session)
 
-    async def update_owner_pay_requisites(self, staff_id: int, payload: dict[str, Any]) -> None:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await owner_reqs.update_for_staff(session, staff_id, payload)
+    async def update_owner_pay_requisites(self, staff_id: int, payload: dict[str, Any], *, session: Optional[AsyncSession] = None) -> None:
+        async with maybe_managed_session(session) as s:
+            await owner_reqs.update_for_staff(s, staff_id, payload)
 
 

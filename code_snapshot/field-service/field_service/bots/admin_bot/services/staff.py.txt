@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import live_log
+from field_service.services._session_utils import maybe_managed_session
 from field_service.config import settings
 
 from ..core.dto import StaffAccessCode, StaffMember, StaffRole, StaffUser, OrderListItem, WaitPayRecipient, OrderType
@@ -255,27 +256,29 @@ class DBStaffService:
             access_code_ttl_hours = settings.access_code_ttl_hours
         self._access_code_ttl_hours = int(access_code_ttl_hours) if access_code_ttl_hours is not None else 0
 
-    async def seed_global_admins(self, tg_ids: Sequence[int]) -> int:
+    async def seed_global_admins(self, tg_ids: Sequence[int], *, session: Optional[AsyncSession] = None) -> int:
         unique_ids = sorted({int(tg) for tg in tg_ids if tg})
         if not unique_ids:
             return 0
-        async with self._session_factory() as session:
-            payload = [
-                {
-                    "tg_user_id": tg_id,
-                    "role": m.StaffRole.ADMIN,
-                    "is_active": True,
-                }
-                for tg_id in unique_ids
-            ]
-            if not payload:
+        
+        payload = [
+            {
+                "tg_user_id": tg_id,
+                "role": m.StaffRole.ADMIN,
+                "is_active": True,
+            }
+            for tg_id in unique_ids
+        ]
+        if not payload:
+            return 0
+        
+        async with maybe_managed_session(session) as s:
+            total = await s.scalar(select(func.count()).select_from(m.staff_users))
+            if total and int(total) > 0:
                 return 0
-            async with session.begin():
-                total = await session.scalar(select(func.count()).select_from(m.staff_users))
-                if total and int(total) > 0:
-                    return 0
-                await session.execute(insert(m.staff_users), payload)
-            return len(payload)
+            await s.execute(insert(m.staff_users), payload)
+        
+        return len(payload)
 
     async def get_by_tg_id(self, tg_id: int) -> Optional[StaffUser]:
         if tg_id is None:
@@ -308,14 +311,16 @@ class DBStaffService:
         tg_id: int,
         username: Optional[str] = None,
         update_tg_id: bool = True,
+        *,
+        session: Optional[AsyncSession] = None,
     ) -> Optional[StaffUser]:
         """Найти сотрудника по Telegram ID ИЛИ username."""
         if tg_id is None:
             return None
         
-        async with self._session_factory() as session:
+        async with maybe_managed_session(session) as s:
             # 1. Пытаемся найти по tg_user_id
-            row = await session.execute(
+            row = await s.execute(
                 select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
             )
             staff = row.scalar_one_or_none()
@@ -323,7 +328,7 @@ class DBStaffService:
             # 2. Если не нашли по tg_id, пытаемся по username
             if not staff and username:
                 normalized_username = username.lower().lstrip("@")
-                row = await session.execute(
+                row = await s.execute(
                     select(m.staff_users).where(
                         m.staff_users.username == normalized_username
                     )
@@ -332,9 +337,8 @@ class DBStaffService:
                 
                 # 3. Если нашли по username и tg_user_id=NULL - обновляем
                 if staff and staff.tg_user_id is None and update_tg_id:
-                    # Обновляем без вложенной транзакции
                     staff.tg_user_id = tg_id
-                    await session.commit()
+                    await s.flush()  # Используем flush вместо commit
                     live_log.push(
                         "staff",
                         f"tg_id linked: staff_id={staff.id} username={normalized_username} tg_id={tg_id}"
@@ -344,7 +348,7 @@ class DBStaffService:
                 return None
             
             # Загружаем города
-            city_rows = await session.execute(
+            city_rows = await s.execute(
                 select(m.staff_cities.city_id).where(
                     m.staff_cities.staff_user_id == staff.id
                 )
@@ -365,52 +369,53 @@ class DBStaffService:
         username: str,
         tg_user_id: int,
         full_name: Optional[str] = None,
+        *,
+        session: Optional[AsyncSession] = None,
     ) -> Optional[StaffUser]:
         normalized_username = username.lower().lstrip("@")
     
-        async with self._session_factory() as session:
-            async with session.begin():
-                stmt = (
-                    select(m.staff_users)
-                    .where(
-                        m.staff_users.username == normalized_username,
-                        m.staff_users.tg_user_id.is_(None)
-                    )
-                    .with_for_update()
+        async with maybe_managed_session(session) as s:
+            stmt = (
+                select(m.staff_users)
+                .where(
+                    m.staff_users.username == normalized_username,
+                    m.staff_users.tg_user_id.is_(None)
                 )
-                row = await session.execute(stmt)
-                staff = row.scalar_one_or_none()
-                
-                if not staff:
-                    return None
-                
-                staff.tg_user_id = tg_user_id
-                if full_name:
-                    staff.full_name = full_name
-                
-                await session.flush()
-                
-                city_rows = await session.execute(
-                    select(m.staff_cities.city_id).where(
-                        m.staff_cities.staff_user_id == staff.id
-                    )
+                .with_for_update()
+            )
+            row = await s.execute(stmt)
+            staff = row.scalar_one_or_none()
+            
+            if not staff:
+                return None
+            
+            staff.tg_user_id = tg_user_id
+            if full_name:
+                staff.full_name = full_name
+            
+            await s.flush()
+            
+            city_rows = await s.execute(
+                select(m.staff_cities.city_id).where(
+                    m.staff_cities.staff_user_id == staff.id
                 )
-                city_ids = frozenset(int(c[0]) for c in city_rows)
-                
-                live_log.push(
-                    "staff",
-                    f"username linked: staff_id={staff.id} username={normalized_username} tg_id={tg_user_id}"
-                )
-        
-        return StaffUser(
-            id=staff.id,
-            tg_id=tg_user_id,
-            role=_map_staff_role(staff.role),
-            is_active=bool(staff.is_active),
-            city_ids=city_ids,
-            full_name=staff.full_name or "",
-            phone=staff.phone or "",
-        )
+            )
+            city_ids = frozenset(int(c[0]) for c in city_rows)
+            
+            live_log.push(
+                "staff",
+                f"username linked: staff_id={staff.id} username={normalized_username} tg_id={tg_user_id}"
+            )
+            
+            return StaffUser(
+                id=staff.id,
+                tg_id=tg_user_id,
+                role=_map_staff_role(staff.role),
+                is_active=bool(staff.is_active),
+                city_ids=city_ids,
+                full_name=staff.full_name or "",
+                phone=staff.phone or "",
+            )
     async def list_staff(
         self,
         *,
@@ -472,50 +477,46 @@ class DBStaffService:
             )
 
     async def set_staff_cities(
-        self, staff_id: int, city_ids: Iterable[int]
+        self, staff_id: int, city_ids: Iterable[int], *, session: Optional[AsyncSession] = None
     ) -> None:
         normalized = _sorted_city_tuple(city_ids)
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    delete(m.staff_cities).where(m.staff_cities.staff_user_id == staff_id)
-                )
-                session.add_all(
-                    m.staff_cities(staff_user_id=staff_id, city_id=cid)
-                    for cid in normalized
-                )
+        async with maybe_managed_session(session) as s:
+            await s.execute(
+                delete(m.staff_cities).where(m.staff_cities.staff_user_id == staff_id)
+            )
+            s.add_all(
+                m.staff_cities(staff_user_id=staff_id, city_id=cid)
+                for cid in normalized
+            )
 
-    async def set_staff_role(self, staff_id: int, role: StaffRole) -> None:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.staff_users)
-                    .where(m.staff_users.id == staff_id)
-                    .values(role=_map_staff_role_to_db(role))
-                )
+    async def set_staff_role(self, staff_id: int, role: StaffRole, *, session: Optional[AsyncSession] = None) -> None:
+        async with maybe_managed_session(session) as s:
+            await s.execute(
+                update(m.staff_users)
+                .where(m.staff_users.id == staff_id)
+                .values(role=_map_staff_role_to_db(role))
+            )
 
-    async def set_staff_active(self, staff_id: int, is_active: bool) -> None:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.staff_users)
-                    .where(m.staff_users.id == staff_id)
-                    .values(is_active=is_active)
-                )
+    async def set_staff_active(self, staff_id: int, is_active: bool, *, session: Optional[AsyncSession] = None) -> None:
+        async with maybe_managed_session(session) as s:
+            await s.execute(
+                update(m.staff_users)
+                .where(m.staff_users.id == staff_id)
+                .values(is_active=is_active)
+            )
 
     async def update_staff_profile(
-        self, staff_id: int, *, full_name: str, phone: str, username: Optional[str] | None = None
+        self, staff_id: int, *, full_name: str, phone: str, username: Optional[str] | None = None, session: Optional[AsyncSession] = None
     ) -> None:
         values: dict[str, Any] = {"full_name": full_name, "phone": phone}
         if username is not None:
             values["username"] = username
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.staff_users)
-                    .where(m.staff_users.id == staff_id)
-                    .values(**values)
-                )
+        async with maybe_managed_session(session) as s:
+            await s.execute(
+                update(m.staff_users)
+                .where(m.staff_users.id == staff_id)
+                .values(**values)
+            )
 
 
     async def create_access_code(
@@ -527,36 +528,38 @@ class DBStaffService:
         created_by_staff_id: Optional[int] = None,
         expires_at: Optional[datetime],
         comment: Optional[str],
+        session: Optional[AsyncSession] = None,
     ) -> StaffAccessCode:
         unique_cities = _sorted_city_tuple(city_ids)
         expires_at_value = expires_at
         ttl_hours = max(0, self._access_code_ttl_hours)
         if expires_at_value is None and ttl_hours > 0:
             expires_at_value = datetime.now(UTC) + timedelta(hours=ttl_hours)
-        async with self._session_factory() as session:
-            async with session.begin():
-                code_value = await self._generate_unique_code(session)
-                db_role = _map_staff_role_to_db(role)
-                city_column = unique_cities[0] if len(unique_cities) == 1 else None
-                issuer_id = issued_by_staff_id if issued_by_staff_id is not None else created_by_staff_id
-                code_row = m.staff_access_codes(
-                    code=code_value,
-                    role=db_role,
-                    city_id=city_column,
-                    issued_by_staff_id=issuer_id,
-                    expires_at=expires_at_value,
-                    comment=comment,
+        
+        async with maybe_managed_session(session) as s:
+            code_value = await self._generate_unique_code(s)
+            db_role = _map_staff_role_to_db(role)
+            city_column = unique_cities[0] if len(unique_cities) == 1 else None
+            issuer_id = issued_by_staff_id if issued_by_staff_id is not None else created_by_staff_id
+            code_row = m.staff_access_codes(
+                code=code_value,
+                role=db_role,
+                city_id=city_column,
+                issued_by_staff_id=issuer_id,
+                expires_at=expires_at_value,
+                comment=comment,
+            )
+            s.add(code_row)
+            await s.flush()
+            s.add_all(
+                m.staff_access_code_cities(
+                    access_code_id=code_row.id, city_id=cid
                 )
-                session.add(code_row)
-                await session.flush()
-                session.add_all(
-                    m.staff_access_code_cities(
-                        access_code_id=code_row.id, city_id=cid
-                    )
-                    for cid in unique_cities
-                )
-                cities_label = "".join(str(cid) for cid in unique_cities) or '-'
-                live_log.push("staff", f"access_code issued code={code_value} role={role.value} cities={cities_label}")
+                for cid in unique_cities
+            )
+            cities_label = "".join(str(cid) for cid in unique_cities) or '-'
+            live_log.push("staff", f"access_code issued code={code_value} role={role.value} cities={cities_label}")
+            
             return StaffAccessCode(
                 id=code_row.id,
                 code=code_row.code,
@@ -623,61 +626,60 @@ class DBStaffService:
         role: StaffRole,
         city_ids: Iterable[int],
         created_by_staff_id: int,
+        session: Optional[AsyncSession] = None,
     ) -> StaffUser:
         """Create staff user without requiring an access code."""
         if tg_id is None and (username is None or not username.strip()):
             raise ValueError("Either tg_id or username must be provided")
 
         unique_cities = _sorted_city_tuple(city_ids)
-        now = datetime.now(UTC)
 
-        async with self._session_factory() as session:
-            async with session.begin():
-                if tg_id is not None:
-                    existing = await session.execute(
-                        select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
-                    )
-                    if existing.scalar_one_or_none():
-                        raise AccessCodeError("already_staff")
-
-                full_name = (username or "").strip() or (f"User{tg_id}" if tg_id else "Unknown")
-
-                staff_row = m.staff_users(
-                    tg_user_id=tg_id,
-                    username=username,
-                    full_name=full_name,
-                    phone="",
-                    role=_map_staff_role_to_db(role),
-                    is_active=True,
+        async with maybe_managed_session(session) as s:
+            if tg_id is not None:
+                existing = await s.execute(
+                    select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
                 )
-                session.add(staff_row)
-                await session.flush()
+                if existing.scalar_one_or_none():
+                    raise AccessCodeError("already_staff")
 
-                if unique_cities:
-                    session.add_all(
-                        m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
-                        for cid in unique_cities
-                    )
+            full_name = (username or "").strip() or (f"User{tg_id}" if tg_id else "Unknown")
 
-                cities_label = ", ".join(str(cid) for cid in unique_cities) or "all"
-                live_log.push(
-                    "staff",
-                    (
-                        f"staff added direct: id={staff_row.id} tg_id={tg_id} "
-                        f"username={username} role={role.value} cities={cities_label} "
-                        f"by={created_by_staff_id}"
-                    ),
+            staff_row = m.staff_users(
+                tg_user_id=tg_id,
+                username=username,
+                full_name=full_name,
+                phone="",
+                role=_map_staff_role_to_db(role),
+                is_active=True,
+            )
+            s.add(staff_row)
+            await s.flush()
+
+            if unique_cities:
+                s.add_all(
+                    m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
+                    for cid in unique_cities
                 )
 
-        return StaffUser(
-            id=staff_row.id,
-            tg_id=tg_id or 0,
-            role=role,
-            is_active=True,
-            city_ids=frozenset(unique_cities),
-            full_name=staff_row.full_name or "",
-            phone=staff_row.phone or "",
-        )
+            cities_label = ", ".join(str(cid) for cid in unique_cities) or "all"
+            live_log.push(
+                "staff",
+                (
+                    f"staff added direct: id={staff_row.id} tg_id={tg_id} "
+                    f"username={username} role={role.value} cities={cities_label} "
+                    f"by={created_by_staff_id}"
+                ),
+            )
+            
+            return StaffUser(
+                id=staff_row.id,
+                tg_id=tg_id or 0,
+                role=role,
+                is_active=True,
+                city_ids=frozenset(unique_cities),
+                full_name=staff_row.full_name or "",
+                phone=staff_row.phone or "",
+            )
 
     async def register_staff_user_from_code(
         self,
@@ -687,65 +689,67 @@ class DBStaffService:
         username: Optional[str],
         full_name: str,
         phone: str,
+        session: Optional[AsyncSession] = None,
     ) -> StaffUser:
         normalized = (code_value or "").strip().upper()
         if not normalized:
             raise AccessCodeError("invalid_code")
         now = datetime.now(UTC)
-        async with self._session_factory() as session:
-            async with session.begin():
-                code_stmt = (
-                    select(m.staff_access_codes)
-                    .where(
-                        m.staff_access_codes.code == normalized,
-                        m.staff_access_codes.is_revoked == False,
-                        m.staff_access_codes.used_at.is_(None),
-                    )
-                    .with_for_update()
+        
+        async with maybe_managed_session(session) as s:
+            code_stmt = (
+                select(m.staff_access_codes)
+                .where(
+                    m.staff_access_codes.code == normalized,
+                    m.staff_access_codes.is_revoked == False,
+                    m.staff_access_codes.used_at.is_(None),
                 )
-                code_row = (await session.execute(code_stmt)).scalar_one_or_none()
-                if not code_row:
-                    raise AccessCodeError("invalid_code")
-                expires_at = code_row.expires_at
-                if expires_at and expires_at.tzinfo is None:
-                    expires_at = expires_at.replace(tzinfo=UTC)
-                if expires_at and expires_at < now:
-                    raise AccessCodeError("expired")
-                link_map = await _collect_code_cities(session, [code_row.id])
-                city_ids = _sorted_city_tuple(
-                    link_map.get(code_row.id) or ([code_row.city_id] if code_row.city_id else [])
+                .with_for_update()
+            )
+            code_row = (await s.execute(code_stmt)).scalar_one_or_none()
+            if not code_row:
+                raise AccessCodeError("invalid_code")
+            expires_at = code_row.expires_at
+            if expires_at and expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=UTC)
+            if expires_at and expires_at < now:
+                raise AccessCodeError("expired")
+            link_map = await _collect_code_cities(s, [code_row.id])
+            city_ids = _sorted_city_tuple(
+                link_map.get(code_row.id) or ([code_row.city_id] if code_row.city_id else [])
+            )
+            role = _map_staff_role(code_row.role)
+            if role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST) and not city_ids:
+                raise AccessCodeError("no_cities")
+            existing = await s.execute(
+                select(m.staff_users).where(m.staff_users.tg_user_id == tg_user_id)
+            )
+            if existing.scalar_one_or_none():
+                raise AccessCodeError("already_staff")
+            staff_row = m.staff_users(
+                tg_user_id=tg_user_id,
+                username=username,
+                full_name=full_name,
+                phone=phone,
+                role=_map_staff_role_to_db(role),
+                is_active=True,
+            )
+            s.add(staff_row)
+            await s.flush()
+            s.add_all(
+                m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
+                for cid in city_ids
+            )
+            await s.execute(
+                update(m.staff_access_codes)
+                .where(m.staff_access_codes.id == code_row.id)
+                .values(
+                    used_by_staff_id=staff_row.id,
+                    used_at=now,
                 )
-                role = _map_staff_role(code_row.role)
-                if role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST) and not city_ids:
-                    raise AccessCodeError("no_cities")
-                existing = await session.execute(
-                    select(m.staff_users).where(m.staff_users.tg_user_id == tg_user_id)
-                )
-                if existing.scalar_one_or_none():
-                    raise AccessCodeError("already_staff")
-                staff_row = m.staff_users(
-                    tg_user_id=tg_user_id,
-                    username=username,
-                    full_name=full_name,
-                    phone=phone,
-                    role=_map_staff_role_to_db(role),
-                    is_active=True,
-                )
-                session.add(staff_row)
-                await session.flush()
-                session.add_all(
-                    m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
-                    for cid in city_ids
-                )
-                await session.execute(
-                    update(m.staff_access_codes)
-                    .where(m.staff_access_codes.id == code_row.id)
-                    .values(
-                        used_by_staff_id=staff_row.id,
-                        used_at=now,
-                    )
-                )
-                live_log.push('staff', f'access_code used code={code_row.code} staff={staff_row.id}')
+            )
+            live_log.push('staff', f'access_code used code={code_row.code} staff={staff_row.id}')
+            
             return StaffUser(
                 id=staff_row.id,
                 tg_id=tg_user_id,
@@ -1221,25 +1225,25 @@ class DBStaffService:
             )
 
     async def revoke_access_code(
-        self, code_id: int, *, by_staff_id: Optional[int] = None
+        self, code_id: int, *, by_staff_id: Optional[int] = None, session: Optional[AsyncSession] = None
     ) -> bool:
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
-                    update(m.staff_access_codes)
-                    .where(
-                        (m.staff_access_codes.id == code_id)
-                        & (m.staff_access_codes.used_at.is_(None))
-                        & (m.staff_access_codes.is_revoked == False)  # noqa: E712
-                    )
-                    .values(is_revoked=True)
-                    .returning(m.staff_access_codes.id, m.staff_access_codes.code)
+        async with maybe_managed_session(session) as s:
+            result = await s.execute(
+                update(m.staff_access_codes)
+                .where(
+                    (m.staff_access_codes.id == code_id)
+                    & (m.staff_access_codes.used_at.is_(None))
+                    & (m.staff_access_codes.is_revoked == False)  # noqa: E712
                 )
-                row = result.first()
-                if not row:
-                    return False
-                revoked_code = row.code
+                .values(is_revoked=True)
+                .returning(m.staff_access_codes.id, m.staff_access_codes.code)
+            )
+            row = result.first()
+            if not row:
+                return False
+            revoked_code = row.code
             live_log.push("staff", f"access_code revoked code={revoked_code} by={by_staff_id}")
+        
         return True
 
     async def _generate_unique_code(self, session: AsyncSession) -> str:

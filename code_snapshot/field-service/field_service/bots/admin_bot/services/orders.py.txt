@@ -21,6 +21,7 @@ from field_service.services import (
     time_service,
 )
 from field_service.services.guarantee_service import GuaranteeError
+from field_service.services._session_utils import maybe_managed_session
 
 from ..core.dto import (
     CityRef, DistrictRef, NewOrderData, OrderDetail, OrderCard,
@@ -914,7 +915,7 @@ class DBOrdersService:
 
         return None, None, None, None, resolved_district
 
-    async def create_order(self, data: NewOrderData) -> int:
+    async def create_order(self, data: NewOrderData, *, session: Optional[AsyncSession] = None) -> int:
             request_id = oplog.generate_request_id()
             normalized_initial_status = normalize_status(data.initial_status)
             initial_status_hint = normalized_initial_status or data.initial_status or 'AUTO'
@@ -929,9 +930,8 @@ class DBOrdersService:
                 initial_status=initial_status_hint,
             )
             try:
-                async with self._session_factory() as session:
-                    async with session.begin():
-                        tz = await self._city_timezone(session, data.city_id)
+                async with maybe_managed_session(session) as s:
+                        tz = await self._city_timezone(s, data.city_id)
                         _, workday_end = await _workday_window()
                         now_local = datetime.now(timezone.utc).astimezone(tz)
                         current_time = now_local.timetz()
@@ -948,7 +948,7 @@ class DBOrdersService:
                             geocode_confidence,
                             resolved_district,
                         ) = await self._resolve_order_coordinates(
-                            session,
+                            s,
                             city_id=data.city_id,
                             district_id=data.district_id,
                             street_id=data.street_id,
@@ -958,7 +958,7 @@ class DBOrdersService:
                         no_district_flag = bool(data.no_district or resolved_district is None)
                         created_staff_id = None
                         if data.created_by_staff_id:
-                            staff_row = await session.get(m.staff_users, data.created_by_staff_id)
+                            staff_row = await s.get(m.staff_users, data.created_by_staff_id)
                             created_staff_id = getattr(staff_row, "id", None)
                         order = m.orders(
                             city_id=data.city_id,
@@ -986,10 +986,10 @@ class DBOrdersService:
                             created_by_staff_id=created_staff_id,
                             status=initial_status,
                         )
-                        session.add(order)
-                        await session.flush()
+                        s.add(order)
+                        await s.flush()
                         if data.attachments:
-                            session.add_all(
+                            s.add_all(
                                 m.attachments(
                                     entity_type=m.AttachmentEntity.ORDER,
                                     entity_id=order.id,
@@ -1004,11 +1004,11 @@ class DBOrdersService:
                                 for att in data.attachments
                             )
                         staff_info = (
-                            await _load_staff_access(session, data.created_by_staff_id)
+                            await _load_staff_access(s, data.created_by_staff_id)
                             if data.created_by_staff_id
                             else None
                         )
-                        session.add(
+                        s.add(
                             m.order_status_history(
                                 order_id=order.id,
                                 from_status=None,
@@ -1029,7 +1029,7 @@ class DBOrdersService:
                                 },
                             )
                         )
-                        tx_id = _session_tx_id(session)
+                        tx_id = _session_tx_id(s)
                         oplog.log_order_created(
                             request_id=request_id,
                             order_id=order.id,
@@ -1061,10 +1061,9 @@ class DBOrdersService:
                 row = await session.execute(stmt)
                 return row.first() is not None
 
-    async def create_guarantee_order(self, source_order_id: int, by_staff_id: int) -> int:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    src_query = await session.execute(
+    async def create_guarantee_order(self, source_order_id: int, by_staff_id: int, *, session: Optional[AsyncSession] = None) -> int:
+            async with maybe_managed_session(session) as s:
+                    src_query = await s.execute(
                         select(m.orders)
                         .where(m.orders.id == source_order_id)
                         .with_for_update()
@@ -1073,7 +1072,7 @@ class DBOrdersService:
                     if source is None:
                         raise GuaranteeError("source order not found")
 
-                    staff = await _load_staff_access(session, by_staff_id or None)
+                    staff = await _load_staff_access(s, by_staff_id or None)
                     if not _staff_can_access_city(staff, source.city_id):
                         raise GuaranteeError("no access to city")
 
@@ -1091,7 +1090,7 @@ class DBOrdersService:
                     if not source.assigned_master_id:
                         raise GuaranteeError("source order has no assigned master")
 
-                    existing = await session.execute(
+                    existing = await s.execute(
                         select(m.orders.id)
                         .where(m.orders.guarantee_source_order_id == source_order_id)
                         .where(~m.orders.status.in_([m.OrderStatus.CANCELED, m.OrderStatus.CLOSED]))
@@ -1101,17 +1100,16 @@ class DBOrdersService:
                         raise GuaranteeError("guarantee already exists")
 
                     created = await guarantee_service.create_from_closed_order(
-                        session,
+                        s,
                         source_order_id,
                         source=source,
                         created_by_staff_id=staff.id if staff else None,
                     )
                     return created.id
 
-    async def return_to_search(self, order_id: int, by_staff_id: int) -> bool:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    q = await session.execute(
+    async def return_to_search(self, order_id: int, by_staff_id: int, *, session: Optional[AsyncSession] = None) -> bool:
+            async with maybe_managed_session(session) as s:
+                    q = await s.execute(
                         select(m.orders)
                         .where(m.orders.id == order_id)
                         .with_for_update()
@@ -1119,7 +1117,7 @@ class DBOrdersService:
                     order = q.scalar_one_or_none()
                     if not order:
                         return False
-                    staff = await _load_staff_access(session, by_staff_id or None)
+                    staff = await _load_staff_access(s, by_staff_id or None)
                     if not _staff_can_access_city(staff, order.city_id):
                         return False
                     if order.status in {m.OrderStatus.CANCELED, m.OrderStatus.CLOSED}:
@@ -1134,7 +1132,7 @@ class DBOrdersService:
                     order.updated_at = datetime.now(UTC)
                     order.version = (order.version or 0) + 1
                     order.cancel_reason = None
-                    session.add(
+                    s.add(
                         m.order_status_history(
                             order_id=order.id,
                             from_status=prev_status,
@@ -1144,7 +1142,7 @@ class DBOrdersService:
                         )
                     )
                     # Cancel any active offers (SENT/VIEWED/ACCEPTED) and log how many were canceled
-                    res = await session.execute(
+                    res = await s.execute(
                         update(m.offers)
                         .where(
                             (m.offers.order_id == order.id)
@@ -1170,10 +1168,9 @@ class DBOrdersService:
                     )
             return True
 
-    async def cancel(self, order_id: int, reason: str, by_staff_id: int) -> bool:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    q = await session.execute(
+    async def cancel(self, order_id: int, reason: str, by_staff_id: int, *, session: Optional[AsyncSession] = None) -> bool:
+            async with maybe_managed_session(session) as s:
+                    q = await s.execute(
                         select(m.orders)
                         .where(m.orders.id == order_id)
                         .with_for_update()
@@ -1181,7 +1178,7 @@ class DBOrdersService:
                     order = q.scalar_one_or_none()
                     if not order:
                         return False
-                    staff = await _load_staff_access(session, by_staff_id or None)
+                    staff = await _load_staff_access(s, by_staff_id or None)
                     if not _staff_can_access_city(staff, order.city_id):
                         return False
                     if order.status == m.OrderStatus.CANCELED:
@@ -1192,7 +1189,7 @@ class DBOrdersService:
                     order.updated_at = datetime.now(UTC)
                     order.version = (order.version or 0) + 1
                     order.cancel_reason = reason
-                    session.add(
+                    s.add(
                         m.order_status_history(
                             order_id=order.id,
                             from_status=prev_status,
@@ -1208,7 +1205,7 @@ class DBOrdersService:
                             }
                         )
                     )
-                    await session.execute(
+                    await s.execute(
                         update(m.offers)
                         .where(
                             (m.offers.order_id == order.id)
@@ -1227,13 +1224,12 @@ class DBOrdersService:
             return True
 
     async def assign_master(
-            self, order_id: int, master_id: int, by_staff_id: int, *, request_id: Optional[str] = None, actor: str = 'ADMIN'
+            self, order_id: int, master_id: int, by_staff_id: int, *, request_id: Optional[str] = None, actor: str = 'ADMIN', session: Optional[AsyncSession] = None
         ) -> bool:
             tracking_id = request_id or oplog.generate_request_id()
-            async with self._session_factory() as session:
+            async with maybe_managed_session(session) as s:
                 try:
-                    async with session.begin():
-                        order_q = await session.execute(
+                        order_q = await s.execute(
                             select(m.orders)
                             .where(m.orders.id == order_id)
                             .with_for_update()
@@ -1241,10 +1237,10 @@ class DBOrdersService:
                         order = order_q.scalar_one_or_none()
                         if not order:
                             return False
-                        staff = await _load_staff_access(session, by_staff_id or None)
+                        staff = await _load_staff_access(s, by_staff_id or None)
                         if not _staff_can_access_city(staff, order.city_id):
                             return False
-                        master_q = await session.execute(
+                        master_q = await s.execute(
                             select(m.masters).where(m.masters.id == master_id)
                         )
                         master = master_q.scalar_one_or_none()
@@ -1253,7 +1249,7 @@ class DBOrdersService:
                         if master.city_id is not None and master.city_id != order.city_id:
                             return False
                         if order.district_id:
-                            md_q = await session.execute(
+                            md_q = await s.execute(
                                 select(m.master_districts)
                                 .where(
                                     (m.master_districts.master_id == master.id)
@@ -1281,7 +1277,7 @@ class DBOrdersService:
 
                         master_name = f"{master.last_name} {master.first_name}".strip()
 
-                        session.add(
+                        s.add(
                             m.order_status_history(
                                 order_id=order.id,
                                 from_status=prev_status,
@@ -1301,7 +1297,7 @@ class DBOrdersService:
                         )
 
                         try:
-                            offer_stats = await session.execute(
+                            offer_stats = await s.execute(
                                 select(
                                     func.max(m.offers.round_number).label('max_round'),
                                     func.count(func.distinct(m.offers.master_id)).label('total_candidates')
@@ -1316,7 +1312,7 @@ class DBOrdersService:
                                 else None
                             )
 
-                            session.add(
+                            s.add(
                                 m.distribution_metrics(
                                     order_id=order.id,
                                     master_id=master.id,
@@ -1340,7 +1336,7 @@ class DBOrdersService:
                         except Exception:
                             pass
 
-                        offer_result = await session.execute(
+                        offer_result = await s.execute(
                             update(m.offers)
                             .where(
                                 (m.offers.order_id == order.id)
@@ -1359,7 +1355,7 @@ class DBOrdersService:
                             operation='cancel_offers',
                             rows_affected=rows_affected,
                         )
-                        tx_id = _session_tx_id(session)
+                        tx_id = _session_tx_id(s)
                         oplog.log_assign_success(
                             request_id=tracking_id,
                             order_id=order.id,
@@ -1379,7 +1375,7 @@ class DBOrdersService:
                         callback_data=None,
                     )
                     raise
-    async def activate_deferred_order(self, order_id: int, staff_id: int) -> bool:
+    async def activate_deferred_order(self, order_id: int, staff_id: int, *, session: Optional[AsyncSession] = None) -> bool:
         """
         Перевести DEFERRED заказ в SEARCHING (активировать поиск мастера).
         
@@ -1390,10 +1386,9 @@ class DBOrdersService:
         Returns:
             True если успешно, False если не удалось
         """
-        async with self._session_factory() as session:
-            async with session.begin():
+        async with maybe_managed_session(session) as s:
                 # Загружаем заказ с блокировкой
-                q = await session.execute(
+                q = await s.execute(
                     select(m.orders)
                     .where(m.orders.id == order_id)
                     .with_for_update()
@@ -1403,7 +1398,7 @@ class DBOrdersService:
                     return False
                 
                 # Проверяем доступ админа
-                staff = await _load_staff_access(session, staff_id or None)
+                staff = await _load_staff_access(s, staff_id or None)
                 if not _staff_can_access_city(staff, order.city_id):
                     return False
                 
@@ -1424,7 +1419,7 @@ class DBOrdersService:
                 order.version = (order.version or 0) + 1
                 
                 # Записываем в историю
-                session.add(
+                s.add(
                     m.order_status_history(
                         order_id=order.id,
                         from_status=prev_status,

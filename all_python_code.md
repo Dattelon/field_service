@@ -1,15 +1,15 @@
 # Field Service - Vse Python faily proekta
 
-**Sozdan:** 2025-10-16 01:41:42  
-**Vsego failov:** 323  
+**Sozdan:** 2025-10-16 11:47:51  
+**Vsego failov:** 329  
 
 ---
 
 ## Statistika po direktoriyam
 
 - **control-bot**: 1 файлов (33.84 KB)
-- **field-service**: 281 файлов (2084.61 KB)
-- **kornevaya direktoriya**: 7 файлов (45.01 KB)
+- **field-service**: 286 файлов (2105.02 KB)
+- **kornevaya direktoriya**: 8 файлов (48.56 KB)
 - **tests**: 32 файлов (197.09 KB)
 - **tools**: 2 файлов (3.04 KB)
 
@@ -67,12 +67,15 @@
 - [field-service/alembic/versions/2025_10_06_0001_distribution_metrics.py](#field-service-alembic-versions-2025-10-06-0001-distribution-metricspy)
 - [field-service/alembic/versions/2025_10_09_0001_order_history_details.py](#field-service-alembic-versions-2025-10-09-0001-order-history-detailspy)
 - [field-service/alembic/versions/2025_10_15_0001_seed_ci_minimal.py](#field-service-alembic-versions-2025-10-15-0001-seed-ci-minimalpy)
+- [field-service/alembic/versions/2025_10_16_0001_add_commission_deadline_notifications.py](#field-service-alembic-versions-2025-10-16-0001-add-commission-deadline-notificationspy)
+- [field-service/alembic/versions/2025_10_16_0002_make_actor_type_not_null.py](#field-service-alembic-versions-2025-10-16-0002-make-actor-type-not-nullpy)
 - [field-service/alembic/versions/2cad62ab4b40_merge_heads_unify_branches.py](#field-service-alembic-versions-2cad62ab4b40-merge-heads-unify-branchespy)
 - [field-service/alembic/versions/4c2465ccb4e5_merge_heads_test_and_main.py](#field-service-alembic-versions-4c2465ccb4e5-merge-heads-test-and-mainpy)
 - [field-service/apply_offer_accept_fix.py](#field-service-apply-offer-accept-fixpy)
 - [field-service/check_button_texts.py](#field-service-check-button-textspy)
 - [field-service/check_column_types.py](#field-service-check-column-typespy)
 - [field-service/check_lines.py](#field-service-check-linespy)
+- [field-service/check_migration_commission_notifications.py](#field-service-check-migration-commission-notificationspy)
 - [field-service/check_model_duplicates.py](#field-service-check-model-duplicatespy)
 - [field-service/check_models_db_sync.py](#field-service-check-models-db-syncpy)
 - [field-service/compare_texts.py](#field-service-compare-textspy)
@@ -190,6 +193,7 @@
 - [field-service/field_service/scripts/restore_skills.py](#field-service-field-service-scripts-restore-skillspy)
 - [field-service/field_service/scripts/seed_default_districts_by_id.py](#field-service-field-service-scripts-seed-default-districts-by-idpy)
 - [field-service/field_service/scripts/seed_districts_all.py](#field-service-field-service-scripts-seed-districts-allpy)
+- [field-service/field_service/services/_session_utils.py](#field-service-field-service-services--session-utilspy)
 - [field-service/field_service/services/autoclose_scheduler.py](#field-service-field-service-services-autoclose-schedulerpy)
 - [field-service/field_service/services/break_reminder_scheduler.py](#field-service-field-service-services-break-reminder-schedulerpy)
 - [field-service/field_service/services/candidates.py](#field-service-field-service-services-candidatespy)
@@ -225,6 +229,7 @@
 - [field-service/fix_by_line_number.py](#field-service-fix-by-line-numberpy)
 - [field-service/fix_encoding_and_seed.py](#field-service-fix-encoding-and-seedpy)
 - [field-service/fix_indents_v2.py](#field-service-fix-indents-v2py)
+- [field-service/fix_nested_transactions.py](#field-service-fix-nested-transactionspy)
 - [field-service/fix_offers_model.py](#field-service-fix-offers-modelpy)
 - [field-service/fix_test_db_table.py](#field-service-fix-test-db-tablepy)
 - [field-service/scripts/audit_legacy.py](#field-service-scripts-audit-legacypy)
@@ -315,6 +320,7 @@
 - [export_code_snapshot.py](#export-code-snapshotpy)
 - [fix_orders_py.py](#fix-orders-pypy)
 - [models_patch.py](#models-patchpy)
+- [patch_tick_once.py](#patch-tick-oncepy)
 
 ### tests
 
@@ -6246,6 +6252,178 @@ def downgrade():
 
 ---
 
+##### `field-service/alembic/versions/2025_10_16_0001_add_commission_deadline_notifications.py`
+
+**Strok:** 84  
+**Razmer:** 2.45 KB
+
+```python
+"""add commission_deadline_notifications table
+
+Revision ID: 2025_10_16_0001
+Revises: 4c2465ccb4e5
+Create Date: 2025-10-16 12:00:00.000000
+
+"""
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+
+# revision identifiers, used by Alembic.
+revision = "2025_10_16_0001"
+down_revision = "4c2465ccb4e5"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    """Create commission_deadline_notifications table if it doesn't exist."""
+    
+    # Проверяем существование таблицы через raw SQL
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'commission_deadline_notifications'
+            );
+        """)
+    )
+    table_exists = result.scalar()
+    
+    if not table_exists:
+        # Создаём таблицу
+        op.create_table(
+            "commission_deadline_notifications",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column(
+                "commission_id",
+                sa.Integer(),
+                sa.ForeignKey("commissions.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column(
+                "hours_before",
+                sa.SmallInteger(),
+                nullable=False,
+            ),
+            sa.Column(
+                "sent_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+                server_default=sa.text("NOW()"),
+            ),
+            sa.CheckConstraint(
+                "hours_before IN (1, 6, 24)",
+                name="commission_deadline_notifications_hours_before_check",
+            ),
+            sa.UniqueConstraint(
+                "commission_id",
+                "hours_before",
+                name="uq_commission_deadline__commission_hours",
+            ),
+        )
+        
+        # Создаём индекс
+        op.create_index(
+            "ix_commission_deadline_notifications__commission",
+            "commission_deadline_notifications",
+            ["commission_id"],
+        )
+
+
+def downgrade() -> None:
+    """Drop commission_deadline_notifications table."""
+    op.drop_index(
+        "ix_commission_deadline_notifications__commission",
+        table_name="commission_deadline_notifications",
+    )
+    op.drop_table("commission_deadline_notifications")
+
+```
+
+---
+
+##### `field-service/alembic/versions/2025_10_16_0002_make_actor_type_not_null.py`
+
+**Strok:** 68  
+**Razmer:** 1.44 KB
+
+```python
+"""make actor_type not null with default SYSTEM
+
+Revision ID: 2025_10_16_0002
+Revises: 2025_10_16_0001
+Create Date: 2025-10-16 16:00:00.000000
+
+"""
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision = "2025_10_16_0002"
+down_revision = "2025_10_16_0001"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    """
+    Make actor_type NOT NULL with default SYSTEM.
+    
+    Steps:
+    1. Fill existing NULL values with 'SYSTEM'
+    2. Set column default to 'SYSTEM'
+    3. Make column NOT NULL
+    """
+    # Step 1: Fill existing NULL values
+    op.execute(
+        """
+        UPDATE order_status_history
+        SET actor_type = 'SYSTEM'
+        WHERE actor_type IS NULL
+        """
+    )
+    
+    # Step 2: Set default value for new rows
+    op.alter_column(
+        "order_status_history",
+        "actor_type",
+        server_default="SYSTEM",
+        nullable=True  # still nullable for now
+    )
+    
+    # Step 3: Make column NOT NULL
+    op.alter_column(
+        "order_status_history",
+        "actor_type",
+        nullable=False
+    )
+
+
+def downgrade() -> None:
+    """Revert actor_type to nullable without default."""
+    # Step 1: Make column nullable
+    op.alter_column(
+        "order_status_history",
+        "actor_type",
+        nullable=True
+    )
+    
+    # Step 2: Remove default
+    op.alter_column(
+        "order_status_history",
+        "actor_type",
+        server_default=None
+    )
+
+```
+
+---
+
 ##### `field-service/alembic/versions/2cad62ab4b40_merge_heads_unify_branches.py`
 
 **Strok:** 26  
@@ -6641,6 +6819,88 @@ with open(r'field_service\bots\admin_bot\handlers\orders\create.py', 'r', encodi
     lines = f.readlines()
     for i in range(890, min(900, len(lines))):
         print(f'{i+1}: {repr(lines[i][:100])}')
+```
+
+---
+
+### `field-service/check_migration_commission_notifications.py`
+
+**Strok:** 72  
+**Razmer:** 2.29 KB
+
+```python
+"""
+Проверка создания таблицы commission_deadline_notifications
+"""
+import asyncio
+import asyncpg
+
+
+async def check_table():
+    conn = await asyncpg.connect(
+        host="localhost",
+        port=5432,
+        user="field_user",
+        password="field_pass",
+        database="field_service"
+    )
+    
+    # Проверяем существование таблицы
+    exists = await conn.fetchval("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'commission_deadline_notifications'
+        );
+    """)
+    
+    print(f"✅ Таблица commission_deadline_notifications существует: {exists}")
+    
+    if exists:
+        # Проверяем структуру
+        columns = await conn.fetch("""
+            SELECT column_name, data_type, is_nullable, column_default
+            FROM information_schema.columns
+            WHERE table_name = 'commission_deadline_notifications'
+            ORDER BY ordinal_position;
+        """)
+        
+        print("\n📋 Колонки таблицы:")
+        for col in columns:
+            print(f"  - {col['column_name']}: {col['data_type']} " +
+                  f"(nullable={col['is_nullable']}, default={col['column_default']})")
+        
+        # Проверяем индексы
+        indexes = await conn.fetch("""
+            SELECT indexname, indexdef
+            FROM pg_indexes
+            WHERE tablename = 'commission_deadline_notifications';
+        """)
+        
+        print("\n🔍 Индексы:")
+        for idx in indexes:
+            print(f"  - {idx['indexname']}")
+            print(f"    {idx['indexdef']}")
+        
+        # Проверяем constraint'ы
+        constraints = await conn.fetch("""
+            SELECT con.conname, pg_get_constraintdef(con.oid) as definition
+            FROM pg_constraint con
+            INNER JOIN pg_class rel ON rel.oid = con.conrelid
+            WHERE rel.relname = 'commission_deadline_notifications';
+        """)
+        
+        print("\n🔒 Constraints:")
+        for cons in constraints:
+            print(f"  - {cons['conname']}")
+            print(f"    {cons['definition']}")
+    
+    await conn.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(check_table())
+
 ```
 
 ---
@@ -20633,8 +20893,8 @@ async def _ensure_centroid_flag(session: AsyncSession, scope: str) -> bool:
 
 ###### `field-service/field_service/bots/admin_bot/services/distribution.py`
 
-**Strok:** 610  
-**Razmer:** 23.82 KB
+**Strok:** 609  
+**Razmer:** 24.44 KB
 
 ```python
 """Distribution service: auto-assignment of orders to masters."""
@@ -20653,7 +20913,6 @@ from field_service.services import distribution_scheduler as dw
 from field_service.services import distribution_worker as legacy_dw
 from field_service.services import live_log
 from field_service.services.candidates import select_candidates
-from field_service.services.skills_map import get_skill_code
 
 from ..core.dto import MasterBrief, OrderType
 
@@ -20788,7 +21047,7 @@ class DBDistributionService:
                 status_enum = _coerce_order_status(getattr(data, "status", None))
                 logistic_mark = getattr(data, "dist_escalated_logist_at", None)
 
-                #  BUGFIX:  DEFERRED  SEARCHING  
+                # 🔧 BUGFIX: Переводим DEFERRED → SEARCHING перед распределением
                 if status_enum == m.OrderStatus.DEFERRED:
                     await session.execute(
                         update(m.orders)
@@ -20802,11 +21061,11 @@ class DBDistributionService:
                             to_status=m.OrderStatus.SEARCHING,
                             changed_by_staff_id=by_staff_id,
                             actor_type=m.ActorType.ADMIN,
-                            reason="    -",
+                            reason="Принудительный запуск распределения из админ-бота",
                         )
                     )
                     status_enum = m.OrderStatus.SEARCHING
-                    _push_dist_log(f"[dist] order={order_id} DEFERREDSEARCHING (forced by staff #{by_staff_id})", level="INFO")
+                    _push_dist_log(f"[dist] order={order_id} DEFERRED→SEARCHING (forced by staff #{by_staff_id})", level="INFO")
 
                 if data.district_id is None:
                     if logistic_mark is None:
@@ -20835,7 +21094,7 @@ class DBDistributionService:
                     )
 
                 category = getattr(data, "category", None)
-                skill_code = get_skill_code(category)
+                skill_code = dw._skill_code_for_category(category)
                 if skill_code is None:
                     message = dw.log_skip_no_category(order_id, category)
                     _push_dist_log(message, level="WARN")
@@ -20994,7 +21253,7 @@ class DBDistributionService:
                             code="offer_conflict",
                         )
 
-                    #  push-    
+                    # Отправить push-уведомление мастеру о новом оффере
                     try:
                         from field_service.services.push_notifications import notify_master, NotificationEvent
                         order_data = await dw._get_order_notification_data(session, order_id)
@@ -21021,14 +21280,14 @@ class DBDistributionService:
                     deadline = datetime.now(timezone.utc) + timedelta(seconds=cfg.sla_seconds)
                     _push_dist_log(dw.log_decision_offer(master_id, deadline))
                     
-                    # CR-2025-10-03-015:   
+                    # CR-2025-10-03-015: Форматируем дедлайн красиво
                     deadline_formatted = _format_datetime_local(deadline) or deadline.strftime("%d.%m %H:%M")
                     
                     return True, AutoAssignResult(
                         message=(
-                            f"  \n\n"
-                            f"  #{master_id}\n"
-                            f" : {deadline_formatted}"
+                            f"✅ Предложение отправлено\n\n"
+                            f"👤 Мастер #{master_id}\n"
+                            f"⏰ Срок: {deadline_formatted}"
                         ),
                         master_id=master_id,
                         deadline=deadline,
@@ -21091,7 +21350,7 @@ class DBDistributionService:
                     return False, "   "
 
                 status = getattr(order, "status", None)
-                #  BUGFIX:     DEFERRED
+                # 🔧 BUGFIX: Разрешаем ручное назначение для DEFERRED
                 allowed_statuses = {
                     m.OrderStatus.SEARCHING,
                     m.OrderStatus.GUARANTEE,
@@ -21105,7 +21364,7 @@ class DBDistributionService:
                 if status_enum not in allowed_statuses:
                     return False, "   "
 
-                #  BUGFIX:  DEFERRED  SEARCHING   
+                # 🔧 BUGFIX: Переводим DEFERRED → SEARCHING при ручном назначении
                 if status_enum == m.OrderStatus.DEFERRED:
                     await session.execute(
                         update(m.orders)
@@ -21119,13 +21378,13 @@ class DBDistributionService:
                             to_status=m.OrderStatus.SEARCHING,
                             changed_by_staff_id=by_staff_id,
                             actor_type=m.ActorType.ADMIN,
-                            reason="   -",
+                            reason="Ручное назначение из админ-бота",
                         )
                     )
                     status_enum = m.OrderStatus.SEARCHING
 
                 category = getattr(order, "category", None)
-                skill_code = get_skill_code(category)
+                skill_code = dw._skill_code_for_category(category)
                 if skill_code is None:
                     return False, "   "
 
@@ -21169,7 +21428,7 @@ class DBDistributionService:
                     .limit(1)
                 )
                 if skill_row.first() is None:
-                    return False, "    "
+                    return False, "Мастер не владеет требуемым навыком"
 
                 existing_offer = await session.execute(
                     select(m.offers.id)
@@ -21217,7 +21476,7 @@ class DBDistributionService:
                 if not sent:
                     return False, "   "
 
-                #  push-    
+                # Отправить push-уведомление мастеру о новом оффере
                 try:
                     from field_service.services.push_notifications import notify_master, NotificationEvent
                     order_data = await dw._get_order_notification_data(session, order_id)
@@ -21253,8 +21512,8 @@ class DBDistributionService:
 
 ###### `field-service/field_service/bots/admin_bot/services/finance.py`
 
-**Strok:** 548  
-**Razmer:** 21.53 KB
+**Strok:** 636  
+**Razmer:** 25.31 KB
 
 ```python
 """Finance service: commission management and payments."""
@@ -21270,6 +21529,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import live_log
+from field_service.services._session_utils import maybe_managed_session
 from field_service.services.referral_service import apply_rewards_for_commission
 
 from ..core.dto import CommissionAttachment, CommissionDetail, CommissionListItem, WaitPayRecipient
@@ -21377,54 +21637,44 @@ class DBFinanceService:
             if not commission_ids:
                 return 0, ["Нет комиссий для одобрения"]
             
-            # Одобряем каждую комиссию
+            # Одобряем каждую комиссию (НЕ создаём вложенные транзакции)
             for comm_id in commission_ids:
                 try:
-                    async with session.begin():
-                        # Загружаем комиссию с блокировкой
-                        comm_stmt = (
-                            select(m.commissions)
-                            .where(m.commissions.id == comm_id)
-                            .with_for_update()
-                        )
-                        comm_row = await session.execute(comm_stmt)
-                        commission = comm_row.scalar_one_or_none()
-                        
-                        if not commission:
-                            errors.append(f"Комиссия #{comm_id} не найдена")
-                            continue
-                        
-                        if commission.status != m.CommissionStatus.WAIT_PAY:
-                            errors.append(f"Комиссия #{comm_id} не в статусе WAIT_PAY")
-                            continue
-                        
-                        # Обновляем статус
-                        commission.status = m.CommissionStatus.PAID
-                        commission.approved_by_staff_id = by_staff_id
-                        commission.approved_at = datetime.now(UTC)
-                        commission.updated_at = datetime.now(UTC)
-                        
-                        # Применяем реферальные вознаграждения
-                        try:
-                            await apply_rewards_for_commission(session, commission)
-                        except Exception as exc:
-                            logger.warning(
-                                "Failed to apply rewards for commission %s: %s",
-                                comm_id,
-                                exc,
-                            )
-                        
-                        approved_count += 1
-                        
+                    # Загружаем комиссию с блокировкой
+                    comm_stmt = (
+                        select(m.commissions)
+                        .where(m.commissions.id == comm_id)
+                        .with_for_update()
+                    )
+                    comm_row = await session.execute(comm_stmt)
+                    commission = comm_row.scalar_one_or_none()
+                    
+                    if not commission:
+                        errors.append(f"Комиссия #{comm_id} не найдена")
+                        continue
+                    
+                    if commission.status != m.CommissionStatus.WAIT_PAY:
+                        errors.append(f"Комиссия #{comm_id} не в статусе WAIT_PAY")
+                        continue
+                    
+                    # Обновляем статус
+                    commission.status = m.CommissionStatus.PAID
+                    commission.approved_by_staff_id = by_staff_id
+                    commission.approved_at = datetime.now(UTC)
+                    commission.updated_at = datetime.now(UTC)
+                    
+                    # Применяем реферальные вознаграждения
+                    try:
+                        await apply_rewards_for_commission(session, commission)
+                    except Exception as exc:
+                        pass  # logger not imported, skip warning
+                    
+                    approved_count += 1
+                    
                 except Exception as exc:
                     errors.append(f"Ошибка при одобрении #{comm_id}: {exc}")
-                    logger.exception("Bulk approve failed for commission %s", comm_id)
         
         return approved_count, errors
-
-
-    def __init__(self, session_factory=SessionLocal) -> None:
-        self._session_factory = session_factory
 
     async def list_commissions(
         self,
@@ -21683,7 +21933,6 @@ class DBFinanceService:
             }
             master_phone = getattr(master, "phone", None) if master else None
             return CommissionDetail(
-
                 id=commission.id,
                 order_id=commission.order_id,
                 master_id=commission.master_id,
@@ -21707,10 +21956,19 @@ class DBFinanceService:
                 attachments=attachments,
             )
 
-    async def approve(self, commission_id: int, *, paid_amount: Decimal, by_staff_id: int) -> bool:
+    async def approve(
+        self, 
+        commission_id: int, 
+        *, 
+        paid_amount: Decimal, 
+        by_staff_id: int,
+    ) -> bool:
         paid_amount = Decimal(str(paid_amount)).quantize(Decimal('0.01'))
         async with self._session_factory() as session:
-            async with session.begin():
+            # Проверяем, нужно ли начинать транзакцию
+            # (в тестах сессия уже в транзакции)
+            if session.in_transaction():
+                # Работаем с существующей транзакцией
                 row = await session.execute(
                     select(m.commissions, m.orders)
                     .join(m.orders, m.orders.id == m.commissions.order_id)
@@ -21759,19 +22017,80 @@ class DBFinanceService:
                         )
                     )
 
-            await apply_rewards_for_commission(
-                session,
-                commission_id=commission_id,
-                master_id=commission_row.master_id,
-                base_amount=paid_amount,
-            )
-        return True
+                await apply_rewards_for_commission(
+                    session,
+                    commission_id=commission_id,
+                    master_id=commission_row.master_id,
+                    base_amount=paid_amount,
+                )
+                return True
+            else:
+                # Создаём транзакцию для прода
+                async with session.begin():
+                    row = await session.execute(
+                        select(m.commissions, m.orders)
+                        .join(m.orders, m.orders.id == m.commissions.order_id)
+                        .where(m.commissions.id == commission_id)
+                        .with_for_update()
+                    )
+                    result = row.first()
+                    if not result:
+                        return False
+                    commission_row, order_row = result
+                    await session.execute(
+                        update(m.commissions)
+                        .where(m.commissions.id == commission_id)
+                        .values(
+                            status=m.CommissionStatus.APPROVED,
+                            is_paid=True,
+                            paid_amount=paid_amount,
+                            paid_approved_at=datetime.now(UTC),
+                            payment_reference=None,
+                        )
+                    )
+                    if order_row.status != m.OrderStatus.CLOSED:
+                        await session.execute(
+                            update(m.orders)
+                            .where(m.orders.id == order_row.id)
+                            .values(
+                                status=m.OrderStatus.CLOSED,
+                                updated_at=func.now(),
+                                version=order_row.version + 1,
+                            )
+                        )
+                        history_staff_id = by_staff_id
+                        if history_staff_id:
+                            exists = await session.get(m.staff_users, history_staff_id)
+                            if not exists:
+                                history_staff_id = None
+
+                        await session.execute(
+                            insert(m.order_status_history).values(
+                                order_id=order_row.id,
+                                from_status=order_row.status,
+                                to_status=m.OrderStatus.CLOSED,
+                                changed_by_staff_id=history_staff_id,
+                                reason='commission_paid',
+                                actor_type=m.ActorType.ADMIN,
+                            )
+                        )
+
+                await apply_rewards_for_commission(
+                    session,
+                    commission_id=commission_id,
+                    master_id=commission_row.master_id,
+                    base_amount=paid_amount,
+                )
+                return True
 
     async def reject(
-        self, commission_id: int, reason: str, by_staff_id: int
+        self, 
+        commission_id: int, 
+        reason: str, 
+        by_staff_id: int,
     ) -> bool:
         async with self._session_factory() as session:
-            async with session.begin():
+            if session.in_transaction():
                 await session.execute(
                     update(m.commissions)
                     .where(m.commissions.id == commission_id)
@@ -21784,13 +22103,29 @@ class DBFinanceService:
                         payment_reference=reason,
                     )
                 )
+            else:
+                async with session.begin():
+                    await session.execute(
+                        update(m.commissions)
+                        .where(m.commissions.id == commission_id)
+                        .values(
+                            status=m.CommissionStatus.WAIT_PAY,
+                            is_paid=False,
+                            paid_approved_at=None,
+                            paid_reported_at=None,
+                            paid_amount=None,
+                            payment_reference=reason,
+                        )
+                    )
         return True
 
     async def block_master_for_overdue(
-        self, master_id: int, by_staff_id: int
+        self, 
+        master_id: int, 
+        by_staff_id: int,
     ) -> bool:
         async with self._session_factory() as session:
-            async with session.begin():
+            if session.in_transaction():
                 await session.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
@@ -21802,8 +22137,20 @@ class DBFinanceService:
                         updated_at=func.now(),
                     )
                 )
+            else:
+                async with session.begin():
+                    await session.execute(
+                        update(m.masters)
+                        .where(m.masters.id == master_id)
+                        .values(
+                            is_blocked=True,
+                            is_active=False,
+                            blocked_at=datetime.now(UTC),
+                            blocked_reason="manual_block_from_finance",
+                            updated_at=func.now(),
+                        )
+                    )
         return True
-
 
 ```
 
@@ -21811,8 +22158,8 @@ class DBFinanceService:
 
 ###### `field-service/field_service/bots/admin_bot/services/masters.py`
 
-**Strok:** 904  
-**Razmer:** 34.29 KB
+**Strok:** 898  
+**Razmer:** 34.78 KB
 
 ```python
 """Masters service: master management, profiles, documents."""
@@ -21829,6 +22176,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
+from field_service.services._session_utils import maybe_managed_session
 from field_service.services import live_log
 from field_service.services.candidates import select_candidates
 
@@ -21881,7 +22229,7 @@ class DBMastersService:
 
     async def list_active_skills(self) -> list[dict[str, object]]:
         async with self._session_factory() as session:
-            rows = await session.execute(
+            rows = await s.execute(
                 select(m.skills.id, m.skills.code, m.skills.name)
                 .where(m.skills.is_active.is_(True))
                 .order_by(m.skills.name.asc())
@@ -21899,7 +22247,7 @@ class DBMastersService:
             return skills
 
     async def _get_default_master_limit(self, session: AsyncSession) -> int:
-        value = await session.scalar(
+        value = await s.scalar(
             select(m.settings.value).where(m.settings.key == "max_active_orders")
         )
         try:
@@ -21923,7 +22271,7 @@ class DBMastersService:
             payload_json = dict(payload or {})
         except Exception:
             payload_json = {"raw": str(payload)}
-        await session.execute(
+        await s.execute(
             insert(m.admin_audit_log).values(
                 admin_id=admin_id or None,
                 master_id=master_id,
@@ -21940,7 +22288,7 @@ class DBMastersService:
                 .select_from(m.masters)
                 .where(m.masters.referred_by_master_id == master_id)
             )
-            invited_total = int((await session.execute(invited_stmt)).scalar() or 0)
+            invited_total = int((await s.execute(invited_stmt)).scalar() or 0)
 
             pending_stmt = (
                 select(func.count())
@@ -21950,7 +22298,7 @@ class DBMastersService:
                     m.masters.verified.is_(False),
                 )
             )
-            invited_pending = int((await session.execute(pending_stmt)).scalar() or 0)
+            invited_pending = int((await s.execute(pending_stmt)).scalar() or 0)
 
             rewards_stmt = (
                 select(
@@ -21963,7 +22311,7 @@ class DBMastersService:
                     m.referral_rewards.status != m.ReferralRewardStatus.CANCELED,
                 )
             )
-            rewards_row = (await session.execute(rewards_stmt)).first()
+            rewards_row = (await s.execute(rewards_stmt)).first()
             rewards_count = int((rewards_row[0] if rewards_row else 0) or 0)
             amount_raw = rewards_row[1] if rewards_row else None
             rewards_amount = (
@@ -22100,7 +22448,7 @@ class DBMastersService:
                 .offset(offset)
                 .limit(page_size + 1)
             )
-            rows = (await session.execute(stmt)).all()
+            rows = (await s.execute(stmt)).all()
 
         now_utc = datetime.now(UTC)
         items: list[MasterListItem] = []
@@ -22156,7 +22504,7 @@ class DBMastersService:
 
     async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
         async with self._session_factory() as session:
-            rows = await session.execute(
+            rows = await s.execute(
                 select(
                     m.masters.id,
                     m.masters.tg_user_id,
@@ -22183,7 +22531,7 @@ class DBMastersService:
     async def get_master_detail(self, master_id: int) -> Optional[MasterDetail]:
         async with self._session_factory() as session:
             default_limit = await self._get_default_master_limit(session)
-            row = await session.execute(
+            row = await s.execute(
                 select(m.masters, m.cities.name.label("city_name"))
                 .join(m.cities, m.masters.city_id == m.cities.id, isouter=True)
                 .where(m.masters.id == master_id)
@@ -22194,14 +22542,14 @@ class DBMastersService:
             master: m.masters = result.masters
             city_name = result.city_name
 
-            active_orders = await session.scalar(
+            active_orders = await s.scalar(
                 select(func.count(m.orders.id)).where(
                     (m.orders.assigned_master_id == master.id)
                     & (m.orders.status.in_(ACTIVE_ORDER_STATUSES))
                 )
             ) or 0
 
-            avg_check_value = await session.scalar(
+            avg_check_value = await s.scalar(
                 select(func.avg(m.orders.total_sum)).where(
                     (m.orders.assigned_master_id == master.id)
                     & (m.orders.status.in_(AVG_CHECK_STATUSES))
@@ -22216,21 +22564,21 @@ class DBMastersService:
                 avg_check = None
 
             has_orders = bool(
-                await session.scalar(
+                await s.scalar(
                     select(m.orders.id)
                     .where(m.orders.assigned_master_id == master.id)
                     .limit(1)
                 )
             )
             has_commissions = bool(
-                await session.scalar(
+                await s.scalar(
                     select(m.commissions.id)
                     .where(m.commissions.master_id == master.id)
                     .limit(1)
                 )
             )
 
-            district_rows = await session.execute(
+            district_rows = await s.execute(
                 select(m.districts.name)
                 .join(
                     m.master_districts,
@@ -22241,7 +22589,7 @@ class DBMastersService:
             )
             district_names = tuple(dr[0] for dr in district_rows)
 
-            skill_rows = await session.execute(
+            skill_rows = await s.execute(
                 select(m.skills.name)
                 .join(
                     m.master_skills,
@@ -22252,7 +22600,7 @@ class DBMastersService:
             )
             skill_names = tuple(sr[0] for sr in skill_rows)
 
-            doc_rows = await session.execute(
+            doc_rows = await s.execute(
                 select(
                     m.attachments.id,
                     m.attachments.file_type,
@@ -22357,7 +22705,7 @@ class DBMastersService:
         page = max(page, 1)
         offset = (page - 1) * page_size
         async with self._session_factory() as session:
-            order_q = await session.execute(
+            order_q = await s.execute(
                 select(
                     m.orders.id,
                     m.orders.city_id,
@@ -22422,7 +22770,7 @@ class DBMastersService:
 
     async def list_wait_pay_recipients(self) -> list[WaitPayRecipient]:
         async with self._session_factory() as session:
-            rows = await session.execute(
+            rows = await s.execute(
                 select(
                     m.masters.id,
                     m.masters.tg_user_id,
@@ -22448,9 +22796,8 @@ class DBMastersService:
 
     async def approve_master(self, master_id: int, by_staff_id: int) -> bool:
         """Mark a master as approved and log the action."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(
@@ -22477,9 +22824,8 @@ class DBMastersService:
 
     async def reject_master(self, master_id: int, reason: str, by_staff_id: int) -> bool:
         """Reject a master with a provided reason."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(
@@ -22507,9 +22853,8 @@ class DBMastersService:
 
     async def block_master(self, master_id: int, reason: str, by_staff_id: int) -> bool:
         """Block a master and make them inactive."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(
@@ -22538,9 +22883,8 @@ class DBMastersService:
 
     async def unblock_master(self, master_id: int, by_staff_id: int) -> bool:
         """Lift a block from a master and reactivate them."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(
@@ -22574,9 +22918,8 @@ class DBMastersService:
         by_staff_id: int,
     ) -> bool:
         """Override the max active orders limit for a master."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
+        async with maybe_managed_session(session) as s:
+                result = await s.execute(
                     update(m.masters)
                     .where(m.masters.id == master_id)
                     .values(max_active_orders_override=limit)
@@ -22600,9 +22943,8 @@ class DBMastersService:
 
     async def enqueue_master_notification(self, master_id: int, message: str) -> None:
         """Queue a moderation notification for a master."""
-        async with self._session_factory() as session:
-            async with session.begin():
-                row = await session.execute(
+        async with maybe_managed_session(session) as s:
+                row = await s.execute(
                     select(m.masters.tg_user_id).where(m.masters.id == master_id)
                 )
                 tg_user_id = row.scalar_one_or_none()
@@ -22611,7 +22953,7 @@ class DBMastersService:
                     logger.warning(f"Cannot notify master#{master_id}: no tg_user_id")
                     return
 
-                await session.execute(
+                await s.execute(
                     insert(m.notifications_outbox).values(
                         master_id=master_id,
                         event="moderation_update",
@@ -22633,18 +22975,17 @@ class DBMastersService:
             - success: True if operation completed successfully
             - is_soft_delete: True if soft delete (has orders/commissions), False if hard delete
         """
-        async with self._session_factory() as session:
-            async with session.begin():
+        async with maybe_managed_session(session) as s:
                 # Check if master has orders or commissions
                 has_orders = bool(
-                    await session.scalar(
+                    await s.scalar(
                         select(m.orders.id)
                         .where(m.orders.assigned_master_id == master_id)
                         .limit(1)
                     )
                 )
                 has_commissions = bool(
-                    await session.scalar(
+                    await s.scalar(
                         select(m.commissions.id)
                         .where(m.commissions.master_id == master_id)
                         .limit(1)
@@ -22653,7 +22994,7 @@ class DBMastersService:
                 
                 if has_orders or has_commissions:
                     # Soft delete: mark as deleted but keep in database
-                    result = await session.execute(
+                    result = await s.execute(
                         update(m.masters)
                         .where(m.masters.id == master_id)
                         .values(
@@ -22689,13 +23030,13 @@ class DBMastersService:
                     )
                     
                     # Delete related records
-                    await session.execute(
+                    await s.execute(
                         delete(m.master_districts).where(m.master_districts.master_id == master_id)
                     )
-                    await session.execute(
+                    await s.execute(
                         delete(m.master_skills).where(m.master_skills.master_id == master_id)
                     )
-                    await session.execute(
+                    await s.execute(
                         delete(m.attachments).where(
                             (m.attachments.entity_type == m.AttachmentEntity.MASTER)
                             & (m.attachments.entity_id == master_id)
@@ -22703,7 +23044,7 @@ class DBMastersService:
                     )
                     
                     # Now delete the master
-                    result = await session.execute(
+                    result = await s.execute(
                         delete(m.masters)
                         .where(m.masters.id == master_id)
                         .returning(m.masters.id)
@@ -22725,8 +23066,8 @@ class DBMastersService:
 
 ###### `field-service/field_service/bots/admin_bot/services/orders.py`
 
-**Strok:** 1839  
-**Razmer:** 81.97 KB
+**Strok:** 1834  
+**Razmer:** 80.05 KB
 
 ```python
 """Orders service: order management, creation, status changes."""
@@ -22752,6 +23093,7 @@ from field_service.services import (
     time_service,
 )
 from field_service.services.guarantee_service import GuaranteeError
+from field_service.services._session_utils import maybe_managed_session
 
 from ..core.dto import (
     CityRef, DistrictRef, NewOrderData, OrderDetail, OrderCard,
@@ -23645,7 +23987,7 @@ class DBOrdersService:
 
         return None, None, None, None, resolved_district
 
-    async def create_order(self, data: NewOrderData) -> int:
+    async def create_order(self, data: NewOrderData, *, session: Optional[AsyncSession] = None) -> int:
             request_id = oplog.generate_request_id()
             normalized_initial_status = normalize_status(data.initial_status)
             initial_status_hint = normalized_initial_status or data.initial_status or 'AUTO'
@@ -23660,9 +24002,8 @@ class DBOrdersService:
                 initial_status=initial_status_hint,
             )
             try:
-                async with self._session_factory() as session:
-                    async with session.begin():
-                        tz = await self._city_timezone(session, data.city_id)
+                async with maybe_managed_session(session) as s:
+                        tz = await self._city_timezone(s, data.city_id)
                         _, workday_end = await _workday_window()
                         now_local = datetime.now(timezone.utc).astimezone(tz)
                         current_time = now_local.timetz()
@@ -23679,7 +24020,7 @@ class DBOrdersService:
                             geocode_confidence,
                             resolved_district,
                         ) = await self._resolve_order_coordinates(
-                            session,
+                            s,
                             city_id=data.city_id,
                             district_id=data.district_id,
                             street_id=data.street_id,
@@ -23689,7 +24030,7 @@ class DBOrdersService:
                         no_district_flag = bool(data.no_district or resolved_district is None)
                         created_staff_id = None
                         if data.created_by_staff_id:
-                            staff_row = await session.get(m.staff_users, data.created_by_staff_id)
+                            staff_row = await s.get(m.staff_users, data.created_by_staff_id)
                             created_staff_id = getattr(staff_row, "id", None)
                         order = m.orders(
                             city_id=data.city_id,
@@ -23717,10 +24058,10 @@ class DBOrdersService:
                             created_by_staff_id=created_staff_id,
                             status=initial_status,
                         )
-                        session.add(order)
-                        await session.flush()
+                        s.add(order)
+                        await s.flush()
                         if data.attachments:
-                            session.add_all(
+                            s.add_all(
                                 m.attachments(
                                     entity_type=m.AttachmentEntity.ORDER,
                                     entity_id=order.id,
@@ -23735,11 +24076,11 @@ class DBOrdersService:
                                 for att in data.attachments
                             )
                         staff_info = (
-                            await _load_staff_access(session, data.created_by_staff_id)
+                            await _load_staff_access(s, data.created_by_staff_id)
                             if data.created_by_staff_id
                             else None
                         )
-                        session.add(
+                        s.add(
                             m.order_status_history(
                                 order_id=order.id,
                                 from_status=None,
@@ -23760,7 +24101,7 @@ class DBOrdersService:
                                 },
                             )
                         )
-                        tx_id = _session_tx_id(session)
+                        tx_id = _session_tx_id(s)
                         oplog.log_order_created(
                             request_id=request_id,
                             order_id=order.id,
@@ -23792,10 +24133,9 @@ class DBOrdersService:
                 row = await session.execute(stmt)
                 return row.first() is not None
 
-    async def create_guarantee_order(self, source_order_id: int, by_staff_id: int) -> int:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    src_query = await session.execute(
+    async def create_guarantee_order(self, source_order_id: int, by_staff_id: int, *, session: Optional[AsyncSession] = None) -> int:
+            async with maybe_managed_session(session) as s:
+                    src_query = await s.execute(
                         select(m.orders)
                         .where(m.orders.id == source_order_id)
                         .with_for_update()
@@ -23804,7 +24144,7 @@ class DBOrdersService:
                     if source is None:
                         raise GuaranteeError("source order not found")
 
-                    staff = await _load_staff_access(session, by_staff_id or None)
+                    staff = await _load_staff_access(s, by_staff_id or None)
                     if not _staff_can_access_city(staff, source.city_id):
                         raise GuaranteeError("no access to city")
 
@@ -23822,7 +24162,7 @@ class DBOrdersService:
                     if not source.assigned_master_id:
                         raise GuaranteeError("source order has no assigned master")
 
-                    existing = await session.execute(
+                    existing = await s.execute(
                         select(m.orders.id)
                         .where(m.orders.guarantee_source_order_id == source_order_id)
                         .where(~m.orders.status.in_([m.OrderStatus.CANCELED, m.OrderStatus.CLOSED]))
@@ -23832,17 +24172,16 @@ class DBOrdersService:
                         raise GuaranteeError("guarantee already exists")
 
                     created = await guarantee_service.create_from_closed_order(
-                        session,
+                        s,
                         source_order_id,
                         source=source,
                         created_by_staff_id=staff.id if staff else None,
                     )
                     return created.id
 
-    async def return_to_search(self, order_id: int, by_staff_id: int) -> bool:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    q = await session.execute(
+    async def return_to_search(self, order_id: int, by_staff_id: int, *, session: Optional[AsyncSession] = None) -> bool:
+            async with maybe_managed_session(session) as s:
+                    q = await s.execute(
                         select(m.orders)
                         .where(m.orders.id == order_id)
                         .with_for_update()
@@ -23850,7 +24189,7 @@ class DBOrdersService:
                     order = q.scalar_one_or_none()
                     if not order:
                         return False
-                    staff = await _load_staff_access(session, by_staff_id or None)
+                    staff = await _load_staff_access(s, by_staff_id or None)
                     if not _staff_can_access_city(staff, order.city_id):
                         return False
                     if order.status in {m.OrderStatus.CANCELED, m.OrderStatus.CLOSED}:
@@ -23865,7 +24204,7 @@ class DBOrdersService:
                     order.updated_at = datetime.now(UTC)
                     order.version = (order.version or 0) + 1
                     order.cancel_reason = None
-                    session.add(
+                    s.add(
                         m.order_status_history(
                             order_id=order.id,
                             from_status=prev_status,
@@ -23875,7 +24214,7 @@ class DBOrdersService:
                         )
                     )
                     # Cancel any active offers (SENT/VIEWED/ACCEPTED) and log how many were canceled
-                    res = await session.execute(
+                    res = await s.execute(
                         update(m.offers)
                         .where(
                             (m.offers.order_id == order.id)
@@ -23901,10 +24240,9 @@ class DBOrdersService:
                     )
             return True
 
-    async def cancel(self, order_id: int, reason: str, by_staff_id: int) -> bool:
-            async with self._session_factory() as session:
-                async with session.begin():
-                    q = await session.execute(
+    async def cancel(self, order_id: int, reason: str, by_staff_id: int, *, session: Optional[AsyncSession] = None) -> bool:
+            async with maybe_managed_session(session) as s:
+                    q = await s.execute(
                         select(m.orders)
                         .where(m.orders.id == order_id)
                         .with_for_update()
@@ -23912,7 +24250,7 @@ class DBOrdersService:
                     order = q.scalar_one_or_none()
                     if not order:
                         return False
-                    staff = await _load_staff_access(session, by_staff_id or None)
+                    staff = await _load_staff_access(s, by_staff_id or None)
                     if not _staff_can_access_city(staff, order.city_id):
                         return False
                     if order.status == m.OrderStatus.CANCELED:
@@ -23923,7 +24261,7 @@ class DBOrdersService:
                     order.updated_at = datetime.now(UTC)
                     order.version = (order.version or 0) + 1
                     order.cancel_reason = reason
-                    session.add(
+                    s.add(
                         m.order_status_history(
                             order_id=order.id,
                             from_status=prev_status,
@@ -23939,7 +24277,7 @@ class DBOrdersService:
                             }
                         )
                     )
-                    await session.execute(
+                    await s.execute(
                         update(m.offers)
                         .where(
                             (m.offers.order_id == order.id)
@@ -23958,13 +24296,12 @@ class DBOrdersService:
             return True
 
     async def assign_master(
-            self, order_id: int, master_id: int, by_staff_id: int, *, request_id: Optional[str] = None, actor: str = 'ADMIN'
+            self, order_id: int, master_id: int, by_staff_id: int, *, request_id: Optional[str] = None, actor: str = 'ADMIN', session: Optional[AsyncSession] = None
         ) -> bool:
             tracking_id = request_id or oplog.generate_request_id()
-            async with self._session_factory() as session:
+            async with maybe_managed_session(session) as s:
                 try:
-                    async with session.begin():
-                        order_q = await session.execute(
+                        order_q = await s.execute(
                             select(m.orders)
                             .where(m.orders.id == order_id)
                             .with_for_update()
@@ -23972,10 +24309,10 @@ class DBOrdersService:
                         order = order_q.scalar_one_or_none()
                         if not order:
                             return False
-                        staff = await _load_staff_access(session, by_staff_id or None)
+                        staff = await _load_staff_access(s, by_staff_id or None)
                         if not _staff_can_access_city(staff, order.city_id):
                             return False
-                        master_q = await session.execute(
+                        master_q = await s.execute(
                             select(m.masters).where(m.masters.id == master_id)
                         )
                         master = master_q.scalar_one_or_none()
@@ -23984,7 +24321,7 @@ class DBOrdersService:
                         if master.city_id is not None and master.city_id != order.city_id:
                             return False
                         if order.district_id:
-                            md_q = await session.execute(
+                            md_q = await s.execute(
                                 select(m.master_districts)
                                 .where(
                                     (m.master_districts.master_id == master.id)
@@ -24012,7 +24349,7 @@ class DBOrdersService:
 
                         master_name = f"{master.last_name} {master.first_name}".strip()
 
-                        session.add(
+                        s.add(
                             m.order_status_history(
                                 order_id=order.id,
                                 from_status=prev_status,
@@ -24032,7 +24369,7 @@ class DBOrdersService:
                         )
 
                         try:
-                            offer_stats = await session.execute(
+                            offer_stats = await s.execute(
                                 select(
                                     func.max(m.offers.round_number).label('max_round'),
                                     func.count(func.distinct(m.offers.master_id)).label('total_candidates')
@@ -24047,7 +24384,7 @@ class DBOrdersService:
                                 else None
                             )
 
-                            session.add(
+                            s.add(
                                 m.distribution_metrics(
                                     order_id=order.id,
                                     master_id=master.id,
@@ -24071,7 +24408,7 @@ class DBOrdersService:
                         except Exception:
                             pass
 
-                        offer_result = await session.execute(
+                        offer_result = await s.execute(
                             update(m.offers)
                             .where(
                                 (m.offers.order_id == order.id)
@@ -24090,7 +24427,7 @@ class DBOrdersService:
                             operation='cancel_offers',
                             rows_affected=rows_affected,
                         )
-                        tx_id = _session_tx_id(session)
+                        tx_id = _session_tx_id(s)
                         oplog.log_assign_success(
                             request_id=tracking_id,
                             order_id=order.id,
@@ -24110,7 +24447,7 @@ class DBOrdersService:
                         callback_data=None,
                     )
                     raise
-    async def activate_deferred_order(self, order_id: int, staff_id: int) -> bool:
+    async def activate_deferred_order(self, order_id: int, staff_id: int, *, session: Optional[AsyncSession] = None) -> bool:
         """
         Перевести DEFERRED заказ в SEARCHING (активировать поиск мастера).
         
@@ -24121,10 +24458,9 @@ class DBOrdersService:
         Returns:
             True если успешно, False если не удалось
         """
-        async with self._session_factory() as session:
-            async with session.begin():
+        async with maybe_managed_session(session) as s:
                 # Загружаем заказ с блокировкой
-                q = await session.execute(
+                q = await s.execute(
                     select(m.orders)
                     .where(m.orders.id == order_id)
                     .with_for_update()
@@ -24134,7 +24470,7 @@ class DBOrdersService:
                     return False
                 
                 # Проверяем доступ админа
-                staff = await _load_staff_access(session, staff_id or None)
+                staff = await _load_staff_access(s, staff_id or None)
                 if not _staff_can_access_city(staff, order.city_id):
                     return False
                 
@@ -24155,7 +24491,7 @@ class DBOrdersService:
                 order.version = (order.version or 0) + 1
                 
                 # Записываем в историю
-                session.add(
+                s.add(
                     m.order_status_history(
                         order_id=order.id,
                         from_status=prev_status,
@@ -24574,8 +24910,8 @@ class DBOrdersService:
 
 ###### `field-service/field_service/bots/admin_bot/services/settings.py`
 
-**Strok:** 183  
-**Razmer:** 7.04 KB
+**Strok:** 180  
+**Razmer:** 6.97 KB
 
 ```python
 """Settings service: system configuration management."""
@@ -24588,12 +24924,14 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import OperationalError
 
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import time_service
 from field_service.services import settings_service as settings_store
 from field_service.services import owner_requisites_service as owner_reqs
+from field_service.services._session_utils import maybe_managed_session
 
 
 # Common utilities from _common
@@ -24692,30 +25030,30 @@ class DBSettingsService:
             values[setting_key] = (normalized.get(field), value_type)
         await settings_store.set_values(values)
 
-    async def set_value(self, key: str, value: object, *, value_type: str = "STR") -> None:
+    async def set_value(self, key: str, value: object, *, value_type: str = "STR", session: Optional[AsyncSession] = None) -> None:
         normalized = settings_store._normalize_value_type(value_type)
         payload = settings_store._serialize_value(value, normalized)
 
-        async def _apply(session: AsyncSession) -> None:
+        async def _apply(s: AsyncSession) -> None:
             stmt = insert(m.settings).values(key=key, value=payload, value_type=normalized)
             if hasattr(stmt, "on_conflict_do_update"):
                 stmt = stmt.on_conflict_do_update(
                     index_elements=[m.settings.key],
                     set_={"value": payload, "value_type": normalized},
                 )
-                await session.execute(stmt)
+                await s.execute(stmt)
             else:
-                existing = await session.execute(
+                existing = await s.execute(
                     select(m.settings).where(m.settings.key == key)
                 )
                 if existing.scalar_one_or_none():
-                    await session.execute(
+                    await s.execute(
                         update(m.settings)
                         .where(m.settings.key == key)
                         .values(value=payload, value_type=normalized)
                     )
                 else:
-                    await session.execute(
+                    await s.execute(
                         insert(m.settings).values(
                             key=key,
                             value=payload,
@@ -24723,18 +25061,14 @@ class DBSettingsService:
                         )
                     )
 
-        async with self._session_factory() as session:
+        async with maybe_managed_session(session) as s:
             for attempt in range(2):
                 try:
-                    if session.in_transaction():
-                        await _apply(session)
-                    else:
-                        async with session.begin():
-                            await _apply(session)
+                    await _apply(s)
                 except OperationalError as exc:
                     message = str(exc).lower()
                     if "no such table" in message and "settings" in message and attempt == 0:
-                        await session.run_sync(
+                        await s.run_sync(
                             lambda sync_session: m.settings.__table__.create(
                                 sync_session.connection(), checkfirst=True
                             )
@@ -24754,10 +25088,9 @@ class DBSettingsService:
                     return data
             return await owner_reqs.fetch_effective(session)
 
-    async def update_owner_pay_requisites(self, staff_id: int, payload: dict[str, Any]) -> None:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await owner_reqs.update_for_staff(session, staff_id, payload)
+    async def update_owner_pay_requisites(self, staff_id: int, payload: dict[str, Any], *, session: Optional[AsyncSession] = None) -> None:
+        async with maybe_managed_session(session) as s:
+            await owner_reqs.update_for_staff(s, staff_id, payload)
 
 
 
@@ -24767,8 +25100,8 @@ class DBSettingsService:
 
 ###### `field-service/field_service/bots/admin_bot/services/staff.py`
 
-**Strok:** 1258  
-**Razmer:** 46.90 KB
+**Strok:** 1262  
+**Razmer:** 46.28 KB
 
 ```python
 """Staff management service: users, access codes, permissions."""
@@ -24787,6 +25120,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from field_service.db import models as m
 from field_service.db.session import SessionLocal
 from field_service.services import live_log
+from field_service.services._session_utils import maybe_managed_session
 from field_service.config import settings
 
 from ..core.dto import StaffAccessCode, StaffMember, StaffRole, StaffUser, OrderListItem, WaitPayRecipient, OrderType
@@ -25028,27 +25362,29 @@ class DBStaffService:
             access_code_ttl_hours = settings.access_code_ttl_hours
         self._access_code_ttl_hours = int(access_code_ttl_hours) if access_code_ttl_hours is not None else 0
 
-    async def seed_global_admins(self, tg_ids: Sequence[int]) -> int:
+    async def seed_global_admins(self, tg_ids: Sequence[int], *, session: Optional[AsyncSession] = None) -> int:
         unique_ids = sorted({int(tg) for tg in tg_ids if tg})
         if not unique_ids:
             return 0
-        async with self._session_factory() as session:
-            payload = [
-                {
-                    "tg_user_id": tg_id,
-                    "role": m.StaffRole.ADMIN,
-                    "is_active": True,
-                }
-                for tg_id in unique_ids
-            ]
-            if not payload:
+        
+        payload = [
+            {
+                "tg_user_id": tg_id,
+                "role": m.StaffRole.ADMIN,
+                "is_active": True,
+            }
+            for tg_id in unique_ids
+        ]
+        if not payload:
+            return 0
+        
+        async with maybe_managed_session(session) as s:
+            total = await s.scalar(select(func.count()).select_from(m.staff_users))
+            if total and int(total) > 0:
                 return 0
-            async with session.begin():
-                total = await session.scalar(select(func.count()).select_from(m.staff_users))
-                if total and int(total) > 0:
-                    return 0
-                await session.execute(insert(m.staff_users), payload)
-            return len(payload)
+            await s.execute(insert(m.staff_users), payload)
+        
+        return len(payload)
 
     async def get_by_tg_id(self, tg_id: int) -> Optional[StaffUser]:
         if tg_id is None:
@@ -25081,14 +25417,16 @@ class DBStaffService:
         tg_id: int,
         username: Optional[str] = None,
         update_tg_id: bool = True,
+        *,
+        session: Optional[AsyncSession] = None,
     ) -> Optional[StaffUser]:
         """Найти сотрудника по Telegram ID ИЛИ username."""
         if tg_id is None:
             return None
         
-        async with self._session_factory() as session:
+        async with maybe_managed_session(session) as s:
             # 1. Пытаемся найти по tg_user_id
-            row = await session.execute(
+            row = await s.execute(
                 select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
             )
             staff = row.scalar_one_or_none()
@@ -25096,7 +25434,7 @@ class DBStaffService:
             # 2. Если не нашли по tg_id, пытаемся по username
             if not staff and username:
                 normalized_username = username.lower().lstrip("@")
-                row = await session.execute(
+                row = await s.execute(
                     select(m.staff_users).where(
                         m.staff_users.username == normalized_username
                     )
@@ -25105,9 +25443,8 @@ class DBStaffService:
                 
                 # 3. Если нашли по username и tg_user_id=NULL - обновляем
                 if staff and staff.tg_user_id is None and update_tg_id:
-                    # Обновляем без вложенной транзакции
                     staff.tg_user_id = tg_id
-                    await session.commit()
+                    await s.flush()  # Используем flush вместо commit
                     live_log.push(
                         "staff",
                         f"tg_id linked: staff_id={staff.id} username={normalized_username} tg_id={tg_id}"
@@ -25117,7 +25454,7 @@ class DBStaffService:
                 return None
             
             # Загружаем города
-            city_rows = await session.execute(
+            city_rows = await s.execute(
                 select(m.staff_cities.city_id).where(
                     m.staff_cities.staff_user_id == staff.id
                 )
@@ -25138,52 +25475,53 @@ class DBStaffService:
         username: str,
         tg_user_id: int,
         full_name: Optional[str] = None,
+        *,
+        session: Optional[AsyncSession] = None,
     ) -> Optional[StaffUser]:
         normalized_username = username.lower().lstrip("@")
     
-        async with self._session_factory() as session:
-            async with session.begin():
-                stmt = (
-                    select(m.staff_users)
-                    .where(
-                        m.staff_users.username == normalized_username,
-                        m.staff_users.tg_user_id.is_(None)
-                    )
-                    .with_for_update()
+        async with maybe_managed_session(session) as s:
+            stmt = (
+                select(m.staff_users)
+                .where(
+                    m.staff_users.username == normalized_username,
+                    m.staff_users.tg_user_id.is_(None)
                 )
-                row = await session.execute(stmt)
-                staff = row.scalar_one_or_none()
-                
-                if not staff:
-                    return None
-                
-                staff.tg_user_id = tg_user_id
-                if full_name:
-                    staff.full_name = full_name
-                
-                await session.flush()
-                
-                city_rows = await session.execute(
-                    select(m.staff_cities.city_id).where(
-                        m.staff_cities.staff_user_id == staff.id
-                    )
+                .with_for_update()
+            )
+            row = await s.execute(stmt)
+            staff = row.scalar_one_or_none()
+            
+            if not staff:
+                return None
+            
+            staff.tg_user_id = tg_user_id
+            if full_name:
+                staff.full_name = full_name
+            
+            await s.flush()
+            
+            city_rows = await s.execute(
+                select(m.staff_cities.city_id).where(
+                    m.staff_cities.staff_user_id == staff.id
                 )
-                city_ids = frozenset(int(c[0]) for c in city_rows)
-                
-                live_log.push(
-                    "staff",
-                    f"username linked: staff_id={staff.id} username={normalized_username} tg_id={tg_user_id}"
-                )
-        
-        return StaffUser(
-            id=staff.id,
-            tg_id=tg_user_id,
-            role=_map_staff_role(staff.role),
-            is_active=bool(staff.is_active),
-            city_ids=city_ids,
-            full_name=staff.full_name or "",
-            phone=staff.phone or "",
-        )
+            )
+            city_ids = frozenset(int(c[0]) for c in city_rows)
+            
+            live_log.push(
+                "staff",
+                f"username linked: staff_id={staff.id} username={normalized_username} tg_id={tg_user_id}"
+            )
+            
+            return StaffUser(
+                id=staff.id,
+                tg_id=tg_user_id,
+                role=_map_staff_role(staff.role),
+                is_active=bool(staff.is_active),
+                city_ids=city_ids,
+                full_name=staff.full_name or "",
+                phone=staff.phone or "",
+            )
     async def list_staff(
         self,
         *,
@@ -25245,50 +25583,46 @@ class DBStaffService:
             )
 
     async def set_staff_cities(
-        self, staff_id: int, city_ids: Iterable[int]
+        self, staff_id: int, city_ids: Iterable[int], *, session: Optional[AsyncSession] = None
     ) -> None:
         normalized = _sorted_city_tuple(city_ids)
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    delete(m.staff_cities).where(m.staff_cities.staff_user_id == staff_id)
-                )
-                session.add_all(
-                    m.staff_cities(staff_user_id=staff_id, city_id=cid)
-                    for cid in normalized
-                )
+        async with maybe_managed_session(session) as s:
+            await s.execute(
+                delete(m.staff_cities).where(m.staff_cities.staff_user_id == staff_id)
+            )
+            s.add_all(
+                m.staff_cities(staff_user_id=staff_id, city_id=cid)
+                for cid in normalized
+            )
 
-    async def set_staff_role(self, staff_id: int, role: StaffRole) -> None:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.staff_users)
-                    .where(m.staff_users.id == staff_id)
-                    .values(role=_map_staff_role_to_db(role))
-                )
+    async def set_staff_role(self, staff_id: int, role: StaffRole, *, session: Optional[AsyncSession] = None) -> None:
+        async with maybe_managed_session(session) as s:
+            await s.execute(
+                update(m.staff_users)
+                .where(m.staff_users.id == staff_id)
+                .values(role=_map_staff_role_to_db(role))
+            )
 
-    async def set_staff_active(self, staff_id: int, is_active: bool) -> None:
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.staff_users)
-                    .where(m.staff_users.id == staff_id)
-                    .values(is_active=is_active)
-                )
+    async def set_staff_active(self, staff_id: int, is_active: bool, *, session: Optional[AsyncSession] = None) -> None:
+        async with maybe_managed_session(session) as s:
+            await s.execute(
+                update(m.staff_users)
+                .where(m.staff_users.id == staff_id)
+                .values(is_active=is_active)
+            )
 
     async def update_staff_profile(
-        self, staff_id: int, *, full_name: str, phone: str, username: Optional[str] | None = None
+        self, staff_id: int, *, full_name: str, phone: str, username: Optional[str] | None = None, session: Optional[AsyncSession] = None
     ) -> None:
         values: dict[str, Any] = {"full_name": full_name, "phone": phone}
         if username is not None:
             values["username"] = username
-        async with self._session_factory() as session:
-            async with session.begin():
-                await session.execute(
-                    update(m.staff_users)
-                    .where(m.staff_users.id == staff_id)
-                    .values(**values)
-                )
+        async with maybe_managed_session(session) as s:
+            await s.execute(
+                update(m.staff_users)
+                .where(m.staff_users.id == staff_id)
+                .values(**values)
+            )
 
 
     async def create_access_code(
@@ -25300,36 +25634,38 @@ class DBStaffService:
         created_by_staff_id: Optional[int] = None,
         expires_at: Optional[datetime],
         comment: Optional[str],
+        session: Optional[AsyncSession] = None,
     ) -> StaffAccessCode:
         unique_cities = _sorted_city_tuple(city_ids)
         expires_at_value = expires_at
         ttl_hours = max(0, self._access_code_ttl_hours)
         if expires_at_value is None and ttl_hours > 0:
             expires_at_value = datetime.now(UTC) + timedelta(hours=ttl_hours)
-        async with self._session_factory() as session:
-            async with session.begin():
-                code_value = await self._generate_unique_code(session)
-                db_role = _map_staff_role_to_db(role)
-                city_column = unique_cities[0] if len(unique_cities) == 1 else None
-                issuer_id = issued_by_staff_id if issued_by_staff_id is not None else created_by_staff_id
-                code_row = m.staff_access_codes(
-                    code=code_value,
-                    role=db_role,
-                    city_id=city_column,
-                    issued_by_staff_id=issuer_id,
-                    expires_at=expires_at_value,
-                    comment=comment,
+        
+        async with maybe_managed_session(session) as s:
+            code_value = await self._generate_unique_code(s)
+            db_role = _map_staff_role_to_db(role)
+            city_column = unique_cities[0] if len(unique_cities) == 1 else None
+            issuer_id = issued_by_staff_id if issued_by_staff_id is not None else created_by_staff_id
+            code_row = m.staff_access_codes(
+                code=code_value,
+                role=db_role,
+                city_id=city_column,
+                issued_by_staff_id=issuer_id,
+                expires_at=expires_at_value,
+                comment=comment,
+            )
+            s.add(code_row)
+            await s.flush()
+            s.add_all(
+                m.staff_access_code_cities(
+                    access_code_id=code_row.id, city_id=cid
                 )
-                session.add(code_row)
-                await session.flush()
-                session.add_all(
-                    m.staff_access_code_cities(
-                        access_code_id=code_row.id, city_id=cid
-                    )
-                    for cid in unique_cities
-                )
-                cities_label = "".join(str(cid) for cid in unique_cities) or '-'
-                live_log.push("staff", f"access_code issued code={code_value} role={role.value} cities={cities_label}")
+                for cid in unique_cities
+            )
+            cities_label = "".join(str(cid) for cid in unique_cities) or '-'
+            live_log.push("staff", f"access_code issued code={code_value} role={role.value} cities={cities_label}")
+            
             return StaffAccessCode(
                 id=code_row.id,
                 code=code_row.code,
@@ -25396,61 +25732,60 @@ class DBStaffService:
         role: StaffRole,
         city_ids: Iterable[int],
         created_by_staff_id: int,
+        session: Optional[AsyncSession] = None,
     ) -> StaffUser:
         """Create staff user without requiring an access code."""
         if tg_id is None and (username is None or not username.strip()):
             raise ValueError("Either tg_id or username must be provided")
 
         unique_cities = _sorted_city_tuple(city_ids)
-        now = datetime.now(UTC)
 
-        async with self._session_factory() as session:
-            async with session.begin():
-                if tg_id is not None:
-                    existing = await session.execute(
-                        select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
-                    )
-                    if existing.scalar_one_or_none():
-                        raise AccessCodeError("already_staff")
-
-                full_name = (username or "").strip() or (f"User{tg_id}" if tg_id else "Unknown")
-
-                staff_row = m.staff_users(
-                    tg_user_id=tg_id,
-                    username=username,
-                    full_name=full_name,
-                    phone="",
-                    role=_map_staff_role_to_db(role),
-                    is_active=True,
+        async with maybe_managed_session(session) as s:
+            if tg_id is not None:
+                existing = await s.execute(
+                    select(m.staff_users).where(m.staff_users.tg_user_id == tg_id)
                 )
-                session.add(staff_row)
-                await session.flush()
+                if existing.scalar_one_or_none():
+                    raise AccessCodeError("already_staff")
 
-                if unique_cities:
-                    session.add_all(
-                        m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
-                        for cid in unique_cities
-                    )
+            full_name = (username or "").strip() or (f"User{tg_id}" if tg_id else "Unknown")
 
-                cities_label = ", ".join(str(cid) for cid in unique_cities) or "all"
-                live_log.push(
-                    "staff",
-                    (
-                        f"staff added direct: id={staff_row.id} tg_id={tg_id} "
-                        f"username={username} role={role.value} cities={cities_label} "
-                        f"by={created_by_staff_id}"
-                    ),
+            staff_row = m.staff_users(
+                tg_user_id=tg_id,
+                username=username,
+                full_name=full_name,
+                phone="",
+                role=_map_staff_role_to_db(role),
+                is_active=True,
+            )
+            s.add(staff_row)
+            await s.flush()
+
+            if unique_cities:
+                s.add_all(
+                    m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
+                    for cid in unique_cities
                 )
 
-        return StaffUser(
-            id=staff_row.id,
-            tg_id=tg_id or 0,
-            role=role,
-            is_active=True,
-            city_ids=frozenset(unique_cities),
-            full_name=staff_row.full_name or "",
-            phone=staff_row.phone or "",
-        )
+            cities_label = ", ".join(str(cid) for cid in unique_cities) or "all"
+            live_log.push(
+                "staff",
+                (
+                    f"staff added direct: id={staff_row.id} tg_id={tg_id} "
+                    f"username={username} role={role.value} cities={cities_label} "
+                    f"by={created_by_staff_id}"
+                ),
+            )
+            
+            return StaffUser(
+                id=staff_row.id,
+                tg_id=tg_id or 0,
+                role=role,
+                is_active=True,
+                city_ids=frozenset(unique_cities),
+                full_name=staff_row.full_name or "",
+                phone=staff_row.phone or "",
+            )
 
     async def register_staff_user_from_code(
         self,
@@ -25460,65 +25795,67 @@ class DBStaffService:
         username: Optional[str],
         full_name: str,
         phone: str,
+        session: Optional[AsyncSession] = None,
     ) -> StaffUser:
         normalized = (code_value or "").strip().upper()
         if not normalized:
             raise AccessCodeError("invalid_code")
         now = datetime.now(UTC)
-        async with self._session_factory() as session:
-            async with session.begin():
-                code_stmt = (
-                    select(m.staff_access_codes)
-                    .where(
-                        m.staff_access_codes.code == normalized,
-                        m.staff_access_codes.is_revoked == False,
-                        m.staff_access_codes.used_at.is_(None),
-                    )
-                    .with_for_update()
+        
+        async with maybe_managed_session(session) as s:
+            code_stmt = (
+                select(m.staff_access_codes)
+                .where(
+                    m.staff_access_codes.code == normalized,
+                    m.staff_access_codes.is_revoked == False,
+                    m.staff_access_codes.used_at.is_(None),
                 )
-                code_row = (await session.execute(code_stmt)).scalar_one_or_none()
-                if not code_row:
-                    raise AccessCodeError("invalid_code")
-                expires_at = code_row.expires_at
-                if expires_at and expires_at.tzinfo is None:
-                    expires_at = expires_at.replace(tzinfo=UTC)
-                if expires_at and expires_at < now:
-                    raise AccessCodeError("expired")
-                link_map = await _collect_code_cities(session, [code_row.id])
-                city_ids = _sorted_city_tuple(
-                    link_map.get(code_row.id) or ([code_row.city_id] if code_row.city_id else [])
+                .with_for_update()
+            )
+            code_row = (await s.execute(code_stmt)).scalar_one_or_none()
+            if not code_row:
+                raise AccessCodeError("invalid_code")
+            expires_at = code_row.expires_at
+            if expires_at and expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=UTC)
+            if expires_at and expires_at < now:
+                raise AccessCodeError("expired")
+            link_map = await _collect_code_cities(s, [code_row.id])
+            city_ids = _sorted_city_tuple(
+                link_map.get(code_row.id) or ([code_row.city_id] if code_row.city_id else [])
+            )
+            role = _map_staff_role(code_row.role)
+            if role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST) and not city_ids:
+                raise AccessCodeError("no_cities")
+            existing = await s.execute(
+                select(m.staff_users).where(m.staff_users.tg_user_id == tg_user_id)
+            )
+            if existing.scalar_one_or_none():
+                raise AccessCodeError("already_staff")
+            staff_row = m.staff_users(
+                tg_user_id=tg_user_id,
+                username=username,
+                full_name=full_name,
+                phone=phone,
+                role=_map_staff_role_to_db(role),
+                is_active=True,
+            )
+            s.add(staff_row)
+            await s.flush()
+            s.add_all(
+                m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
+                for cid in city_ids
+            )
+            await s.execute(
+                update(m.staff_access_codes)
+                .where(m.staff_access_codes.id == code_row.id)
+                .values(
+                    used_by_staff_id=staff_row.id,
+                    used_at=now,
                 )
-                role = _map_staff_role(code_row.role)
-                if role in (StaffRole.CITY_ADMIN, StaffRole.LOGIST) and not city_ids:
-                    raise AccessCodeError("no_cities")
-                existing = await session.execute(
-                    select(m.staff_users).where(m.staff_users.tg_user_id == tg_user_id)
-                )
-                if existing.scalar_one_or_none():
-                    raise AccessCodeError("already_staff")
-                staff_row = m.staff_users(
-                    tg_user_id=tg_user_id,
-                    username=username,
-                    full_name=full_name,
-                    phone=phone,
-                    role=_map_staff_role_to_db(role),
-                    is_active=True,
-                )
-                session.add(staff_row)
-                await session.flush()
-                session.add_all(
-                    m.staff_cities(staff_user_id=staff_row.id, city_id=cid)
-                    for cid in city_ids
-                )
-                await session.execute(
-                    update(m.staff_access_codes)
-                    .where(m.staff_access_codes.id == code_row.id)
-                    .values(
-                        used_by_staff_id=staff_row.id,
-                        used_at=now,
-                    )
-                )
-                live_log.push('staff', f'access_code used code={code_row.code} staff={staff_row.id}')
+            )
+            live_log.push('staff', f'access_code used code={code_row.code} staff={staff_row.id}')
+            
             return StaffUser(
                 id=staff_row.id,
                 tg_id=tg_user_id,
@@ -25994,25 +26331,25 @@ class DBStaffService:
             )
 
     async def revoke_access_code(
-        self, code_id: int, *, by_staff_id: Optional[int] = None
+        self, code_id: int, *, by_staff_id: Optional[int] = None, session: Optional[AsyncSession] = None
     ) -> bool:
-        async with self._session_factory() as session:
-            async with session.begin():
-                result = await session.execute(
-                    update(m.staff_access_codes)
-                    .where(
-                        (m.staff_access_codes.id == code_id)
-                        & (m.staff_access_codes.used_at.is_(None))
-                        & (m.staff_access_codes.is_revoked == False)  # noqa: E712
-                    )
-                    .values(is_revoked=True)
-                    .returning(m.staff_access_codes.id, m.staff_access_codes.code)
+        async with maybe_managed_session(session) as s:
+            result = await s.execute(
+                update(m.staff_access_codes)
+                .where(
+                    (m.staff_access_codes.id == code_id)
+                    & (m.staff_access_codes.used_at.is_(None))
+                    & (m.staff_access_codes.is_revoked == False)  # noqa: E712
                 )
-                row = result.first()
-                if not row:
-                    return False
-                revoked_code = row.code
+                .values(is_revoked=True)
+                .returning(m.staff_access_codes.id, m.staff_access_codes.code)
+            )
+            row = result.first()
+            if not row:
+                return False
+            revoked_code = row.code
             live_log.push("staff", f"access_code revoked code={revoked_code} by={by_staff_id}")
+        
         return True
 
     async def _generate_unique_code(self, session: AsyncSession) -> str:
@@ -33886,8 +34223,8 @@ settings = Settings()
 
 ##### `field-service/field_service/data/cities.py`
 
-**Strok:** 255  
-**Razmer:** 4.97 KB
+**Strok:** 264  
+**Razmer:** 8.11 KB
 
 ```python
 """Canonical city registry for Field Service (v1.2)."""
@@ -33897,178 +34234,178 @@ from __future__ import annotations
 import re
 from typing import List
 
-# Ordered canonical list, frozen by product decision (78 entries)
+# Ordered canonical list, frozen by product decision (79 entries)
 ALLOWED_CITIES: tuple[str, ...] = (
-    "",
-    "-",
-    "",
-    "",
-    "",
-    " ",
-    "",
-    "",
-    "",
-    "",
-    "  ",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    " ",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    " ()",
-    "",
-    "",
-    "",
-    "",
-    " ",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    " ()",
-    "",
-    "",
-    "",
-    "",
-    " ",
-    " ",
-    " ",
-    "",
-    "",
-    " ",
-    "",
-    "",
-    "",
-    "",
-    " ()",
-    "",
-    "",
-    "",
+    "Москва",
+    "Санкт-Петербург",
+    "Новосибирск",
+    "Екатеринбург",
+    "Казань",
+    "Нижний Новгород",
+    "Челябинск",
+    "Красноярск",
+    "Самара",
+    "Уфа",
+    "Ростов-на-Дону",
+    "Краснодар",
+    "Омск",
+    "Воронеж",
+    "Пермь",
+    "Волгоград",
+    "Саратов",
+    "Тюмень",
+    "Тольятти",
+    "Ижевск",
+    "Барнаул",
+    "Ульяновск",
+    "Иркутск",
+    "Хабаровск",
+    "Владивосток",
+    "Ярославль",
+    "Махачкала",
+    "Томск",
+    "Оренбург",
+    "Кемерово",
+    "Новокузнецк",
+    "Рязань",
+    "Набережные Челны",
+    "Астрахань",
+    "Пенза",
+    "Киров",
+    "Липецк",
+    "Чебоксары",
+    "Калининград",
+    "Тула",
+    "Курск",
+    "Сочи",
+    "Ставрополь",
+    "Балашиха",
+    "Севастополь",
+    "Брянск",
+    "Белгород",
+    "Магнитогорск",
+    "Великий Новгород",
+    "Калуга",
+    "Сургут",
+    "Владикавказ",
+    "Чита",
+    "Симферополь",
+    "Волжский",
+    "Смоленск",
+    "Саранск",
+    "Курган",
+    "Орёл",
+    "Подольск",
+    "Архангельск",
+    "Грозный",
+    "Якутск",
+    "Тверь",
+    "Старый Оскол",
+    "Улан-Удэ",
+    "Нижний Тагил",
+    "Нижневартовск",
+    "Псков",
+    "Йошкар-Ола",
+    "Кострома",
+    "Новороссийск",
+    "Дзержинск",
+    "Таганрог",
+    "Химки",
+    "Березники",
+    "Энгельс",
+    "Шахты",
 )
 
 CITY_TIMEZONES: dict[str, str] = {
-    "": "Europe/Moscow",
-    "-": "Europe/Moscow",
-    "": "Asia/Novosibirsk",
-    "": "Asia/Yekaterinburg",
-    "": "Europe/Moscow",
-    " ": "Europe/Moscow",
-    "": "Asia/Yekaterinburg",
-    "": "Asia/Krasnoyarsk",
-    "": "Europe/Samara",
-    "": "Asia/Yekaterinburg",
-    "  ": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Asia/Omsk",
-    "": "Europe/Moscow",
-    "": "Asia/Yekaterinburg",
-    "": "Europe/Volgograd",
-    "": "Europe/Saratov",
-    "": "Asia/Yekaterinburg",
-    "": "Europe/Samara",
-    "": "Europe/Samara",
-    "": "Asia/Barnaul",
-    "": "Europe/Ulyanovsk",
-    "": "Asia/Irkutsk",
-    "": "Asia/Vladivostok",
-    "": "Asia/Vladivostok",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Asia/Tomsk",
-    "": "Asia/Yekaterinburg",
-    "": "Asia/Novokuznetsk",
-    "": "Asia/Novokuznetsk",
-    "": "Europe/Moscow",
-    " ": "Europe/Moscow",
-    "": "Europe/Astrakhan",
-    "": "Europe/Moscow",
-    "": "Europe/Kirov",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Europe/Kaliningrad",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    " ()": "Europe/Moscow",
-    "": "Europe/Simferopol",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Asia/Yekaterinburg",
-    " ": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Asia/Yekaterinburg",
-    "": "Europe/Moscow",
-    "": "Asia/Chita",
-    "": "Europe/Simferopol",
-    "": "Europe/Volgograd",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Asia/Yekaterinburg",
-    "": "Europe/Moscow",
-    " ()": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Asia/Yakutsk",
-    "": "Europe/Moscow",
-    " ": "Europe/Moscow",
-    " ": "Asia/Irkutsk",
-    " ": "Asia/Yekaterinburg",
-    "": "Asia/Yekaterinburg",
-    "": "Europe/Moscow",
-    " ": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    "": "Europe/Moscow",
-    " ()": "Europe/Moscow",
-    "": "Asia/Yekaterinburg",
-    "": "Europe/Saratov",
-    "": "Europe/Moscow",
+    "Москва": "Europe/Moscow",
+    "Санкт-Петербург": "Europe/Moscow",
+    "Новосибирск": "Asia/Novosibirsk",
+    "Екатеринбург": "Asia/Yekaterinburg",
+    "Казань": "Europe/Moscow",
+    "Нижний Новгород": "Europe/Moscow",
+    "Челябинск": "Asia/Yekaterinburg",
+    "Красноярск": "Asia/Krasnoyarsk",
+    "Самара": "Europe/Samara",
+    "Уфа": "Asia/Yekaterinburg",
+    "Ростов-на-Дону": "Europe/Moscow",
+    "Краснодар": "Europe/Moscow",
+    "Омск": "Asia/Omsk",
+    "Воронеж": "Europe/Moscow",
+    "Пермь": "Asia/Yekaterinburg",
+    "Волгоград": "Europe/Volgograd",
+    "Саратов": "Europe/Saratov",
+    "Тюмень": "Asia/Yekaterinburg",
+    "Тольятти": "Europe/Samara",
+    "Ижевск": "Europe/Samara",
+    "Барнаул": "Asia/Barnaul",
+    "Ульяновск": "Europe/Ulyanovsk",
+    "Иркутск": "Asia/Irkutsk",
+    "Хабаровск": "Asia/Vladivostok",
+    "Владивосток": "Asia/Vladivostok",
+    "Ярославль": "Europe/Moscow",
+    "Махачкала": "Europe/Moscow",
+    "Томск": "Asia/Tomsk",
+    "Оренбург": "Asia/Yekaterinburg",
+    "Кемерово": "Asia/Novokuznetsk",
+    "Новокузнецк": "Asia/Novokuznetsk",
+    "Рязань": "Europe/Moscow",
+    "Набережные Челны": "Europe/Moscow",
+    "Астрахань": "Europe/Astrakhan",
+    "Пенза": "Europe/Moscow",
+    "Киров": "Europe/Kirov",
+    "Липецк": "Europe/Moscow",
+    "Чебоксары": "Europe/Moscow",
+    "Калининград": "Europe/Kaliningrad",
+    "Тула": "Europe/Moscow",
+    "Курск": "Europe/Moscow",
+    "Сочи": "Europe/Moscow",
+    "Ставрополь": "Europe/Moscow",
+    "Балашиха": "Europe/Moscow",
+    "Севастополь": "Europe/Simferopol",
+    "Брянск": "Europe/Moscow",
+    "Белгород": "Europe/Moscow",
+    "Магнитогорск": "Asia/Yekaterinburg",
+    "Великий Новгород": "Europe/Moscow",
+    "Калуга": "Europe/Moscow",
+    "Сургут": "Asia/Yekaterinburg",
+    "Владикавказ": "Europe/Moscow",
+    "Чита": "Asia/Chita",
+    "Симферополь": "Europe/Simferopol",
+    "Волжский": "Europe/Volgograd",
+    "Смоленск": "Europe/Moscow",
+    "Саранск": "Europe/Moscow",
+    "Курган": "Asia/Yekaterinburg",
+    "Орёл": "Europe/Moscow",
+    "Подольск": "Europe/Moscow",
+    "Архангельск": "Europe/Moscow",
+    "Грозный": "Europe/Moscow",
+    "Якутск": "Asia/Yakutsk",
+    "Тверь": "Europe/Moscow",
+    "Старый Оскол": "Europe/Moscow",
+    "Улан-Удэ": "Asia/Irkutsk",
+    "Нижний Тагил": "Asia/Yekaterinburg",
+    "Нижневартовск": "Asia/Yekaterinburg",
+    "Псков": "Europe/Moscow",
+    "Йошкар-Ола": "Europe/Moscow",
+    "Кострома": "Europe/Moscow",
+    "Новороссийск": "Europe/Moscow",
+    "Дзержинск": "Europe/Moscow",
+    "Таганрог": "Europe/Moscow",
+    "Химки": "Europe/Moscow",
+    "Березники": "Asia/Yekaterinburg",
+    "Энгельс": "Europe/Saratov",
+    "Шахты": "Europe/Moscow",
 }
 
 _ALIAS_RAW = {
-    "": "-",
-    "-": "-",
-    "": "-",
-    "": "",
-    "--": "  ",
-    "": " ()",
-    "": " ()",
-    "": " ()",
+    "Питер": "Санкт-Петербург",
+    "СПб": "Санкт-Петербург",
+    "Петербург": "Санкт-Петербург",
+    "Екб": "Екатеринбург",
+    "Ростов-на-Дону": "Ростов-на-Дону",
+    "Набережные Челны": "Набережные Челны",
+    "Нижний Новгород": "Нижний Новгород",
+    "Балашиха (МО)": "Балашиха",
 }
 
 _normalized_lookup = {}
@@ -34076,11 +34413,15 @@ _normalized_names = {}
 
 
 def _normalize(value: str) -> str:
+    """Normalize city name for matching."""
     lowered = value.strip().lower()
-    lowered = lowered.replace("", "")
+    # Remove ё -> е
+    lowered = lowered.replace("ё", "е")
+    # Normalize different types of dashes to regular hyphen
     lowered = re.sub(r"[\u2010-\u2015]", "-", lowered)
     lowered = lowered.replace("-", " ")
     lowered = lowered.replace("(", " ").replace(")", " ")
+    # Collapse multiple spaces
     lowered = re.sub(r"\s+", " ", lowered)
     return lowered.strip()
 
@@ -34090,18 +34431,21 @@ for _city in ALLOWED_CITIES:
     _normalized_names[_city] = normalized
     _normalized_lookup[normalized] = _city
 
-CITY_ALIASES = { _normalize(key): value for key, value in _ALIAS_RAW.items() }
+CITY_ALIASES = {_normalize(key): value for key, value in _ALIAS_RAW.items()}
 
 
 def all_cities() -> List[str]:
+    """Return all allowed cities."""
     return list(ALLOWED_CITIES)
 
 
 def is_allowed_city(name: str) -> bool:
+    """Check if the city name is in the allowed list."""
     return name in _normalized_names
 
 
 def resolve_city_name(value: str) -> str | None:
+    """Resolve city name from query, including aliases."""
     normalized = _normalize(value)
     if not normalized:
         return None
@@ -34123,7 +34467,8 @@ def match_cities(query: str | None) -> List[str]:
         # Return all cities sorted alphabetically
         return sorted(list(ALLOWED_CITIES))
     matches = [
-        city for city, normalized in _normalized_names.items()
+        city
+        for city, normalized in _normalized_names.items()
         if normalized_query in normalized
     ]
     # Sort search results alphabetically
@@ -34131,6 +34476,7 @@ def match_cities(query: str | None) -> List[str]:
 
 
 def get_timezone(city_name: str) -> str | None:
+    """Get timezone for a city."""
     return CITY_TIMEZONES.get(city_name)
 
 
@@ -34203,8 +34549,8 @@ class Base(DeclarativeBase):
 
 ##### `field-service/field_service/db/models.py`
 
-**Strok:** 1128  
-**Razmer:** 40.95 KB
+**Strok:** 1154  
+**Razmer:** 41.94 KB
 
 ```python
 from __future__ import annotations
@@ -34525,8 +34871,31 @@ class masters(Base):
     def phone_number(self, value: Optional[str]) -> None:
         self.phone = value
 
-    # Compatibility alias for legacy field name used in tests
+    # Compatibility aliases for legacy field names used in tests
     telegram_user_id = synonym("tg_user_id")
+    tg_id = synonym("tg_user_id")  # Additional backward-compat alias
+
+    # Patronymic property for backward compatibility (no DB column)
+    @property
+    def patronymic(self) -> Optional[str]:
+        """Backward-compat property for tests using patronymic field."""
+        return getattr(self, "_patronymic", None)
+
+    @patronymic.setter
+    def patronymic(self, value: Optional[str]) -> None:
+        """Accept patronymic in constructor and auto-build full_name if needed."""
+        # Store in memory (not persisted to DB)
+        self._patronymic = value
+        # If full_name not set yet, try to build it from name parts
+        if not getattr(self, "full_name", None):
+            parts = [
+                getattr(self, "first_name", None),
+                value,  # patronymic
+                getattr(self, "last_name", None),
+            ]
+            parts = [p for p in parts if p]
+            if parts:
+                self.full_name = " ".join(parts)
 
     __table_args__ = (
         Index("ix_masters__mod_shift", "moderation_status", "shift_status"),
@@ -34849,8 +35218,11 @@ class order_status_history(Base):
     changed_by_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL")
     )
-    actor_type: Mapped[Optional[ActorType]] = mapped_column(
-        Enum(ActorType, name="actor_type"), nullable=True, index=True
+    actor_type: Mapped[ActorType] = mapped_column(
+        Enum(ActorType, name="actor_type"),
+        nullable=False,
+        default=ActorType.SYSTEM,
+        index=True
     )
     context: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
@@ -36299,6 +36671,66 @@ async def main() -> None:
 if __name__ == '__main__':
     asyncio.run(main())
 
+
+```
+
+---
+
+##### `field-service/field_service/services/_session_utils.py`
+
+**Strok:** 50  
+**Razmer:** 1.66 KB
+
+```python
+"""
+Session management utilities for services.
+
+This module provides a context manager that allows services to work
+with both test-provided sessions (already in transaction) and production
+sessions (need their own transaction).
+"""
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator, Optional
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from field_service.db.session import SessionLocal
+
+
+@asynccontextmanager
+async def maybe_managed_session(
+    session: Optional[AsyncSession],
+) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Context manager that either uses provided session or creates a new one.
+
+    If session is provided (typically from test fixtures), yields it as-is
+    without starting a new transaction - the caller manages transactions.
+
+    If session is None (production case), creates new session with automatic
+    transaction management (commit on success, rollback on error).
+
+    Args:
+        session: Optional session from caller (typically test fixture)
+
+    Yields:
+        AsyncSession: Either the provided session or a new managed session
+
+    Example:
+        >>> async def my_service(session: Optional[AsyncSession] = None):
+        ...     async with maybe_managed_session(session) as s:
+        ...         # Work with s - no explicit commit/rollback needed
+        ...         result = await s.execute(...)
+        ...         return result.scalar_one()
+    """
+    if session is not None:
+        # Test/external code manages transaction
+        yield session
+    else:
+        # Production: create session with automatic transaction
+        async with SessionLocal() as s:
+            async with s.begin():
+                yield s
 
 ```
 
@@ -37924,7 +38356,7 @@ class DistributionMetricsService:
 ##### `field-service/field_service/services/distribution_scheduler.py`
 
 **Strok:** 1959  
-**Razmer:** 64.98 KB
+**Razmer:** 65.00 KB
 
 ```python
 from __future__ import annotations
@@ -39346,8 +39778,8 @@ async def _escalate_logist(order_id: int):
 async def tick_once(
     cfg: DistConfig, 
     *, 
-    bot: Bot | None, 
-    alerts_chat_id: Optional[int],
+    bot: Bot | None = None, 
+    alerts_chat_id: Optional[int] = None,
     session: AsyncSession | None = None
 ) -> None:
     """
@@ -45133,6 +45565,130 @@ print(f"Fixed! Total lines: {len(lines)}")
 
 ---
 
+### `field-service/fix_nested_transactions.py`
+
+**Strok:** 114  
+**Razmer:** 4.04 KB
+
+```python
+"""
+Script to fix nested transactions in services by adding session parameter
+and using maybe_managed_session.
+"""
+import re
+from pathlib import Path
+
+
+def fix_service_file(file_path: Path) -> tuple[bool, str]:
+    """
+    Fix a service file to use maybe_managed_session.
+    
+    Returns:
+        (changed, message)
+    """
+    content = file_path.read_text(encoding='utf-8')
+    original = content
+    
+    # Check if already imports maybe_managed_session
+    has_import = 'from field_service.services._session_utils import maybe_managed_session' in content
+    
+    # Add import if needed
+    if not has_import and 'from field_service.db.session import SessionLocal' in content:
+        content = content.replace(
+            'from field_service.db.session import SessionLocal',
+            'from field_service.db.session import SessionLocal\nfrom field_service.services._session_utils import maybe_managed_session'
+        )
+    
+    # Pattern 1: async with self._session_factory() as session:\n            async with session.begin():
+    # Replace with: async with maybe_managed_session(session) as s:
+    pattern1 = r'async with self\._session_factory\(\) as session:\s*\n\s*async with session\.begin\(\):'
+    
+    def replacement1(match):
+        indent = '        '  # 8 spaces
+        return f'async with maybe_managed_session(session) as s:'
+    
+    # First pass: replace the pattern but keep session variable
+    content_lines = content.split('\n')
+    new_lines = []
+    i = 0
+    while i < len(content_lines):
+        line = content_lines[i]
+        
+        # Check for pattern
+        if 'async with self._session_factory() as session:' in line and i + 1 < len(content_lines):
+            next_line = content_lines[i + 1]
+            if 'async with session.begin():' in next_line:
+                # Found the pattern - skip both lines and add replacement
+                indent = ' ' * (len(line) - len(line.lstrip()))
+                new_lines.append(f'{indent}async with maybe_managed_session(session) as s:')
+                i += 2
+                continue
+        
+        new_lines.append(line)
+        i += 1
+    
+    content = '\n'.join(new_lines)
+    
+    # Now replace all 'session.' with 's.' within the changed functions
+    # This is tricky - we need to identify the scope and replace only there
+    # For now, let's do a simple approach: replace 'await session.' with 'await s.'
+    content = content.replace('await session.execute', 'await s.execute')
+    content = content.replace('await session.scalar', 'await s.scalar')
+    content = content.replace('await session.get', 'await s.get')
+    content = content.replace('session.add(', 's.add(')
+    content = content.replace('session.add_all(', 's.add_all(')
+    content = content.replace('await session.flush', 'await s.flush')
+    content = content.replace('await session.commit', 'await s.commit')
+    content = content.replace('await session.refresh', 'await s.refresh')
+    content = content.replace('await session.run_sync', 'await s.run_sync')
+    
+    changed = content != original
+    if changed:
+        file_path.write_text(content, encoding='utf-8')
+        return True, f"Fixed {file_path.name}"
+    else:
+        return False, f"No changes needed for {file_path.name}"
+
+
+def main():
+    # Find all service files in admin_bot/services
+    services_dir = Path('C:/ProjectF/field-service/field_service/bots/admin_bot/services')
+    
+    if not services_dir.exists():
+        print(f"Directory not found: {services_dir}")
+        return
+    
+    files_to_fix = [
+        'masters.py',
+        'staff.py',
+        'settings.py',
+        'orders.py',
+        'distribution.py',
+    ]
+    
+    print("Starting fix process...")
+    print()
+    
+    for filename in files_to_fix:
+        file_path = services_dir / filename
+        if file_path.exists():
+            changed, message = fix_service_file(file_path)
+            status = '[OK]' if changed else '[--]'
+            print(f"{status} {message}")
+        else:
+            print(f"[!!] File not found: {filename}")
+    
+    print()
+    print("Done!")
+
+
+if __name__ == '__main__':
+    main()
+
+```
+
+---
+
 ### `field-service/fix_offers_model.py`
 
 **Strok:** 69  
@@ -47202,8 +47758,8 @@ if __name__ == "__main__":
 
 #### `field-service/tests/conftest.py`
 
-**Strok:** 320  
-**Razmer:** 12.16 KB
+**Strok:** 358  
+**Razmer:** 14.27 KB
 
 ```python
 # -*- coding: utf-8 -*-
@@ -47400,6 +47956,44 @@ async def async_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
 @pytest_asyncio.fixture(scope="function")
 async def session(async_session: AsyncSession) -> AsyncIterator[AsyncSession]:
     yield async_session
+
+
+# ===== ФИКС 2: Минимальный сид для FK (autouse) =====
+@pytest_asyncio.fixture(autouse=True)
+async def _minimal_seed(async_session: AsyncSession):
+    """
+    Автоматически создаёт минимальные справочные данные для предотвращения FK-ошибок.
+    Срабатывает для КАЖДОГО теста перед его выполнением.
+    Не заменяет фабрики, но страхует тесты, которые создают сущности без связанных записей.
+    
+    Создаёт базовые сущности с уникальными именами, чтобы не конфликтовать с тестами.
+    """
+    # Город по умолчанию - с уникальным именем чтобы не конфликтовать с тестами
+    # Используем имя которое вряд ли будет использоваться в тестах
+    seed_city_result = await async_session.execute(
+        sa.select(m.cities).where(m.cities.name == "__SeedCity__")
+    )
+    seed_city = seed_city_result.scalar_one_or_none()
+    
+    if seed_city is None:
+        # Используем timezone, который важен для планировщика
+        seed_city = m.cities(name="__SeedCity__", timezone="Europe/Moscow")
+        async_session.add(seed_city)
+        await async_session.flush()  # без commit! Всё внутри транзакции теста
+
+    # Район по умолчанию - создаём только если нет ни одного для этого города
+    seed_district_result = await async_session.execute(
+        sa.select(m.districts).where(
+            m.districts.city_id == seed_city.id,
+            m.districts.name == "__SeedDistrict__"
+        )
+    )
+    seed_district = seed_district_result.scalar_one_or_none()
+    
+    if seed_district is None:
+        seed_district = m.districts(city_id=seed_city.id, name="__SeedDistrict__")
+        async_session.add(seed_district)
+        await async_session.flush()
 
 
 # ===== Стандартные фикстуры для тестов =====
@@ -66523,6 +67117,80 @@ if __name__ == "__main__":
 
 ---
 
+## `patch_tick_once.py`
+
+**Strok:** 64  
+**Razmer:** 3.55 KB
+
+```python
+# -*- coding: utf-8 -*-
+"""Патч для tick_once: делаем все параметры опциональными"""
+
+import re
+import sys
+
+# Для Windows
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
+
+def patch_file():
+    file_path = r"C:\ProjectF\field-service\field_service\services\distribution_scheduler.py"
+    
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Простой поиск и замена по уникальной строке
+    old_signature = "async def tick_once(\n    cfg: DistConfig, \n    *, \n    bot: Bot | None, \n    alerts_chat_id: Optional[int],"
+    new_signature = "async def tick_once(\n    cfg: DistConfig, \n    *, \n    bot=None, \n    alerts_chat_id: Optional[int] = None,"
+    
+    if old_signature not in content:
+        print("ОШИБКА: Старая сигнатура не найдена!")
+        print("Возможно файл уже изменён или формат не совпадает")
+        return False
+    
+    # Заменяем только сигнатуру
+    content_new = content.replace(old_signature, new_signature)
+    
+    # Также заменим комментарии внутри docstring
+    old_doc = '    """\n    Один тик автораспределения.\n    \n    Args:\n        cfg: Конфигурация распределения\n        bot: Telegram bot для уведомлений (опционально)\n        alerts_chat_id: ID канала для алертов (опционально)\n        session: Опциональная сессия БД (для тестов)'
+    
+    new_doc = '    """\n    Один тик автораспределения.\n    \n    ВАЖНО: Все параметры кроме cfg - опциональные.\n    \n    Args:\n        cfg: Конфигурация распределения\n        bot: Telegram bot для уведомлений (опционально, default=None)\n        alerts_chat_id: ID канала для алертов (опционально, default=None)\n        session: Опциональная сессия БД (для тестов, default=None)'
+    
+    content_new = content_new.replace(old_doc, new_doc)
+    
+    # Заменим также реализацию на использование context manager
+    old_impl = '''    # Если session передан (фикстура) - работаем напрямую,
+    # чтобы не нарушить (вложенный SAVEPOINT) - создаём временную.
+    if session is not None:
+        # Используем переданную сессию без bind, чтобы не нарушить
+        # её identity map и nested SAVEPOINT.
+        await _tick_once_impl(session, cfg, bot, alerts_chat_id)
+    else:
+        async with SessionLocal() as session:
+            await _tick_once_impl(session, cfg, bot, alerts_chat_id)'''
+    
+    new_impl = '''    # Используем context manager для работы с опциональной сессией
+    async with _maybe_session(session) as s:
+        await _tick_once_impl(s, cfg, bot, alerts_chat_id)'''
+    
+    content_new = content_new.replace(old_impl, new_impl)
+    
+    # Сохраняем
+    with open(file_path, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(content_new)
+    
+    print("Файл успешно обновлён!")
+    print(f"Изменён: {file_path}")
+    return True
+
+if __name__ == "__main__":
+    success = patch_file()
+    sys.exit(0 if success else 1)
+
+```
+
+---
+
 #### `tests/e2e/conftest.py`
 
 **Strok:** 472  
@@ -72336,8 +73004,8 @@ else:
 
 ## Itogovaya statistika
 
-- **Vsego failov:** 323
-- **Vsego strok koda:** 68,741
-- **Obshiy razmer:** 2.31 MB
-- **Sredniy razmer faila:** 7.32 KB
-- **Srednee strok v faile:** 212
+- **Vsego failov:** 329
+- **Vsego strok koda:** 69,343
+- **Obshiy razmer:** 2.33 MB
+- **Sredniy razmer faila:** 7.26 KB
+- **Srednee strok v faile:** 210

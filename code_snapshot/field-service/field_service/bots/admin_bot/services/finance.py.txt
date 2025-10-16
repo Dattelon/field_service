@@ -65,7 +65,6 @@ class DBFinanceService:
         by_staff_id: int,
         *,
         city_ids: Optional[Iterable[int]] = None,
-        session: Optional[AsyncSession] = None,
     ) -> tuple[int, list[str]]:
         """
         Массовое одобрение комиссий за период.
@@ -75,7 +74,6 @@ class DBFinanceService:
             end_date: Конец периода (включительно)
             by_staff_id: ID админа
             city_ids: Фильтр по городам (RBAC)
-            session: Optional session for testing
         
         Returns:
             (количество одобренных, список ошибок)
@@ -83,9 +81,9 @@ class DBFinanceService:
         errors: list[str] = []
         approved_count = 0
         
-        async with maybe_managed_session(session if session else None) as s:
+        async with self._session_factory() as session:
             # Загружаем админа для RBAC
-            staff = await _load_staff_access(s, by_staff_id)
+            staff = await _load_staff_access(session, by_staff_id)
             if staff is None:
                 return 0, ["Админ не найден"]
             
@@ -115,13 +113,13 @@ class DBFinanceService:
             if allowed is not None:
                 stmt = stmt.where(m.orders.city_id.in_(allowed))
             
-            rows = await s.execute(stmt)
+            rows = await session.execute(stmt)
             commission_ids = [row[0] for row in rows]
             
             if not commission_ids:
                 return 0, ["Нет комиссий для одобрения"]
             
-            # Одобряем каждую комиссию
+            # Одобряем каждую комиссию (НЕ создаём вложенные транзакции)
             for comm_id in commission_ids:
                 try:
                     # Загружаем комиссию с блокировкой
@@ -130,7 +128,7 @@ class DBFinanceService:
                         .where(m.commissions.id == comm_id)
                         .with_for_update()
                     )
-                    comm_row = await s.execute(comm_stmt)
+                    comm_row = await session.execute(comm_stmt)
                     commission = comm_row.scalar_one_or_none()
                     
                     if not commission:
@@ -149,7 +147,7 @@ class DBFinanceService:
                     
                     # Применяем реферальные вознаграждения
                     try:
-                        await apply_rewards_for_commission(s, commission)
+                        await apply_rewards_for_commission(session, commission)
                     except Exception as exc:
                         pass  # logger not imported, skip warning
                     
@@ -446,104 +444,192 @@ class DBFinanceService:
         *, 
         paid_amount: Decimal, 
         by_staff_id: int,
-        session: Optional[AsyncSession] = None
     ) -> bool:
         paid_amount = Decimal(str(paid_amount)).quantize(Decimal('0.01'))
-        async with maybe_managed_session(session) as s:
-            row = await s.execute(
-                select(m.commissions, m.orders)
-                .join(m.orders, m.orders.id == m.commissions.order_id)
-                .where(m.commissions.id == commission_id)
-                .with_for_update()
-            )
-            result = row.first()
-            if not result:
-                return False
-            commission_row, order_row = result
-            await s.execute(
-                update(m.commissions)
-                .where(m.commissions.id == commission_id)
-                .values(
-                    status=m.CommissionStatus.APPROVED,
-                    is_paid=True,
-                    paid_amount=paid_amount,
-                    paid_approved_at=datetime.now(UTC),
-                    payment_reference=None,
+        async with self._session_factory() as session:
+            # Проверяем, нужно ли начинать транзакцию
+            # (в тестах сессия уже в транзакции)
+            if session.in_transaction():
+                # Работаем с существующей транзакцией
+                row = await session.execute(
+                    select(m.commissions, m.orders)
+                    .join(m.orders, m.orders.id == m.commissions.order_id)
+                    .where(m.commissions.id == commission_id)
+                    .with_for_update()
                 )
-            )
-            if order_row.status != m.OrderStatus.CLOSED:
-                await s.execute(
-                    update(m.orders)
-                    .where(m.orders.id == order_row.id)
+                result = row.first()
+                if not result:
+                    return False
+                commission_row, order_row = result
+                await session.execute(
+                    update(m.commissions)
+                    .where(m.commissions.id == commission_id)
                     .values(
-                        status=m.OrderStatus.CLOSED,
-                        updated_at=func.now(),
-                        version=order_row.version + 1,
+                        status=m.CommissionStatus.APPROVED,
+                        is_paid=True,
+                        paid_amount=paid_amount,
+                        paid_approved_at=datetime.now(UTC),
+                        payment_reference=None,
                     )
                 )
-                history_staff_id = by_staff_id
-                if history_staff_id:
-                    exists = await s.get(m.staff_users, history_staff_id)
-                    if not exists:
-                        history_staff_id = None
-
-                await s.execute(
-                    insert(m.order_status_history).values(
-                        order_id=order_row.id,
-                        from_status=order_row.status,
-                        to_status=m.OrderStatus.CLOSED,
-                        changed_by_staff_id=history_staff_id,
-                        reason='commission_paid',
-                        actor_type=m.ActorType.ADMIN,
+                if order_row.status != m.OrderStatus.CLOSED:
+                    await session.execute(
+                        update(m.orders)
+                        .where(m.orders.id == order_row.id)
+                        .values(
+                            status=m.OrderStatus.CLOSED,
+                            updated_at=func.now(),
+                            version=order_row.version + 1,
+                        )
                     )
-                )
+                    history_staff_id = by_staff_id
+                    if history_staff_id:
+                        exists = await session.get(m.staff_users, history_staff_id)
+                        if not exists:
+                            history_staff_id = None
 
-            await apply_rewards_for_commission(
-                s,
-                commission_id=commission_id,
-                master_id=commission_row.master_id,
-                base_amount=paid_amount,
-            )
-        return True
+                    await session.execute(
+                        insert(m.order_status_history).values(
+                            order_id=order_row.id,
+                            from_status=order_row.status,
+                            to_status=m.OrderStatus.CLOSED,
+                            changed_by_staff_id=history_staff_id,
+                            reason='commission_paid',
+                            actor_type=m.ActorType.ADMIN,
+                        )
+                    )
+
+                await apply_rewards_for_commission(
+                    session,
+                    commission_id=commission_id,
+                    master_id=commission_row.master_id,
+                    base_amount=paid_amount,
+                )
+                return True
+            else:
+                # Создаём транзакцию для прода
+                async with session.begin():
+                    row = await session.execute(
+                        select(m.commissions, m.orders)
+                        .join(m.orders, m.orders.id == m.commissions.order_id)
+                        .where(m.commissions.id == commission_id)
+                        .with_for_update()
+                    )
+                    result = row.first()
+                    if not result:
+                        return False
+                    commission_row, order_row = result
+                    await session.execute(
+                        update(m.commissions)
+                        .where(m.commissions.id == commission_id)
+                        .values(
+                            status=m.CommissionStatus.APPROVED,
+                            is_paid=True,
+                            paid_amount=paid_amount,
+                            paid_approved_at=datetime.now(UTC),
+                            payment_reference=None,
+                        )
+                    )
+                    if order_row.status != m.OrderStatus.CLOSED:
+                        await session.execute(
+                            update(m.orders)
+                            .where(m.orders.id == order_row.id)
+                            .values(
+                                status=m.OrderStatus.CLOSED,
+                                updated_at=func.now(),
+                                version=order_row.version + 1,
+                            )
+                        )
+                        history_staff_id = by_staff_id
+                        if history_staff_id:
+                            exists = await session.get(m.staff_users, history_staff_id)
+                            if not exists:
+                                history_staff_id = None
+
+                        await session.execute(
+                            insert(m.order_status_history).values(
+                                order_id=order_row.id,
+                                from_status=order_row.status,
+                                to_status=m.OrderStatus.CLOSED,
+                                changed_by_staff_id=history_staff_id,
+                                reason='commission_paid',
+                                actor_type=m.ActorType.ADMIN,
+                            )
+                        )
+
+                await apply_rewards_for_commission(
+                    session,
+                    commission_id=commission_id,
+                    master_id=commission_row.master_id,
+                    base_amount=paid_amount,
+                )
+                return True
 
     async def reject(
         self, 
         commission_id: int, 
         reason: str, 
         by_staff_id: int,
-        session: Optional[AsyncSession] = None
     ) -> bool:
-        async with maybe_managed_session(session) as s:
-            await s.execute(
-                update(m.commissions)
-                .where(m.commissions.id == commission_id)
-                .values(
-                    status=m.CommissionStatus.WAIT_PAY,
-                    is_paid=False,
-                    paid_approved_at=None,
-                    paid_reported_at=None,
-                    paid_amount=None,
-                    payment_reference=reason,
+        async with self._session_factory() as session:
+            if session.in_transaction():
+                await session.execute(
+                    update(m.commissions)
+                    .where(m.commissions.id == commission_id)
+                    .values(
+                        status=m.CommissionStatus.WAIT_PAY,
+                        is_paid=False,
+                        paid_approved_at=None,
+                        paid_reported_at=None,
+                        paid_amount=None,
+                        payment_reference=reason,
+                    )
                 )
-            )
+            else:
+                async with session.begin():
+                    await session.execute(
+                        update(m.commissions)
+                        .where(m.commissions.id == commission_id)
+                        .values(
+                            status=m.CommissionStatus.WAIT_PAY,
+                            is_paid=False,
+                            paid_approved_at=None,
+                            paid_reported_at=None,
+                            paid_amount=None,
+                            payment_reference=reason,
+                        )
+                    )
         return True
 
     async def block_master_for_overdue(
         self, 
         master_id: int, 
         by_staff_id: int,
-        session: Optional[AsyncSession] = None
     ) -> bool:
-        async with maybe_managed_session(session) as s:
-            await s.execute(
-                update(m.masters)
-                .where(m.masters.id == master_id)
-                .values(
-                    is_blocked=True,
-                    is_active=False,
-                    blocked_at=datetime.now(UTC),
-                    blocked_reason="manual_block_from_finance",
-                    updated_at=func.now(),
+        async with self._session_factory() as session:
+            if session.in_transaction():
+                await session.execute(
+                    update(m.masters)
+                    .where(m.masters.id == master_id)
+                    .values(
+                        is_blocked=True,
+                        is_active=False,
+                        blocked_at=datetime.now(UTC),
+                        blocked_reason="manual_block_from_finance",
+                        updated_at=func.now(),
+                    )
                 )
-            )
+            else:
+                async with session.begin():
+                    await session.execute(
+                        update(m.masters)
+                        .where(m.masters.id == master_id)
+                        .values(
+                            is_blocked=True,
+                            is_active=False,
+                            blocked_at=datetime.now(UTC),
+                            blocked_reason="manual_block_from_finance",
+                            updated_at=func.now(),
+                        )
+                    )
         return True
