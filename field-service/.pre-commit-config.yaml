@@ -1,0 +1,38 @@
+repos:
+  # Базовые проверки кодировки и форматирования
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-ast
+      - id: check-added-large-files
+      - id: check-json
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  
+  # Линтеры Python
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+  
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.5
+    hooks:
+      - id: ruff
+  
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.6.1
+    hooks:
+      - id: mypy
+  
+  # Кастомная проверка mojibake
+  - repo: local
+    hooks:
+      - id: no-mojibake
+        name: Check for mojibake sequences
+        entry: python tools/check_no_mojibake.py
+        language: system
+        pass_filenames: false
+        types: [python]

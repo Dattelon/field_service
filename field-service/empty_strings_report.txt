@@ -1,0 +1,130 @@
+Scanning C:\ProjectF\field-service\field_service for empty/suspicious strings...
+
+Found 245 potential issues:
+
+
+File: C:\ProjectF\field-service\field_service\bots\admin_bot.backup\handlers.py
+  Line 124: empty_or_short_string
+    Value: ''
+    Key: StaffRole.LOGIST
+  Line 2270: empty_or_short_string
+    Value: ''
+    Key: 'distribution'
+  Line 2271: empty_or_short_string
+    Value: ''
+    Key: 'limits'
+  Line 2272: empty_or_short_string
+    Value: ''
+    Key: 'support'
+  Line 2273: empty_or_short_string
+    Value: ''
+    Key: 'geo'
+  Line 2274: empty_or_short_string
+    Value: ''
+    Key: 'channels'
+
+File: C:\ProjectF\field-service\field_service\bots\admin_bot.backup\handlers\staff_management.py
+  Line 61: empty_or_short_string
+    Value: ''
+    Key: 'add'
+  Line 62: empty_or_short_string
+    Value: ''
+    Key: 'list'
+  Line 63: empty_or_short_string
+    Value: ''
+    Key: 'edit'
+  Line 64: empty_or_short_string
+    Value: ''
+    Key: 'delete'
+  Line 65: empty_or_short_string
+    Value: ''
+    Key: 'active'
+  Line 66: empty_or_short_string
+    Value: ''
+    Key: 'inactive'
+  Line 67: empty_or_short_string
+    Value: ''
+    Key: 'back'
+  Line 68: empty_or_short_string
+    Value: ''
+    Key: 'confirm'
+  Line 69: empty_or_short_string
+    Value: ''
+    Key: 'cancel'
+  Line 70: empty_or_short_string
+    Value: ''
+    Key: 'global_admin'
+  Line 71: empty_or_short_string
+    Value: ''
+    Key: 'city_admin'
+  Line 72: empty_or_short_string
+    Value: ''
+    Key: 'logist'
+
+File: C:\ProjectF\field-service\field_service\bots\admin_bot.backup\handlers_finance.py
+  Line 37: empty_or_short_string
+    Value: ''
+    Key: 'sbp'
+  Line 38: empty_or_short_string
+    Value: ''
+    Key: 'cash'
+  Line 647: empty_or_short_string
+    Value: ''
+    Key: 'pd'
+  Line 648: empty_or_short_string
+    Value: ''
+    Key: 'ov'
+  Line 470: empty_or_short_string
+    Value: ''
+    Key: 1
+  Line 540: empty_or_short_string
+    Value: ''
+    Key: 1
+
+File: C:\ProjectF\field-service\field_service\bots\admin_bot.backup\routers\admin_masters.py
+  Line 44: empty_or_short_string
+    Value: ''
+    Key: 'BREAK'
+  Line 47: empty_or_short_string
+    Value: ''
+    Key: 'ok'
+  Line 49: empty_or_short_string
+    Value: ''
+    Key: 'blk'
+
+File: C:\ProjectF\field-service\field_service\bots\admin_bot.backup\services_db.py
+  Line 68: suspicious_non_ascii
+    Value: '╤┴╧'
+    Bytes: d0a1d091d09f
+
+File: C:\ProjectF\field-service\field_service\bots\admin_bot.backup\texts.py
+  Line 21: empty_or_short_string
+    Value: ''
+    Key: 'REPORTED'
+  Line 22: empty_or_short_string
+    Value: ''
+    Key: 'APPROVED'
+  Line 23: empty_or_short_string
+    Value: ''
+    Key: 'OVERDUE'
+
+File: C:\ProjectF\field-service\field_service\bots\admin_bot\handlers\finance\main.py
+  Line 70: suspicious_non_ascii
+    Value: '╤┴╧'
+    Bytes: d0a1d091d09f
+  Line 80: suspicious_non_ascii
+    Value: 'срэъ'
+    Bytes: d0b1d0b0d0bdd0ba
+  Line 82: suspicious_non_ascii
+    Value: 'ёся'
+    Bytes: d181d0b1d0bf
+  Line 89: suspicious_non_ascii
+    Value: 'эры'
+    Bytes: d0bdd0b0d0bb
+  Line 90: suspicious_non_ascii
+    Value: 'ъ¤°'
+    Bytes: d0bad18dd188
+  Line 556: suspicious_non_ascii
+    Value: 'чр '
+    Bytes: d0b7d0b020
+  Line 758: suspicious_non_ascii

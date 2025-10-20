@@ -1,0 +1,38 @@
+"""Add missing cities to database.
+
+Revision ID: 2025_10_04_0001
+Revises: 
+Create Date: 2025-10-04 14:30:00
+
+"""
+from __future__ import annotations
+
+from alembic import op
+import sqlalchemy as sa
+
+from field_service.data.cities import ALLOWED_CITIES
+
+# revision identifiers, used by Alembic.
+revision = "2025_10_04_0001"
+down_revision = "2025_10_01_0002"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    """Add all missing cities from ALLOWED_CITIES."""
+    conn = op.get_bind()
+    insert_stmt = sa.text(
+        """
+        INSERT INTO cities(name, is_active)
+        VALUES (:name, TRUE)
+        ON CONFLICT (name) DO UPDATE SET is_active = TRUE
+        """
+    )
+    for name in ALLOWED_CITIES:
+        conn.execute(insert_stmt, {"name": name})
+
+
+def downgrade() -> None:
+    # No-op: we keep all cities
+    pass

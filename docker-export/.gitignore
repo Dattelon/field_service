@@ -1,0 +1,18 @@
+# Docker export artifacts
+images/
+init-db/
+
+# Environment configuration (содержит секреты)
+.env
+
+# Логи
+*.log
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Временные файлы
+*.tmp
+*.bak
+*~

@@ -1,0 +1,172 @@
+# field_service/bots/admin_bot/handlers/staff_access.py
+"""Обработчики регистрации персонала через access code (StaffAccessFSM)."""
+from __future__ import annotations
+
+from aiogram import Router
+from aiogram.filters import StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
+
+from field_service.services.onboarding_service import normalize_phone
+
+from ..dto import StaffUser
+from ..states import StaffAccessFSM
+from ..keyboards import main_menu
+from ..services_db import AccessCodeError
+from .helpers import _staff_service, _resolve_city_names
+from .menu import (
+    STAFF_CODE_PROMPT,
+    STAFF_CODE_ERROR,
+    STAFF_PDN_TEXT,
+    STAFF_ROLE_LABELS,
+    ACCESS_CODE_ERROR_MESSAGES,
+)
+
+
+router = Router(name="admin_staff_access")
+
+
+# ============================================
+# РЕГИСТРАЦИЯ ЧЕРЕЗ ACCESS CODE
+# ============================================
+
+@router.message(StateFilter(StaffAccessFSM.code))
+async def staff_access_enter_code(message: Message, state: FSMContext) -> None:
+    """
+    Ввод access code для регистрации.
+    
+    Первый шаг регистрации персонала.
+    """
+    code_value = (message.text or "").strip()
+    if not code_value:
+        await message.answer("Код не может быть пустым.")
+        return
+    
+    staff_service = _staff_service(message.bot)
+    record = await staff_service.validate_access_code_value(code_value)
+    if not record:
+        await message.answer(STAFF_CODE_ERROR)
+        return
+    
+    role_label = STAFF_ROLE_LABELS.get(record.role, record.role.value)
+    city_names = await _resolve_city_names(message.bot, record.city_ids)
+    
+    await state.update_data(
+        access_code=record.code,
+        access_code_id=record.id,
+        access_role=record.role.value,
+        access_city_ids=list(record.city_ids),
+    )
+    
+    summary_lines = [
+        f"Роль: {role_label}",
+        f"Города: {', '.join(city_names) if city_names else '-'}",
+    ]
+    await message.answer("\n".join(summary_lines))
+    
+    await state.set_state(StaffAccessFSM.pdn)
+    await message.answer(STAFF_PDN_TEXT)
+
+
+@router.message(StateFilter(StaffAccessFSM.pdn))
+async def staff_access_pdn(message: Message, state: FSMContext) -> None:
+    """
+    Обработка согласия на обработку персональных данных.
+    
+    Ожидается: "Согласен" или "Не согласен"
+    """
+    text_value = (message.text or "").strip().lower()
+    
+    if text_value in {"не согласен", "нет", "no"}:
+        await state.clear()
+        await message.answer("Регистрация отменена. Отправьте /start, чтобы начать заново.")
+        return
+    
+    if text_value not in {"согласен", "да", "ok", "yes"}:
+        await message.answer('Пожалуйста, ответьте "Согласен" или "Не согласен".')
+        return
+    
+    await state.set_state(StaffAccessFSM.full_name)
+    await message.answer("Введите ваше полное имя (Фамилия Имя Отчество).")
+
+
+@router.message(StateFilter(StaffAccessFSM.full_name))
+async def staff_access_full_name(message: Message, state: FSMContext) -> None:
+    """
+    Ввод полного имени.
+    
+    Минимум 5 символов для валидации.
+    """
+    full_name = (message.text or "").strip()
+    if len(full_name) < 5:
+        await message.answer("Имя слишком короткое. Введите полное ФИО.")
+        return
+    
+    await state.update_data(full_name=full_name)
+    await state.set_state(StaffAccessFSM.phone)
+    await message.answer("Укажите ваш телефон в формате +7XXXXXXXXXX или 8XXXXXXXXXX.")
+
+
+@router.message(StateFilter(StaffAccessFSM.phone))
+async def staff_access_phone(message: Message, state: FSMContext) -> None:
+    """
+    Ввод телефона и финализация регистрации.
+    
+    Формат: +7XXXXXXXXXX или 8XXXXXXXXXX
+    После успешной регистрации создаётся запись в staff_users.
+    """
+    raw_phone = (message.text or "").strip()
+    try:
+        normalized = normalize_phone(raw_phone)
+    except ValueError:
+        await message.answer("Неверный формат. Используйте: +7XXXXXXXXXX или 8XXXXXXXXXX")
+        return
+    
+    data = await state.get_data()
+    code_value = data.get("access_code")
+    full_name = data.get("full_name")
+    role_token = data.get("access_role")
+    
+    if not code_value or not full_name or not role_token:
+        await state.clear()
+        await message.answer("Ошибка: данные сессии потеряны. Отправьте /start чтобы начать заново.")
+        return
+    
+    user = message.from_user
+    if not user:
+        await message.answer("Не удалось получить информацию о пользователе.")
+        return
+    
+    staff_service = _staff_service(message.bot)
+    try:
+        staff_user = await staff_service.register_staff_user_from_code(
+            code_value=code_value,
+            tg_user_id=user.id,
+            username=user.username,
+            full_name=full_name,
+            phone=normalized,
+        )
+    except AccessCodeError as exc:
+        error_text = ACCESS_CODE_ERROR_MESSAGES.get(
+            exc.reason,
+            "Ошибка регистрации. Обратитесь к администратору.",
+        )
+        await message.answer(error_text)
+        await state.set_state(StaffAccessFSM.code)
+        await message.answer(STAFF_CODE_PROMPT)
+        return
+    
+    await state.clear()
+    
+    role_label = STAFF_ROLE_LABELS.get(staff_user.role, staff_user.role.value)
+    city_names = await _resolve_city_names(message.bot, staff_user.city_ids)
+    
+    lines = [
+        f"✅ Вы зарегистрированы как {role_label}.",
+        f"Города: {', '.join(city_names) if city_names else '-'}",
+    ]
+    await message.answer("\n".join(lines))
+    await message.answer("Добро пожаловать. Выберите раздел:", reply_markup=main_menu(staff_user))
+
+
+__all__ = ["router"]

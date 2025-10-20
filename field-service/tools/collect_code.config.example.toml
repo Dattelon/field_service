@@ -1,0 +1,86 @@
+# Конфигурация для collect_code.py
+# Скопируйте этот файл как collect_code.config.toml и настройте под себя
+
+[files]
+# Включаемые расширения (код)
+include_extensions = [
+    ".py",           # Python
+    ".sql",          # SQL
+    ".ini",          # Config
+    ".toml",         # Config
+    ".yaml", ".yml", # Config
+    ".json",         # Config/Data
+    ".env.example",  # Config template
+    ".sh",           # Shell scripts
+    ".bat",          # Batch scripts
+    ".js",           # JavaScript
+    ".html",         # HTML
+    ".css",          # CSS
+]
+
+# Исключаемые расширения (документация и прочее)
+exclude_extensions = [
+    ".md",           # Markdown
+    ".txt",          # Text
+    ".log",          # Logs
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",  # Images
+    ".pdf", ".doc", ".docx",  # Documents
+    ".zip", ".tar", ".gz",     # Archives
+    ".pyc", ".pyo",            # Python bytecode
+    ".lock",                   # Lock files
+    ".bak", ".backup",         # Backups
+]
+
+# Максимальный размер файла в МБ
+max_file_size_mb = 10
+
+[directories]
+# Исключаемые директории
+exclude = [
+    "__pycache__",
+    ".git",
+    ".venv", "venv", "env",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "node_modules",
+    ".idea",
+    ".vscode",
+    "dist",
+    "build",
+]
+
+# Исключаемые файлы по имени
+exclude_files = [
+    ".DS_Store",
+    "Thumbs.db",
+    ".gitignore",
+    ".gitattributes",
+    ".editorconfig",
+    ".pre-commit-config.yaml",
+]
+
+[output]
+# Формат по умолчанию: "text" или "markdown"
+default_format = "markdown"
+
+# Имя выходного файла по умолчанию
+default_filename = "code_export.md"
+
+# Включить оглавление (только для markdown)
+include_toc = true
+
+# Включить статистику в начале файла
+include_stats = true
+
+[custom]
+# Дополнительные настройки
+
+# Показывать прогресс сбора файлов
+show_progress = true
+
+# Использовать цветной вывод в консоли (если поддерживается)
+colored_output = true
+
+# Уровень детализации: "quiet", "normal", "verbose"
+verbosity = "normal"

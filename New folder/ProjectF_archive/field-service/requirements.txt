@@ -1,0 +1,23 @@
+# Core runtime dependencies
+aiogram>=3.7
+aiohttp>=3.9
+SQLAlchemy>=2.0
+asyncpg>=0.29
+psycopg2-binary>=2.9
+alembic>=1.13
+python-dotenv>=1.0
+pydantic>=2.8
+rapidfuzz>=3.6
+XlsxWriter>=3.1
+tzdata>=2024.1
+aiosqlite>=0.19
+openpyxl>=3.1
+
+# Tooling & QA
+pytest>=8.3
+pytest-asyncio>=0.23
+pytest-timeout>=2.2
+pytest-env>=1.0
+ruff>=0.13
+black>=24.8
+mypy>=1.8

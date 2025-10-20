@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: field_service
+      POSTGRES_USER: fs_user
+      POSTGRES_PASSWORD: fs_password
+    ports:
+      - "5439:5432"
+    volumes:
+      - fs_pgdata:/var/lib/postgresql/data
+    command: postgres -c max_connections=300
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fs_user -d field_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  admin-bot:
+    build: .
+    command: python -m field_service.bots.admin_bot.main
+    env_file: .env
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  master-bot:
+    build: .
+    command: python -m field_service.bots.master_bot.main
+    env_file: .env
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  fs_pgdata:

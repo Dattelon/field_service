@@ -1,0 +1,350 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-8.3.2, pluggy-1.6.0 -- C:\ProjectF\field-service\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\ProjectF\field-service
+configfile: pytest.ini
+plugins: asyncio-0.23.8
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/test_distribution_metrics.py::test_metrics_recorded_on_offer_accept FAILED [100%]
+
+================================== FAILURES ===================================
+____________________ test_metrics_recorded_on_offer_accept ____________________
+
+self = <sqlalchemy.orm.session.Session object at 0x00000292547E6150>
+objects = None
+
+    def _flush(self, objects: Optional[Sequence[object]] = None) -> None:
+        dirty = self._dirty_states
+        if not dirty and not self._deleted and not self._new:
+            self.identity_map._modified.clear()
+            return
+    
+        flush_context = UOWTransaction(self)
+    
+        if self.dispatch.before_flush:
+            self.dispatch.before_flush(self, flush_context, objects)
+            # re-establish "dirty states" in case the listeners
+            # added
+            dirty = self._dirty_states
+    
+        deleted = set(self._deleted)
+        new = set(self._new)
+    
+        dirty = set(dirty).difference(deleted)
+    
+        # create the set of all objects we want to operate upon
+        if objects:
+            # specific list passed in
+            objset = set()
+            for o in objects:
+                try:
+                    state = attributes.instance_state(o)
+    
+                except exc.NO_STATE as err:
+                    raise exc.UnmappedInstanceError(o) from err
+                objset.add(state)
+        else:
+            objset = None
+    
+        # store objects whose fate has been decided
+        processed = set()
+    
+        # put all saves/updates into the flush context.  detect top-level
+        # orphans and throw them into deleted.
+        if objset:
+            proc = new.union(dirty).intersection(objset).difference(deleted)
+        else:
+            proc = new.union(dirty).difference(deleted)
+    
+        for state in proc:
+            is_orphan = _state_mapper(state)._is_orphan(state)
+    
+            is_persistent_orphan = is_orphan and state.has_identity
+    
+            if (
+                is_orphan
+                and not is_persistent_orphan
+                and state._orphaned_outside_of_session
+            ):
+                self._expunge_states([state])
+            else:
+                _reg = flush_context.register_object(
+                    state, isdelete=is_persistent_orphan
+                )
+                assert _reg, "Failed to add object to the flush context!"
+                processed.add(state)
+    
+        # put all remaining deletes into the flush context.
+        if objset:
+            proc = deleted.intersection(objset).difference(processed)
+        else:
+            proc = deleted.difference(processed)
+        for state in proc:
+            _reg = flush_context.register_object(state, isdelete=True)
+            assert _reg, "Failed to add object to the flush context!"
+    
+        if not flush_context.has_work:
+            return
+    
+        flush_context.transaction = transaction = self._autobegin_t()._begin()
+        try:
+            self._warn_on_events = True
+            try:
+>               flush_context.execute()
+
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4448: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:85: in save_obj
+    _emit_update_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:912: in _emit_update_statements
+    c = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1418: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:515: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1640: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1846: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1986: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2358: in _handle_dbapi_exception
+    raise exc_info[1].with_traceback(exc_info[2])
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1967: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:941: in do_execute
+    cursor.execute(statement, parameters)
+.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py:572: in execute
+    self._adapt_connection.await_(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+awaitable = <coroutine object AsyncAdapt_asyncpg_cursor._prepare_and_execute at 0x00000292547EEF80>
+
+    def await_only(awaitable: Awaitable[_T]) -> _T:
+        """Awaits an async function in a sync method.
+    
+        The sync method must be inside a :func:`greenlet_spawn` context.
+        :func:`await_only` calls cannot be nested.
+    
+        :param awaitable: The coroutine to call.
+    
+        """
+        # this is called in the context greenlet while running fn
+        current = getcurrent()
+        if not getattr(current, "__sqlalchemy_greenlet_provider__", False):
+            _safe_cancel_awaitable(awaitable)
+    
+>           raise exc.MissingGreenlet(
+                "greenlet_spawn has not been called; can't call await_only() "
+                "here. Was IO attempted in an unexpected place?"
+            )
+E           sqlalchemy.exc.MissingGreenlet: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+
+.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:123: MissingGreenlet
+
+During handling of the above exception, another exception occurred:
+
+session = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x00000292547E6350>
+clean_db = None
+
+    @pytest.mark.asyncio
+    async def test_metrics_recorded_on_offer_accept(session, clean_db):
+        """
+        ╨в╨╡╤Б╤В: ╨Я╤А╨╕ ╨┐╤А╨╕╨╜╤П╤В╨╕╨╕ ╨╛╤Д╤Д╨╡╤А╨░ ╨╝╨░╤Б╤В╨╡╤А╨╛╨╝ ╨╖╨░╨┐╨╕╤Б╤Л╨▓╨░╤О╤В╤Б╤П ╨╝╨╡╤В╤А╨╕╨║╨╕.
+        """
+        # Arrange: ╨б╨╛╨╖╨┤╨░╤С╨╝ ╨│╨╛╤А╨╛╨┤, ╨╝╨░╤Б╤В╨╡╤А╨░, ╨╖╨░╨║╨░╨╖ ╨╕ ╨╛╤Д╤Д╨╡╤А
+        db_now = await _get_db_now(session)
+    
+        city = m.cities(id=1, name="Test City", is_active=True, timezone="Europe/Moscow")
+        session.add(city)
+    
+        master = m.masters(
+            id=100,
+            telegram_id=111,
+            full_name="Test Master",
+            phone_number="+79991234567",
+            city_id=1,
+            moderation_status=m.ModerationStatus.APPROVED,
+            is_blocked=False,
+        )
+        session.add(master)
+    
+        order = m.orders(
+            id=500,
+            city_id=1,
+            category=m.OrderCategory.ELECTRICS,
+            type=m.OrderType.NORMAL,
+            status=m.OrderStatus.SEARCHING,
+            created_at=db_now - timedelta(minutes=5),
+        )
+        session.add(order)
+    
+        offer = m.offers(
+            order_id=500,
+            master_id=100,
+            state=m.OfferState.SENT,
+            round_number=1,
+            sent_at=db_now,
+            expires_at=db_now + timedelta(minutes=2),
+        )
+        session.add(offer)
+    
+        await session.commit()
+        session.expire_all()
+    
+        # Act: ╨Я╤А╨╕╨╜╨╕╨╝╨░╨╡╨╝ ╨╛╤Д╤Д╨╡╤А (╨╕╨╝╨╕╤В╨╕╤А╤Г╨╡╨╝ offer_accept)
+        # ╨Ю╨▒╨╜╨╛╨▓╨╗╤П╨╡╨╝ ╨╖╨░╨║╨░╨╖
+        order_obj = await session.get(m.orders, 500)
+        order_obj.assigned_master_id = 100
+        order_obj.status = m.OrderStatus.ASSIGNED
+    
+        # ╨Ю╨▒╨╜╨╛╨▓╨╗╤П╨╡╨╝ ╨╛╤Д╤Д╨╡╤А
+>       offer_obj = await session.get(m.offers, offer.id)
+
+tests\test_distribution_metrics.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:566: in __get__
+    return self.impl.get(state, dict_)  # type: ignore[no-any-return]
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:1086: in get
+    value = self._fire_loader_callables(state, key, passive)
+.venv\Lib\site-packages\sqlalchemy\orm\attributes.py:1116: in _fire_loader_callables
+    return state._load_expired(state, passive)
+.venv\Lib\site-packages\sqlalchemy\orm\state.py:803: in _load_expired
+    self.manager.expired_attribute_loader(self, toload, passive)
+.venv\Lib\site-packages\sqlalchemy\orm\loading.py:1670: in load_scalar_attributes
+    result = load_on_ident(
+.venv\Lib\site-packages\sqlalchemy\orm\loading.py:509: in load_on_ident
+    return load_on_pk_identity(
+.venv\Lib\site-packages\sqlalchemy\orm\loading.py:694: in load_on_pk_identity
+    session.execute(
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2362: in execute
+    return self._execute_internal(
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2226: in _execute_internal
+    ) = compile_state_cls.orm_pre_session_exec(
+.venv\Lib\site-packages\sqlalchemy\orm\context.py:549: in orm_pre_session_exec
+    session._autoflush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:3050: in _autoflush
+    self.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4352: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4487: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:150: in __exit__
+    raise value.with_traceback(traceback)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4488: in _flush
+    transaction.rollback(_capture_exception=True)
+<string>:2: in rollback
+    ???
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1395: in rollback
+    raise rollback_err[1].with_traceback(rollback_err[2])
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1360: in rollback
+    t[1].rollback()
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2610: in rollback
+    self._do_rollback()
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2729: in _do_rollback
+    self._close_impl(try_deactivate=True)
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2712: in _close_impl
+    self._connection_rollback_impl()
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2704: in _connection_rollback_impl
+    self.connection._rollback_impl()
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1129: in _rollback_impl
+    self._handle_dbapi_exception(e, None, None, None, None)
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2358: in _handle_dbapi_exception
+    raise exc_info[1].with_traceback(exc_info[2])
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1127: in _rollback_impl
+    self.engine.dialect.do_rollback(self.connection)
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:699: in do_rollback
+    dbapi_connection.rollback()
+.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py:852: in rollback
+    self._handle_exception(error)
+.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py:786: in _handle_exception
+    raise error
+.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py:850: in rollback
+    self.await_(self._transaction.rollback())
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+awaitable = <coroutine object Transaction.rollback at 0x0000029255D9DB10>
+
+    def await_only(awaitable: Awaitable[_T]) -> _T:
+        """Awaits an async function in a sync method.
+    
+        The sync method must be inside a :func:`greenlet_spawn` context.
+        :func:`await_only` calls cannot be nested.
+    
+        :param awaitable: The coroutine to call.
+    
+        """
+        # this is called in the context greenlet while running fn
+        current = getcurrent()
+        if not getattr(current, "__sqlalchemy_greenlet_provider__", False):
+            _safe_cancel_awaitable(awaitable)
+    
+>           raise exc.MissingGreenlet(
+                "greenlet_spawn has not been called; can't call await_only() "
+                "here. Was IO attempted in an unexpected place?"
+            )
+E           sqlalchemy.exc.MissingGreenlet: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+
+.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py:123: MissingGreenlet
+----------------------------- Captured log setup ------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:378 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x0000029254790F40>>
+Traceback (most recent call last):
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\pool\base.py", line 374, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 1100, in do_terminate
+    dbapi_connection.terminate()
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 879, in terminate
+    self.await_(self._connection.close(timeout=2))
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\asyncpg\connection.py", line 1467, in close
+    await self._protocol.close(timeout)
+  File "asyncpg\protocol\protocol.pyx", line 627, in close
+RuntimeError: Task <Task pending name='Task-3' coro=<_wrap_asyncgen_fixture.<locals>._asyncgen_fixture_wrapper.<locals>.setup() running at C:\ProjectF\field-service\.venv\Lib\site-packages\pytest_asyncio\plugin.py:329> cb=[_run_until_complete_cb() at C:\Users\v.simzikov\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py:180]> got Future <Future pending> attached to a different loop
+---------------------------- Captured log teardown ----------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:378 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x0000029255BE1F30>>
+Traceback (most recent call last):
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\pool\base.py", line 374, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 1100, in do_terminate
+    dbapi_connection.terminate()
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 879, in terminate
+    self.await_(self._connection.close(timeout=2))
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\asyncpg\connection.py", line 1467, in close
+    await self._protocol.close(timeout)
+  File "asyncpg\protocol\protocol.pyx", line 626, in close
+  File "asyncpg\protocol\protocol.pyx", line 659, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "C:\ProjectF\field-service\.venv\Lib\site-packages\asyncpg\connection.py", line 1611, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\v.simzikov\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 434, in create_task
+    self._check_closed()
+  File "C:\Users\v.simzikov\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 519, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+ERROR    asyncio:base_events.py:1757 Future exception was never retrieved
+future: <Future finished exception=InternalClientError('got result for unknown protocol state 3')>
+Traceback (most recent call last):
+  File "asyncpg\protocol\protocol.pyx", line 902, in asyncpg.protocol.protocol.BaseProtocol._dispatch_result
+asyncpg.exceptions._base.InternalClientError: got result for unknown protocol state 3
+=========================== short test summary info ===========================
+FAILED tests/test_distribution_metrics.py::test_metrics_recorded_on_offer_accept - sqlalchemy.exc.MissingGreenlet: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+============================== 1 failed in 3.61s ==============================

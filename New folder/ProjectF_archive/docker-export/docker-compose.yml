@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fs_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-field_service}
+      POSTGRES_USER: ${POSTGRES_USER:-fs_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fs_password}
+    ports:
+      - "${POSTGRES_PORT:-5439}:5432"
+    volumes:
+      - fs_pgdata:/var/lib/postgresql/data
+    command: postgres -c max_connections=300
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fs_user} -d ${POSTGRES_DB:-field_service}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - fs_network
+
+  admin-bot:
+    image: field-service-admin-bot:latest
+    container_name: fs_admin_bot
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - fs_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  master-bot:
+    image: field-service-master-bot:latest
+    container_name: fs_master_bot
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - fs_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  fs_pgdata:
+    name: field_service_pgdata
+
+networks:
+  fs_network:
+    name: field_service_network
+    driver: bridge

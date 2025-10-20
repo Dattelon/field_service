@@ -1,0 +1,60 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "py:venv",
+      "type": "shell",
+      "command": "python -m venv .venv && .venv/Scripts/pip.exe install -U pip wheel || true && .venv/bin/pip install -U pip wheel || true",
+      "problemMatcher": []
+    },
+    {
+      "label": "py:install",
+      "type": "shell",
+      "command": ".venv/Scripts/pip.exe install -r requirements.txt || .venv/bin/pip install -r requirements.txt",
+      "dependsOn": ["py:venv"]
+    },
+    {
+      "label": "lint:ruff",
+      "type": "shell",
+      "command": ".venv/Scripts/ruff.exe check --fix . || .venv/bin/ruff check --fix .",
+      "group": "build"
+    },
+    {
+      "label": "fmt:black",
+      "type": "shell",
+      "command": ".venv/Scripts/black.exe . || .venv/bin/black .",
+      "group": "build"
+    },
+    {
+      "label": "type:mypy",
+      "type": "shell",
+      "command": ".venv/Scripts/mypy.exe . || .venv/bin/mypy .",
+      "group": "test"
+    },
+    {
+      "label": "db:alembic:upgrade",
+      "type": "shell",
+      "command": ".venv/Scripts/alembic.exe upgrade head || .venv/bin/alembic upgrade head",
+      "group": "build"
+    },
+    {
+      "label": "db:seed_geo",
+      "type": "shell",
+      "command": "python -m tools.seed_geo",
+      "group": "build"
+    },
+    {
+      "label": "test:pytest",
+      "type": "shell",
+      "command": ".venv/Scripts/pytest.exe -q || .venv/bin/pytest -q",
+      "group": "test"
+    },
+    {
+      "label": "verify:all",
+      "type": "shell",
+      "command": "echo ==== LINT ==== && code -r . && exit 0",
+      "dependsOn": ["lint:ruff", "fmt:black", "type:mypy", "db:alembic:upgrade", "test:pytest"],
+      "group": "test"
+    }
+  ]
+}

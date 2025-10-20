@@ -1,0 +1,738 @@
+{
+  "field_service\\bots\\admin_bot\\handlers\\common\\menu.py": [
+    {
+      "line": 34,
+      "value": "Логист",
+      "key": "StaffRole.LOGIST",
+      "context": "StaffRole.LOGIST: \"Логист\","
+    }
+  ],
+  "field_service\\bots\\admin_bot\\handlers\\finance\\main.py": [
+    {
+      "line": 70,
+      "value": "СБП",
+      "key": "'sbp'",
+      "context": "\"sbp\": \"СБП\","
+    },
+    {
+      "line": 71,
+      "value": "Наличные",
+      "key": "'cash'",
+      "context": "\"cash\": \"Наличные\","
+    },
+    {
+      "line": 99,
+      "value": "Банк СБП",
+      "key": "'sbp_bank'",
+      "context": "\"sbp_bank\": \"Банк СБП\","
+    },
+    {
+      "line": 850,
+      "value": "📅 Сегодня",
+      "key": "'today'",
+      "context": "'today': '📅 Сегодня',"
+    },
+    {
+      "line": 851,
+      "value": "📅 Вчера",
+      "key": "'yesterday'",
+      "context": "'yesterday': '📅 Вчера',"
+    },
+    {
+      "line": 854,
+      "value": "📅 Старше",
+      "key": "'older'",
+      "context": "'older': '📅 Старше'"
+    },
+    {
+      "line": 975,
+      "value": "📅 Сегодня",
+      "key": "'today'",
+      "context": "'today': '📅 Сегодня',"
+    },
+    {
+      "line": 976,
+      "value": "📅 Вчера",
+      "key": "'yesterday'",
+      "context": "'yesterday': '📅 Вчера',"
+    },
+    {
+      "line": 979,
+      "value": "📅 Старше",
+      "key": "'older'",
+      "context": "'older': '📅 Старше'"
+    },
+    {
+      "line": 553,
+      "value": "за сутки",
+      "key": "1",
+      "context": "1: \"за сутки\","
+    },
+    {
+      "line": 554,
+      "value": "за 3 дня",
+      "key": "3",
+      "context": "3: \"за 3 дня\","
+    },
+    {
+      "line": 555,
+      "value": "за неделю",
+      "key": "7",
+      "context": "7: \"за неделю\","
+    },
+    {
+      "line": 623,
+      "value": "за сутки",
+      "key": "1",
+      "context": "1: \"за сутки\","
+    },
+    {
+      "line": 624,
+      "value": "за 3 дня",
+      "key": "3",
+      "context": "3: \"за 3 дня\","
+    },
+    {
+      "line": 625,
+      "value": "за неделю",
+      "key": "7",
+      "context": "7: \"за неделю\","
+    }
+  ],
+  "field_service\\bots\\admin_bot\\handlers\\masters\\main.py": [
+    {
+      "line": 54,
+      "value": "☕ Перерыв",
+      "key": "'BREAK'",
+      "context": "\"BREAK\": \"☕ Перерыв\","
+    }
+  ],
+  "field_service\\bots\\admin_bot\\handlers\\orders\\queue.py": [
+    {
+      "line": 2348,
+      "value": "",
+      "key": "m.OrderStatus.ASSIGNED",
+      "context": "m.OrderStatus.ASSIGNED: \"\","
+    },
+    {
+      "line": 2349,
+      "value": "",
+      "key": "m.OrderStatus.EN_ROUTE",
+      "context": "m.OrderStatus.EN_ROUTE: \"\","
+    },
+    {
+      "line": 2350,
+      "value": "",
+      "key": "m.OrderStatus.WORKING",
+      "context": "m.OrderStatus.WORKING: \"\","
+    },
+    {
+      "line": 2351,
+      "value": "",
+      "key": "m.OrderStatus.PAYMENT",
+      "context": "m.OrderStatus.PAYMENT: \"\","
+    },
+    {
+      "line": 2352,
+      "value": "",
+      "key": "m.OrderStatus.CLOSED",
+      "context": "m.OrderStatus.CLOSED: \"\","
+    },
+    {
+      "line": 2460,
+      "value": "",
+      "key": "m.OrderStatus.ASSIGNED",
+      "context": "m.OrderStatus.ASSIGNED: \"\","
+    },
+    {
+      "line": 2461,
+      "value": "",
+      "key": "m.OrderStatus.EN_ROUTE",
+      "context": "m.OrderStatus.EN_ROUTE: \"\","
+    },
+    {
+      "line": 2462,
+      "value": "",
+      "key": "m.OrderStatus.WORKING",
+      "context": "m.OrderStatus.WORKING: \"\","
+    },
+    {
+      "line": 2463,
+      "value": "",
+      "key": "m.OrderStatus.PAYMENT",
+      "context": "m.OrderStatus.PAYMENT: \"\","
+    },
+    {
+      "line": 2464,
+      "value": "",
+      "key": "m.OrderStatus.CLOSED",
+      "context": "m.OrderStatus.CLOSED: \"\","
+    }
+  ],
+  "field_service\\bots\\admin_bot\\handlers\\staff\\management.py": [
+    {
+      "line": 62,
+      "value": "➕",
+      "key": "'add'",
+      "context": "\"add\": \"➕\","
+    },
+    {
+      "line": 63,
+      "value": "📋",
+      "key": "'list'",
+      "context": "\"list\": \"📋\","
+    },
+    {
+      "line": 64,
+      "value": "✏️",
+      "key": "'edit'",
+      "context": "\"edit\": \"✏️\","
+    },
+    {
+      "line": 65,
+      "value": "🗑",
+      "key": "'delete'",
+      "context": "\"delete\": \"🗑\","
+    },
+    {
+      "line": 66,
+      "value": "✅",
+      "key": "'active'",
+      "context": "\"active\": \"✅\","
+    },
+    {
+      "line": 67,
+      "value": "❌",
+      "key": "'inactive'",
+      "context": "\"inactive\": \"❌\","
+    },
+    {
+      "line": 68,
+      "value": "◀️",
+      "key": "'back'",
+      "context": "\"back\": \"◀️\","
+    },
+    {
+      "line": 69,
+      "value": "✅",
+      "key": "'confirm'",
+      "context": "\"confirm\": \"✅\","
+    },
+    {
+      "line": 70,
+      "value": "❌",
+      "key": "'cancel'",
+      "context": "\"cancel\": \"❌\","
+    },
+    {
+      "line": 71,
+      "value": "👑",
+      "key": "'global_admin'",
+      "context": "\"global_admin\": \"👑\","
+    },
+    {
+      "line": 72,
+      "value": "👤",
+      "key": "'city_admin'",
+      "context": "\"city_admin\": \"👤\","
+    },
+    {
+      "line": 73,
+      "value": "📦",
+      "key": "'logist'",
+      "context": "\"logist\": \"📦\","
+    }
+  ],
+  "field_service\\bots\\admin_bot\\services\\_common.py": [
+    {
+      "line": 69,
+      "value": "💳 Карта",
+      "key": "'card'",
+      "context": "\"card\": \"💳 Карта\","
+    },
+    {
+      "line": 70,
+      "value": "СБП",
+      "key": "'sbp'",
+      "context": "\"sbp\": \"СБП\","
+    },
+    {
+      "line": 71,
+      "value": "Наличные",
+      "key": "'cash'",
+      "context": "\"cash\": \"Наличные\","
+    }
+  ],
+  "field_service\\bots\\admin_bot\\ui\\texts\\common.py": [
+    {
+      "line": 21,
+      "value": "Оплачено",
+      "key": "'APPROVED'",
+      "context": "'APPROVED': 'Оплачено',"
+    },
+    {
+      "line": 97,
+      "value": "Электрика",
+      "key": "OrderCategory.ELECTRICS",
+      "context": "OrderCategory.ELECTRICS: \"Электрика\","
+    },
+    {
+      "line": 101,
+      "value": "Мебель",
+      "key": "OrderCategory.FURNITURE",
+      "context": "OrderCategory.FURNITURE: \"Мебель\","
+    },
+    {
+      "line": 102,
+      "value": "Окна",
+      "key": "OrderCategory.WINDOWS",
+      "context": "OrderCategory.WINDOWS: \"Окна\","
+    },
+    {
+      "line": 104,
+      "value": "Прочее",
+      "key": "OrderCategory.OTHER",
+      "context": "OrderCategory.OTHER: \"Прочее\","
+    }
+  ],
+  "field_service\\bots\\admin_bot\\ui\\texts\\orders.py": [
+    {
+      "line": 21,
+      "value": "Электрика",
+      "key": "OrderCategory.ELECTRICS",
+      "context": "OrderCategory.ELECTRICS: \"Электрика\","
+    },
+    {
+      "line": 25,
+      "value": "Мебель",
+      "key": "OrderCategory.FURNITURE",
+      "context": "OrderCategory.FURNITURE: \"Мебель\","
+    },
+    {
+      "line": 26,
+      "value": "Окна",
+      "key": "OrderCategory.WINDOWS",
+      "context": "OrderCategory.WINDOWS: \"Окна\","
+    },
+    {
+      "line": 28,
+      "value": "Прочее",
+      "key": "OrderCategory.OTHER",
+      "context": "OrderCategory.OTHER: \"Прочее\","
+    },
+    {
+      "line": 99,
+      "value": "⚙️",
+      "key": "'SYSTEM'",
+      "context": "\"SYSTEM\": \"⚙️\","
+    },
+    {
+      "line": 100,
+      "value": "👨‍💼",
+      "key": "'ADMIN'",
+      "context": "\"ADMIN\": \"👨‍💼\","
+    },
+    {
+      "line": 101,
+      "value": "👨‍🔧",
+      "key": "'MASTER'",
+      "context": "\"MASTER\": \"👨‍🔧\","
+    },
+    {
+      "line": 102,
+      "value": "🤖",
+      "key": "'AUTO_DISTRIBUTION'",
+      "context": "\"AUTO_DISTRIBUTION\": \"🤖\""
+    }
+  ],
+  "field_service\\bots\\admin_bot\\ui\\texts\\staff.py": [
+    {
+      "line": 131,
+      "value": "Логист",
+      "key": "StaffRole.LOGIST",
+      "context": "StaffRole.LOGIST: \"Логист\","
+    }
+  ],
+  "field_service\\bots\\admin_bot.backup\\handlers.py": [
+    {
+      "line": 124,
+      "value": "",
+      "key": "StaffRole.LOGIST",
+      "context": "StaffRole.LOGIST: \"\","
+    },
+    {
+      "line": 2270,
+      "value": "",
+      "key": "'distribution'",
+      "context": "\"distribution\": \"\","
+    },
+    {
+      "line": 2271,
+      "value": "",
+      "key": "'limits'",
+      "context": "\"limits\": \"\","
+    },
+    {
+      "line": 2272,
+      "value": "",
+      "key": "'support'",
+      "context": "\"support\": \"\","
+    },
+    {
+      "line": 2273,
+      "value": "",
+      "key": "'geo'",
+      "context": "\"geo\": \"\","
+    },
+    {
+      "line": 2274,
+      "value": "",
+      "key": "'channels'",
+      "context": "\"channels\": \"\","
+    }
+  ],
+  "field_service\\bots\\admin_bot.backup\\handlers_finance.py": [
+    {
+      "line": 37,
+      "value": "",
+      "key": "'sbp'",
+      "context": "\"sbp\": \"\","
+    },
+    {
+      "line": 38,
+      "value": "",
+      "key": "'cash'",
+      "context": "\"cash\": \"\","
+    },
+    {
+      "line": 647,
+      "value": "",
+      "key": "'pd'",
+      "context": "\"pd\": \"\","
+    },
+    {
+      "line": 648,
+      "value": "",
+      "key": "'ov'",
+      "context": "\"ov\": \"\","
+    },
+    {
+      "line": 470,
+      "value": "",
+      "key": "1",
+      "context": "1: \"\","
+    },
+    {
+      "line": 540,
+      "value": "",
+      "key": "1",
+      "context": "1: \"\","
+    }
+  ],
+  "field_service\\bots\\admin_bot.backup\\services_db.py": [
+    {
+      "line": 67,
+      "value": "💳 Карта",
+      "key": "'card'",
+      "context": "\"card\": \"💳 Карта\","
+    },
+    {
+      "line": 68,
+      "value": "СБП",
+      "key": "'sbp'",
+      "context": "\"sbp\": \"СБП\","
+    },
+    {
+      "line": 69,
+      "value": "Наличные",
+      "key": "'cash'",
+      "context": "\"cash\": \"Наличные\","
+    }
+  ],
+  "field_service\\bots\\admin_bot.backup\\texts.py": [
+    {
+      "line": 21,
+      "value": "",
+      "key": "'REPORTED'",
+      "context": "'REPORTED': '',"
+    },
+    {
+      "line": 22,
+      "value": "",
+      "key": "'APPROVED'",
+      "context": "'APPROVED': '',"
+    },
+    {
+      "line": 23,
+      "value": "",
+      "key": "'OVERDUE'",
+      "context": "'OVERDUE': '',"
+    }
+  ],
+  "field_service\\bots\\admin_bot.backup\\handlers\\staff_management.py": [
+    {
+      "line": 61,
+      "value": "",
+      "key": "'add'",
+      "context": "\"add\": \"\","
+    },
+    {
+      "line": 62,
+      "value": "",
+      "key": "'list'",
+      "context": "\"list\": \"\","
+    },
+    {
+      "line": 63,
+      "value": "",
+      "key": "'edit'",
+      "context": "\"edit\": \"\","
+    },
+    {
+      "line": 64,
+      "value": "",
+      "key": "'delete'",
+      "context": "\"delete\": \"\","
+    },
+    {
+      "line": 65,
+      "value": "",
+      "key": "'active'",
+      "context": "\"active\": \"\","
+    },
+    {
+      "line": 66,
+      "value": "",
+      "key": "'inactive'",
+      "context": "\"inactive\": \"\","
+    },
+    {
+      "line": 67,
+      "value": "",
+      "key": "'back'",
+      "context": "\"back\": \"\","
+    },
+    {
+      "line": 68,
+      "value": "",
+      "key": "'confirm'",
+      "context": "\"confirm\": \"\","
+    },
+    {
+      "line": 69,
+      "value": "",
+      "key": "'cancel'",
+      "context": "\"cancel\": \"\","
+    },
+    {
+      "line": 70,
+      "value": "",
+      "key": "'global_admin'",
+      "context": "\"global_admin\": \"\","
+    },
+    {
+      "line": 71,
+      "value": "",
+      "key": "'city_admin'",
+      "context": "\"city_admin\": \"\","
+    },
+    {
+      "line": 72,
+      "value": "",
+      "key": "'logist'",
+      "context": "\"logist\": \"\","
+    }
+  ],
+  "field_service\\bots\\admin_bot.backup\\routers\\admin_masters.py": [
+    {
+      "line": 44,
+      "value": "",
+      "key": "'BREAK'",
+      "context": "\"BREAK\": \"\","
+    },
+    {
+      "line": 47,
+      "value": "",
+      "key": "'ok'",
+      "context": "\"ok\": \"\","
+    },
+    {
+      "line": 49,
+      "value": "",
+      "key": "'blk'",
+      "context": "\"blk\": \"\","
+    }
+  ],
+  "field_service\\bots\\common\\copy_utils.py": [
+    {
+      "line": 60,
+      "value": "📍 Адрес",
+      "key": "'addr'",
+      "context": "\"addr\": \"📍 Адрес\","
+    }
+  ],
+  "field_service\\bots\\master_bot\\finance.py": [
+    {
+      "line": 7,
+      "value": "",
+      "key": "'sbp'",
+      "context": "\"sbp\": \"\","
+    },
+    {
+      "line": 8,
+      "value": "",
+      "key": "'cash'",
+      "context": "\"cash\": \"\","
+    }
+  ],
+  "field_service\\bots\\master_bot\\keyboards.py": [
+    {
+      "line": 278,
+      "value": "💳 Карта",
+      "key": "m.PayoutMethod.CARD",
+      "context": "m.PayoutMethod.CARD: \"💳 Карта\","
+    },
+    {
+      "line": 279,
+      "value": "📱 СБП",
+      "key": "m.PayoutMethod.SBP",
+      "context": "m.PayoutMethod.SBP: \"📱 СБП\","
+    },
+    {
+      "line": 280,
+      "value": "💰 ЮMoney",
+      "key": "m.PayoutMethod.YOOMONEY",
+      "context": "m.PayoutMethod.YOOMONEY: \"💰 ЮMoney\","
+    }
+  ],
+  "field_service\\bots\\master_bot\\texts.py": [
+    {
+      "line": 42,
+      "value": "☕ Перерыв",
+      "key": "'shift_break'",
+      "context": "\"shift_break\": \"☕ Перерыв\","
+    },
+    {
+      "line": 49,
+      "value": "💳 Финансы",
+      "key": "'finance'",
+      "context": "\"finance\": \"💳 Финансы\","
+    },
+    {
+      "line": 65,
+      "value": "Создан",
+      "key": "m.OrderStatus.CREATED",
+      "context": "m.OrderStatus.CREATED: \"Создан\","
+    }
+  ],
+  "field_service\\bots\\master_bot\\handlers\\referral.py": [
+    {
+      "line": 25,
+      "value": "Начислено",
+      "key": "m.ReferralRewardStatus.ACCRUED.value",
+      "context": "m.ReferralRewardStatus.ACCRUED.value: \"Начислено\","
+    },
+    {
+      "line": 26,
+      "value": "Выплачено",
+      "key": "m.ReferralRewardStatus.PAID.value",
+      "context": "m.ReferralRewardStatus.PAID.value: \"Выплачено\","
+    },
+    {
+      "line": 27,
+      "value": "Отменено",
+      "key": "m.ReferralRewardStatus.CANCELED.value",
+      "context": "m.ReferralRewardStatus.CANCELED.value: \"Отменено\","
+    }
+  ],
+  "field_service\\bots\\master_bot\\handlers\\shift.py": [
+    {
+      "line": 91,
+      "value": "15 минут",
+      "key": "'15m'",
+      "context": "\"15m\": \"15 минут\","
+    },
+    {
+      "line": 92,
+      "value": "1 час",
+      "key": "'1h'",
+      "context": "\"1h\": \"1 час\","
+    },
+    {
+      "line": 93,
+      "value": "2 часа",
+      "key": "'2h'",
+      "context": "\"2h\": \"2 часа\","
+    },
+    {
+      "line": 154,
+      "value": "15 минут",
+      "key": "'15m'",
+      "context": "\"15m\": \"15 минут\","
+    },
+    {
+      "line": 155,
+      "value": "1 час",
+      "key": "'1h'",
+      "context": "\"1h\": \"1 час\","
+    },
+    {
+      "line": 156,
+      "value": "2 часа",
+      "key": "'2h'",
+      "context": "\"2h\": \"2 часа\","
+    }
+  ],
+  "field_service\\data\\cities.py": [
+    {
+      "line": 179,
+      "value": "Балашиха",
+      "key": "'Балашиха (МО)'",
+      "context": "\"Балашиха (МО)\": \"Балашиха\","
+    }
+  ],
+  "field_service\\services\\owner_requisites_service.py": [
+    {
+      "line": 15,
+      "value": "",
+      "key": "'card_number'",
+      "context": "\"card_number\": \"\","
+    },
+    {
+      "line": 16,
+      "value": "",
+      "key": "'card_holder'",
+      "context": "\"card_holder\": \"\","
+    },
+    {
+      "line": 17,
+      "value": "",
+      "key": "'card_bank'",
+      "context": "\"card_bank\": \"\","
+    },
+    {
+      "line": 18,
+      "value": "",
+      "key": "'sbp_phone'",
+      "context": "\"sbp_phone\": \"\","
+    },
+    {
+      "line": 19,
+      "value": "",
+      "key": "'sbp_bank'",
+      "context": "\"sbp_bank\": \"\","
+    },
+    {
+      "line": 20,
+      "value": "",
+      "key": "'sbp_qr_file_id'",
+      "context": "\"sbp_qr_file_id\": \"\","
+    },
+    {
+      "line": 21,
+      "value": "",
+      "key": "'other_text'",
+      "context": "\"other_text\": \"\","
+    }
+  ]
+}
