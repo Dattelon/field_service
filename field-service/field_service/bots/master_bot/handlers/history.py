@@ -144,8 +144,7 @@ async def history_card(
         InlineKeyboardButton(text="Главное меню", callback_data="m:menu")
     ])
     
-    if callback.message:
-        await safe_edit_or_send(callback.message, text, keyboard)
+    await safe_edit_or_send(callback, text, keyboard)
     await safe_answer_callback(callback)
 
 
@@ -180,10 +179,9 @@ async def _render_history(
     if total == 0:
         text = HISTORY_EMPTY
         keyboard = inline_keyboard([
-        InlineKeyboardButton(text="Назад", callback_data="m:hist")
+            InlineKeyboardButton(text="Главное меню", callback_data="m:menu")
         ])
-        if callback.message:
-            await safe_edit_or_send(callback.message, text, keyboard)
+        await safe_edit_or_send(callback, text, keyboard)
         return
     
     total_pages = math.ceil(total / HISTORY_PAGE_SIZE)
@@ -312,6 +310,5 @@ async def _render_history(
     
     # P1-23: Add breadcrumbs navigation
     text_with_breadcrumbs = add_breadcrumbs_to_text(text, MasterPaths.HISTORY)
-    
-    if callback.message:
-        await safe_edit_or_send(callback.message, text_with_breadcrumbs, keyboard)
+
+    await safe_edit_or_send(callback, text_with_breadcrumbs, keyboard)
