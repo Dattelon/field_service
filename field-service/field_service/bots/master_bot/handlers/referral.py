@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from urllib.parse import quote
 
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -38,6 +37,32 @@ async def referrals_root(callback: CallbackQuery, session: AsyncSession, master:
 async def knowledge_base(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
     await _render_support(callback, session)
     await safe_answer_callback(callback)
+
+
+@router.callback_query(F.data == 'm:rf:share')
+async def share_referral_code(callback: CallbackQuery, session: AsyncSession, master: m.masters) -> None:
+    """Обработчик кнопки 'Поделиться кодом' - отправляет сообщение для пересылки"""
+    referral_code = (master.referral_code or '').strip()
+
+    if not referral_code:
+        from field_service.services import referral_service
+        referral_code = await referral_service.generate_referral_code(session, master.id)
+        await session.commit()
+
+    share_text = (
+        f"👋 Присоединяйся к Field Service — сервису для мастеров!\n\n"
+        f"🎁 Используй мой реферальный код: <code>{referral_code}</code>\n\n"
+        f"✅ Получай бонусы за каждого приглашённого мастера\n"
+        f"✅ Стабильный поток заказов\n"
+        f"✅ Оплата в день выполнения\n\n"
+        f"📲 Перешли это сообщение коллегам или скопируй код для отправки!"
+    )
+
+    # Отправляем сообщение, которое можно переслать
+    if callback.message:
+        await callback.message.answer(share_text)
+
+    await safe_answer_callback(callback, "Сообщение с кодом отправлено! Теперь вы можете переслать его другим мастерам.")
 
 
 async def _render_referrals(
@@ -165,17 +190,8 @@ async def _render_referrals(
     # P1-7: Кнопка "Поделиться"
     buttons: list[list[InlineKeyboardButton]] = []
     if referral_code:
-        share_text = (
-            f"👋 Присоединяйся к Field Service — сервису для мастеров!\n\n"
-            f"🎁 Используй мой реферальный код: {referral_code}\n\n"
-            f"✅ Получай бонусы за каждого приглашённого мастера\n"
-            f"✅ Стабильный поток заказов\n"
-            f"✅ Оплата в день выполнения"
-        )
-        encoded_share_text = quote(share_text)
-        share_url = f"https://t.me/share/url?text={encoded_share_text}"
         buttons.append([
-        InlineKeyboardButton(text="📤 Поделиться кодом", url=share_url),
+            InlineKeyboardButton(text="📤 Поделиться кодом", callback_data="m:rf:share"),
         ])
     buttons.append([
         InlineKeyboardButton(text="◀️ Главное меню", callback_data="m:menu")
