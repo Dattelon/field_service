@@ -47,6 +47,7 @@ MAIN_MENU_BUTTONS = {
     "active_order": "📦 Активный заказ",
     "history": "📜 История заказов",
     "finance": "💳 Финансы",
+    "payment_requisites": "💳 Реквизиты для оплаты",
     "referral": "🎁 Реферальная программа",
     "statistics": "📈 Статистика",
     "knowledge": "📚 База знаний",
