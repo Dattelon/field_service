@@ -150,15 +150,15 @@ def owner_pay_actions_keyboard() -> InlineKeyboardMarkup:
 def owner_pay_edit_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     field_labels = [
-        ("methods", "  "),
-        ("card_number", "  "),
-        ("card_holder", "  "),
-        ("card_bank", "  "),
-        ("sbp_phone", "  "),
-        ("sbp_bank", "  "),
-        ("sbp_qr_file_id", " QR- "),
-        ("other_text", " "),
-        ("comment_template", "  "),
+        ("methods", "💳 Способы оплаты"),
+        ("card_number", "💳 Номер карты"),
+        ("card_holder", "👤 Держатель карты"),
+        ("card_bank", "🏦 Банк карты"),
+        ("sbp_phone", "📱 Телефон СБП"),
+        ("sbp_bank", "🏦 Банк СБП"),
+        ("sbp_qr_file_id", "📲 QR-код СБП"),
+        ("other_text", "📝 Прочие данные"),
+        ("comment_template", "💬 Шаблон комментария"),
     ]
     for field, label in field_labels:
         kb.button(text=label, callback_data=f"adm:f:set:field:{field}")
