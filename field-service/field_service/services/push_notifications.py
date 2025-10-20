@@ -1,7 +1,7 @@
 """
-P1-05: PUSH-  
+P1-05: PUSH-уведомления для мастеров и админов
 
-     .
+Сервис для отправки уведомлений через БД очередь.
 """
 from __future__ import annotations
 
@@ -18,44 +18,44 @@ from field_service.infra.notify import send_alert
 
 
 class NotificationEvent(str, Enum):
-    """  ."""
-    #  
+    """События для уведомлений."""
+    # Уведомления для мастеров
     MODERATION_APPROVED = "moderation_approved"
     MODERATION_REJECTED = "moderation_rejected"
     ACCOUNT_BLOCKED = "account_blocked"
     ACCOUNT_UNBLOCKED = "account_unblocked"
     NEW_OFFER = "new_offer"
     LIMIT_CHANGED = "limit_changed"
-    
-    #  
+
+    # Уведомления для админов/логистов
     ESCALATION_LOGIST = "escalation_logist"
     ESCALATION_ADMIN = "escalation_admin"
     COMMISSION_OVERDUE = "commission_overdue"
-    
-    #  
+
+    # Системные уведомления
     UNASSIGNED_ORDERS = "unassigned_orders"
 
 
-#  
+# Шаблоны уведомлений
 NOTIFICATION_TEMPLATES = {
     NotificationEvent.MODERATION_APPROVED: (
-        " <b> !</b>\n\n"
-        "    . "
-        "   ."
+        "✅ <b>Анкета одобрена!</b>\n\n"
+        "Ваша анкета проверена и одобрена. "
+        "Теперь вы можете получать заявки."
     ),
     NotificationEvent.MODERATION_REJECTED: (
-        " <b> </b>\n\n"
-        ": {reason}\n\n"
-        "    ."
+        "❌ <b>Анкета отклонена</b>\n\n"
+        "Причина: {reason}\n\n"
+        "Исправьте данные и отправьте анкету заново."
     ),
     NotificationEvent.ACCOUNT_BLOCKED: (
-        " <b> </b>\n\n"
-        ": {reason}\n\n"
-        "    ."
+        "🚫 <b>Аккаунт заблокирован</b>\n\n"
+        "Причина: {reason}\n\n"
+        "Свяжитесь с администрацией для разблокировки."
     ),
     NotificationEvent.ACCOUNT_UNBLOCKED: (
-        " <b> </b>\n\n"
-        "    ."
+        "🔓 <b>Аккаунт разблокирован</b>\n\n"
+        "Ваш аккаунт снова активен. Можете продолжать работу."
     ),
     NotificationEvent.NEW_OFFER: (
         "🔔 <b>Новая заявка #{order_id}</b>\n\n"
@@ -66,26 +66,26 @@ NOTIFICATION_TEMPLATES = {
         "Ожидает в разделе «📥 Новые»."
     ),
     NotificationEvent.LIMIT_CHANGED: (
-        " <b>   </b>\n\n"
-        " : {limit}"
+        "📦 <b>Изменен лимит активных заявок</b>\n\n"
+        "Новый лимит: {limit}"
     ),
     NotificationEvent.ESCALATION_LOGIST: (
-        " <b>  #{order_id}</b>\n\n"
-        "  .   ."
+        "⚠️ <b>Внимание: заявка #{order_id}</b>\n\n"
+        "Не назначена долгое время. Требуется вмешательство логиста."
     ),
     NotificationEvent.ESCALATION_ADMIN: (
-        " <b>  #{order_id}</b>\n\n"
-        "    .  !"
+        "🚨 <b>Срочно: заявка #{order_id}</b>\n\n"
+        "Не назначена критически долго. Требуется срочное вмешательство!"
     ),
     NotificationEvent.COMMISSION_OVERDUE: (
-        " <b>  #{commission_id}</b>\n\n"
-        ": #{order_id}\n"
-        ": {master_name} (#{master_id})\n"
-        "  ."
+        "🚫 <b>Просрочена комиссия #{commission_id}</b>\n\n"
+        "Заказ: #{order_id}\n"
+        "Мастер: {master_name} (#{master_id})\n"
+        "Требуется действие."
     ),
     NotificationEvent.UNASSIGNED_ORDERS: (
-        " <b> : {count}</b>\n\n"
-        "  {count}   10 ."
+        "⚠️ <b>Незакрепленные заявки: {count}</b>\n\n"
+        "В системе {count} заявок без мастера больше 10 минут."
     ),
 }
 

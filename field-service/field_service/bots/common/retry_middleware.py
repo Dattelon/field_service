@@ -102,19 +102,20 @@ class RetryMiddleware(BaseMiddleware):
         exc: Exception,
     ) -> None:
         """
-              .
+        Показать сообщение об ошибке с возможностью повтора операции.
 
         Args:
-            callback: CallbackQuery  
-            exc:   
+            callback: CallbackQuery объект
+            exc: Исключение
         """
         error_text = (
-            " <b>   </b>\n\n"
-            " :\n"
-            "    \n"
-            "   \n"
-            "    \n\n"
-            " :"
+            "⚠️ <b>Произошла ошибка</b>\n\n"
+            "🔴 Ошибка:\n"
+            "    Не удалось выполнить операцию\n"
+            "\n"
+            "💡 Что делать:\n"
+            "    • Попробуйте повторить операцию\n\n"
+            "❓ Повторить попытку?"
         )
 
         builder = InlineKeyboardBuilder()
@@ -128,7 +129,7 @@ class RetryMiddleware(BaseMiddleware):
                 reply_markup=builder.as_markup(),
             )
         except Exception:
-            #    ,   
+            # Если не удалось редактировать, отправим новое сообщение
             try:
                 await callback.message.answer(
                     text=error_text,
