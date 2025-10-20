@@ -1,9 +1,12 @@
 ﻿from __future__ import annotations
 
+import hashlib
+import secrets
+from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from field_service.db import models as m
@@ -94,3 +97,68 @@ async def apply_rewards_for_commission(
             status=m.ReferralRewardStatus.ACCRUED,
         )
         await session.execute(stmt)
+
+        # Получаем order_id для уведомления
+        commission_data = await session.execute(
+            select(m.commissions.order_id).where(m.commissions.id == commission_id)
+        )
+        order_id = commission_data.scalar_one_or_none()
+
+        # Отправляем уведомление рефереру о начислении
+        from field_service.services import push_notifications
+        await push_notifications.notify_master(
+            session,
+            master_id=referrer_id,
+            event=push_notifications.NotificationEvent.REFERRAL_REWARD_ACCRUED,
+            amount=float(reward_amount),
+            level=level,
+            order_id=order_id or commission_id,
+        )
+
+
+async def generate_referral_code(session: AsyncSession, master_id: int) -> str:
+    """
+    Генерирует уникальный реферальный код для мастера.
+    Формат: короткий хеш (8 символов, заглавные буквы и цифры)
+
+    Args:
+        session: Async database session
+        master_id: ID мастера
+
+    Returns:
+        str: Сгенерированный уникальный код (8 символов)
+
+    Raises:
+        ValueError: Если не удалось сгенерировать уникальный код за 10 попыток
+    """
+    # Проверяем, есть ли уже код у мастера
+    result = await session.execute(
+        select(m.masters.referral_code).where(m.masters.id == master_id)
+    )
+    existing_code = result.scalar_one_or_none()
+    if existing_code:
+        return existing_code
+
+    # Генерируем уникальный код
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        # Используем master_id + timestamp + случайность
+        salt = secrets.token_hex(8)
+        raw = f"{master_id}:{datetime.utcnow().isoformat()}:{salt}"
+        code = hashlib.sha256(raw.encode()).hexdigest()[:8].upper()
+
+        # Проверяем уникальность кода в БД
+        check = await session.execute(
+            select(m.masters.id).where(m.masters.referral_code == code)
+        )
+        if check.scalar_one_or_none() is None:
+            # Код уникален - сохраняем в БД
+            await session.execute(
+                update(m.masters)
+                .where(m.masters.id == master_id)
+                .values(referral_code=code)
+            )
+            await session.flush()
+            return code
+
+    raise ValueError(f"Failed to generate unique referral code for master {master_id} after {max_attempts} attempts")

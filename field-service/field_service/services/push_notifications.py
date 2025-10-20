@@ -26,6 +26,8 @@ class NotificationEvent(str, Enum):
     ACCOUNT_UNBLOCKED = "account_unblocked"
     NEW_OFFER = "new_offer"
     LIMIT_CHANGED = "limit_changed"
+    REFERRAL_REGISTERED = "referral_registered"
+    REFERRAL_REWARD_ACCRUED = "referral_reward_accrued"
 
     # Уведомления для админов/логистов
     ESCALATION_LOGIST = "escalation_logist"
@@ -68,6 +70,19 @@ NOTIFICATION_TEMPLATES = {
     NotificationEvent.LIMIT_CHANGED: (
         "📦 <b>Изменен лимит активных заявок</b>\n\n"
         "Новый лимит: {limit}"
+    ),
+    NotificationEvent.REFERRAL_REGISTERED: (
+        "🎉 <b>Новый реферал!</b>\n\n"
+        "По вашему коду зарегистрировался новый мастер:\n"
+        "{referred_name}\n\n"
+        "Теперь вы будете получать бонусы с каждого его заказа!"
+    ),
+    NotificationEvent.REFERRAL_REWARD_ACCRUED: (
+        "💰 <b>Начислен реферальный бонус!</b>\n\n"
+        "Сумма: {amount} ₽\n"
+        "Уровень: {level}\n"
+        "Заказ: #{order_id}\n\n"
+        "Проверьте раздел «🎁 Реферальная программа» для деталей."
     ),
     NotificationEvent.ESCALATION_LOGIST: (
         "⚠️ <b>Внимание: заявка #{order_id}</b>\n\n"

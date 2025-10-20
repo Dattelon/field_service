@@ -92,6 +92,16 @@ class CommissionService:
         )
         self._session.add(commission)
         await self._session.flush()
+
+        # Начисляем реферальные бонусы
+        from field_service.services import referral_service
+        await referral_service.apply_rewards_for_commission(
+            self._session,
+            commission_id=commission.id,
+            master_id=master.id,
+            base_amount=commission.amount,
+        )
+
         return commission
 
     async def _get_avg_week_check(self, master_id: int) -> Decimal:
