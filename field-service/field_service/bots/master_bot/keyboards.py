@@ -240,6 +240,14 @@ def main_menu_keyboard(master: m.masters) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
+                    text=MAIN_MENU_BUTTONS["payment_requisites"],
+                    callback_data="m:req",
+                )
+            ]
+        )
+        rows.append(
+            [
+                InlineKeyboardButton(
                     text=MAIN_MENU_BUTTONS["referral"],
                     callback_data="m:rf",
                 )
