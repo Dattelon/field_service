@@ -928,7 +928,7 @@ async def cb_finance_grouped_menu(cq: CallbackQuery, staff: StaffUser, state: FS
         text = f"<b>{title} - 📊 Группировка</b>\n\nℹ️ Комиссий не найдено."
     else:
         total = sum(groups_count.values())
-        text = f"<b>{title} -  </b>\n\n  : {total}\n\n :"
+        text = f"<b>{title} - 📊 Группировка</b>\n\n📋 Всего: {total}\n\n💡 Выберите период:"
     
     from ...ui.keyboards import finance_grouped_keyboard
     markup = finance_grouped_keyboard(segment, groups_count)

@@ -488,7 +488,7 @@ async def bulk_reject_process(message: Message, staff: StaffUser, state: FSMCont
                 await admin_masters.notify_master(
                     message.bot,
                     master_id,
-                    f" . : {reason}",
+                    f"❌ Анкета отклонена. Причина: {reason}",
                 )
         except Exception:
             pass

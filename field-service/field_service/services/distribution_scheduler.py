@@ -257,26 +257,26 @@ def _compose_staff_escalation_message(
             pass
 
     if event == NotificationEvent.ESCALATION_ADMIN:
-        prefix = " <b>  </b>"
-        suffix = "    .   ."
+        prefix = "🚨 <b>Критичная эскалация</b>"
+        suffix = "Требуется срочное вмешательство администратора. Заявка долго без мастера."
     else:
-        prefix = " <b> </b>"
-        suffix = "    .   ."
+        prefix = "⚠️ <b>Эскалация заявки</b>"
+        suffix = "Заявка долго не назначена. Требуется вмешательство логиста."
 
     lines = [
         prefix,
         "",
-        f"ID : #{order_id}",
-        f": {city}",
-        f": {district}",
+        f"ID заявки: #{order_id}",
+        f"Город: {city}",
+        f"Район: {district}",
     ]
     if timeslot:
-        lines.append(f": {timeslot}")
+        lines.append(f"Время: {timeslot}")
     if category:
-        lines.append(f": {category}")
+        lines.append(f"Категория: {category}")
     if reason:
         lines.append("")
-        lines.append(f": {reason}")
+        lines.append(f"Причина: {reason}")
     lines.append("")
     lines.append(suffix)
     return "\n".join(lines)
