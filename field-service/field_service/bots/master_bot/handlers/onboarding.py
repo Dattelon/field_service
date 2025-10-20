@@ -48,19 +48,20 @@ ONBOARDING_STEPS = [
     "Имя",           # 3
     "Отчество",      # 4
     "Телефон",       # 5
-    "Город",         # 6
-    "Районы",        # 7
-    "Авто",          # 8
-    "Навыки",        # 9
-    "Паспорт",       # 10
-    "Селфи",         # 11
-    "Выплаты",       # 12
-    "Реквизиты",     # 13
-    "Геолокация",    # 14
-    "Подтверждение", # 15
+    "Реф. код",      # 6
+    "Город",         # 7
+    "Районы",        # 8
+    "Авто",          # 9
+    "Навыки",        # 10
+    "Паспорт",       # 11
+    "Селфи",         # 12
+    "Выплаты",       # 13
+    "Реквизиты",     # 14
+    "Геолокация",    # 15
+    "Подтверждение", # 16
 ]
 
-def _progress_bar(current_step: int, total_steps: int = 15) -> str:
+def _progress_bar(current_step: int, total_steps: int = 16) -> str:
     """Генерирует прогресс-бар для онбординга."""
     filled = "▓"
     empty = "░"
@@ -162,9 +163,83 @@ async def onboarding_phone(message: Message, state: FSMContext) -> None:
         await message.answer(str(exc))
         return
     await state.update_data(phone=phone)
+    await state.set_state(OnboardingStates.referral_code)
+    text = (
+        _progress_bar(6) + "\n\n"
+        "📨 <b>Реферальный код</b>\n\n"
+        "Если у вас есть реферальный код от другого мастера, введите его.\n"
+        "Это даст бонусы вам обоим!\n\n"
+        "Если кода нет — нажмите «Пропустить»."
+    )
+    keyboard = inline_keyboard([
+        [InlineKeyboardButton(text="⏭️ Пропустить", callback_data="m:onb:ref:skip")],
+        [InlineKeyboardButton(text="❌ Отменить", callback_data="m:cancel")],
+    ])
+    await push_step_message(message, state, text, reply_markup=keyboard)
+
+
+@router.callback_query(OnboardingStates.referral_code, F.data == "m:onb:ref:skip")
+async def onboarding_referral_skip(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer("Пропущено")
+    await state.update_data(referral_code=None, referrer_id=None)
     await state.set_state(OnboardingStates.city)
-    text = _progress_bar(6) + "\nНапишите название города: можно начать вводить и увидеть подсказки."
-    await message.answer(text)
+    text = _progress_bar(7) + "\nНапишите название города: можно начать вводить и увидеть подсказки."
+    await push_step_message(callback, state, text)
+
+
+@router.message(OnboardingStates.referral_code)
+async def onboarding_referral_code(
+    message: Message,
+    state: FSMContext,
+    session: AsyncSession,
+    master: m.masters,
+) -> None:
+    code_input = (message.text or "").strip().upper()
+
+    # Валидация формата (8 символов, буквы/цифры)
+    if not code_input or len(code_input) != 8 or not code_input.isalnum():
+        await message.answer(
+            "❌ Неверный формат кода.\n"
+            "Код должен содержать ровно 8 символов (буквы и цифры).\n\n"
+            "Попробуйте ещё раз или нажмите «Пропустить»."
+        )
+        return
+
+    # Проверка существования кода
+    result = await session.execute(
+        select(m.masters.id, m.masters.full_name)
+        .where(m.masters.referral_code == code_input)
+    )
+    referrer = result.one_or_none()
+
+    if not referrer:
+        await message.answer(
+            "❌ Код не найден.\n"
+            "Проверьте правильность ввода или нажмите «Пропустить»."
+        )
+        return
+
+    referrer_id, referrer_name = referrer
+
+    # Проверка на самореферал
+    if referrer_id == master.id:
+        await message.answer(
+            "❌ Нельзя использовать свой собственный код!\n"
+            "Введите код другого мастера или нажмите «Пропустить»."
+        )
+        return
+
+    # Сохраняем код
+    await state.update_data(referral_code=code_input, referrer_id=referrer_id)
+    await message.answer(
+        f"✅ Код принят!\n"
+        f"Вас пригласил: {referrer_name or 'Мастер #' + str(referrer_id)}"
+    )
+
+    # Переход к городу
+    await state.set_state(OnboardingStates.city)
+    text = _progress_bar(7) + "\nНапишите название города: можно начать вводить и увидеть подсказки."
+    await push_step_message(message, state, text)
 
 
 @router.message(OnboardingStates.city)
@@ -218,14 +293,14 @@ async def onboarding_city_pick(
     districts = await _load_districts(session, city_id)
     if not districts:
         await state.set_state(OnboardingStates.vehicle)
-        text = _progress_bar(8) + "\nЕсть ли у вас автомобиль?"
+        text = _progress_bar(9) + "\nЕсть ли у вас автомобиль?"
         await push_step_message(callback, state, text, vehicle_keyboard())
         return
 
     await state.update_data(districts=districts, district_page=1, district_ids=[])
     await state.set_state(OnboardingStates.districts)
     keyboard = _build_district_keyboard(districts, set(), page=1)
-    text = _progress_bar(7) + "\nВыберите районы работы (можно несколько)."
+    text = _progress_bar(8) + "\nВыберите районы работы (можно несколько)."
     await push_step_message(callback, state, text, keyboard)
 
 
@@ -284,7 +359,7 @@ async def onboarding_districts_done(callback: CallbackQuery, state: FSMContext) 
         return
     await callback.answer()
     await state.set_state(OnboardingStates.vehicle)
-    text = _progress_bar(8) + "\nЕсть ли у вас автомобиль?"
+    text = _progress_bar(9) + "\nЕсть ли у вас автомобиль?"
     await push_step_message(callback, state, text, vehicle_keyboard())
 
 
@@ -321,7 +396,7 @@ async def _start_skills(
     await state.update_data(skills=skills_data, skill_ids=[])
     keyboard = _build_skills_keyboard(skills_data, set())
     await state.set_state(OnboardingStates.skills)
-    text = _progress_bar(9) + "\nВыберите ваши навыки (можно несколько)."
+    text = _progress_bar(10) + "\nВыберите ваши навыки (можно несколько)."
     await push_step_message(event, state, text, keyboard)
 
 
@@ -356,7 +431,7 @@ async def onboarding_skills_done(callback: CallbackQuery, state: FSMContext) -> 
         return
     await callback.answer()
     await state.set_state(OnboardingStates.passport)
-    text = _progress_bar(10) + "\nЗагрузите фото или PDF паспорта (разворот с фото)."
+    text = _progress_bar(11) + "\nЗагрузите фото или PDF паспорта (разворот с фото)."
     await push_step_message(callback, state, text)
 
 
@@ -370,7 +445,7 @@ async def onboarding_passport_file(message: Message, state: FSMContext) -> None:
         file_type = "DOCUMENT"
     await state.update_data(passport_file={"file_id": file_id, "file_type": file_type})
     await state.set_state(OnboardingStates.selfie)
-    text = _progress_bar(11) + "\nТеперь загрузите селфи с паспортом (видно лицо)."
+    text = _progress_bar(12) + "\nТеперь загрузите селфи с паспортом (видно лицо)."
     await push_step_message(message, state, text)
 
 
@@ -384,7 +459,7 @@ async def onboarding_selfie_file(message: Message, state: FSMContext) -> None:
     file_id = message.photo[-1].file_id
     await state.update_data(selfie_file={"file_id": file_id, "file_type": "PHOTO"})
     await state.set_state(OnboardingStates.payout_method)
-    text = _progress_bar(12) + "\nВыберите способ выплаты."
+    text = _progress_bar(13) + "\nВыберите способ выплаты."
     await push_step_message(
         message,
         state,
@@ -409,7 +484,7 @@ async def onboarding_payout_method(callback: CallbackQuery, state: FSMContext) -
         return
     await state.update_data(payout_method=method.value)
     await state.set_state(OnboardingStates.payout_requisites)
-    text = _progress_bar(13) + "\n" + _payout_prompt(method)
+    text = _progress_bar(14) + "\n" + _payout_prompt(method)
     await push_step_message(callback, state, text)
 
 
@@ -427,7 +502,7 @@ async def onboarding_payout_requisites(message: Message, state: FSMContext) -> N
         return
     await state.update_data(payout_method=payout.method.value, payout_payload=payout.payload)
     await state.set_state(OnboardingStates.home_geo)
-    text = _progress_bar(14) + "\nУкажите домашнюю геолокацию (необязательно) или пропустите этот шаг."
+    text = _progress_bar(15) + "\nУкажите домашнюю геолокацию (необязательно) или пропустите этот шаг."
     await push_step_message(
         message,
         state,
@@ -498,8 +573,8 @@ async def _show_summary(event: Message | CallbackQuery, state: FSMContext) -> No
     ]
     payout_method = data.get("payout_method")
     payout_payload = data.get("payout_payload", {})
-    
-    text = _progress_bar(15) + "\n" + ONBOARDING_SUMMARY_HEADER + "\n"
+
+    text = _progress_bar(16) + "\n" + ONBOARDING_SUMMARY_HEADER + "\n"
     lines = [
         f"ФИО: {full_name or '—'}",
         f"Телефон: {data.get('phone', '')}",
@@ -571,6 +646,34 @@ async def onboarding_confirm(
     else:
         master.home_latitude = None
         master.home_longitude = None
+
+    # Обработка реферального кода
+    referral_code = data.get("referral_code")
+    referrer_id = data.get("referrer_id")
+    if referral_code and referrer_id:
+        # Обновляем referred_by_master_id в мастере
+        master.referred_by_master_id = referrer_id
+
+        # Создаём запись в referrals (для уровня 1)
+        # Проверяем, нет ли уже записи
+        existing = await session.execute(
+            select(m.referrals.id).where(m.referrals.master_id == master.id)
+        )
+        if existing.scalar_one_or_none() is None:
+            referral_entry = m.referrals(
+                master_id=master.id,
+                referrer_id=referrer_id
+            )
+            session.add(referral_entry)
+
+            # Отправляем уведомление рефереру о новом реферале
+            from field_service.services import push_notifications
+            await push_notifications.notify_master(
+                session,
+                master_id=referrer_id,
+                event=push_notifications.NotificationEvent.REFERRAL_REGISTERED,
+                referred_name=full_name,
+            )
 
     passport_info = data.get("passport_file", {})
     selfie_info = data.get("selfie_file", {})

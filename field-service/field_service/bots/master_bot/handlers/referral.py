@@ -47,8 +47,14 @@ async def _render_referrals(
 ) -> None:
     master_id = master.id
     referral_code = (master.referral_code or '').strip()
-    
-    # P1-7:   
+
+    # Генерируем код автоматически, если его нет
+    if not referral_code:
+        from field_service.services import referral_service
+        referral_code = await referral_service.generate_referral_code(session, master_id)
+        await session.commit()
+
+    # P1-7:
     invited_total_stmt = select(func.count()).select_from(m.masters).where(
         m.masters.referred_by_master_id == master_id
     )
@@ -123,7 +129,12 @@ async def _render_referrals(
     lines.append("<b>Условия программы:</b>")
     lines.append("• Уровень 1 (прямые рефералы): 10% от комиссии")
     lines.append("• Уровень 2 (рефералы рефералов): 5% от комиссии")
-    lines.append("Вознаграждение начисляется автоматически")
+    lines.append("• Вознаграждение начисляется автоматически")
+    lines.append("")
+    lines.append("<b>Как использовать бонусы:</b>")
+    lines.append("Начисленные бонусы можно использовать для")
+    lines.append("оплаты комиссий или вывести на счёт")
+    lines.append("(функционал в разработке)")
     lines.append("")
     for level in (1, 2):
         bucket = level_stats[level]
@@ -155,12 +166,14 @@ async def _render_referrals(
     buttons: list[list[InlineKeyboardButton]] = []
     if referral_code:
         share_text = (
-            f"Присоединяйся к Field Service! "
-            f"Используй мой реферальный код: {referral_code}\n\n"
-            f"Получай бонусы за каждого приглашенного мастера!"
+            f"👋 Присоединяйся к Field Service — сервису для мастеров!\n\n"
+            f"🎁 Используй мой реферальный код: {referral_code}\n\n"
+            f"✅ Получай бонусы за каждого приглашённого мастера\n"
+            f"✅ Стабильный поток заказов\n"
+            f"✅ Оплата в день выполнения"
         )
         encoded_share_text = quote(share_text)
-        share_url = f"https://t.me/share/url?text={encoded_share_text}&url={encoded_share_text}"
+        share_url = f"https://t.me/share/url?text={encoded_share_text}"
         buttons.append([
         InlineKeyboardButton(text="📤 Поделиться кодом", url=share_url),
         ])

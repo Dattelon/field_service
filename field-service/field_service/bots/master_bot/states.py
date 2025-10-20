@@ -9,6 +9,7 @@ class OnboardingStates(StatesGroup):
     first_name = State()
     middle_name = State()
     phone = State()
+    referral_code = State()  # Ввод реферального кода (опционально)
     city = State()
     districts = State()
     vehicle = State()
