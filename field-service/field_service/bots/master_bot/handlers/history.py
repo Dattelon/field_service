@@ -121,7 +121,7 @@ async def history_card(
         house=order.house_number,
         apartment=order.apartment_number,
         address_comment=order.address_comment,
-        category=order.category.label if order.category else "",
+        category=order.category.value if order.category else "",
         description=order.description,
         timeslot=_timeslot_text(order.timeslot_start, order.timeslot_end),
         client_name=order.client_name,
@@ -224,32 +224,38 @@ async def _render_history(
 
     _log.info("_render_history: loaded stats - completed=%s, earned=%s", stats.total_completed, stats.total_earned)
 
-    header = HISTORY_HEADER_TEMPLATE.format(
-        page=page,
-        pages=total_pages,
-        total=total,
-    )
-    
-    stats_text = HISTORY_STATS_TEMPLATE.format(
-        total_completed=stats.total_completed or 0,
-        total_earned=float(stats.total_earned or 0),
-        avg_rating="",  # TODO:   
-    )
-    
-    lines = [header, "", stats_text, ""]
-    for order in orders:
-        await session.refresh(order, ["city", "district", "category"])
-        line = history_order_line(
-            order_id=order.id,
-            status=ORDER_STATUS_TITLES.get(order.status, order.status),
-            city=order.city.name if order.city else "",
-            district=order.district.name if order.district else None,
-            category=order.category.label if order.category else "",
-            timeslot=_timeslot_text(order.timeslot_start, order.timeslot_end),
+    try:
+        header = HISTORY_HEADER_TEMPLATE.format(
+            page=page,
+            pages=total_pages,
+            total=total,
         )
-        lines.append(line)
 
-    text = "\n".join(lines)
+        stats_text = HISTORY_STATS_TEMPLATE.format(
+            total_completed=stats.total_completed or 0,
+            total_earned=float(stats.total_earned or 0),
+            avg_rating="",  # TODO:
+        )
+
+        lines = [header, "", stats_text, ""]
+        _log.info("_render_history: created header and stats, about to process %s orders", len(orders))
+
+        for order in orders:
+            await session.refresh(order, ["city", "district", "category"])
+            line = history_order_line(
+                order_id=order.id,
+                status=ORDER_STATUS_TITLES.get(order.status, order.status),
+                city=order.city.name if order.city else "",
+                district=order.district.name if order.district else None,
+                category=order.category.value if order.category else "",
+                timeslot=_timeslot_text(order.timeslot_start, order.timeslot_end),
+            )
+            lines.append(line)
+
+        text = "\n".join(lines)
+    except Exception as e:
+        _log.exception("_render_history: error formatting text: %s", e)
+        raise
 
     _log.info("_render_history: formatted text, total lines=%s", len(lines))
 
