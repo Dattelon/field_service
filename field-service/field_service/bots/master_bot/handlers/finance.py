@@ -348,8 +348,6 @@ async def _render_commission_list(
     text_without_breadcrumbs = "\n".join([line for line in lines if line])
     text = add_breadcrumbs_to_text(text_without_breadcrumbs, MasterPaths.FINANCE_COMMISSIONS)
 
-    import logging
-    _log = logging.getLogger("master_bot.finance")
     _log.info("_render_commission_list: sending message, text length=%s, buttons=%s", len(text), len(buttons))
     await safe_edit_or_send(event, text, inline_keyboard(buttons))
     _log.info("_render_commission_list: message sent")
@@ -379,6 +377,8 @@ async def _render_commission_card(
     commission = row.commission
     order = row.order
     status_label = STATUS_LABELS.get(commission.status, commission.status.value)
+
+    _log.info("_render_commission_card: extracted commission and order data")
 
     lines = [
         f"<b>Комиссия #{commission.id}</b>",
@@ -440,6 +440,8 @@ async def _render_commission_card(
     check_status = "✅ Чеки загружены" if commission.has_checks else "⚠️ Чеки не загружены"
     lines.append(check_status)
 
+    _log.info("_render_commission_card: built commission details, total lines=%s", len(lines))
+
     # Реквизиты для оплаты
     if commission.status in {m.CommissionStatus.WAIT_PAY, m.CommissionStatus.REPORTED, m.CommissionStatus.OVERDUE}:
         lines.append("")
@@ -452,9 +454,11 @@ async def _render_commission_card(
             lines.append("⚠️ Реквизиты недоступны.")
             lines.append("Обратитесь к администратору.")
 
+    _log.info("_render_commission_card: added payment details, total lines=%s", len(lines))
+
     buttons: list[list[InlineKeyboardButton]] = []
-    
-    # P0-7:    
+
+    # P0-7:
     if order and order.id:
         buttons.append([
             InlineKeyboardButton(
@@ -490,13 +494,18 @@ async def _render_commission_card(
         InlineKeyboardButton(text="🏠 Главное меню", callback_data="m:menu")
     ])
 
+    _log.info("_render_commission_card: built keyboard with %s buttons", len(buttons))
+
     # P1-23: Add breadcrumbs navigation
+    _log.info("_render_commission_card: joining lines into text")
     text_without_breadcrumbs = "\n".join([line for line in lines if line])
+    _log.info("_render_commission_card: text joined, length=%s", len(text_without_breadcrumbs))
+
+    _log.info("_render_commission_card: adding breadcrumbs")
     breadcrumb_path = MasterPaths.commission_card(commission.id)
     text = add_breadcrumbs_to_text(text_without_breadcrumbs, breadcrumb_path)
+    _log.info("_render_commission_card: breadcrumbs added, final text length=%s", len(text))
 
-    import logging
-    _log = logging.getLogger("master_bot.finance")
     _log.info("_render_commission_card: sending message, text length=%s, buttons=%s", len(text), len(buttons))
     await safe_edit_or_send(event, text, inline_keyboard(buttons))
     _log.info("_render_commission_card: message sent")
