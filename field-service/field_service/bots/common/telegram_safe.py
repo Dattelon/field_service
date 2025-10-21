@@ -104,19 +104,23 @@ async def safe_edit_or_send(
     if isinstance(event, CallbackQuery):
         message = event.message
         if message is not None:
+            _LOGGER.info("safe_edit_or_send: attempting to edit message in chat %s", message.chat.id)
             try:
-                return await _queue_call(
+                result = await _queue_call(
                     message.bot,
                     lambda: message.edit_text(text, reply_markup=reply_markup, **kwargs),
                 )
+                _LOGGER.info("safe_edit_or_send: message edited successfully")
+                return result
             except TelegramBadRequest as exc:
                 message_text = (exc.message or "").lower()
+                _LOGGER.info("safe_edit_or_send: edit failed with TelegramBadRequest: %s", exc.message)
                 if "message is not modified" in message_text:
                     if reply_markup is not None:
                         current_markup = _normalize_markup(message.reply_markup)
                         new_markup = _normalize_markup(reply_markup)
                         if current_markup != new_markup:
-                            _LOGGER.debug("safe_edit_or_send: updating reply markup only")
+                            _LOGGER.info("safe_edit_or_send: updating reply markup only")
                             try:
                                 await _queue_call(
                                     message.bot,
@@ -125,20 +129,22 @@ async def safe_edit_or_send(
                                     ),
                                 )
                             except TelegramBadRequest as markup_exc:
-                                _LOGGER.debug(
+                                _LOGGER.warning(
                                     "safe_edit_or_send markup edit failed: %s",
                                     markup_exc,
                                     exc_info=True,
                                 )
                             else:
+                                _LOGGER.info("safe_edit_or_send: markup updated successfully")
                                 return message
-                    _LOGGER.debug(
-                        "safe_edit_or_send: text unchanged, sending new message"
+                    _LOGGER.info(
+                        "safe_edit_or_send: text unchanged, sending new message to chat %s", message.chat.id
                     )
                 if "message to edit not found" not in message_text and "message can't be edited" not in message_text:
-                    _LOGGER.debug("safe_edit_or_send edit failed: %s", exc, exc_info=True)
+                    _LOGGER.warning("safe_edit_or_send edit failed: %s", exc, exc_info=True)
                 target_chat = message.chat.id
-                return await _queue_call(
+                _LOGGER.info("safe_edit_or_send: sending new message to chat %s", target_chat)
+                result = await _queue_call(
                     message.bot,
                     lambda: message.bot.send_message(
                         target_chat,
@@ -147,6 +153,9 @@ async def safe_edit_or_send(
                         **kwargs,
                     ),
                 )
+                _LOGGER.info("safe_edit_or_send: new message sent successfully")
+                return result
+        _LOGGER.info("safe_edit_or_send: callback message is None, sending to user %s", event.from_user.id if event.from_user else None)
         if event.from_user is not None:
             return await _queue_call(
                 event.bot,
@@ -157,6 +166,7 @@ async def safe_edit_or_send(
                     **kwargs,
                 ),
             )
+        _LOGGER.warning("safe_edit_or_send: both message and from_user are None, cannot send message")
         return None
 
     if isinstance(event, Message):
