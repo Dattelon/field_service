@@ -85,67 +85,78 @@ async def history_card(
     master: m.masters,
 ) -> None:
     """   ."""
-    parts = callback.data.split(":")
-    order_id = int(parts[3])
-    page = int(parts[4]) if len(parts) > 4 else 1
-    filter_status = parts[5] if len(parts) > 5 else None
-    
-    _log.info("history_card: master_id=%s, order_id=%s", master.id, order_id)
-    
-    stmt = (
-        select(m.orders)
-        .where(
-            and_(
-                m.orders.master_id == master.id,
-                m.orders.id == order_id,
-                m.orders.status.in_(HISTORY_STATUSES),
+    try:
+        parts = callback.data.split(":")
+        order_id = int(parts[3])
+        page = int(parts[4]) if len(parts) > 4 else 1
+        filter_status = parts[5] if len(parts) > 5 else None
+
+        _log.info("history_card: master_id=%s, order_id=%s", master.id, order_id)
+
+        stmt = (
+            select(m.orders)
+            .where(
+                and_(
+                    m.orders.master_id == master.id,
+                    m.orders.id == order_id,
+                    m.orders.status.in_(HISTORY_STATUSES),
+                )
             )
         )
-    )
-    result = await session.execute(stmt)
-    order = result.scalar_one_or_none()
-    
-    if not order:
-        await safe_answer_callback(callback, "   ", show_alert=True)
-        await _render_history(callback, session, master, page=page, filter_status=filter_status)
-        return
-    
-    await session.refresh(order, ["city", "district", "category"])
-    
-    text_without_breadcrumbs = history_order_card(
-        order_id=order.id,
-        status=ORDER_STATUS_TITLES.get(order.status, order.status),
-        city=order.city.name if order.city else "",
-        district=order.district.name if order.district else None,
-        street=order.street_address,
-        house=order.house_number,
-        apartment=order.apartment_number,
-        address_comment=order.address_comment,
-        category=order.category.value if order.category else "",
-        description=order.description,
-        timeslot=_timeslot_text(order.timeslot_start, order.timeslot_end),
-        client_name=order.client_name,
-        client_phone=order.client_phone,
-        final_amount=order.final_amount,
-        created_at=order.created_at,
-        closed_at=order.updated_at if order.status == m.OrderStatus.CLOSED else None,
-    )
-    
-    # P1-23: Add breadcrumbs navigation
-    breadcrumb_path = MasterPaths.history_order_card(order.id)
-    text = add_breadcrumbs_to_text(text_without_breadcrumbs, breadcrumb_path)
-    
-    back_callback = f"m:hist:{page}"
-    if filter_status:
-        back_callback += f":{filter_status}"
-    
-    keyboard = inline_keyboard([
-        InlineKeyboardButton(text="Назад к истории", callback_data=back_callback),
-        InlineKeyboardButton(text="Главное меню", callback_data="m:menu")
-    ])
-    
-    await safe_edit_or_send(callback, text, keyboard)
-    await safe_answer_callback(callback)
+        result = await session.execute(stmt)
+        order = result.scalar_one_or_none()
+
+        if not order:
+            _log.warning("history_card: order not found")
+            await safe_answer_callback(callback, "   ", show_alert=True)
+            await _render_history(callback, session, master, page=page, filter_status=filter_status)
+            return
+
+        _log.info("history_card: order found, refreshing relationships")
+        await session.refresh(order, ["city", "district", "category"])
+
+        _log.info("history_card: creating card text")
+        text_without_breadcrumbs = history_order_card(
+            order_id=order.id,
+            status=ORDER_STATUS_TITLES.get(order.status, order.status),
+            city=order.city.name if order.city else "",
+            district=order.district.name if order.district else None,
+            street=order.street_address,
+            house=order.house_number,
+            apartment=order.apartment_number,
+            address_comment=order.address_comment,
+            category=order.category.value if order.category else "",
+            description=order.description,
+            timeslot=_timeslot_text(order.timeslot_start, order.timeslot_end),
+            client_name=order.client_name,
+            client_phone=order.client_phone,
+            final_amount=order.final_amount,
+            created_at=order.created_at,
+            closed_at=order.updated_at if order.status == m.OrderStatus.CLOSED else None,
+        )
+
+        # P1-23: Add breadcrumbs navigation
+        _log.info("history_card: adding breadcrumbs")
+        breadcrumb_path = MasterPaths.history_order_card(order.id)
+        text = add_breadcrumbs_to_text(text_without_breadcrumbs, breadcrumb_path)
+
+        back_callback = f"m:hist:{page}"
+        if filter_status:
+            back_callback += f":{filter_status}"
+
+        _log.info("history_card: creating keyboard")
+        keyboard = inline_keyboard([
+            InlineKeyboardButton(text="Назад к истории", callback_data=back_callback),
+            InlineKeyboardButton(text="Главное меню", callback_data="m:menu")
+        ])
+
+        _log.info("history_card: sending message")
+        await safe_edit_or_send(callback, text, keyboard)
+        _log.info("history_card: message sent successfully")
+        await safe_answer_callback(callback)
+    except Exception as e:
+        _log.exception("history_card: error occurred: %s", e)
+        raise
 
 
 async def _render_history(
