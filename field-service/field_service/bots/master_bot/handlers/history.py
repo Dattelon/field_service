@@ -156,14 +156,15 @@ async def _render_history(
     filter_status: str | None,
 ) -> None:
     """       ."""
-    
+    _log.info("_render_history: master_id=%s, page=%s, filter=%s", master.id, page, filter_status)
+
     if filter_status == "closed":
         statuses = (m.OrderStatus.CLOSED,)
     elif filter_status == "canceled":
         statuses = (m.OrderStatus.CANCELED,)
     else:
         statuses = HISTORY_STATUSES
-    
+
     count_stmt = (
         select(func.count(m.orders.id))
         .where(
@@ -175,6 +176,7 @@ async def _render_history(
     )
     count_result = await session.execute(count_stmt)
     total = count_result.scalar() or 0
+    _log.info("_render_history: found %s orders", total)
     
     if total == 0:
         text = HISTORY_EMPTY
@@ -311,4 +313,6 @@ async def _render_history(
     # P1-23: Add breadcrumbs navigation
     text_with_breadcrumbs = add_breadcrumbs_to_text(text, MasterPaths.HISTORY)
 
+    _log.info("_render_history: sending message, text length=%s, keyboard rows=%s", len(text_with_breadcrumbs), len(keyboard.inline_keyboard) if keyboard else 0)
     await safe_edit_or_send(callback, text_with_breadcrumbs, keyboard)
+    _log.info("_render_history: message sent")

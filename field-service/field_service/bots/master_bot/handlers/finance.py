@@ -80,7 +80,11 @@ async def finances_card(
     master: m.masters,
 ) -> None:
     commission_id = int(callback.data.split(":")[-1])
+    import logging
+    _log = logging.getLogger("master_bot.finance")
+    _log.info("finances_card: master_id=%s, commission_id=%s", master.id, commission_id)
     await _render_commission_card(callback, session, master, commission_id, state)
+    _log.info("finances_card: _render_commission_card completed")
     await safe_answer_callback(callback)
 
 
@@ -266,8 +270,12 @@ async def _render_commission_list(
     page: int,
     state: FSMContext,
 ) -> None:
+    import logging
+    _log = logging.getLogger("master_bot.finance")
+    _log.info("_render_commission_list: master_id=%s, mode=%s, page=%s", master.id, mode, page)
     title, statuses = FINANCE_MODES.get(mode, FINANCE_MODES["aw"])
     rows = await _load_commissions(session, master.id, statuses)
+    _log.info("_render_commission_list: loaded %s commissions", len(rows))
 
     await state.update_data(fin_ctx={"mode": mode, "page": page})
     total = len(rows)
@@ -339,8 +347,12 @@ async def _render_commission_list(
     # P1-23: Add breadcrumbs navigation
     text_without_breadcrumbs = "\n".join([line for line in lines if line])
     text = add_breadcrumbs_to_text(text_without_breadcrumbs, MasterPaths.FINANCE_COMMISSIONS)
-    
+
+    import logging
+    _log = logging.getLogger("master_bot.finance")
+    _log.info("_render_commission_list: sending message, text length=%s, buttons=%s", len(text), len(buttons))
     await safe_edit_or_send(event, text, inline_keyboard(buttons))
+    _log.info("_render_commission_list: message sent")
 
 
 async def _render_commission_card(
@@ -350,14 +362,19 @@ async def _render_commission_card(
     commission_id: int,
     state: FSMContext,
 ) -> None:
+    import logging
+    _log = logging.getLogger("master_bot.finance")
+    _log.info("_render_commission_card: master_id=%s, commission_id=%s", master.id, commission_id)
     row = await _load_commission_detail(session, master.id, commission_id)
     if row is None:
+        _log.warning("_render_commission_card: commission not found")
         await safe_edit_or_send(
             event,
             "Комиссия не найдена.",
             inline_keyboard([[InlineKeyboardButton(text="⬅️ Назад", callback_data="m:fin")]])
         )
         return
+    _log.info("_render_commission_card: commission found, preparing message")
 
     commission = row.commission
     order = row.order
@@ -478,7 +495,11 @@ async def _render_commission_card(
     breadcrumb_path = MasterPaths.commission_card(commission.id)
     text = add_breadcrumbs_to_text(text_without_breadcrumbs, breadcrumb_path)
 
+    import logging
+    _log = logging.getLogger("master_bot.finance")
+    _log.info("_render_commission_card: sending message, text length=%s, buttons=%s", len(text), len(buttons))
     await safe_edit_or_send(event, text, inline_keyboard(buttons))
+    _log.info("_render_commission_card: message sent")
 
 
 async def _load_commissions(
