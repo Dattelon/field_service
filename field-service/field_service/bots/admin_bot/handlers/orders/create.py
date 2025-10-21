@@ -1078,10 +1078,10 @@ async def cb_new_order_confirm(cq: CallbackQuery, state: FSMContext, staff: Staf
     logger.info(
         f"Admin created order #{order_id}. "
         f"Staff: {staff.id} ({staff.role}), "
-        f"City: {new_order.get('city_id')}, "
-        f"District: {new_order.get('district_id')}, "
-        f"Category: {new_order.get('category')}, "
-        f"Type: {new_order.get('order_type')}"
+        f"City: {new_order.city_id}, "
+        f"District: {new_order.district_id}, "
+        f"Category: {new_order.category}, "
+        f"Type: {new_order.order_type}"
     )
     
     detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
@@ -1134,10 +1134,10 @@ async def cb_new_order_force_confirm(cq: CallbackQuery, state: FSMContext, staff
     logger.info(
         f"Admin created DEFERRED order #{order_id} (outside working hours). "
         f"Staff: {staff.id} ({staff.role}), "
-        f"City: {new_order.get('city_id')}, "
-        f"District: {new_order.get('district_id')}, "
-        f"Category: {new_order.get('category')}, "
-        f"Type: {new_order.get('order_type')}"
+        f"City: {new_order.city_id}, "
+        f"District: {new_order.district_id}, "
+        f"Category: {new_order.category}, "
+        f"Type: {new_order.order_type}"
     )
     
     detail = await orders_service.get_card(order_id, city_ids=visible_city_ids_for(staff))
