@@ -363,7 +363,12 @@ async def _render_commission_card(
     import logging
     _log = logging.getLogger("master_bot.finance")
     _log.info("_render_commission_card: master_id=%s, commission_id=%s", master.id, commission_id)
-    row = await _load_commission_detail(session, master.id, commission_id)
+
+    try:
+        row = await _load_commission_detail(session, master.id, commission_id)
+    except Exception as e:
+        _log.exception("_render_commission_card: error loading commission detail: %s", e)
+        raise
     if row is None:
         _log.warning("_render_commission_card: commission not found")
         await safe_edit_or_send(
@@ -380,39 +385,49 @@ async def _render_commission_card(
 
     _log.info("_render_commission_card: extracted commission and order data")
 
-    lines = [
-        f"<b>Комиссия #{commission.id}</b>",
-        "",
-        f"Статус: {status_label}",
-        f"Сумма комиссии: {Decimal(commission.amount):.2f} ₽",
-    ]
-    
+    try:
+        lines = [
+            f"<b>Комиссия #{commission.id}</b>",
+            "",
+            f"Статус: {status_label}",
+            f"Сумма комиссии: {Decimal(commission.amount):.2f} ₽",
+        ]
+        _log.info("_render_commission_card: created initial lines")
+    except Exception as e:
+        _log.exception("_render_commission_card: error creating initial lines: %s", e)
+        raise
+
     # P1-8: Информация о заказе
-    if order:
-        lines.append("")
-        lines.append("<b>Информация о заказе:</b>")
-        order_label = ORDER_TYPE_LABELS.get(order.order_type, order.order_type.value)
-        lines.append(f"Заказ #{order.id} ({order_label})")
-        
-        address_parts = []
-        if row.city_name:
-            address_parts.append(row.city_name)
-        if row.district_name:
-            address_parts.append(row.district_name)
-        if row.street_name:
-            address_parts.append(row.street_name)
-        if order.house:
-            address_parts.append(str(order.house))
-        if address_parts:
-            lines.append(f"Адрес: {', '.join(address_parts)}")
-        
-        if order.category:
-            category_value = order.category.value if hasattr(order.category, 'value') else str(order.category)
-            lines.append(f"Категория: {category_value}")
-        
-        if order.total_sum is not None:
-            lines.append(f"Сумма заказа: {Decimal(order.total_sum):.2f} ₽")
-    
+    try:
+        if order:
+            lines.append("")
+            lines.append("<b>Информация о заказе:</b>")
+            order_label = ORDER_TYPE_LABELS.get(order.order_type, order.order_type.value)
+            lines.append(f"Заказ #{order.id} ({order_label})")
+
+            address_parts = []
+            if row.city_name:
+                address_parts.append(row.city_name)
+            if row.district_name:
+                address_parts.append(row.district_name)
+            if row.street_name:
+                address_parts.append(row.street_name)
+            if order.house:
+                address_parts.append(str(order.house))
+            if address_parts:
+                lines.append(f"Адрес: {', '.join(address_parts)}")
+
+            if order.category:
+                category_value = order.category.value if hasattr(order.category, 'value') else str(order.category)
+                lines.append(f"Категория: {category_value}")
+
+            if order.total_sum is not None:
+                lines.append(f"Сумма заказа: {Decimal(order.total_sum):.2f} ₽")
+        _log.info("_render_commission_card: added order info")
+    except Exception as e:
+        _log.exception("_render_commission_card: error adding order info: %s", e)
+        raise
+
     lines.append("")
 
     # P1-8: Детали комиссии
