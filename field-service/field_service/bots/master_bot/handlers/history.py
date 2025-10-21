@@ -177,7 +177,8 @@ async def _render_history(
     count_result = await session.execute(count_stmt)
     total = count_result.scalar() or 0
     _log.info("_render_history: found %s orders", total)
-    
+
+    _log.info("_render_history: checking if total == 0")
     if total == 0:
         text = HISTORY_EMPTY
         keyboard = inline_keyboard([
@@ -189,7 +190,9 @@ async def _render_history(
     total_pages = math.ceil(total / HISTORY_PAGE_SIZE)
     page = max(1, min(page, total_pages))
     offset = (page - 1) * HISTORY_PAGE_SIZE
-    
+
+    _log.info("_render_history: calculated pagination - total_pages=%s, page=%s, offset=%s", total_pages, page, offset)
+
     orders_stmt = (
         select(m.orders)
         .where(
@@ -204,7 +207,9 @@ async def _render_history(
     )
     orders_result = await session.execute(orders_stmt)
     orders = orders_result.scalars().all()
-    
+
+    _log.info("_render_history: loaded %s orders from database", len(orders))
+
     stats_stmt = select(
         func.count(m.orders.id).label("total_completed"),
         func.sum(m.orders.final_amount).label("total_earned"),
@@ -216,7 +221,9 @@ async def _render_history(
     )
     stats_result = await session.execute(stats_stmt)
     stats = stats_result.one()
-    
+
+    _log.info("_render_history: loaded stats - completed=%s, earned=%s", stats.total_completed, stats.total_earned)
+
     header = HISTORY_HEADER_TEMPLATE.format(
         page=page,
         pages=total_pages,
@@ -241,9 +248,11 @@ async def _render_history(
             timeslot=_timeslot_text(order.timeslot_start, order.timeslot_end),
         )
         lines.append(line)
-    
+
     text = "\n".join(lines)
-    
+
+    _log.info("_render_history: formatted text, total lines=%s", len(lines))
+
     rows: list[list[InlineKeyboardButton]] = []
     
     for order in orders:
@@ -309,9 +318,13 @@ async def _render_history(
     ])
     
     keyboard = inline_keyboard(rows)
-    
+
+    _log.info("_render_history: built keyboard with %s rows", len(rows))
+
     # P1-23: Add breadcrumbs navigation
+    _log.info("_render_history: adding breadcrumbs to text")
     text_with_breadcrumbs = add_breadcrumbs_to_text(text, MasterPaths.HISTORY)
+    _log.info("_render_history: breadcrumbs added, final text length=%s", len(text_with_breadcrumbs))
 
     _log.info("_render_history: sending message, text length=%s, keyboard rows=%s", len(text_with_breadcrumbs), len(keyboard.inline_keyboard) if keyboard else 0)
     await safe_edit_or_send(callback, text_with_breadcrumbs, keyboard)
