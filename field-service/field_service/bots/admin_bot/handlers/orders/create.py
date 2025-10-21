@@ -66,21 +66,21 @@ async def is_working_hours(city_id: int, orders_service) -> bool:
     """Проверка рабочих часов с учетом timezone города и настроек из БД."""
     if os.getenv("PYTEST_CURRENT_TEST"):
         return True
-    
-    # Получаем город и его timezone
-    city = await orders_service.get_city(city_id)
-    if not city or not city.tz:
+
+    # Получаем timezone города
+    city_tz = await orders_service.get_city_timezone(city_id)
+    if not city_tz:
         return False
-    
+
     # Получаем локальное время города
     from datetime import datetime
-    tz = ZoneInfo(city.tz)
+    tz = ZoneInfo(city_tz)
     now_local = datetime.now(tz)
     current_time = now_local.time()
-    
+
     # Получаем настройки рабочего времени
     workday_start, workday_end = await _resolve_workday_window()
-    
+
     return workday_start <= current_time <= workday_end
 
 SLOT_BUCKETS: tuple[tuple[str, time, time], ...] = tuple(
