@@ -146,8 +146,8 @@ async def history_card(
 
         _log.info("history_card: creating keyboard")
         keyboard = inline_keyboard([
-            InlineKeyboardButton(text="Назад к истории", callback_data=back_callback),
-            InlineKeyboardButton(text="Главное меню", callback_data="m:menu")
+            [InlineKeyboardButton(text="Назад к истории", callback_data=back_callback)],
+            [InlineKeyboardButton(text="Главное меню", callback_data="m:menu")]
         ])
 
         _log.info("history_card: sending message")
@@ -193,7 +193,7 @@ async def _render_history(
     if total == 0:
         text = HISTORY_EMPTY
         keyboard = inline_keyboard([
-            InlineKeyboardButton(text="Главное меню", callback_data="m:menu")
+            [InlineKeyboardButton(text="Главное меню", callback_data="m:menu")]
         ])
         await safe_edit_or_send(callback, text, keyboard)
         return
