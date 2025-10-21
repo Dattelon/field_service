@@ -402,7 +402,7 @@ async def _render_commission_card(
         if order:
             lines.append("")
             lines.append("<b>Информация о заказе:</b>")
-            order_label = ORDER_TYPE_LABELS.get(order.order_type, order.order_type.value)
+            order_label = ORDER_TYPE_LABELS.get(order.type, order.type.value)
             lines.append(f"Заказ #{order.id} ({order_label})")
 
             address_parts = []

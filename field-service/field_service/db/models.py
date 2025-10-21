@@ -507,6 +507,8 @@ class orders(Base):
         default=OrderType.NORMAL,
         server_default="NORMAL",
     )
+    # Совместимость со старыми тестами/фикстурами
+    order_type = synonym("type")
 
     preferred_master_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("masters.id", ondelete="SET NULL"), nullable=True, index=True
